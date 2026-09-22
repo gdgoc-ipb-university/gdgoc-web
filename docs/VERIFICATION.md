@@ -1,6 +1,8 @@
 # Verification — 22 September 2026
 
-## Completed checks
+## Initial and perspective revision checks
+
+The interaction checks in this section document earlier revisions. The latest revision below removes greeting and manual pause controls while preserving automatic reduced motion.
 
 - `pnpm install`: completed with an explicit allowlist for the normal `unrs-resolver` native dependency build. ESLint 9 is pinned because the installed Next ESLint plugins declare compatibility through v9.
 - `pnpm check`: ESLint, generated Next route types, and TypeScript passed.
@@ -25,6 +27,16 @@
 - The user's cropped screenshot identified a white gap between the left edge of the courtyard and the distant meadow. Added a continuous terrain foundation beneath both. A camera/ground intersection sweep covered 119,313 visible sample points across four desktop/mobile aspect ratios and nine parallax positions; all lie within the corrected foundation bounds.
 - Dino greeting still updates the live status; motion pause held the frame counter at 4,201 across successive reads, and resume restarted rendering.
 - Re-ran `pnpm check`, `pnpm build`, and `git diff --check` after the final source changes. The local production server was restarted with the updated build.
+
+## Scene cleanup and foreground revision
+
+- Removed the scene greeting buttons/status, manual motion toggles, location/curiosity caption, and community Dino's click hint. The ordinary Instagram community CTA remains.
+- Replaced the dark courtyard line grid with narrow warm tile joints. Added western canopy/understory and aligned the upper pointed window with the central-core emblem in the selected camera view.
+- Added near garden geometry with an isolated two-pass blur. Production canvas reports `foreground=blurred-3d-garden`, 16,179 campus/foliage solids, 24 draw calls and 463,387 submitted triangles during idle. Only the foreground plants are blurred.
+- Reviewed the updated production scene at 1440 × 810, landing at 1440 × 900, and both routes at 390 × 844. The requested hero UI is absent, corner vegetation is visible, the architecture remains sharp, and no horizontal overflow was observed. The mobile full-scene back link remains at the top.
+- Emulated system reduced motion: the production scene reported `motion=paused` and held frame 465 across successive reads. Reset emulation and confirmed animation resumed on the landing. There is no hidden saved manual preference.
+- The final production-origin console returned no warnings or errors; the landing had no broken images.
+- `pnpm check`, `pnpm build`, and `git diff --check` passed. Restarted the production preview on `127.0.0.1:3105` with the new build.
 
 ## Evidence boundaries
 

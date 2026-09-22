@@ -5,13 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { useExperience } from "./experience-provider";
 import type { mountCampus } from "@/lib/campus/runtime";
 
-export function CampusEnvironment({ controls = true }: { controls?: boolean }) {
+export function CampusEnvironment() {
   const host = useRef<HTMLDivElement>(null);
   const controller = useRef<ReturnType<typeof mountCampus> | null>(null);
   const { animated } = useExperience();
   const motion = useRef(animated);
   const [ready, setReady] = useState(false);
-  const [greetings, setGreetings] = useState(0);
   useEffect(() => {
     motion.current = animated;
     controller.current?.setAnimated(animated);
@@ -32,7 +31,6 @@ export function CampusEnvironment({ controls = true }: { controls?: boolean }) {
               animated: motion.current,
               onReady: () => setReady(true),
               onFailure: () => setReady(false),
-              onGreet: () => setGreetings((n) => n + 1),
             });
           })
           .catch(() => setReady(false));
@@ -63,25 +61,8 @@ export function CampusEnvironment({ controls = true }: { controls?: boolean }) {
         className="campus-canvas"
         role="img"
         aria-hidden={!ready}
-        aria-label="Environment 3D AHN IPB, taman pixel, dan bukit berkabut. Dino dapat disapa lewat tombol di bawah."
+        aria-label="Environment 3D AHN IPB, Chrome Dino, taman pixel, bukit berkabut, dan tanaman foreground."
       />
-      {controls && ready && (
-        <button
-          className="campus-greet"
-          onClick={() => controller.current?.greet()}
-          type="button"
-          aria-label="Sapa Chrome Dino di taman"
-        >
-          Say hello <span aria-hidden="true">↗</span>
-        </button>
-      )}
-      <span className="campus-greeting" role="status">
-        {greetings > 0
-          ? greetings % 2
-            ? "Hello, fellow builder!"
-            : "Stay curious. Keep building."
-          : ""}
-      </span>
     </div>
   );
 }

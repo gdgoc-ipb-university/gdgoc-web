@@ -123,33 +123,36 @@ function addAHN(b: CelBuilder) {
   core(4.8, base + 2.4, 2.3, 1.1);
   core(2.7, base + 4.7, 3.1, 0.7);
   const windowZ = z + 5.8 + 0.7;
+  const emblemAxis = 0.76;
+  // The upper facet is set back: compensate so its window projects directly above the crest.
+  const windowAxis = 0.64;
   const onFacet = (dx: number, yy: number, lift = 0.03): [number, number, number] => [
-    x + dx,
+    x + windowAxis + dx,
     base + yy,
-    windowZ - (dx / 1.35) * 1.3 + lift,
+    windowZ - ((windowAxis + dx) / 1.35) * 1.3 + lift,
   ];
   b.face(
     [
-      onFacet(0.17, 5.13),
-      onFacet(0.79, 5.13),
-      onFacet(0.79, 7.22),
-      onFacet(0.48, 7.61),
-      onFacet(0.17, 7.22),
+      onFacet(-0.31, 5.13),
+      onFacet(0.31, 5.13),
+      onFacet(0.31, 7.22),
+      onFacet(0, 7.61),
+      onFacet(-0.31, 7.22),
     ],
     "#ffffe9",
   );
   b.face(
     [
-      onFacet(0.26, 5.23, 0.045),
-      onFacet(0.7, 5.23, 0.045),
-      onFacet(0.7, 7.16, 0.045),
-      onFacet(0.48, 7.44, 0.045),
-      onFacet(0.26, 7.16, 0.045),
+      onFacet(-0.22, 5.23, 0.045),
+      onFacet(0.22, 5.23, 0.045),
+      onFacet(0.22, 7.16, 0.045),
+      onFacet(0, 7.44, 0.045),
+      onFacet(-0.22, 7.16, 0.045),
     ],
     "#739499",
   );
   for (let i = 0; i < 5; i++)
-    b.line([onFacet(0.26, 5.45 + i * 0.33, 0.06), onFacet(0.7, 5.45 + i * 0.33, 0.06)]);
+    b.line([onFacet(-0.22, 5.45 + i * 0.33, 0.06), onFacet(0.22, 5.45 + i * 0.33, 0.06)]);
   b.box(x, base + 8.15, z + 5.9, 0.05, 0.65, 0.05, "#aebcb5");
   const entryZ = z + 7.5;
   b.box(x, base + 0.76, entryZ, 4.4, 1.53, 0.4, "#294954");
@@ -160,8 +163,10 @@ function addAHN(b: CelBuilder) {
     b.box(x, base - 0.08 - i * 0.13, entryZ + 0.8 + i * 0.3, 5.1 + i * 0.3, 0.17, 0.7, "#e3e0d0");
   // Circular emblems on both facets. Stylised crests, not clock faces.
   for (const side of [-1, 1]) {
+    const emblemX = x + side * emblemAxis;
+    const emblemZ = z + 6.9 - (emblemAxis / 2.4) * 1.3;
     const matrix = new THREE.Matrix4().compose(
-      new THREE.Vector3(x + side * 1.15, base + 3.8, z + 6.9 - 0.57 + 0.045),
+      new THREE.Vector3(emblemX, base + 3.8, emblemZ + 0.045),
       new THREE.Quaternion().setFromEuler(new THREE.Euler(0, side * 0.5, 0)),
       new THREE.Vector3(1, 1, 1),
     );
@@ -172,17 +177,8 @@ function addAHN(b: CelBuilder) {
     matrix.elements[14] += 0.025;
     b.geometry(inner, "#295b7d", matrix, false);
     inner.dispose();
-    b.box(x + side * 1.15, base + 3.8, z + 6.9 - 0.57 + 0.095, 0.065, 0.3, 0.05, "#ffffe9", false);
-    b.box(
-      x + side * 1.15,
-      base + 3.83,
-      z + 6.9 - 0.57 + 0.101,
-      0.27,
-      0.055,
-      0.05,
-      "#ffffe9",
-      false,
-    );
+    b.box(emblemX, base + 3.8, emblemZ + 0.095, 0.065, 0.3, 0.05, "#ffffe9", false);
+    b.box(emblemX, base + 3.83, emblemZ + 0.101, 0.27, 0.055, 0.05, "#ffffe9", false);
   }
 }
 
@@ -362,7 +358,7 @@ export function createCampusModel() {
   // and meadow slabs sit above it; their outside corners must never expose the sky.
   b.box(0, -0.5, -125, 520, 0.5, 440, "#819753", false);
   // Full courtyard: warm patterned paving, horizontal garden terraces and a pool.
-  b.box(0, -0.25, -3, 84, 0.5, 65, "#ddceb0", false);
+  b.box(0, -0.25, -3, 84, 0.5, 65, "#d9ceb6", false);
   b.box(0, -0.22, -61, 190, 0.3, 65, "#8b9f68", false);
   for (let iz = 0; iz < 41; iz++)
     for (let ix = 0; ix < 46; ix++) {
@@ -375,20 +371,11 @@ export function createCampusModel() {
         1.48,
         0.025,
         1.1,
-        ["#eadbc0", "#f6e9cc", "#ddcfb4", "#f0e3c7"][Math.floor(rnd() * 4)],
+        ["#ece1cb", "#f1e6cf", "#e7dcc5", "#ede2cc"][Math.floor(rnd() * 4)],
         false,
       );
     }
-  for (let iz = 0; iz < 41; iz++)
-    b.line([
-      [-35, 0.03, -22 + iz * 1.12],
-      [36, 0.03, -22 + iz * 1.12],
-    ]);
-  for (let ix = 0; ix < 46; ix++)
-    b.line([
-      [-34 + ix * 1.5, 0.03, -23],
-      [-34 + ix * 1.5, 0.03, 24],
-    ]);
+  // The narrow gaps between paving blocks supply subtle, warm joints without an ink grid.
   b.box(-20, 0.055, -12, 24, 0.11, 22, "#718b3e", false);
   b.box(-29, 0.07, 0, 9, 0.14, 17, "#739142", false);
   for (let i = 0; i < 65; i++) {
@@ -412,6 +399,12 @@ export function createCampusModel() {
     b.box(4, 0.1 + i * 0.16, -1.5 - i * 0.43, 11 - i * 0.6, 0.2, 1.2, "#eee5d0");
   const architecture = new CelBuilder();
   addAHN(architecture);
+  // Layer the repaired western terrain edge with canopy and low understory.
+  for (let i = 0; i < 14; i++) {
+    const x = -65 + i * 2.8;
+    tree(b, foliage, x, -32 - (i % 3) * 3.4, 4.5 + (i % 5) * 0.8, 210 + i);
+    if (i < 11) tree(b, foliage, x + 1.5, -25 - (i % 2) * 2.5, 2.3 + (i % 3) * 0.45, 250 + i);
+  }
   for (let i = 0; i < 20; i++)
     tree(b, foliage, -37 + i * 3.1, -31 + rnd() * 5, 3.2 + rnd() * 3, 110 + i);
   for (let i = 0; i < 13; i++)

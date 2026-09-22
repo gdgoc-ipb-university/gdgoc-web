@@ -1,11 +1,11 @@
 import * as THREE from "three";
 import { createCampusModel } from "./model";
+import { createForeground, createForegroundPass } from "./foreground";
 
 type Options = {
   animated: boolean;
   onReady: () => void;
   onFailure: () => void;
-  onGreet: () => void;
 };
 
 export function mountCampus(host: HTMLDivElement, options: Options) {
@@ -21,6 +21,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.shadowMap.autoUpdate = false;
   renderer.shadowMap.needsUpdate = true;
+  renderer.info.autoReset = false;
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog("#eef1e9", 65, 205);
   const camera = new THREE.PerspectiveCamera(38, 16 / 9, 1, 240);
@@ -32,6 +33,9 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     throw error;
   }
   scene.add(model.root);
+  const foreground = createForeground();
+  const foregroundPass = createForegroundPass(renderer);
+  scene.add(foreground.root);
   // Warm afternoon key from the right, with a cool fill under leaves and eaves.
   const sunlight = new THREE.DirectionalLight("#fff0d3", 2.25);
   sunlight.position.set(40, 50, 0);
@@ -48,16 +52,18 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   });
   sunlight.shadow.bias = -0.00015;
   sunlight.shadow.normalBias = 0.045;
-  scene.add(sunlight, sunlight.target, new THREE.HemisphereLight("#c8ddff", "#b1a083", 1.2));
+  const skyFill = new THREE.HemisphereLight("#c8ddff", "#b1a083", 1.2);
+  sunlight.layers.enable(1);
+  skyFill.layers.enable(1);
+  scene.add(sunlight, sunlight.target, skyFill);
   const canvas = renderer.domElement;
   canvas.setAttribute("aria-hidden", "true");
   canvas.dataset.scene = "geometric-campus";
   canvas.dataset.solids = String(model.solids);
   canvas.dataset.ridges = "3";
   canvas.dataset.foliage = "exterior-voxel-union";
+  canvas.dataset.foreground = "blurred-3d-garden";
   host.append(canvas);
-  const raycaster = new THREE.Raycaster();
-  const vector = new THREE.Vector2();
   const target = new THREE.Vector2();
   const current = new THREE.Vector2();
   const cloudOrigins = model.clouds.map((c) => c.position.x);
@@ -68,10 +74,10 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   let raf = 0,
     last = 0,
     elapsed = 0,
-    jump = -1,
     frames = 0,
     ready = false;
   let mobile = false;
+  let placeForeground = true;
 
   function paint(now: number) {
     raf = 0;
@@ -85,16 +91,8 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     if (animated) {
       elapsed += dt;
       current.lerp(target, 0.09);
-      if (jump >= 0) {
-        renderer.shadowMap.needsUpdate = true;
-        jump += dt;
-        if (jump > 0.72) jump = -1;
-      }
-      model.dino.position.y =
-        0.07 +
-        (jump >= 0 ? Math.sin((jump / 0.72) * Math.PI) * 1.2 : Math.sin(elapsed * 1.7) * 0.023);
-      model.dino.rotation.z =
-        jump >= 0 ? Math.sin((jump / 0.72) * Math.PI) * -0.065 : Math.sin(elapsed * 1.7) * 0.009;
+      model.dino.position.y = 0.07 + Math.sin(elapsed * 1.7) * 0.023;
+      model.dino.rotation.z = Math.sin(elapsed * 1.7) * 0.009;
       model.clouds.forEach((c, i) => {
         c.position.x = cloudOrigins[i] + Math.sin(elapsed * 0.13 + i) * 0.32;
       });
@@ -105,8 +103,14 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     }
     camera.position.set(8.5 + current.x * 0.28, 8.7 + current.y * 0.09, 35);
     camera.lookAt(-1 + current.x * 0.06, mobile ? 5.6 : 7.8, -8);
+    if (placeForeground) {
+      foreground.place(camera);
+      placeForeground = false;
+    }
     try {
+      renderer.info.reset();
       renderer.render(scene, camera);
+      foregroundPass.render(scene, camera);
     } catch {
       options.onFailure();
       return;
@@ -141,6 +145,8 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       Math.min(window.devicePixelRatio, 1.6, Math.sqrt(budget / (width * height))),
     );
     renderer.setSize(width, height, false);
+    foregroundPass.resize(width, height, mobile);
+    placeForeground = true;
     invalidate();
   }
   function move(event: PointerEvent) {
@@ -150,29 +156,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       (event.clientX - rect.left) / rect.width - 0.5,
       (event.clientY - rect.top) / rect.height - 0.5,
     );
-    vector.set(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      (-(event.clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    raycaster.setFromCamera(vector, camera);
-    host.style.cursor = raycaster.intersectObjects(model.dino.children).length
-      ? "pointer"
-      : "default";
     invalidate();
-  }
-  function greet() {
-    if (animated && jump < 0) jump = 0;
-    options.onGreet();
-    invalidate();
-  }
-  function click(event: PointerEvent) {
-    const rect = host.getBoundingClientRect();
-    vector.set(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      (-(event.clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    raycaster.setFromCamera(vector, camera);
-    if (raycaster.intersectObjects(model.dino.children).length) greet();
   }
   function reset() {
     target.set(0, 0);
@@ -210,17 +194,14 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   size.observe(host);
   host.addEventListener("pointermove", move);
   host.addEventListener("pointerleave", reset);
-  host.addEventListener("pointerup", click);
   document.addEventListener("visibilitychange", visibility);
   canvas.addEventListener("webglcontextlost", contextLost);
   canvas.addEventListener("webglcontextrestored", restored);
   resize();
   return {
-    greet,
     setAnimated(value: boolean) {
       animated = value;
       last = 0;
-      jump = -1;
       renderer.shadowMap.needsUpdate = true;
       cancelAnimationFrame(raf);
       raf = 0;
@@ -233,7 +214,6 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       size.disconnect();
       host.removeEventListener("pointermove", move);
       host.removeEventListener("pointerleave", reset);
-      host.removeEventListener("pointerup", click);
       document.removeEventListener("visibilitychange", visibility);
       canvas.removeEventListener("webglcontextlost", contextLost);
       canvas.removeEventListener("webglcontextrestored", restored);
@@ -247,6 +227,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
           });
         }
       });
+      foregroundPass.dispose();
       renderer.dispose();
       canvas.remove();
       sunlight.shadow.map?.dispose();

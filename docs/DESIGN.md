@@ -41,6 +41,10 @@ Three separate stepped terrain ridges replace the old low row of blocks. Each ha
 
 A continuous terrain foundation extends beneath the courtyard and meadow. Its bounds cover the visible ground at the camera's parallax extremes, closing the previously exposed white corner beside the left tree.
 
+The western edge now has two additional layers of trees and low understory. Paving uses warm, narrow joints between tiles without a separate ink grid. The pointed window projects above the emblem on the central core; its offset accounts for the upper facade's setback from the lower facet.
+
+Near hedges, tropical leaves, and small flowers frame the lower corners. They are real geometry on a separate camera layer, blurred through two half-resolution passes and alpha-composited over the sharp scene. Their placement adapts to the camera frustum on resize, retaining the framing on mobile. Greeting controls, the manual motion switch, and the Bogor/curiosity caption have been removed from the environment.
+
 ## Reference projects
 
 Inspected `/Users/ACERNITRO/Projects/aksesin-web` and `/Users/ACERNITRO/Projects/deliverologi`. Useful principles: large quiet hero-copy space, a world that extends beyond the frame, deliberate toon contours, small purposeful motion, a static fallback, and rendering lifecycle controls. Their product subjects, copy, bridges, and orbit composition were not reused.
@@ -49,10 +53,11 @@ Inspected `/Users/ACERNITRO/Projects/aksesin-web` and `/Users/ACERNITRO/Projects
 
 - Desktop Lenis scrolling only on a fine pointer, with native touch scrolling.
 - Motion hover and section reveal; content is visible in SSR and when motion is off.
-- Small camera parallax, slowly drifting clouds, a subtle Dino idle and one finite greeting jump.
+- Small camera parallax, slowly drifting clouds, and a subtle Dino idle.
 - Render loops stop offscreen, when the document is hidden, and when motion is disabled.
+- System reduced motion remains automatic; no saved manual preference or scene controls are used.
 - Pixel ratio capped at 1.6, with 1.8 million desktop pixels / 0.9 million mobile pixels for the main scene.
-- Static geometry is merged. The revised scene measures 18 draw calls and about 344k submitted triangles during idle, with 12,313 campus/foliage solids plus the three terrain ridges. The shadow map is cached during idle and refreshed for the Dino jump, motion changes, and context restoration.
+- Static geometry is merged. The revised scene measures 24 draw calls and about 463k submitted triangles during idle, including the foreground and blur passes, with 16,179 campus/foliage solids plus the three terrain ridges and foreground garden. The shadow map is cached during idle and refreshed for motion changes and context restoration.
 - Responsive camera retains the composition horizontally; mobile copy sits above the scene.
 
 ## Technical references

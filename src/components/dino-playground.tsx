@@ -1,22 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useExperience } from "./experience-provider";
 import { PixelDino } from "./icons";
 import type { mountDino } from "@/lib/dino-scene";
-
-const greetings = [
-  "Small steps count, too.",
-  "Hello, fellow builder!",
-  "Keep being curious.",
-  "Let’s make something cool.",
-];
 
 export function DinoPlayground() {
   const { animated } = useExperience();
   const host = useRef<HTMLDivElement>(null);
   const controller = useRef<ReturnType<typeof mountDino> | null>(null);
-  const [greeting, setGreeting] = useState(0);
   useEffect(() => {
     const node = host.current;
     if (!node) return;
@@ -45,27 +37,14 @@ export function DinoPlayground() {
   }, [animated]);
   return (
     <div className="dino-playground">
-      <p className="dino-speech" aria-live="polite">
-        {greetings[greeting % greetings.length]}
-      </p>
-      <button
-        className="dino-button"
-        type="button"
-        aria-label="Sapa Dino"
-        onClick={() => {
-          setGreeting(greeting + 1);
-          controller.current?.jump();
-        }}
-      >
+      <p className="dino-speech">Small steps count, too.</p>
+      <div className="dino-display" role="img" aria-label="Diorama 3D Chrome Dino di taman pixel">
         <div ref={host} className="dino-canvas">
           <span className="dino-fallback">
             <PixelDino />
           </span>
         </div>
-      </button>
-      <span className="dino-hint">
-        CLICK TO SAY HELLO <span aria-hidden="true">↗</span>
-      </span>
+      </div>
     </div>
   );
 }

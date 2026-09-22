@@ -8,7 +8,7 @@ import type { Direction } from "@/lib/directions";
 import { CampusEnvironment } from "./campus-environment";
 
 export function Hero({ direction }: { direction: Direction }) {
-  const { animated, toggleMotion } = useExperience();
+  const { animated } = useExperience();
   return (
     <section
       className={`hero ${direction.dark ? "hero-night" : ""}`}
@@ -52,25 +52,9 @@ export function Hero({ direction }: { direction: Direction }) {
           Find your people <Arrow diagonal />
         </motion.a>
       </div>
-      <div className="hero-caption">
-        <span className="pixel-square" /> BOGOR, INDONESIA{" "}
-        <span className="caption-separator">/</span> BUILT ON CURIOSITY
-      </div>
       <a href="#community" className="hero-scroll" aria-label="Jelajahi komunitas">
         <Arrow down />
       </a>
-      <button
-        className="motion-toggle"
-        type="button"
-        aria-pressed={!animated}
-        onClick={toggleMotion}
-        aria-label={
-          animated ? "Jeda animasi" : "Aktifkan animasi jika pengaturan perangkat mengizinkan"
-        }
-      >
-        <span aria-hidden="true">{animated ? "Ⅱ" : "▷"}</span>
-        <span>{animated ? "Pause motion" : "Motion off"}</span>
-      </button>
     </section>
   );
 }

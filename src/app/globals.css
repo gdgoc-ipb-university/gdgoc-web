@@ -243,31 +243,7 @@ summary:focus-visible {
 .button:hover {
   background: #1d57bb;
 }
-.hero-caption {
-  position: absolute;
-  bottom: 28px;
-  left: var(--gutter);
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font:
-    500 9px/1.6 var(--font-mono),
-    monospace;
-  letter-spacing: 0.04em;
-  background: #faf9f2e8;
-  padding: 8px 11px;
-  border: 1px solid #172d4326;
-}
-.pixel-square {
-  width: 7px;
-  height: 7px;
-  display: block;
-  background: var(--blue);
-}
-.caption-separator {
-  opacity: 0.4;
-  margin-inline: 4px;
-}
+
 .hero-scroll {
   position: absolute;
   bottom: 25px;
@@ -281,21 +257,7 @@ summary:focus-visible {
   border: 1px solid var(--ink);
   box-shadow: 2px 2px 0 var(--ink);
 }
-.motion-toggle {
-  position: absolute;
-  right: var(--gutter);
-  bottom: 28px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: #faf9f2e8;
-  border: 1px solid #172d4326;
-  padding: 8px 11px;
-  font:
-    500 9px/1.6 var(--font-mono),
-    monospace;
-  color: var(--ink);
-}
+
 .hero-night {
   background: #102945;
   --paper: #102945;
@@ -310,9 +272,7 @@ summary:focus-visible {
 .hero-night .hero-description {
   color: #d5dfec;
 }
-.hero-night .hero-caption,
-.hero-night .hero-scroll,
-.hero-night .motion-toggle {
+.hero-night .hero-scroll {
   color: #172d43;
 }
 .community-strip {
@@ -386,7 +346,7 @@ summary:focus-visible {
     linear-gradient(90deg, #172d4305 1px, transparent 1px);
   background-size: 28px 28px;
 }
-.dino-button {
+.dino-display {
   display: block;
   position: absolute;
   inset: 0;
@@ -438,21 +398,7 @@ summary:focus-visible {
   z-index: 2;
   pointer-events: none;
 }
-.dino-hint {
-  position: absolute;
-  bottom: 22px;
-  inset-inline: 0;
-  text-align: center;
-  font:
-    500 9px/1.6 var(--font-mono),
-    monospace;
-  letter-spacing: 0.08em;
-  pointer-events: none;
-}
-.dino-hint span {
-  margin-left: 5px;
-  font-size: 15px;
-}
+
 .explore-section {
   background: #f0f2ec;
   border-block: 1px solid var(--line);
@@ -971,27 +917,11 @@ summary:focus-visible {
   .hero-wash {
     display: none;
   }
-  .hero-caption {
-    font-size: 7px;
-    gap: 6px;
-    left: 15px;
-    bottom: 17px;
-    padding: 6px 7px;
-  }
-  .hero-caption .caption-separator,
-  .hero-caption .caption-separator + span {
-    display: none;
-  }
+
   .hero-scroll {
     display: none;
   }
-  .motion-toggle {
-    right: 15px;
-    bottom: 17px;
-    font-size: 7px;
-    padding: 6px 7px;
-    gap: 5px;
-  }
+
   .community-strip {
     padding: 19px 20px;
     gap: 16px;
@@ -1161,11 +1091,7 @@ summary:focus-visible {
   .hero-copy .eyebrow {
     font-size: 7px;
   }
-  .hero-caption {
-    max-width: 175px;
-    font-size: 6px;
-    letter-spacing: 0;
-  }
+
   .hero h1 > svg {
     width: 17px;
     height: 17px;
@@ -1222,39 +1148,7 @@ summary:focus-visible {
 .campus-environment[data-ready="true"] .campus-fallback {
   visibility: hidden;
 }
-.campus-greet {
-  position: absolute;
-  z-index: 2;
-  left: 24%;
-  bottom: 24%;
-  border: 1px solid #172d4380;
-  box-shadow: 2px 2px 0 #172d43;
-  background: var(--paper);
-  font:
-    500 12px var(--font-pixel),
-    monospace;
-  padding: 7px 11px;
-  color: var(--ink);
-}
-.campus-greet span {
-  margin-left: 7px;
-}
-.campus-greeting {
-  position: absolute;
-  z-index: 3;
-  left: 17%;
-  bottom: 35%;
-  font:
-    500 16px var(--font-pixel),
-    monospace;
-  background: var(--paper);
-  pointer-events: none;
-}
-.campus-greeting:not(:empty) {
-  padding: 10px 14px;
-  border: 1px solid var(--ink);
-  box-shadow: 3px 3px 0 var(--ink);
-}
+
 .hero-art:has(.campus-environment) {
   z-index: 0;
   inset: 0;
@@ -1276,9 +1170,7 @@ summary:focus-visible {
 .hero-wash {
   z-index: 1;
 }
-.hero-caption,
-.hero-scroll,
-.motion-toggle {
+.hero-scroll {
   z-index: 3;
 }
 .environment-study {
@@ -1297,8 +1189,7 @@ summary:focus-visible {
     500 10px var(--font-mono),
     monospace;
 }
-.environment-toolbar a,
-.environment-toolbar button {
+.environment-toolbar a {
   padding: 9px 14px;
   border: 1px solid var(--ink);
   background: var(--paper);
@@ -1316,47 +1207,17 @@ summary:focus-visible {
     height: 320px;
     margin-top: 10px;
   }
-  .campus-greet {
-    left: 15%;
-    bottom: 21%;
-    font-size: 10px;
-    padding: 5px 8px;
-  }
-  .campus-greeting {
-    left: 9%;
-    bottom: 35%;
-    font-size: 12px;
-  }
+
   .environment-toolbar {
-    inset: 15px;
+    inset: 15px 15px auto;
     flex-wrap: wrap;
     font-size: 8px;
   }
   .environment-toolbar span {
     display: none;
   }
-  .environment-study .campus-greet {
-    bottom: 34%;
-  }
 }
-.campus-greet {
-  left: 18%;
-  bottom: 12.5%;
-}
-.campus-greeting {
-  left: 16%;
-  bottom: 35%;
-}
-@media (max-width: 760px) {
-  .campus-greet {
-    left: 13%;
-    bottom: 18%;
-  }
-  .campus-greeting {
-    left: 6%;
-    bottom: 41%;
-  }
-}
+
 @media (max-width: 760px) {
   .hero-copy {
     order: 1;
@@ -1367,11 +1228,7 @@ summary:focus-visible {
   .hero h1 {
     font-size: clamp(42px, 10.5vw, 76px);
   }
-  .hero-caption {
-    font-size: 6px;
-    gap: 4px;
-    max-width: 65%;
-  }
+
   .hero-description {
     margin-bottom: 25px;
   }

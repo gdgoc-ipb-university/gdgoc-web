@@ -57,10 +57,12 @@ Copy introduces a community for students across Bogor, its learning areas, and t
 
 ## Deployment
 
+Live site: [gdgoc-web.vercel.app](https://gdgoc-web.vercel.app/).
+
 The private source repository is `dikaprilio/gdgoc-web`. Production deploys use Vercel CLI with the `gdgoc-web` project in `bibobaggins-projects`:
 
 ```sh
-pnpm dlx vercel@59.23.2 link --yes --team bibobaggins-projects --project gdgoc-web
+pnpm dlx vercel@59.23.2 link --yes --scope bibobaggins-projects --project gdgoc-web
 pnpm dlx vercel@59.23.2 deploy --prod --yes --scope bibobaggins-projects
 ```
 

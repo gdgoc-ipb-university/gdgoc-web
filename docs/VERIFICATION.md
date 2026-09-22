@@ -60,8 +60,18 @@ The interaction checks in this section document earlier revisions. The latest re
 - `pnpm check` passed ESLint and TypeScript; the final `pnpm build` and `git diff --check` passed. The build includes `/footer-directions`. Restarted local production at `127.0.0.1:3105`.
 - Final production scene: ready with no loader, 23 draw calls, 438,413 submitted triangles, 15,660 main-scene solids, `garden=mixed-canopies-flowering-tropical-wayfinding`, and no page overflow. Footer background remains `rgb(250, 249, 242)`. The production-origin console reported no warnings or errors.
 
+## Private repository and first public deployment — 23 September
+
+- Updated the hero, About copy, footer invitation, page title, and description to **Komunitas Mahasiswa Bogor**, following the user's instruction before deployment.
+- `pnpm check`, `pnpm build`, and `git diff --check` passed. Added the Vercel Next.js configuration, pinned Node.js 24.x, and ignored local Vercel linking files in Git.
+- Created `https://github.com/dikaprilio/gdgoc-web` as a private repository. GitHub reported `isPrivate=true`; remote `main` matched application commit `4b457157a008b390851e8ddb83d6702a88ef8f05` after push.
+- Deployed with Vercel CLI 59.23.2 to `bibobaggins-projects/gdgoc-web`. Deployment `dpl_BNMd7JQu2j1YxAN5U7r2oo1e8mok` reached `READY` with the production alias `https://gdgoc-web.vercel.app/`. The hosted build installed pnpm 11.22.0 dependencies and compiled Next.js 16.3.5 successfully.
+- Opened the public production alias in a browser. Confirmed the Bogor title/description and visible copy, successful removal of the preloader after initialization, a live 3D canvas with Salak and the varied garden, zero broken images, no horizontal overflow, and no console warnings or errors. The main scene reported 23 draw calls and 438,413 submitted triangles.
+- CLI-created `.env.local` and `.vercel/project.json` are ignored by Git. No account tokens or local environment files were committed.
+- This release was deployed through CLI. Git-triggered automatic deployments have not been configured.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.
 
-Responsive testing used browser viewport emulation, not physical phones. Browser reduced motion and the forced fallback were tested; actual GPU context-loss recovery is implemented but was not fault-injected. No public deployment, GitHub remote, registration backend, or external form submission was performed.
+Responsive testing used browser viewport emulation, not physical phones. Browser reduced motion and the forced fallback were tested; actual GPU context-loss recovery is implemented but was not fault-injected. The public deployment and private GitHub remote are verified above. No registration backend or external form submission was performed.

@@ -1,43 +1,63 @@
 import * as THREE from "three";
 import { CelBuilder, type Voxel } from "./builder";
 
-/** Solid, stepped ridgelines with distance haze and denser fog in the valleys. */
+// Broad shoulders and an uneven double summit, guided by Salak's profile from Bogor.
+// Authored geometry, rather than a generic cone or a photographic sky plane.
+const salakProfile = [
+  [-145, 1], [-128, 2.5], [-115, 5], [-104, 8], [-95, 12], [-87, 16],
+  [-80, 19.8], [-77, 21.5], [-72, 22], [-68, 21], [-64, 18.5], [-60, 18.8],
+  [-57, 19.7], [-54, 18.7], [-49, 20.2], [-46, 22.5], [-43, 21.7],
+  [-37, 17.5], [-30, 12], [-19, 6], [-4, 2.2], [18, 1],
+] as const;
+
+function salakHeight(x: number) {
+  for (let i = 1; i < salakProfile.length; i++) {
+    const [right, top] = salakProfile[i];
+    if (x > right) continue;
+    const [left, bottom] = salakProfile[i - 1];
+    return 0.82 * THREE.MathUtils.lerp(bottom, top, THREE.MathUtils.clamp((x - left) / (right - left), 0, 1));
+  }
+  return 1;
+}
+
+/** Salak and two low foothill layers, with distance haze and opaque valley mist. */
 export function createHills() {
   const group = new THREE.Group();
-  group.name = "Three misty horizon ridges";
+  group.name = "Gunung Salak and misty foothills";
   const layers = [
-    { z: -118, unit: 0.8, height: 11, color: "#9bb9c7", seed: 5, peak: -17 },
-    { z: -87, unit: 0.68, height: 10, color: "#80a8b9", seed: 2, peak: -38 },
-    { z: -59, unit: 0.55, height: 8, color: "#709c9d", seed: 9, peak: -61 },
+    { name: "Gunung Salak", z: -116, unit: 0.68, height: 0, color: "#708f9d", seed: 5, peak: -70 },
+    { name: "Distant Salak foothills", z: -87, unit: 0.8, height: 3.5, color: "#8eacb3", seed: 2, peak: -57 },
+    { name: "Near misty foothills", z: -59, unit: 0.7, height: 2.6, color: "#82a39a", seed: 9, peak: -75 },
   ];
   for (const layer of layers) {
     const b = new CelBuilder();
     const cells: Voxel[] = [];
     const tint = new THREE.Color(layer.color);
-    const span = Math.ceil(100 / layer.unit);
+    const span = Math.ceil(150 / layer.unit);
     for (let x = -span; x <= span; x++) {
       for (let z = 0; z < 6; z++) {
         const worldX = x * layer.unit;
-        const ridge =
-          0.8 * Math.exp(-(((worldX - layer.peak) / 19) ** 2)) +
-          0.68 * Math.exp(-(((worldX - layer.peak - 75) / 28) ** 2)) +
-          0.3 * Math.exp(-(((worldX + 4) / 12) ** 2));
+        const ridge = layer.height === 0 ? salakHeight(worldX) :
+          2.5 + layer.height * (
+            Math.exp(-(((worldX - layer.peak) / 25) ** 2)) +
+            0.7 * Math.exp(-(((worldX - layer.peak - 105) / 34) ** 2))
+          );
         const detail =
-          Math.sin(worldX * 0.42 + layer.seed) * 0.6 + Math.cos(z * 0.8 + worldX * 0.17) * 0.6;
+          Math.sin(worldX * 0.42 + layer.seed) * 0.16 + Math.cos(z * 0.8 + worldX * 0.17) * 0.12;
         const height = Math.max(
           1,
-          Math.round((2.5 + layer.height * ridge + detail - z * 0.12) / layer.unit),
+          Math.round((ridge + detail - z * 0.12) / layer.unit),
         );
         for (let y = 0; y < height; y++) {
-          const color = tint
-            .clone()
-            .multiplyScalar(0.86 + ((x * 17 + z * 13 + y * 7 + 9999) % 7) * 0.026);
+          // Wide, slanted tonal folds retain cel shading without noisy per-voxel colors.
+          const fold = Math.floor((worldX + (height - y) * layer.unit * 0.55 + 300) / 8) % 3;
+          const color = tint.clone().multiplyScalar(0.92 + fold * 0.04);
           cells.push({ x, y, z, color: `#${color.getHexString()}` });
         }
       }
     }
     b.voxels(cells, [0, 0, layer.z], layer.unit, false);
-    const ridge = b.finish("Hazy voxel ridge");
+    const ridge = b.finish(layer.name);
     const mesh = ridge.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshToonMaterial>;
     mesh.material.gradientMap?.dispose();
     mesh.material.dispose();

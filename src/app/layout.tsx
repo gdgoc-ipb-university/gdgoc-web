@@ -43,9 +43,9 @@ const poppins = localFont({
 });
 
 export const metadata: Metadata = {
-  title: { default: "GDGoC IPB — Small pixels. Big possibilities.", template: "%s · GDGoC IPB" },
+  title: { default: "GDGoC IPB — Komunitas Teknologi Mahasiswa IPB", template: "%s · GDGoC IPB" },
   description:
-    "Tempat untuk belajar, bereksperimen, dan bertumbuh bersama. Kenali Google Developer Group on Campus IPB University.",
+    "Komunitas teknologi mahasiswa IPB University. Belajar coding, UI/UX, dan AI lewat sesi praktik, proyek tim, serta persiapan kompetisi bersama GDGoC IPB.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

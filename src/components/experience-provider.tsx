@@ -33,7 +33,7 @@ export function ExperienceProvider({ children }: { children: React.ReactNode }) 
     const sync = () => {
       scroll?.destroy();
       scroll = pointer.matches
-        ? new Lenis({ autoRaf: true, anchors: { offset: -88 }, duration: 0.9 })
+        ? new Lenis({ autoRaf: true, anchors: true, duration: 0.9 })
         : undefined;
     };
     const visibility = () => (document.hidden ? scroll?.stop() : scroll?.start());

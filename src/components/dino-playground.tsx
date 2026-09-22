@@ -37,7 +37,7 @@ export function DinoPlayground() {
   }, [animated]);
   return (
     <div className="dino-playground">
-      <p className="dino-speech">Small steps count, too.</p>
+      <p className="dino-speech">Baru belajar? Yuk, mulai bareng!</p>
       <div className="dino-display" role="img" aria-label="Diorama 3D Chrome Dino di taman pixel">
         <div ref={host} className="dino-canvas">
           <span className="dino-fallback">

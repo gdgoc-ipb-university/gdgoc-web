@@ -38,6 +38,16 @@ The interaction checks in this section document earlier revisions. The latest re
 - The final production-origin console returned no warnings or errors; the landing had no broken images.
 - `pnpm check`, `pnpm build`, and `git diff --check` passed. Restarted the production preview on `127.0.0.1:3105` with the new build.
 
+## Community profile / Salak / light footer — 23 September
+
+- Replaced the generic high horizon ridges with the authored double-summit Salak profile on the left and two low misty foothill layers. Reviewed the silhouette, copy clearance, repositioned clouds, and retained sharp AHN against the reference photograph and local scene.
+- Desktop copy retains its original 11% left margin and maximum 740px block. The final headline stays on two lines with no horizontal overflow; body text is 16px on desktop and 14px on mobile. Reviewed desktop at 1440px and 1024px, the 761px desktop breakpoint, mobile at 390px, and narrow mobile at 320px. The final production preview also passed at the user's 504px viewport.
+- Header, hero, and closing CTA all use “Gabung member” and the same official GDG chapter URL. Inspected the destination live and confirmed its “Join us” button. No membership action or external form was submitted.
+- The invitation and footer are one warm-paper surface (`rgb(250, 249, 242)`). Reviewed the full composition at 1440 × 1000 and the complete mobile footer at 390px. Navigation, contact, and the small pixel garden share that surface; the rejected dark variation is absent.
+- Sticky navigation remains at `top: 0`. In the final production app, a menu-to-Program click closed the menu and placed the target at 99.5px below the viewport top while motion and the fine-pointer Lenis path were enabled. The native still-mode path placed it at approximately 100px.
+- Re-ran `pnpm check`, `pnpm build`, and `git diff --check` after the final source change. Restarted local production on `127.0.0.1:3105`.
+- Final production inspection: `data-backdrop=gunung-salak`, scene ready, 23 idle draw calls, 463,731 submitted triangles, no broken images or heading/page overflow, and no console warnings or errors.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

@@ -409,10 +409,11 @@ export function createCampusModel() {
     tree(b, foliage, -37 + i * 3.1, -31 + rnd() * 5, 3.2 + rnd() * 3, 110 + i);
   for (let i = 0; i < 13; i++)
     tree(b, foliage, -28 + i * 2.3, -22 + rnd() * 5, 4.7 + rnd() * 2.7, 50 + i);
-  tree(b, foliage, -22, 3, 17, 70);
+  // Retain the left tree frame while leaving the left-aligned hero text legible.
+  tree(b, foliage, -24.7, 3, 17, 70);
   tree(b, foliage, -16, -5, 6.8, 83);
   tree(b, foliage, -4, -7, 5.7, 88);
-  tree(b, foliage, -24, 9, 19.5, 77);
+  tree(b, foliage, -26.7, 9, 19.5, 77);
   tree(b, foliage, 23, -9, 6.4, 91);
   tree(b, foliage, 28, 2, 7.5, 92);
   tree(b, foliage, 34, 14, 31, 95);
@@ -509,10 +510,11 @@ export function createCampusModel() {
   const dino = buildDino();
   root.add(dino);
   const clouds: THREE.Group[] = [];
+  // Keep the hero's established text area clear: a small cloud at the left edge,
+  // with the larger clouds in open sky above and beside AHN.
   for (const [x, y, z, s] of [
-    [-23, 20, -21, 1.9],
-    [-12, 14, -24, 1.35],
-    [-1, 10, -27, 0.8],
+    [-54, 26, -35, 0.85],
+    [18.5, 25, -38, 1.5],
     [25, 19, -24, 1.7],
   ] as const) {
     const cloud = new CelBuilder();

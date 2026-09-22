@@ -49,6 +49,18 @@ Near hedges, tropical leaves, and small flowers frame the lower corners. They ar
 
 Inspected `/Users/ACERNITRO/Projects/aksesin-web` and `/Users/ACERNITRO/Projects/deliverologi`. Useful principles: large quiet hero-copy space, a world that extends beyond the frame, deliberate toon contours, small purposeful motion, a static fallback, and rendering lifecycle controls. Their product subjects, copy, bridges, and orbit composition were not reused.
 
+## Community profile refinement — 23 September
+
+The left backdrop is now an authored Gunung Salak silhouette, with broad shoulders, an uneven double summit, two low foothill layers, and mist at the base. The [Salak photograph by Diangunawan](https://commons.wikimedia.org/wiki/File:Mount_Salak,_Bogor,_Indonesia.jpg) was inspected as a shape reference; no photographic asset is embedded in the site. Placement is composed for the illustration, not a geographic line-of-sight claim.
+
+Desktop hero text keeps its previous 11% left margin and maximum 740px block width. Only text alignment changes. The headline is capped at 72px and two lines; body copy is 16px on desktop and 14px on mobile. Clouds sit outside the copy area, and the near left canopy is pulled back to keep the text legible. The sticky header uses the existing CSS scroll padding; Lenis no longer adds a second offset.
+
+The copy treats the site as a community profile. It names coding, UI/UX, AI, Study Jam, and the actual programs instead of generic motivational headlines. Local source material: `gdgoc-second-brain/02-divisi/aturan-copywriting.md`, `04-program/gdgoc-catalyst.md`, `04-program/tech-league.md`, and the current lead-authored scope recorded in `04-program/konten-open-knowledge-tech-support.md`. Catalyst roles and capstone, Tech League's three categories, and Tech Support's matching language follow those records. Program CTAs offer information without claiming registration is open.
+
+The primary action is “Gabung member.” Its destination is the [official GDGoC IPB chapter page](https://gdg.community.dev/gdg-on-campus-ipb-university-bogor-indonesia/), inspected live with the “Join us” button present. This is community-platform membership; it does not imply automatic admission to a program or core team.
+
+The closing invitation and footer share the same warm paper background as the landing. A small pixel garden, blue membership button, chapter identity, and navigation form one continuous composition. The dark footer variation was discarded at the user's direction. Internal art-direction review links are omitted from the public profile footer; `/directions` remains available directly.
+
 ## Motion and rendering
 
 - Desktop Lenis scrolling only on a fine pointer, with native touch scrolling.
@@ -57,7 +69,7 @@ Inspected `/Users/ACERNITRO/Projects/aksesin-web` and `/Users/ACERNITRO/Projects
 - Render loops stop offscreen, when the document is hidden, and when motion is disabled.
 - System reduced motion remains automatic; no saved manual preference or scene controls are used.
 - Pixel ratio capped at 1.6, with 1.8 million desktop pixels / 0.9 million mobile pixels for the main scene.
-- Static geometry is merged. The revised scene measures 24 draw calls and about 463k submitted triangles during idle, including the foreground and blur passes, with 16,179 campus/foliage solids plus the three terrain ridges and foreground garden. The shadow map is cached during idle and refreshed for motion changes and context restoration.
+- Static geometry is merged. The current scene measures 23 draw calls and about 464k submitted triangles during idle, including the foreground and blur passes, with 16,179 campus/foliage solids plus Salak, two foothill layers, and the foreground garden. The shadow map is cached during idle and refreshed for motion changes and context restoration.
 - Responsive camera retains the composition horizontally; mobile copy sits above the scene.
 
 ## Technical references

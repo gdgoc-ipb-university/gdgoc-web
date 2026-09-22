@@ -2,10 +2,11 @@
 
 import Image from "next/image";
 import { motion } from "motion/react";
-import { Arrow, PixelSpark } from "./icons";
+import { Arrow } from "./icons";
 import { useExperience } from "./experience-provider";
 import type { Direction } from "@/lib/directions";
 import { CampusEnvironment } from "./campus-environment";
+import { communityLinks } from "@/lib/community";
 
 export function Hero({ direction }: { direction: Direction }) {
   const { animated } = useExperience();
@@ -31,25 +32,26 @@ export function Hero({ direction }: { direction: Direction }) {
       <div className="hero-wash" />
       <div className="hero-copy">
         <p className="eyebrow">
-          <span className="status-dot" /> GDG ON CAMPUS · IPB UNIVERSITY
+          <span className="status-dot" /> GOOGLE DEVELOPER GROUP ON CAMPUS
         </p>
         <h1 id="hero-heading">
-          Small pixels.
+          Belajar teknologi
           <br />
-          <span>Big possibilities.</span>
-          <PixelSpark className="hero-spark" />
+          <span>bareng GDGoC IPB</span>
         </h1>
         <p className="hero-description">
-          Berawal dari rasa ingin tahu.
-          <br className="mobile-only" /> Bertumbuh lewat karya dan teman baru.
+          Komunitas mahasiswa IPB untuk belajar coding, UI/UX, dan AI lewat sesi praktik,
+          proyek tim, dan diskusi bersama mentor
         </p>
         <motion.a
           className="button button-blue"
-          href="#explore"
+          href={communityLinks.membership}
+          target="_blank"
+          rel="noreferrer"
           whileHover={animated ? { y: -3 } : undefined}
           whileTap={animated ? { y: 0 } : undefined}
         >
-          Find your people <Arrow diagonal />
+          Gabung member <Arrow diagonal />
         </motion.a>
       </div>
       <a href="#community" className="hero-scroll" aria-label="Jelajahi komunitas">

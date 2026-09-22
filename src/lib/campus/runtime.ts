@@ -61,6 +61,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   canvas.dataset.scene = "geometric-campus";
   canvas.dataset.solids = String(model.solids);
   canvas.dataset.ridges = "3";
+  canvas.dataset.backdrop = "gunung-salak";
   canvas.dataset.foliage = "exterior-voxel-union";
   canvas.dataset.foreground = "blurred-3d-garden";
   host.append(canvas);

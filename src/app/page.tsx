@@ -1,34 +1,38 @@
-import Link from "next/link";
 import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { DinoPlayground } from "@/components/dino-playground";
 import { Reveal } from "@/components/reveal";
 import { Arrow, PixelSpark } from "@/components/icons";
 import { directions } from "@/lib/directions";
+import { JoinFooter } from "@/components/join-footer";
+import { communityLinks } from "@/lib/community";
 
 const paths = [
   {
     n: "01",
     color: "blue",
-    title: "Learn together.",
-    label: "START WITH CURIOSITY",
-    text: "Bawa pertanyaanmu. Temukan perspektif baru lewat diskusi, study jam, dan eksplorasi teknologi bersama.",
+    title: "GDGoC Catalyst",
+    label: "BELAJAR & BANGUN PRODUK",
+    text: "Program belajar software development dalam tim. Pilih peran engineering, UI/UX, atau project management, lalu kerjakan capstone dengan pendampingan",
+    cta: "Pantau info Catalyst",
     glyph: "</>",
   },
   {
     n: "02",
     color: "green",
-    title: "Build something.",
-    label: "TURN IDEAS INTO THINGS",
-    text: "Dari satu baris kode sampai prototipe pertama. Beri ide kecilmu ruang untuk dicoba dan dikembangkan.",
+    title: "Tech League",
+    label: "UJI KARYA DI KOMPETISI",
+    text: "Kompetisi nasional untuk mengadu karya di tiga kategori: Software Development, UI/UX Design, dan Business Plan. Siapkan karya terbaik bersama timmu",
+    cta: "Pantau info Tech League",
     glyph: "{ }",
   },
   {
     n: "03",
     color: "red",
-    title: "Find your people.",
-    label: "GROW WITH GOOD COMPANY",
-    text: "Kenalan dengan teman yang sama penasarannya. Saling berbagi, saling mendukung, dan tumbuh bareng.",
+    title: "Tech Support",
+    label: "CARI MASUKAN DARI MENTOR",
+    text: "Butuh masukan untuk lomba, pitch deck, atau proyekmu? Ceritakan kebutuhanmu agar kami bisa mencarikan mentor yang sesuai",
+    cta: "Tanya alur mentoring",
     glyph: "+ +",
   },
 ];
@@ -49,15 +53,15 @@ export default async function Home({
       <main>
         <Hero direction={direction} />
         <div className="community-strip" aria-label="Nilai komunitas">
-          <span>LEARN</span>
+          <span>CODING</span>
           <PixelSpark />
-          <span>BUILD</span>
+          <span>UI/UX</span>
           <PixelSpark />
-          <span>CONNECT</span>
+          <span>DATA & AI</span>
           <PixelSpark />
-          <span>GROW</span>
+          <span>PROJECT</span>
           <PixelSpark />
-          <span>TOGETHER</span>
+          <span>KOMPETISI</span>
         </div>
         <section
           id="community"
@@ -66,23 +70,24 @@ export default async function Home({
         >
           <Reveal className="community-copy">
             <p className="eyebrow">
-              <span className="section-number">01 /</span> A PLACE TO BELONG
+              <span className="section-number">01 /</span> TENTANG GDGOC IPB
             </p>
             <h2 id="community-heading">
-              You don’t have to
+              Kenalan dengan
               <br />
-              figure it out <em>alone.</em>
+              <em>GDGoC IPB</em>
             </h2>
             <p>
-              Kita adalah Google Developer Group on Campus IPB University. Tempat rasa ingin tahu
-              bertemu dengan orang-orang yang ingin belajar, berkarya, dan berbagi.
+              Google Developer Group on Campus IPB University adalah komunitas untuk mahasiswa
+              yang ingin belajar dan berkarya di bidang teknologi, apa pun jurusannya
             </p>
             <p>
-              Belum jago coding? Lagi mencari minat? Atau sudah punya ide yang ingin diwujudkan?
-              Mulai dari tempatmu sekarang.
+              Kamu bisa mulai lewat Study Jam, mengerjakan produk digital bersama tim,
+              atau mencari masukan mentor untuk persiapan lomba. Ada ruang untuk yang suka
+              ngoding, mendesain, maupun mengelola proyek
             </p>
             <a className="text-link" href="#explore">
-              There’s a place for you here <Arrow diagonal />
+              Temukan program yang cocok <Arrow diagonal />
             </a>
           </Reveal>
           <DinoPlayground />
@@ -92,24 +97,28 @@ export default async function Home({
             <Reveal className="section-top">
               <div>
                 <p className="eyebrow">
-                  <span className="section-number">02 /</span> CHOOSE YOUR NEXT STEP
+                  <span className="section-number">02 /</span> PROGRAM 2026/2027
                 </p>
                 <h2 id="explore-heading">
-                  Different interests.
+                  Mau belajar, bikin,
                   <br />
-                  <span className="pixel-accent">Shared possibilities.</span>
+                  <span className="pixel-accent">atau ikut kompetisi?</span>
                 </h2>
               </div>
               <p>
-                Nggak perlu tahu semua jawabannya.
-                <br />
-                Cukup mulai dengan rasa penasaran.
+                Kenali tiga program kami. Jadwal dan info pendaftaran diumumkan
+                lewat kanal resmi GDGoC IPB
               </p>
             </Reveal>
             <div className="path-grid">
               {paths.map((path) => (
                 <Reveal key={path.n}>
-                  <a className={`path-card path-${path.color}`} href="#join">
+                  <a
+                    className={`path-card path-${path.color}`}
+                    href={communityLinks.instagram}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
                     <div className="path-top">
                       <span>{path.n}</span>
                       <span className="path-glyph" aria-hidden="true">
@@ -121,7 +130,7 @@ export default async function Home({
                     <h3>{path.title}</h3>
                     <p>{path.text}</p>
                     <span className="path-link">
-                      Let’s explore <Arrow />
+                      {path.cta} <Arrow />
                     </span>
                   </a>
                 </Reveal>
@@ -129,45 +138,8 @@ export default async function Home({
             </div>
           </div>
         </section>
-        <section id="join" className="join-section section-width" aria-labelledby="join-heading">
-          <Reveal>
-            <p className="eyebrow">
-              <span className="status-dot" /> YOUR NEXT CHAPTER
-            </p>
-            <h2 id="join-heading">
-              Big things start
-              <br />
-              with a small <span>hello.</span>
-              <PixelSpark />
-            </h2>
-            <p>
-              Temukan cerita, kegiatan, dan kabar terbaru komunitas.
-              <br />
-              Sampai ketemu di petualangan berikutnya.
-            </p>
-            <a
-              className="button button-blue"
-              href="https://www.instagram.com/gdgoc.ipb/"
-              target="_blank"
-              rel="noreferrer"
-            >
-              Say hello to GDGoC IPB <Arrow diagonal />
-            </a>
-            <span className="join-handle">@gdgoc.ipb</span>
-          </Reveal>
-        </section>
       </main>
-      <footer className="footer">
-        <p>
-          Google Developer Group on Campus
-          <br />
-          <strong>IPB University</strong>
-        </p>
-        <span>MADE OF PEOPLE & POSSIBILITIES.</span>
-        <Link href="/directions">
-          Explore the visual worlds <Arrow diagonal />
-        </Link>
-      </footer>
+      <JoinFooter />
     </>
   );
 }

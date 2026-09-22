@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Arrow } from "./icons";
+import { communityLinks } from "@/lib/community";
 
 export function Header({ review = false }: { review?: boolean }) {
   const [open, setOpen] = useState(false);
@@ -50,13 +51,19 @@ export function Header({ review = false }: { review?: boolean }) {
           </button>
           <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open}>
             <a href="#community" onClick={() => setOpen(false)}>
-              Our community
+              Tentang kami
             </a>
             <a href="#explore" onClick={() => setOpen(false)}>
-              Explore
+              Program
             </a>
-            <a href="#join" className="nav-join" onClick={() => setOpen(false)}>
-              Let’s connect <Arrow diagonal />
+            <a
+              href={communityLinks.membership}
+              className="nav-join"
+              target="_blank"
+              rel="noreferrer"
+              onClick={() => setOpen(false)}
+            >
+              Gabung member <Arrow diagonal />
             </a>
           </nav>
         </>

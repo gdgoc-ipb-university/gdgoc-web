@@ -1266,6 +1266,13 @@ summary:focus-visible {
 .hero-copy a {
   pointer-events: auto;
 }
+@media (min-width: 761px) {
+  .hero:has(.campus-environment) .hero-copy {
+    width: min(740px, 64%);
+    margin-left: 11%;
+    margin-right: 0;
+  }
+}
 .hero-wash {
   z-index: 1;
 }

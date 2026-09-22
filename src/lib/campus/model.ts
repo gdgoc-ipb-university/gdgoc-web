@@ -1,5 +1,6 @@
 import * as THREE from "three";
-import { CelBuilder } from "./builder";
+import { CelBuilder, celMaterial, type Voxel } from "./builder";
+import { createHills } from "./hills";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
@@ -185,52 +186,51 @@ function addAHN(b: CelBuilder) {
   }
 }
 
-function tree(b: CelBuilder, x: number, z: number, h: number, seed: number) {
-  const rnd = random(seed),
-    unit = 0.46;
-  b.box(x, h * 0.3, z, 0.45, h * 0.6, 0.5, "#916142");
+function tree(b: CelBuilder, foliage: CelBuilder, x: number, z: number, h: number, seed: number) {
+  const rnd = random(seed);
+  const trunk = Math.max(0.45, h * 0.043);
+  b.box(x, h * 0.3, z, trunk, h * 0.6, trunk, "#a16a43");
   b.box(x - 0.58, h * 0.56, z, 0.85, 0.26, 0.35, "#986542");
   b.box(x + 0.5, h * 0.6, z, 0.9, 0.27, 0.35, "#99613d");
-  const palette = ["#477c35", "#659a33", "#86ad36", "#a5bc40", "#3b6b31"];
-  const radius = Math.max(2.1, h * 0.37);
+  const palette = ["#5b862d", "#719832", "#88a637", "#a6b843", "#477633"];
+  const radius = Math.max(2.1, Math.min(4.8, h * 0.37));
+  const cells: Voxel[] = [];
   for (let yy = -2; yy <= 2; yy++)
     for (let xx = -4; xx <= 4; xx++)
       for (let zz = -3; zz <= 3; zz++) {
         const d = (xx / 4.3) ** 2 + (zz / 3.6) ** 2 + (yy / 2.6) ** 2;
         if (d > 1 || rnd() < 0.13) continue;
-        const scale = radius / 4;
-        const v = unit + scale * 0.55;
-        b.box(
-          x + xx * scale,
-          h * 0.73 + yy * scale,
-          z + zz * scale,
-          v,
-          v,
-          v,
-          palette[Math.floor(rnd() * palette.length)],
-          rnd() < 0.14,
-        );
+        const tones = yy > 0 ? [1, 2, 3] : yy < 0 ? [0, 1, 4] : [0, 1, 2, 3, 4];
+        cells.push({
+          x: xx,
+          y: yy,
+          z: zz,
+          color: palette[tones[Math.floor(rnd() * tones.length)]],
+        });
       }
+  foliage.voxels(cells, [x, h * 0.73, z], radius / 4);
 }
 
-function palm(b: CelBuilder, x: number, z: number, h: number) {
+function palm(b: CelBuilder, foliage: CelBuilder, x: number, z: number, h: number) {
   for (let i = 0; i < h / 0.4; i++)
     b.box(x, 0.2 + i * 0.4, z, 0.29, 0.4, 0.3, i % 3 === 0 ? "#a67948" : "#815c3c", i % 2 === 0);
-  for (let arm = 0; arm < 6; arm++) {
-    const a = (arm * Math.PI) / 3;
-    for (let step = 0; step < 6; step++) {
-      const r = step * 0.39;
-      b.box(
-        x + Math.cos(a) * r,
-        h + 0.3 + Math.sin((step / 6) * Math.PI) * 0.53 - step * 0.09,
-        z + Math.sin(a) * r,
-        0.58,
-        0.27,
-        0.45,
-        step % 2 ? "#749630" : "#496c29",
-      );
+  const cells: Voxel[] = [];
+  const unit = 0.26;
+  for (let arm = 0; arm < 7; arm++) {
+    const a = (arm * Math.PI * 2) / 7;
+    for (let step = 0; step < 10; step++) {
+      const r = step * 0.26;
+      for (let side = -1; side <= (step < 7 ? 1 : 0); side++) {
+        cells.push({
+          x: Math.round((Math.cos(a) * r + Math.sin(a) * side * unit) / unit),
+          y: Math.round((Math.sin((step / 10) * Math.PI) * 0.75 - step * 0.1) / unit),
+          z: Math.round((Math.sin(a) * r - Math.cos(a) * side * unit) / unit),
+          color: step % 3 ? "#86a535" : "#4d7a30",
+        });
+      }
     }
   }
+  foliage.voxels(cells, [x, h + 0.3, z], unit);
 }
 
 function planter(b: CelBuilder, x: number, z: number, w: number, d: number, seed: number) {
@@ -330,12 +330,17 @@ function buildDino() {
   const geometry = new THREE.ExtrudeGeometry(shape, { depth: 0.47, bevelEnabled: false });
   const group = new THREE.Group();
   group.name = "Chrome Dino";
-  group.add(
-    new THREE.Mesh(geometry, [
-      new THREE.MeshBasicMaterial({ color: "#fff6d9" }),
-      new THREE.MeshBasicMaterial({ color: "#172d43" }),
-    ]),
-  );
+  const front = celMaterial();
+  front.vertexColors = false;
+  front.color.set("#fff6d9");
+  front.emissive.set("#fff0d0");
+  front.emissiveIntensity = 0.48;
+  const sides = celMaterial();
+  sides.vertexColors = false;
+  sides.color.set("#172d43");
+  group.add(new THREE.Mesh(geometry, [front, sides]));
+  (group.children[0] as THREE.Mesh).castShadow = true;
+  (group.children[0] as THREE.Mesh).receiveShadow = false;
   const thinEdges = new THREE.EdgesGeometry(geometry);
   const edges = new LineSegmentsGeometry();
   edges.setPositions(thinEdges.getAttribute("position").array as Float32Array);
@@ -343,18 +348,23 @@ function buildDino() {
   group.add(new LineSegments2(edges, new LineMaterial({ color: "#172d43", linewidth: 2.7 })));
   b.box(0.45, 3.78, 0.487, 0.19, 0.19, 0.045, "#142d43");
   group.add(b.finish("Dino eyes"));
-  group.position.set(-9.5, 0.07, 5.5);
+  group.position.set(-9.5, 0.07, 7.3);
   group.rotation.y = -0.16;
-  group.scale.setScalar(1.15);
+  group.scale.setScalar(1.32);
   return group;
 }
 
 export function createCampusModel() {
   const b = new CelBuilder(),
+    foliage = new CelBuilder(),
     rnd = random(202627);
+  // One continuous terrain foundation covers the entire camera frustum. Courtyard
+  // and meadow slabs sit above it; their outside corners must never expose the sky.
+  b.box(0, -0.5, -125, 520, 0.5, 440, "#819753", false);
   // Full courtyard: warm patterned paving, horizontal garden terraces and a pool.
   b.box(0, -0.25, -3, 84, 0.5, 65, "#ddceb0", false);
-  for (let iz = 0; iz < 29; iz++)
+  b.box(0, -0.22, -61, 190, 0.3, 65, "#8b9f68", false);
+  for (let iz = 0; iz < 41; iz++)
     for (let ix = 0; ix < 46; ix++) {
       const x = -34 + ix * 1.5,
         z = -22 + iz * 1.12;
@@ -369,7 +379,7 @@ export function createCampusModel() {
         false,
       );
     }
-  for (let iz = 0; iz < 29; iz++)
+  for (let iz = 0; iz < 41; iz++)
     b.line([
       [-35, 0.03, -22 + iz * 1.12],
       [36, 0.03, -22 + iz * 1.12],
@@ -377,7 +387,7 @@ export function createCampusModel() {
   for (let ix = 0; ix < 46; ix++)
     b.line([
       [-34 + ix * 1.5, 0.03, -23],
-      [-34 + ix * 1.5, 0.03, 12],
+      [-34 + ix * 1.5, 0.03, 24],
     ]);
   b.box(-20, 0.055, -12, 24, 0.11, 22, "#718b3e", false);
   b.box(-29, 0.07, 0, 9, 0.14, 17, "#739142", false);
@@ -400,26 +410,24 @@ export function createCampusModel() {
   b.box(9, 0.44, -8, 27.4, 0.2, 12, "#f1e6d0");
   for (let i = 0; i < 3; i++)
     b.box(4, 0.1 + i * 0.16, -1.5 - i * 0.43, 11 - i * 0.6, 0.2, 1.2, "#eee5d0");
-  addAHN(b);
-
-  // Back tree line and blue-green distant hills remain deliberately low.
-  for (let i = 0; i < 65; i++) {
-    const xx = -46 + i * 1.4,
-      hh = 2.5 + Math.sin(i * 0.3) * 1.6 + rnd() * 1.8;
-    b.box(xx, hh / 2, -31 - rnd() * 4, 1.5, hh, 2, "#a4bcc1", false);
-  }
-  for (let i = 0; i < 13; i++) tree(b, -28 + i * 2.3, -22 + rnd() * 5, 4.7 + rnd() * 2.7, 50 + i);
-  tree(b, -20, 3, 11, 70);
-  tree(b, -16, -5, 6.8, 83);
-  tree(b, -4, -7, 5.7, 88);
-  tree(b, -24, 9, 13.4, 77);
-  tree(b, 23, -9, 6.4, 91);
-  tree(b, 28, 2, 7.5, 92);
-  tree(b, 20, -24, 6.8, 98);
-  palm(b, -21, -10, 6.1);
-  palm(b, -13, -13, 6.2);
-  palm(b, -6, -13, 7.2);
-  palm(b, 24, -5, 8.6);
+  const architecture = new CelBuilder();
+  addAHN(architecture);
+  for (let i = 0; i < 20; i++)
+    tree(b, foliage, -37 + i * 3.1, -31 + rnd() * 5, 3.2 + rnd() * 3, 110 + i);
+  for (let i = 0; i < 13; i++)
+    tree(b, foliage, -28 + i * 2.3, -22 + rnd() * 5, 4.7 + rnd() * 2.7, 50 + i);
+  tree(b, foliage, -22, 3, 17, 70);
+  tree(b, foliage, -16, -5, 6.8, 83);
+  tree(b, foliage, -4, -7, 5.7, 88);
+  tree(b, foliage, -24, 9, 19.5, 77);
+  tree(b, foliage, 23, -9, 6.4, 91);
+  tree(b, foliage, 28, 2, 7.5, 92);
+  tree(b, foliage, 34, 14, 31, 95);
+  tree(b, foliage, 20, -24, 6.8, 98);
+  palm(b, foliage, -21, -10, 6.1);
+  palm(b, foliage, -13, -13, 6.2);
+  palm(b, foliage, -6, -13, 7.2);
+  palm(b, foliage, 24, -5, 8.6);
 
   for (const [px, pz, pw, pd, seed] of [
     [-19, -0.5, 7, 2.1, 1],
@@ -487,47 +495,54 @@ export function createCampusModel() {
   b.box(19, 0.54, 8.5, 1.36, 1.07, 1.4, "#4285f4");
   b.box(21, 0.58, 8.4, 1.4, 1.15, 1.4, "#ea4335");
 
-  // Graphic cast shadows sit just above the paving, all actual geometry.
-  for (const [x, z, w, d] of [
-    [-9.3, 5.6, 3.3, 1.4],
-    [-20, 3, 6, 3],
-    [-4, -7, 3, 2],
-    [23, -9, 3.3, 2],
-  ] as const) {
-    b.face(
-      [
-        [x - w / 2, 0.05, z],
-        [x + w / 2, 0.05, z],
-        [x + w / 2 + 2, 0.05, z + d],
-        [x - w / 2 + 1, 0.05, z + d],
-      ],
-      "#b4b29f",
-      false,
-    );
-  }
-
   const root = new THREE.Group();
   root.name = "GDGoC IPB — Hello Campus";
   const environment = b.finish("AHN and pixel courtyard");
   root.add(environment);
+  const crowns = foliage.finish("Exterior-only leaf canopies");
+  // Tiny self-shadow samples shimmer along voxel seams. Canopies retain their
+  // directional cel shading and cast shadows, but don't sample their own shadow map.
+  (crowns.children[0] as THREE.Mesh).receiveShadow = false;
+  root.add(crowns);
+  const ahn = architecture.finish("Andi Hakim Nasoetion");
+  // A low three-quarter view reveals the right facade and the projecting core.
+  for (const child of ahn.children) {
+    if (child instanceof THREE.Mesh) child.geometry.translate(-10, 0, 12);
+  }
+  ahn.position.set(10, 0, -12);
+  ahn.rotation.y = -0.18;
+  ahn.scale.set(0.91, 1.16, 1);
+  root.add(ahn, createHills());
   const dino = buildDino();
   root.add(dino);
   const clouds: THREE.Group[] = [];
   for (const [x, y, z, s] of [
-    [-21, 16, -21, 1.4],
-    [-8, 10, -24, 0.85],
-    [1, 9, -27, 0.6],
-    [25, 14, -24, 1.3],
+    [-23, 20, -21, 1.9],
+    [-12, 14, -24, 1.35],
+    [-1, 10, -27, 0.8],
+    [25, 19, -24, 1.7],
   ] as const) {
     const cloud = new CelBuilder();
-    cloud.box(0, 0, 0, 4, 0.65, 1.1, "#fff7e8", false);
-    cloud.box(-0.6, 0.55, 0, 1.3, 0.6, 0.9, "#fff7e8", false);
-    cloud.box(0.8, 0.42, -0.1, 1.4, 0.35, 0.9, "#fff7e8", false);
+    cloud.box(0, 0, 0, 4, 0.65, 1.1, "#e7d8b1", false);
+    cloud.box(-0.6, 0.55, 0, 1.3, 0.6, 0.9, "#e7d8b1", false);
+    cloud.box(0.8, 0.42, -0.1, 1.4, 0.35, 0.9, "#e7d8b1", false);
     const group = cloud.finish("Pixel cloud");
+    const surface = group.children[0] as THREE.Mesh<THREE.BufferGeometry, THREE.MeshToonMaterial>;
+    const normals = surface.geometry.getAttribute("normal");
+    const colors = surface.geometry.getAttribute("color");
+    const tint = new THREE.Color();
+    for (let i = 0; i < normals.count; i++) {
+      tint.set(normals.getY(i) < -0.5 ? "#cbc0cc" : normals.getX(i) < -0.5 ? "#e6d8d0" : "#fff0d1");
+      colors.setXYZ(i, tint.r, tint.g, tint.b);
+    }
+    surface.material.gradientMap?.dispose();
+    surface.material.dispose();
+    (surface as THREE.Mesh).material = new THREE.MeshBasicMaterial({ vertexColors: true });
+    surface.castShadow = surface.receiveShadow = false;
     group.position.set(x, y, z);
     group.scale.setScalar(s);
     root.add(group);
     clouds.push(group);
   }
-  return { root, dino, clouds, solids: b.solids };
+  return { root, dino, clouds, solids: b.solids + architecture.solids + foliage.solids };
 }

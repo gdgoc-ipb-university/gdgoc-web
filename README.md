@@ -29,8 +29,9 @@ The concept image loads immediately as a fallback. When WebGL initializes, the r
 
 ## Structure
 
-- `src/lib/campus/builder.ts`: batched geometry with three discrete face-lighting tones and navy contours.
+- `src/lib/campus/builder.ts`: batched toon geometry, exterior-only voxel unions, and antialiased ink contours.
 - `src/lib/campus/model.ts`: complete campus model; deterministic geometry and foliage.
+- `src/lib/campus/hills.ts`: three stepped horizon ridges with distance haze and height-dependent valley fog.
 - `src/lib/campus/runtime.ts`: renderer, directional shadow pass, responsive camera, raycasting, motion, visibility and cleanup.
 - `src/components/campus-environment.tsx`: progressive enhancement, fallback, accessible controls.
 - `src/components/experience-provider.tsx`: saved motion preference, system reduced motion, desktop Lenis scrolling.

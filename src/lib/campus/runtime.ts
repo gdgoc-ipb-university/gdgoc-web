@@ -19,8 +19,11 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   renderer.toneMapping = THREE.NoToneMapping;
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(38, 16 / 9, 0.1, 150);
+  scene.fog = new THREE.Fog("#eef1e9", 65, 205);
+  const camera = new THREE.PerspectiveCamera(38, 16 / 9, 1, 240);
   let model: ReturnType<typeof createCampusModel>;
   try {
     model = createCampusModel();
@@ -29,10 +32,10 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     throw error;
   }
   scene.add(model.root);
-  // A real shadow pass gives flat cel-colored faces depth without PBR gradients.
-  const sunlight = new THREE.DirectionalLight(0xffffff, 1);
-  sunlight.position.set(-25, 40, 25);
-  sunlight.target.position.set(0, 0, -5);
+  // Warm afternoon key from the right, with a cool fill under leaves and eaves.
+  const sunlight = new THREE.DirectionalLight("#fff0d3", 2.25);
+  sunlight.position.set(40, 50, 0);
+  sunlight.target.position.set(-2, 0, -6);
   sunlight.castShadow = true;
   sunlight.shadow.mapSize.set(2048, 2048);
   Object.assign(sunlight.shadow.camera, {
@@ -43,23 +46,15 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     near: 1,
     far: 120,
   });
-  sunlight.shadow.bias = -0.0003;
-  sunlight.shadow.normalBias = 0.035;
-  scene.add(sunlight, sunlight.target);
-  const courtyardShadow = new THREE.Mesh(
-    new THREE.PlaneGeometry(100, 100),
-    new THREE.ShadowMaterial({ color: "#354653", opacity: 0.22 }),
-  );
-  courtyardShadow.rotation.x = -Math.PI / 2;
-  courtyardShadow.position.y = 0.041;
-  courtyardShadow.receiveShadow = true;
-  scene.add(courtyardShadow);
-  model.root.children[0].children[0].castShadow = true;
-  model.dino.children[0].castShadow = true;
+  sunlight.shadow.bias = -0.00015;
+  sunlight.shadow.normalBias = 0.045;
+  scene.add(sunlight, sunlight.target, new THREE.HemisphereLight("#c8ddff", "#b1a083", 1.2));
   const canvas = renderer.domElement;
   canvas.setAttribute("aria-hidden", "true");
   canvas.dataset.scene = "geometric-campus";
   canvas.dataset.solids = String(model.solids);
+  canvas.dataset.ridges = "3";
+  canvas.dataset.foliage = "exterior-voxel-union";
   host.append(canvas);
   const raycaster = new THREE.Raycaster();
   const vector = new THREE.Vector2();
@@ -91,6 +86,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       elapsed += dt;
       current.lerp(target, 0.09);
       if (jump >= 0) {
+        renderer.shadowMap.needsUpdate = true;
         jump += dt;
         if (jump > 0.72) jump = -1;
       }
@@ -107,8 +103,8 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       model.dino.position.y = 0.07;
       model.dino.rotation.z = 0;
     }
-    camera.position.set(current.x * 0.55, 9.2 + current.y * 0.18, 34);
-    camera.lookAt(current.x * 0.13, mobile ? 5.7 : 8.0, -7);
+    camera.position.set(8.5 + current.x * 0.28, 8.7 + current.y * 0.09, 35);
+    camera.lookAt(-1 + current.x * 0.06, mobile ? 5.6 : 7.8, -8);
     try {
       renderer.render(scene, camera);
     } catch {
@@ -198,6 +194,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   }
   function restored() {
     lost = false;
+    renderer.shadowMap.needsUpdate = true;
     resize();
     invalidate();
   }
@@ -224,6 +221,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       animated = value;
       last = 0;
       jump = -1;
+      renderer.shadowMap.needsUpdate = true;
       cancelAnimationFrame(raf);
       raf = 0;
       invalidate();
@@ -243,7 +241,10 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           object.geometry.dispose();
           const materials = Array.isArray(object.material) ? object.material : [object.material];
-          materials.forEach((m) => m.dispose());
+          materials.forEach((m) => {
+            if (m instanceof THREE.MeshToonMaterial) m.gradientMap?.dispose();
+            m.dispose();
+          });
         }
       });
       renderer.dispose();

@@ -29,7 +29,17 @@ Original prompts are in `design/prompts.json`. The selected-direction correction
 
 The first generated building was a generic rectangular campus block with an invented portico. The user's two photos replace that interpretation. AHN is distinguished by the terraced mass widening toward ground, long white canopy bands, continuous windows, the large red pyramidal roof, triangular dormer peaks, and a projecting brown chevron-shaped core. The central pointed window belongs on a facet, not on the core ridge. Emblems are treated as stylized marks, not clock faces.
 
-The real-time model is authored planar geometry with discrete cel face colors. It uses a real directional shadow pass and navy geometric outlines. Pixel shapes are strongest in the Dino, foliage, clouds, and objects; AHN retains recognizable architectural planes.
+The real-time model is authored planar geometry with vertex colors and a nearest-filtered toon-lighting ramp. A warm directional sun from the right and a cool hemisphere fill give the architecture flat light bands and real cast shadows. Pixel shapes are strongest in the Dino, foliage, clouds, and objects; AHN retains recognizable architectural planes.
+
+## Perspective, foliage, and atmosphere revision
+
+The corrected camera is lower and offset to the right. AHN is rotated slightly to expose its right facade and the chevron core; its vertical silhouette and the foreground Dino scale were adjusted against the selected illustration. Desktop copy sits in the open sky to the left of the roof.
+
+Leaf crowns and palm fronds are now voxel unions. Shared internal faces and duplicate cells are removed, so coplanar leaf surfaces no longer compete in the depth buffer. Opaque antialiased contours use a small surface depth offset. Leaf canopies and Dino retain directional cel colors and cast shadows but omit self-shadow sampling to avoid tiny unstable shadow seams.
+
+Three separate stepped terrain ridges replace the old low row of blocks. Each has a different silhouette and blue-green palette; distance haze separates the layers, and height-dependent fog becomes denser toward the valleys. The mist is shaded on opaque terrain, without overlapping transparent planes.
+
+A continuous terrain foundation extends beneath the courtyard and meadow. Its bounds cover the visible ground at the camera's parallax extremes, closing the previously exposed white corner beside the left tree.
 
 ## Reference projects
 
@@ -42,7 +52,7 @@ Inspected `/Users/ACERNITRO/Projects/aksesin-web` and `/Users/ACERNITRO/Projects
 - Small camera parallax, slowly drifting clouds, a subtle Dino idle and one finite greeting jump.
 - Render loops stop offscreen, when the document is hidden, and when motion is disabled.
 - Pixel ratio capped at 1.6, with 1.8 million desktop pixels / 0.9 million mobile pixels for the main scene.
-- Static geometry is merged; measured main-scene rendering is 15 draw calls including its shadow pass, about 259k submitted triangles, and over 8,000 authored solids.
+- Static geometry is merged. The revised scene measures 18 draw calls and about 344k submitted triangles during idle, with 12,313 campus/foliage solids plus the three terrain ridges. The shadow map is cached during idle and refreshed for the Dino jump, motion changes, and context restoration.
 - Responsive camera retains the composition horizontally; mobile copy sits above the scene.
 
 ## Technical references

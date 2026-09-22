@@ -63,7 +63,7 @@ export function CampusEnvironment({ controls = true }: { controls?: boolean }) {
         className="campus-canvas"
         role="img"
         aria-hidden={!ready}
-        aria-label="Environment 3D AHN IPB dan taman pixel. Dino dapat disapa lewat tombol di bawah."
+        aria-label="Environment 3D AHN IPB, taman pixel, dan bukit berkabut. Dino dapat disapa lewat tombol di bawah."
       />
       {controls && ready && (
         <button

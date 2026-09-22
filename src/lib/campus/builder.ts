@@ -6,9 +6,27 @@ import { LineMaterial } from "three/addons/lines/LineMaterial.js";
 type V3 = [number, number, number];
 const cube = new THREE.BoxGeometry(1, 1, 1).toNonIndexed();
 const cubeEdges = new THREE.EdgesGeometry(new THREE.BoxGeometry(1, 1, 1));
-const lightDirection = new THREE.Vector3(-0.55, 0.85, 0.65).normalize();
+export type Voxel = { x: number; y: number; z: number; color: string };
 
-/** Merge geometry into two draw calls, with authored three-tone cel faces. */
+export function celMaterial() {
+  // A nearest-filtered ramp preserves flat bands while receiving real cast shadows.
+  const ramp = new THREE.DataTexture(new Uint8Array([0, 55, 145, 255]), 4, 1, THREE.RedFormat);
+  ramp.minFilter = ramp.magFilter = THREE.NearestFilter;
+  ramp.generateMipmaps = false;
+  ramp.needsUpdate = true;
+  const material = new THREE.MeshToonMaterial({
+    vertexColors: true,
+    gradientMap: ramp,
+    side: THREE.DoubleSide,
+    polygonOffset: true,
+    polygonOffsetFactor: 1,
+    polygonOffsetUnits: 1,
+  });
+  material.shadowSide = THREE.FrontSide;
+  return material;
+}
+
+/** Merge solid surfaces and ink contours; the shared sun supplies the cel bands. */
 export class CelBuilder {
   private positions: number[] = [];
   private colors: number[] = [];
@@ -44,17 +62,11 @@ export class CelBuilder {
   ) {
     const data = geometry.index ? geometry.toNonIndexed() : geometry;
     const position = data.getAttribute("position");
-    const normal = data.getAttribute("normal");
     const vertex = new THREE.Vector3();
-    const n = new THREE.Vector3();
-    const normalMatrix = new THREE.Matrix3().getNormalMatrix(matrix);
+    this.shade.set(color);
     for (let i = 0; i < position.count; i++) {
       vertex.fromBufferAttribute(position, i).applyMatrix4(matrix);
       this.positions.push(vertex.x, vertex.y, vertex.z);
-      n.fromBufferAttribute(normal, i).applyMatrix3(normalMatrix).normalize();
-      const light = n.dot(lightDirection);
-      const value = light > 0.55 ? 1 : light > -0.15 ? 0.72 : 0.46;
-      this.shade.set(color).multiplyScalar(value);
       this.colors.push(this.shade.r, this.shade.g, this.shade.b);
     }
     if (outline) {
@@ -83,16 +95,99 @@ export class CelBuilder {
     }
     if (outline) this.line([...points, points[0]]);
   }
+  /** Exterior-only voxel union: shared faces never reach the depth buffer. */
+  voxels(cells: Voxel[], origin: V3, unit: number, outline = true) {
+    const key = (x: number, y: number, z: number) => `${x},${y},${z}`;
+    const occupied = new Map(cells.map((cell) => [key(cell.x, cell.y, cell.z), cell]));
+    const sides: { direction: V3; corners: V3[] }[] = [
+      {
+        direction: [1, 0, 0],
+        corners: [
+          [1, 0, 0],
+          [1, 1, 0],
+          [1, 1, 1],
+          [1, 0, 1],
+        ],
+      },
+      {
+        direction: [-1, 0, 0],
+        corners: [
+          [0, 0, 1],
+          [0, 1, 1],
+          [0, 1, 0],
+          [0, 0, 0],
+        ],
+      },
+      {
+        direction: [0, 1, 0],
+        corners: [
+          [0, 1, 1],
+          [1, 1, 1],
+          [1, 1, 0],
+          [0, 1, 0],
+        ],
+      },
+      {
+        direction: [0, -1, 0],
+        corners: [
+          [0, 0, 0],
+          [1, 0, 0],
+          [1, 0, 1],
+          [0, 0, 1],
+        ],
+      },
+      {
+        direction: [0, 0, 1],
+        corners: [
+          [1, 0, 1],
+          [1, 1, 1],
+          [0, 1, 1],
+          [0, 0, 1],
+        ],
+      },
+      {
+        direction: [0, 0, -1],
+        corners: [
+          [0, 0, 0],
+          [0, 1, 0],
+          [1, 1, 0],
+          [1, 0, 0],
+        ],
+      },
+    ];
+    const edges = new Map<string, [V3, V3]>();
+    for (const cell of occupied.values()) {
+      for (const { direction, corners } of sides) {
+        if (occupied.has(key(cell.x + direction[0], cell.y + direction[1], cell.z + direction[2])))
+          continue;
+        const local = corners.map(([x, y, z]): V3 => [cell.x + x, cell.y + y, cell.z + z]);
+        const points = local.map(([x, y, z]): V3 => [
+          origin[0] + (x - 0.5) * unit,
+          origin[1] + (y - 0.5) * unit,
+          origin[2] + (z - 0.5) * unit,
+        ]);
+        this.face(points, cell.color, false);
+        if (outline)
+          for (let i = 0; i < 4; i++) {
+            const next = (i + 1) % 4;
+            const edgeKey = [local[i].join(","), local[next].join(",")].sort().join("/");
+            edges.set(edgeKey, [points[i], points[next]]);
+          }
+      }
+    }
+    for (const edge of edges.values()) this.line(edge);
+    this.solids += occupied.size;
+  }
   pyramid(x: number, y: number, z: number, w: number, d: number, h: number) {
     const a: V3 = [x - w / 2, y, z + d / 2],
       b: V3 = [x + w / 2, y, z + d / 2],
       c: V3 = [x + w / 2, y, z - d / 2],
       e: V3 = [x - w / 2, y, z - d / 2],
       top: V3 = [x, y + h, z];
-    this.face([a, b, top], "#b35e43");
-    this.face([b, c, top], "#7c4038");
-    this.face([c, e, top], "#8d493c");
-    this.face([e, a, top], "#c57652");
+    this.face([a, b, top], "#b96849");
+    this.face([b, c, top], "#cb7950");
+    this.face([c, e, top], "#b56648");
+    this.face([e, a, top], "#b96849");
     for (let i = 1; i < 30; i++) {
       const t = i / 30,
         half = (w / 2) * (1 - t),
@@ -104,7 +199,7 @@ export class CelBuilder {
           [x + half, y + h * t + 0.025, zz + 0.012],
           [x - half, y + h * t + 0.025, zz + 0.012],
         ],
-        i % 3 === 0 ? "#c77352" : "#9f4f3c",
+        i % 3 === 0 ? "#cb7751" : "#ad6045",
         false,
       );
     }
@@ -147,20 +242,22 @@ export class CelBuilder {
     const surface = new THREE.BufferGeometry();
     surface.setAttribute("position", new THREE.Float32BufferAttribute(this.positions, 3));
     surface.setAttribute("color", new THREE.Float32BufferAttribute(this.colors, 3));
+    surface.computeVertexNormals();
     surface.computeBoundingSphere();
-    const mesh = new THREE.Mesh(
-      surface,
-      new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.DoubleSide }),
-    );
+    const mesh = new THREE.Mesh(surface, celMaterial());
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
     group.add(mesh);
-    const edges = new LineSegmentsGeometry();
-    edges.setPositions(this.lines);
-    group.add(
-      new LineSegments2(
-        edges,
-        new LineMaterial({ color: "#172d43", linewidth: 0.85, transparent: true, opacity: 0.5 }),
-      ),
-    );
+    if (this.lines.length) {
+      const edges = new LineSegmentsGeometry();
+      edges.setPositions(this.lines);
+      group.add(
+        new LineSegments2(
+          edges,
+          new LineMaterial({ color: "#35464b", linewidth: 0.9, alphaToCoverage: true }),
+        ),
+      );
+    }
     group.userData.solids = this.solids;
     return group;
   }

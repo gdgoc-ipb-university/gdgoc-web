@@ -1,6 +1,6 @@
 # GDGoC IPB — Hello, Campus!
 
-GDGoC IPB community profile with a geometric Three.js campus environment, Next.js App Router, Lenis, and Motion for React.
+GDGoC IPB — Komunitas Mahasiswa Bogor. Community profile with a geometric Three.js campus environment, Next.js App Router, Lenis, and Motion for React.
 
 ## Run locally
 
@@ -53,4 +53,15 @@ The garden uses distinct round, columnar, and umbrella canopies, yellow/coral fl
 
 Fonts were checked directly in the supplied Figma design-system page. Pixelify Sans is used for pixel display type, Space Grotesk for supporting headings, Poppins for body, and JetBrains Mono for small labels. All fonts are self-hosted through Fontsource packages; their licenses ship with those packages. The GDGoC IPB lockup was exported from the user's Figma file.
 
-Copy introduces the community, its learning areas, and the 2026/2027 programs. Catalyst explicitly describes Hustler, Hipster, and Hacker, following the user's correction. The main “Gabung member” CTAs open the official GDG chapter page, where “Join us” is available; program updates and contact links use `gdgoc.ipb` on Instagram. The sticky header and desktop hero keep the existing composition while the text aligns left. No event dates, program-registration availability, or unverified metrics are invented. This project has not been published or connected to a remote repository.
+Copy introduces a community for students across Bogor, its learning areas, and the 2026/2027 programs. Catalyst explicitly describes Hustler, Hipster, and Hacker, following the user's correction. The main “Gabung member” CTAs open the official GDG chapter page, where “Join us” is available; program updates and contact links use `gdgoc.ipb` on Instagram. The sticky header and desktop hero keep the existing composition while the text aligns left. No event dates, program-registration availability, or unverified metrics are invented.
+
+## Deployment
+
+The private source repository is `dikaprilio/gdgoc-web`. Production deploys use Vercel CLI with the `gdgoc-web` project in `bibobaggins-projects`:
+
+```sh
+pnpm dlx vercel@59.23.2 link --yes --team bibobaggins-projects --project gdgoc-web
+pnpm dlx vercel@59.23.2 deploy --prod --yes --scope bibobaggins-projects
+```
+
+Node.js is pinned to 24.x, matching local validation and a [supported Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions). `.vercel/` is ignored by Git, and `.vercelignore` excludes design sources and internal documentation from CLI uploads. The app does not require environment variables.

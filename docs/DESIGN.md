@@ -91,4 +91,6 @@ PNG originals and WebP review assets live in `public/footer-directions/`, with f
 
 ## Technical references
 
+Before the first public deployment, the user broadened the community positioning to **Komunitas Mahasiswa Bogor**. The hero, About section, closing invitation, and search metadata now describe students across Bogor while retaining the GDGoC IPB chapter identity. The four footer concept images remain the earlier visual exploration.
+
 [Next.js App Router](https://nextjs.org/docs/app/getting-started/installation), [Lenis](https://github.com/darkroomengineering/lenis), and [Motion reduced motion](https://motion.dev/docs/react-use-reduced-motion), checked alongside installed package documentation. The installed Next.js 16.3.5 docs were used for current App Router, font, image, and client-component conventions.

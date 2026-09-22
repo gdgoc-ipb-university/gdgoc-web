@@ -45,7 +45,7 @@ export function Hero({ direction }: { direction: Direction }) {
             <span>bareng GDGoC IPB</span>
           </h1>
           <p className="hero-description">
-            Komunitas mahasiswa IPB untuk belajar coding, UI/UX, dan AI lewat sesi praktik,
+            Komunitas mahasiswa Bogor untuk belajar coding, UI/UX, dan AI lewat sesi praktik,
             proyek tim, dan diskusi bersama mentor
           </p>
           <motion.a

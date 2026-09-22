@@ -16,7 +16,7 @@ export function JoinFooter() {
             </h2>
             <p className="join-description">
               Temukan teman belajar, ikuti kegiatan teknologi, dan kembangkan proyekmu
-              bersama komunitas mahasiswa IPB
+              bersama komunitas mahasiswa Bogor
             </p>
             <a
               className="button button-blue"

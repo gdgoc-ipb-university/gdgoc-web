@@ -78,8 +78,8 @@ export default async function Home({
               <em>GDGoC IPB</em>
             </h2>
             <p>
-              Google Developer Group on Campus IPB University adalah komunitas untuk mahasiswa
-              yang ingin belajar dan berkarya di bidang teknologi, apa pun jurusannya
+              Google Developer Group on Campus IPB University adalah komunitas mahasiswa Bogor
+              untuk belajar dan berkarya di bidang teknologi, apa pun kampus dan jurusannya
             </p>
             <p>
               Kamu bisa mulai lewat Study Jam, mengerjakan produk digital bersama tim,

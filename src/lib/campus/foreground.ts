@@ -6,7 +6,7 @@ type Point = [number, number, number];
 function garden(right: boolean) {
   const b = new CelBuilder();
   const cells: Voxel[] = [];
-  const colors = ["#3f732f", "#5b8d30", "#779e36", "#456a32", "#92af3d"];
+  const colors = ["#218544", "#4ca63c", "#7cc23c", "#286d40", "#a2d64c"];
   const radius = right ? 4 : 8;
   for (let x = -radius; x <= radius; x++)
     for (let z = -3; z <= 3; z++)

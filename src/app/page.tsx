@@ -13,7 +13,7 @@ const paths = [
     color: "blue",
     title: "GDGoC Catalyst",
     label: "BELAJAR & BANGUN PRODUK",
-    text: "Program belajar software development dalam tim. Pilih peran engineering, UI/UX, atau project management, lalu kerjakan capstone dengan pendampingan",
+    text: "Belajar membangun produk lewat tiga peran: Hustler untuk pengelolaan proyek, Hipster untuk desain UI/UX, dan Hacker untuk pengembangan teknologi. Kolaborasi dalam tim, lalu kerjakan capstone dengan pendampingan",
     cta: "Pantau info Catalyst",
     glyph: "</>",
   },
@@ -51,7 +51,7 @@ export default async function Home({
       </a>
       <Header />
       <main>
-        <Hero direction={direction} />
+        <Hero key={direction.id} direction={direction} />
         <div className="community-strip" aria-label="Nilai komunitas">
           <span>CODING</span>
           <PixelSpark />

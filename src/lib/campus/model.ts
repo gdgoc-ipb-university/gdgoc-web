@@ -182,20 +182,36 @@ function addAHN(b: CelBuilder) {
   }
 }
 
-function tree(b: CelBuilder, foliage: CelBuilder, x: number, z: number, h: number, seed: number) {
+type Crown = "round" | "column" | "umbrella" | "yellow" | "coral";
+
+function tree(
+  b: CelBuilder, foliage: CelBuilder, x: number, z: number, h: number, seed: number,
+  crown: Crown = seed % 5 === 1 ? "column" : seed % 5 === 2 ? "umbrella" : "round",
+) {
   const rnd = random(seed);
   const trunk = Math.max(0.45, h * 0.043);
   b.box(x, h * 0.3, z, trunk, h * 0.6, trunk, "#a16a43");
   b.box(x - 0.58, h * 0.56, z, 0.85, 0.26, 0.35, "#986542");
   b.box(x + 0.5, h * 0.6, z, 0.9, 0.27, 0.35, "#99613d");
-  const palette = ["#5b862d", "#719832", "#88a637", "#a6b843", "#477633"];
+  const greens = [
+    ["#258646", "#43a849", "#75bd3c", "#a9d94b", "#1e6d43"],
+    ["#2b8053", "#479f58", "#6cb74f", "#99cf60", "#23664c"],
+    ["#448e37", "#63b336", "#8dcc3b", "#b5df52", "#317c3e"],
+  ];
+  const palette = crown === "yellow"
+    ? ["#c89e28", "#f1be28", "#ffcf41", "#ffe47a", "#459349"]
+    : crown === "coral"
+      ? ["#bf5473", "#df628a", "#ee87a4", "#f9b0bb", "#419151"]
+      : greens[seed % greens.length];
   const radius = Math.max(2.1, Math.min(4.8, h * 0.37));
+  const wide = crown === "column" ? 2.6 : crown === "umbrella" ? 4.8 : 4.3;
+  const tall = crown === "column" ? 3.9 : crown === "umbrella" ? 1.85 : 2.6;
   const cells: Voxel[] = [];
-  for (let yy = -2; yy <= 2; yy++)
+  for (let yy = -3; yy <= 3; yy++)
     for (let xx = -4; xx <= 4; xx++)
       for (let zz = -3; zz <= 3; zz++) {
-        const d = (xx / 4.3) ** 2 + (zz / 3.6) ** 2 + (yy / 2.6) ** 2;
-        if (d > 1 || rnd() < 0.13) continue;
+        const d = (xx / wide) ** 2 + (zz / (wide * 0.84)) ** 2 + (yy / tall) ** 2;
+        if (d > 1 || rnd() < 0.09) continue;
         const tones = yy > 0 ? [1, 2, 3] : yy < 0 ? [0, 1, 4] : [0, 1, 2, 3, 4];
         cells.push({
           x: xx,
@@ -221,12 +237,38 @@ function palm(b: CelBuilder, foliage: CelBuilder, x: number, z: number, h: numbe
           x: Math.round((Math.cos(a) * r + Math.sin(a) * side * unit) / unit),
           y: Math.round((Math.sin((step / 10) * Math.PI) * 0.75 - step * 0.1) / unit),
           z: Math.round((Math.sin(a) * r - Math.cos(a) * side * unit) / unit),
-          color: step % 3 ? "#86a535" : "#4d7a30",
+          color: step % 3 ? "#7bc93b" : "#278845",
         });
       }
     }
   }
   foliage.voxels(cells, [x, h + 0.3, z], unit);
+}
+
+/** Broad folded leaves interrupt the cubic canopy silhouettes at eye level. */
+function tropicalPlant(b: CelBuilder, x: number, z: number, scale = 1) {
+  b.box(x, 0.55 * scale, z, 0.18, 1.1 * scale, 0.18, "#5e943e", false);
+  for (let i = 0; i < 7; i++) {
+    const angle = i * 2.399;
+    const reach = (1.3 + (i % 3) * 0.3) * scale;
+    const dx = Math.cos(angle), dz = Math.sin(angle);
+    const y = (1.4 + (i % 3) * 0.5) * scale;
+    const base: [number, number, number] = [x, 0.65 * scale, z];
+    const spine: [number, number, number] = [x + dx * reach * 0.48, y, z + dz * reach * 0.48];
+    const tip: [number, number, number] = [x + dx * reach, y - 0.3, z + dz * reach];
+    const edge = 0.36 * scale;
+    b.face([base, [spine[0] + dz * edge, y - 0.22, spine[2] - dx * edge], tip, spine], "#79c843");
+    b.face([base, spine, tip, [spine[0] - dz * edge, y - 0.22, spine[2] + dx * edge]], "#20934e");
+  }
+}
+
+function gardenSignpost(b: CelBuilder, x: number, z: number) {
+  b.box(x, 1.35, z, 0.14, 2.7, 0.14, "#264548");
+  for (const [y, direction, color] of [[2.45, 1, "#3679ed"], [1.96, -1, "#f8be15"], [1.47, 1, "#ed5e48"]] as const) {
+    b.box(x, y, z + 0.06, 1.35, 0.32, 0.15, color);
+    b.box(x + direction * 0.76, y, z + 0.06, 0.19, 0.18, 0.15, color, false);
+    b.box(x + direction * 0.89, y, z + 0.06, 0.1, 0.08, 0.15, color, false);
+  }
 }
 
 function planter(b: CelBuilder, x: number, z: number, w: number, d: number, seed: number) {
@@ -249,7 +291,7 @@ function planter(b: CelBuilder, x: number, z: number, w: number, d: number, seed
     const px = x + (rnd() - 0.5) * (w - 0.3),
       pz = z + (rnd() - 0.5) * (d - 0.3),
       h = 0.18 + rnd() * 0.36;
-    b.box(px, 0.88 + h / 2, pz, 0.2, h, 0.2, rnd() > 0.5 ? "#6f962e" : "#386630", false);
+    b.box(px, 0.88 + h / 2, pz, 0.2, h, 0.2, rnd() > 0.5 ? "#7fc03b" : "#288441", false);
     if (rnd() < 0.26) {
       b.box(px, 1.0 + h, pz, 0.12, 0.12, 0.12, "#f6c649", false);
       for (const [dx, dz] of [
@@ -356,7 +398,7 @@ export function createCampusModel() {
     rnd = random(202627);
   // One continuous terrain foundation covers the entire camera frustum. Courtyard
   // and meadow slabs sit above it; their outside corners must never expose the sky.
-  b.box(0, -0.5, -125, 520, 0.5, 440, "#819753", false);
+  b.box(0, -0.5, -125, 520, 0.5, 440, "#70a34e", false);
   // Full courtyard: warm patterned paving, horizontal garden terraces and a pool.
   b.box(0, -0.25, -3, 84, 0.5, 65, "#d9ceb6", false);
   b.box(0, -0.22, -61, 190, 0.3, 65, "#8b9f68", false);
@@ -376,8 +418,8 @@ export function createCampusModel() {
       );
     }
   // The narrow gaps between paving blocks supply subtle, warm joints without an ink grid.
-  b.box(-20, 0.055, -12, 24, 0.11, 22, "#718b3e", false);
-  b.box(-29, 0.07, 0, 9, 0.14, 17, "#739142", false);
+  b.box(-20, 0.055, -12, 24, 0.11, 22, "#71a844", false);
+  b.box(-29, 0.07, 0, 9, 0.14, 17, "#68a547", false);
   for (let i = 0; i < 65; i++) {
     const xx = -30 + rnd() * 25,
       zz = -20 + rnd() * 14,
@@ -389,7 +431,7 @@ export function createCampusModel() {
       0.6 + rnd() * 0.9,
       hh,
       0.7 + rnd() * 0.6,
-      i % 2 ? "#4f7b32" : "#809e3b",
+      i % 2 ? "#358941" : "#88bd3d",
       false,
     );
   }
@@ -410,10 +452,10 @@ export function createCampusModel() {
   for (let i = 0; i < 13; i++)
     tree(b, foliage, -28 + i * 2.3, -22 + rnd() * 5, 4.7 + rnd() * 2.7, 50 + i);
   // Retain the left tree frame while leaving the left-aligned hero text legible.
-  tree(b, foliage, -24.7, 3, 17, 70);
+  tree(b, foliage, -24.7, 3, 17, 70, "round");
   tree(b, foliage, -16, -5, 6.8, 83);
   tree(b, foliage, -4, -7, 5.7, 88);
-  tree(b, foliage, -26.7, 9, 19.5, 77);
+  tree(b, foliage, -26.7, 9, 19.5, 77, "round");
   tree(b, foliage, 23, -9, 6.4, 91);
   tree(b, foliage, 28, 2, 7.5, 92);
   tree(b, foliage, 34, 14, 31, 95);
@@ -422,6 +464,13 @@ export function createCampusModel() {
   palm(b, foliage, -13, -13, 6.2);
   palm(b, foliage, -6, -13, 7.2);
   palm(b, foliage, 24, -5, 8.6);
+  // Flowering accents and different leaf scales break up the western green wall.
+  tree(b, foliage, -20.5, -7.5, 6.2, 310, "yellow");
+  tree(b, foliage, -29, -14, 5.3, 312, "coral");
+  tropicalPlant(b, -18, 0.6, 1.25);
+  tropicalPlant(b, -23, 3.8, 1.45);
+  tropicalPlant(b, -14.6, -4.8, 0.85);
+  gardenSignpost(b, -18.7, 3.5);
 
   for (const [px, pz, pw, pd, seed] of [
     [-19, -0.5, 7, 2.1, 1],
@@ -453,14 +502,14 @@ export function createCampusModel() {
           [cx + dx * 1.1, h, cz + dz * 1.1],
           [cx + dx * 0.35 - 0.18, 0.8, cz + dz * 0.35],
         ],
-        i % 2 ? "#507d29" : "#8eaa31",
+        i % 2 ? "#2b9145" : "#92cf40",
       );
     }
   }
   for (let i = 0; i < 9; i++) lamp(b, -18 + i * 4.9, -3.1 + (i % 2) * 0.9);
   // Square reflection pool with tile rim and sparse pixel water highlights.
   b.box(10, 0.09, 3.2, 11.5, 0.18, 5.7, "#e3ded0");
-  b.box(10, 0.205, 3.2, 10.7, 0.07, 4.9, "#397d8a", false);
+  b.box(10, 0.205, 3.2, 10.7, 0.07, 4.9, "#218f9e", false);
   for (let i = 0; i < 120; i++)
     b.box(
       5 + rnd() * 10,
@@ -469,7 +518,7 @@ export function createCampusModel() {
       0.16 + rnd() * 0.46,
       0.014,
       0.06,
-      rnd() < 0.3 ? "#b8dacc" : "#69a5a1",
+      rnd() < 0.3 ? "#c0edda" : "#58c3b5",
       false,
     );
   for (let i = 0; i < 14; i++)
@@ -484,7 +533,7 @@ export function createCampusModel() {
     b.box(x + 0.95, 0.29, z, 0.3, 0.57, 0.6, "#76614f");
   }
   b.box(-3.4, 0.66, 5.6, 1.1, 1.3, 1.1, "#fbbc05");
-  b.box(-1.7, 0.73, 5.45, 1.2, 1.45, 1.1, "#43804a");
+  b.box(-1.7, 0.73, 5.45, 1.2, 1.45, 1.1, "#2fa451");
   b.box(17.2, 0.66, 7.6, 1.35, 1.3, 1.35, "#fbbc05");
   b.box(19, 0.54, 8.5, 1.36, 1.07, 1.4, "#4285f4");
   b.box(21, 0.58, 8.4, 1.4, 1.15, 1.4, "#ea4335");

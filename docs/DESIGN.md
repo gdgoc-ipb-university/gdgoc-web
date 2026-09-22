@@ -63,14 +63,31 @@ The closing invitation and footer share the same warm paper background as the la
 
 ## Motion and rendering
 
+The new campus preloader uses a small pixel Dino, four Google-color loading blocks, and the same warm paper and fonts as the site. It waits for the actual first rendered frame, including the foreground pass, before a short fade. It has no simulated percentage or mandatory minimum delay. A native modal dialog contains keyboard focus during initialization; scroll and focus are restored on exit. Failed WebGL falls back to the reference image, with a 12-second escape for a stalled import/GPU. The first frame renders even when the hero is initially offscreen because the page was opened at a section anchor.
+
 - Desktop Lenis scrolling only on a fine pointer, with native touch scrolling.
 - Motion hover and section reveal; content is visible in SSR and when motion is off.
 - Small camera parallax, slowly drifting clouds, and a subtle Dino idle.
 - Render loops stop offscreen, when the document is hidden, and when motion is disabled.
 - System reduced motion remains automatic; no saved manual preference or scene controls are used.
 - Pixel ratio capped at 1.6, with 1.8 million desktop pixels / 0.9 million mobile pixels for the main scene.
-- Static geometry is merged. The current scene measures 23 draw calls and about 464k submitted triangles during idle, including the foreground and blur passes, with 16,179 campus/foliage solids plus Salak, two foothill layers, and the foreground garden. The shadow map is cached during idle and refreshed for motion changes and context restoration.
+- Static geometry is merged. The current scene measures 23 draw calls and about 438k submitted triangles during idle, including the foreground and blur passes, with 15,660 campus/foliage solids plus Salak, two foothill layers, and the foreground garden. The shadow map is cached during idle and refreshed for motion changes and context restoration.
 - Responsive camera retains the composition horizontally; mobile copy sits above the scene.
+
+## Vibrant garden and footer concepts — 23 September
+
+The user clarified that Catalyst is organized around **Hustler, Hipster, and Hacker**. The program card now names all three roles and their practical areas before explaining the team capstone.
+
+The left garden now mixes round, narrow columnar, and umbrella crowns, with three green palettes. Yellow and coral flowering trees, broad folded tropical leaves, and a three-color direction post break up the repeated canopy band. The key light is a less yellow warm white; greens and pond turquoise are more saturated. The established camera, AHN geometry, open hero sky, Salak fog, subtle paving, and foreground blur are retained. All new leaves still use exterior-only voxel unions or separated folded planes.
+
+Four CTA + footer images were generated with the built-in imagegen tool, using the chosen AHN campus illustration as a style reference. Each concept keeps a cream background, readable navy text, a blue “Gabung member” CTA, and a continuous CTA/footer composition:
+
+1. **Taman kampus** — a path, bench, Dino, flowers, and pond continue the hero's world.
+2. **Meja kolaborasi** — code, interface sketches, and a project notebook share one workbench that becomes the footer.
+3. **Gerbang komunitas** — Google-color entrance pillars frame a centered invitation and a path into the community.
+4. **Mosaik karya** — sculptural colored modules and a large pixel wordmark form a more graphic ending.
+
+PNG originals and WebP review assets live in `public/footer-directions/`, with full prompts in `design/footer-directions/prompts.json`. `/footer-directions` compares them at full image aspect ratio with PNG download links. They are review concepts; no concept has been selected or substituted for the current light footer.
 
 ## Technical references
 

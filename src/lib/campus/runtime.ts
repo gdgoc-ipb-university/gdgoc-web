@@ -37,7 +37,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   const foregroundPass = createForegroundPass(renderer);
   scene.add(foreground.root);
   // Warm afternoon key from the right, with a cool fill under leaves and eaves.
-  const sunlight = new THREE.DirectionalLight("#fff0d3", 2.25);
+  const sunlight = new THREE.DirectionalLight("#fff5e5", 2.25);
   sunlight.position.set(40, 50, 0);
   sunlight.target.position.set(-2, 0, -6);
   sunlight.castShadow = true;
@@ -52,7 +52,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   });
   sunlight.shadow.bias = -0.00015;
   sunlight.shadow.normalBias = 0.045;
-  const skyFill = new THREE.HemisphereLight("#c8ddff", "#b1a083", 1.2);
+  const skyFill = new THREE.HemisphereLight("#d2e4ff", "#96aa7d", 1.15);
   sunlight.layers.enable(1);
   skyFill.layers.enable(1);
   scene.add(sunlight, sunlight.target, skyFill);
@@ -63,6 +63,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   canvas.dataset.ridges = "3";
   canvas.dataset.backdrop = "gunung-salak";
   canvas.dataset.foliage = "exterior-voxel-union";
+  canvas.dataset.garden = "mixed-canopies-flowering-tropical-wayfinding";
   canvas.dataset.foreground = "blurred-3d-garden";
   host.append(canvas);
   const target = new THREE.Vector2();
@@ -82,7 +83,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
 
   function paint(now: number) {
     raf = 0;
-    if (disposed || lost || !visible || document.hidden) return;
+    if (disposed || lost || (ready && !visible) || document.hidden) return;
     if (animated && last && now - last < 1000 / 30 - 1) {
       raf = requestAnimationFrame(paint);
       return;
@@ -113,6 +114,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       renderer.render(scene, camera);
       foregroundPass.render(scene, camera);
     } catch {
+      ready = false;
       options.onFailure();
       return;
     }
@@ -125,10 +127,10 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       ready = true;
       options.onReady();
     }
-    if (animated) raf = requestAnimationFrame(paint);
+    if (animated && visible) raf = requestAnimationFrame(paint);
   }
   function invalidate() {
-    if (!raf && !disposed && !lost && visible && !document.hidden)
+    if (!raf && !disposed && !lost && (visible || !ready) && !document.hidden)
       raf = requestAnimationFrame(paint);
   }
   function resize() {

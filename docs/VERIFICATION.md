@@ -1,4 +1,4 @@
-# Verification — 22 September 2026
+# Verification — 23 September 2026
 
 ## Initial and perspective revision checks
 
@@ -47,6 +47,18 @@ The interaction checks in this section document earlier revisions. The latest re
 - Sticky navigation remains at `top: 0`. In the final production app, a menu-to-Program click closed the menu and placed the target at 99.5px below the viewport top while motion and the fine-pointer Lenis path were enabled. The native still-mode path placed it at approximately 100px.
 - Re-ran `pnpm check`, `pnpm build`, and `git diff --check` after the final source change. Restarted local production on `127.0.0.1:3105`.
 - Final production inspection: `data-backdrop=gunung-salak`, scene ready, 23 idle draw calls, 463,731 submitted triangles, no broken images or heading/page overflow, and no console warnings or errors.
+
+## Catalyst / preloader / vibrant garden / footer concepts — 23 September
+
+- Catalyst explicitly names Hustler (project management), Hipster (UI/UX), and Hacker (software development). The descriptions were cross-checked against the local Catalyst role table and the user's correction.
+- Throttled browser networking to 350ms latency / 220KB per second and CPU to 4× slowdown. Observed the loading screen while `data-ready=false` and no scene frame existed; after frame 1 the scene became ready, the preloader exited, and body scrolling unlocked. Reset both emulations afterward.
+- Forced `?webgl=off` and separately blocked the actual campus JavaScript chunks through browser network emulation. Both cases produced zero main-scene canvases, a fully loaded static image, no remaining loader, and restored scrolling. The 12-second stalled-initialization watchdog is implemented; its timeout was not separately fault-injected.
+- Opened the page directly at `#explore` with the hero offscreen. The scene still painted and released the loader; the Program target was at 100.3px below the viewport top. The page remained scrollable.
+- Emulated system reduced motion at 320 × 740. The scene rendered, the loader exited, `data-motion=off`, and the main scene remained at frame 2 across two reads. Reset emulation afterward.
+- Reviewed the scene at 1440 × 900 and 390 × 844, including the varied green crowns, yellow/coral flowering trees, broad tropical leaves, left signpost, turquoise pond, Salak mist, and blurred foreground. Checked 320px page width with no horizontal overflow. The camera, AHN silhouette, and left-aligned desktop copy remain in place.
+- All four generated CTA/footer PNGs are 1586 × 992, with WebP review versions. Visually inspected all four original outputs for readable membership copy, distinct compositions, and a continuous light palette. The gallery rendered two columns at desktop and one at 320px; all four images loaded and cards/headline had no horizontal overflow. Each full-size/download link points to its matching local PNG.
+- `pnpm check` passed ESLint and TypeScript; the final `pnpm build` and `git diff --check` passed. The build includes `/footer-directions`. Restarted local production at `127.0.0.1:3105`.
+- Final production scene: ready with no loader, 23 draw calls, 438,413 submitted triangles, 15,660 main-scene solids, `garden=mixed-canopies-flowering-tropical-wayfinding`, and no page overflow. Footer background remains `rgb(250, 249, 242)`. The production-origin console reported no warnings or errors.
 
 ## Evidence boundaries
 

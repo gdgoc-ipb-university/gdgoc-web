@@ -1,4 +1,4 @@
-# Verification — 23 September 2026
+# Verification — 24 September 2026
 
 ## Initial and perspective revision checks
 
@@ -70,8 +70,19 @@ The interaction checks in this section document earlier revisions. The latest re
 - CLI-created `.env.local` and `.vercel/project.json` are ignored by Git. No account tokens or local environment files were committed.
 - This release was deployed through CLI. Git-triggered automatic deployments have not been configured.
 
+## Convex, Google OAuth and Apresiasi — 24 September
+
+- Created a dedicated `dika/gdgoc-web` Convex project with separate development and production deployments. Deployed the Better Auth component, schema, indexes, and owner/reviewer-protected functions to both.
+- Created the dedicated Google Cloud project `gdgoc-web-509612` and `GDGoC Web` OAuth client with user approval. Google reported **In production**. Only `openid`, `profile`, and `email` are requested; client secrets are stored only in Convex.
+- `pnpm check`, `pnpm test` (20 tests across 3 files), `pnpm build`, and `git diff --check` passed. Tests exercise actual Better Auth component sessions, expired/unverified users, owner isolation, reviewer allowlists, revision conflicts, retries, validation, review transitions, draft limits, autosave races/recovery and form interactions.
+- In Chrome, completed a real Google sign-in through the local Next.js callback and authenticated Convex queries. Created an explicitly labeled development draft, changed its content, waited for **Tersimpan di akun**, reloaded the entire page, reopened the saved draft, and verified its fields were restored. This is a development record, not a public submission.
+- Reviewed the authenticated editor at 390px and 320px, including conditional team fields. Document width matched viewport width. Text inputs, selects and textareas were 16px. Emulation was reset afterward; these were browser checks, not physical-device tests.
+- Verified that the signed-in non-reviewer receives **Akses khusus tim peninjau**. The reviewer allowlist remains empty until the owner specifies the Google emails to authorize.
+- Exercised complete form preview and submit interactions using a temporary local UI fixture, then removed the fixture before the final build. The fixture did not submit to the real backend; backend submission and review transitions are covered by `convex-test`.
+- The landing retained both 3D canvases, no overflow, and a sticky header at top 0. Its thin horizontal progress bar advanced from 0 to approximately 0.69 while scrolling.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.
 
-Responsive testing used browser viewport emulation, not physical phones. Browser reduced motion and the forced fallback were tested; actual GPU context-loss recovery is implemented but was not fault-injected. The public deployment and private GitHub remote are verified above. No registration backend or external form submission was performed.
+Responsive testing used browser viewport emulation, not physical phones. Browser reduced motion and the forced fallback were tested; actual GPU context-loss recovery is implemented but was not fault-injected. The public deployment and private GitHub remote are verified above. Membership registration still links to the official GDG chapter. The Apresiasi backend and OAuth checks are documented separately above; no Instagram publication was performed.

@@ -1,6 +1,7 @@
 import { Arrow, PixelDino, PixelSpark } from "./icons";
 import { Reveal } from "./reveal";
 import { communityLinks } from "@/lib/community";
+import Link from "next/link";
 
 export function JoinFooter() {
   return (
@@ -48,6 +49,7 @@ export function JoinFooter() {
             <p className="eyebrow">KENALI KAMI</p>
             <a href="#community">Tentang komunitas</a>
             <a href="#explore">Program kami</a>
+            <Link href="/apresiasi">Apresiasi prestasi</Link>
             <a href={communityLinks.membership} target="_blank" rel="noreferrer">
               Halaman GDG <Arrow diagonal />
             </a>

@@ -6,6 +6,7 @@ GDGoC IPB — Komunitas Mahasiswa Bogor. Community profile with a geometric Thre
 
 ```sh
 pnpm install
+pnpm exec convex dev # configure the development backend first
 pnpm dev
 ```
 
@@ -14,12 +15,17 @@ Open [the landing](http://127.0.0.1:3104), [the full scene](http://127.0.0.1:310
 The [CTA + footer concept gallery](http://127.0.0.1:3104/footer-directions) contains four new light concepts: Taman kampus, Meja kolaborasi, Gerbang komunitas, and Mosaik karya. Original PNGs and WebPs are in `public/footer-directions/`; the complete prompts and reference are recorded in `design/footer-directions/prompts.json`. These are generated design options, not four implemented footer components.
 
 ```sh
+pnpm test # backend permissions, validation, autosave and form interactions
 pnpm check # ESLint + Next route types + TypeScript
 pnpm build
 pnpm start
 ```
 
-Node 24 and pnpm 11.22.0 were used. No environment variables or external API services are required.
+Node 24 and pnpm 11.22.0 are used. The landing has no backend dependency. The Apresiasi workspace uses Convex and Google OAuth; configure the variables in `.env.example` and follow `docs/APRESIASI.md`.
+
+## Apresiasi
+
+`/apresiasi` provides Google sign-in, private autosaved drafts, a review-before-submit form, documentation links (no uploads), and submission status. `/apresiasi/admin` is a verified-email allowlist review queue; it is locked until `APPRECIATION_ADMIN_EMAILS` is explicitly configured. Publication is a manual Media & Creative workflow, with the Instagram post URL recorded after publishing.
 
 ## Selected direction
 
@@ -66,4 +72,4 @@ pnpm dlx vercel@59.23.2 link --yes --scope bibobaggins-projects --project gdgoc-
 pnpm dlx vercel@59.23.2 deploy --prod --yes --scope bibobaggins-projects
 ```
 
-Node.js is pinned to 24.x, matching local validation and a [supported Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions). `.vercel/` is ignored by Git, and `.vercelignore` excludes design sources and internal documentation from CLI uploads. The app does not require environment variables.
+Node.js is pinned to 24.x, matching local validation and a [supported Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions). `.vercel/` is ignored by Git, and `.vercelignore` excludes design sources and internal documentation from CLI uploads. Production requires `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, and `NEXT_PUBLIC_SITE_URL` in Vercel. Auth secrets live only in Convex. Deploy the Convex backend before deploying the frontend; see `docs/APRESIASI.md`.

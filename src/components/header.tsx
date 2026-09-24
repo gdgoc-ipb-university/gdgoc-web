@@ -5,8 +5,12 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Arrow } from "./icons";
 import { communityLinks } from "@/lib/community";
+import { ScrollProgress } from "./scroll-progress";
+import { usePathname } from "next/navigation";
 
 export function Header({ review = false }: { review?: boolean }) {
+  const pathname = usePathname();
+  const home = pathname === "/";
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -50,12 +54,15 @@ export function Header({ review = false }: { review?: boolean }) {
             <span />
           </button>
           <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open}>
-            <a href="#community" onClick={() => setOpen(false)}>
+            <Link href={home ? "#community" : "/#community"} onClick={() => setOpen(false)}>
               Tentang kami
-            </a>
-            <a href="#explore" onClick={() => setOpen(false)}>
+            </Link>
+            <Link href={home ? "#explore" : "/#explore"} onClick={() => setOpen(false)}>
               Program
-            </a>
+            </Link>
+            <Link href="/apresiasi" aria-current={pathname.startsWith("/apresiasi") ? "page" : undefined} onClick={() => setOpen(false)}>
+              Apresiasi
+            </Link>
             <a
               href={communityLinks.membership}
               className="nav-join"
@@ -68,6 +75,7 @@ export function Header({ review = false }: { review?: boolean }) {
           </nav>
         </>
       )}
+      {home && !review && <ScrollProgress />}
     </header>
   );
 }

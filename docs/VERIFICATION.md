@@ -79,7 +79,10 @@ The interaction checks in this section document earlier revisions. The latest re
 - Reviewed the authenticated editor at 390px and 320px, including conditional team fields. Document width matched viewport width. Text inputs, selects and textareas were 16px. Emulation was reset afterward; these were browser checks, not physical-device tests.
 - Verified that the signed-in non-reviewer receives **Akses khusus tim peninjau**. The reviewer allowlist remains empty until the owner specifies the Google emails to authorize.
 - Exercised complete form preview and submit interactions using a temporary local UI fixture, then removed the fixture before the final build. The fixture did not submit to the real backend; backend submission and review transitions are covered by `convex-test`.
-- The landing retained both 3D canvases, no overflow, and a sticky header at top 0. Its thin horizontal progress bar advanced from 0 to approximately 0.69 while scrolling.
+- The landing retained both 3D canvases, no overflow, and a sticky header at top 0. Its thin horizontal progress bar advanced from 0 to approximately 0.69 while scrolling and reached full width at the document bottom. The new Apresiasi item caused wrapping at 820px, so the compact menu now starts at 960px; checked opening it, closing with Escape, and focus restoration. Desktop checks returned no console warnings or errors.
+
+- The first production release (`a5b6857`, Vercel deployment `dpl_912tpBWW52ZsmwkeioatezsoUsNr`) reached **Ready** and the production alias was assigned even though the CLI output stream ended with a network fetch error. An independent `vercel inspect` confirmed its final state. `/apresiasi`, `/privasi`, and `/api/auth/get-session` all returned HTTP 200.
+- Completed Google login directly on `https://gdgoc-web.vercel.app/apresiasi`, returned through its production callback, and observed the authenticated account and empty production workspace from Convex. No warning/error logs were returned. The development QA draft is isolated from production; no appreciation was submitted or published from the production account.
 
 ## Evidence boundaries
 

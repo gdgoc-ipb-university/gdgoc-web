@@ -1095,16 +1095,7 @@ summary:focus-visible {
     font-size: 14px;
   }
 }
-@media (max-width: 760px) {
-  :root {
-    --gutter: 22px;
-  }
-  .header {
-    height: 75px;
-  }
-  .brand {
-    width: 216px;
-  }
+@media (max-width: 960px) {
   .menu-toggle {
     display: flex;
     flex-direction: column;
@@ -1131,7 +1122,7 @@ summary:focus-visible {
   .navigation {
     display: none;
     position: absolute;
-    top: 74px;
+    top: 87px;
     left: 0;
     right: 0;
     padding: 24px var(--gutter) 30px;
@@ -1154,6 +1145,18 @@ summary:focus-visible {
     padding: 13px 17px;
     margin-top: 5px;
   }
+}
+@media (max-width: 760px) {
+  :root {
+    --gutter: 22px;
+  }
+  .header {
+    height: 75px;
+  }
+  .brand {
+    width: 216px;
+  }
+  .navigation { top: 74px; }
   .hero {
     height: auto;
     display: flex;

@@ -1,6 +1,7 @@
 import * as THREE from "three";
+import { dinoEyeOpenness } from "./dino-animation";
 
-/** A small real-time scene. Hero environments remain separate art-direction assets. */
+/** The smaller community diorama shares the campus Dino's blink rhythm. */
 export function mountDino(host: HTMLDivElement, animated: boolean) {
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
@@ -122,8 +123,10 @@ export function mountDino(host: HTMLDivElement, animated: boolean) {
   });
   silhouette.translate(0, 0, -0.225);
   outlined(silhouette, "#fffcdf", dino);
-  box([0.15, 0.15, 0.014], [0.34, 2.75, 0.236], "#172d43", dino);
-  box([0.15, 0.15, 0.014], [0.34, 2.75, -0.236], "#172d43", dino);
+  const eyes = [
+    box([0.15, 0.15, 0.014], [0.34, 2.75, 0.236], "#172d43", dino),
+    box([0.15, 0.15, 0.014], [0.34, 2.75, -0.236], "#172d43", dino),
+  ];
   dino.position.y = 0.07;
 
   let raf = 0;
@@ -138,6 +141,9 @@ export function mountDino(host: HTMLDivElement, animated: boolean) {
 
   function render() {
     if (disposed || contextLost) return;
+    const eyeOpenness = animated ? dinoEyeOpenness(elapsed) : 1;
+    eyes.forEach((eye) => { eye.scale.y = eyeOpenness; });
+    renderer.domElement.dataset.dinoEyes = eyeOpenness < 0.15 ? "closed" : "open";
     renderer.render(scene, camera);
     host.dataset.ready = "true";
   }

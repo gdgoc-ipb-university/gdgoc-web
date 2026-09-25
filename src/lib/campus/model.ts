@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { CelBuilder, celMaterial, type Voxel } from "./builder";
 import { createHills } from "./hills";
+import { createBirds } from "./birds";
 import { LineSegments2 } from "three/addons/lines/LineSegments2.js";
 import { LineSegmentsGeometry } from "three/addons/lines/LineSegmentsGeometry.js";
 import { LineMaterial } from "three/addons/lines/LineMaterial.js";
@@ -384,12 +385,17 @@ function buildDino() {
   edges.setPositions(thinEdges.getAttribute("position").array as Float32Array);
   thinEdges.dispose();
   group.add(new LineSegments2(edges, new LineMaterial({ color: "#172d43", linewidth: 2.7 })));
-  b.box(0.45, 3.78, 0.487, 0.19, 0.19, 0.045, "#142d43");
-  group.add(b.finish("Dino eyes"));
+  // Keep the eye's pivot at its center so blinking does not move it down the face.
+  b.box(0, 0, 0, 0.19, 0.19, 0.045, "#142d43", false);
+  const eyes = b.finish("Dino eyes");
+  eyes.position.set(0.45, 3.78, 0.487);
+  const eyeSurface = eyes.children[0] as THREE.Mesh;
+  eyeSurface.castShadow = eyeSurface.receiveShadow = false;
+  group.add(eyes);
   group.position.set(-9.5, 0.07, 7.3);
   group.rotation.y = -0.16;
   group.scale.setScalar(1.32);
-  return group;
+  return { root: group, eyes };
 }
 
 export function createCampusModel() {
@@ -556,8 +562,9 @@ export function createCampusModel() {
   ahn.rotation.y = -0.18;
   ahn.scale.set(0.91, 1.16, 1);
   root.add(ahn, createHills());
-  const dino = buildDino();
-  root.add(dino);
+  const { root: dino, eyes: dinoEyes } = buildDino();
+  const birds = createBirds();
+  root.add(dino, birds.root);
   const clouds: THREE.Group[] = [];
   // Keep the hero's established text area clear: a small cloud at the left edge,
   // with the larger clouds in open sky above and beside AHN.
@@ -588,5 +595,5 @@ export function createCampusModel() {
     root.add(group);
     clouds.push(group);
   }
-  return { root, dino, clouds, solids: b.solids + architecture.solids + foliage.solids };
+  return { root, dino, dinoEyes, birds, clouds, solids: b.solids + architecture.solids + foliage.solids };
 }

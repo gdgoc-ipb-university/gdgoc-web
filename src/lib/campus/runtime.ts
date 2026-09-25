@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { createCampusModel } from "./model";
 import { createForeground, createForegroundPass } from "./foreground";
+import { dinoEyeOpenness } from "../dino-animation";
 
 type Options = {
   animated: boolean;
@@ -65,6 +66,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   canvas.dataset.foliage = "exterior-voxel-union";
   canvas.dataset.garden = "mixed-canopies-flowering-tropical-wayfinding";
   canvas.dataset.foreground = "blurred-3d-garden";
+  canvas.dataset.birds = String(model.birds.count);
   host.append(canvas);
   const target = new THREE.Vector2();
   const current = new THREE.Vector2();
@@ -103,6 +105,10 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       model.dino.position.y = 0.07;
       model.dino.rotation.z = 0;
     }
+    const eyeOpenness = animated ? dinoEyeOpenness(elapsed) : 1;
+    model.dinoEyes.scale.y = eyeOpenness;
+    model.birds.update(animated ? elapsed : 0);
+    canvas.dataset.dinoEyes = eyeOpenness < 0.15 ? "closed" : "open";
     camera.position.set(8.5 + current.x * 0.28, 8.7 + current.y * 0.09, 35);
     camera.lookAt(-1 + current.x * 0.06, mobile ? 5.6 : 7.8, -8);
     if (placeForeground) {
@@ -221,6 +227,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       canvas.removeEventListener("webglcontextlost", contextLost);
       canvas.removeEventListener("webglcontextrestored", restored);
       scene.traverse((object) => {
+        if (object instanceof THREE.InstancedMesh) object.dispose();
         if (object instanceof THREE.Mesh || object instanceof THREE.LineSegments) {
           object.geometry.dispose();
           const materials = Array.isArray(object.material) ? object.material : [object.material];

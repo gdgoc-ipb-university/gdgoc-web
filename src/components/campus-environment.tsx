@@ -94,7 +94,7 @@ export function CampusEnvironment({
         className="campus-canvas"
         role="img"
         aria-hidden={!ready}
-        aria-label="Environment 3D AHN IPB, Chrome Dino, taman pixel, Gunung Salak berkabut di kiri, dan tanaman foreground."
+        aria-label="Environment 3D AHN IPB, Chrome Dino berkedip, burung voxel di langit, taman pixel, Gunung Salak berkabut di kiri, dan tanaman foreground."
       />
     </div>
   );

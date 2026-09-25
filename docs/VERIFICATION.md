@@ -1,4 +1,4 @@
-# Verification — 24 September 2026
+# Verification — 25 September 2026
 
 ## Initial and perspective revision checks
 
@@ -83,6 +83,15 @@ The interaction checks in this section document earlier revisions. The latest re
 
 - The first production release (`a5b6857`, Vercel deployment `dpl_912tpBWW52ZsmwkeioatezsoUsNr`) reached **Ready** and the production alias was assigned even though the CLI output stream ended with a network fetch error. An independent `vercel inspect` confirmed its final state. `/apresiasi`, `/privasi`, and `/api/auth/get-session` all returned HTTP 200.
 - Completed Google login directly on `https://gdgoc-web.vercel.app/apresiasi`, returned through its production callback, and observed the authenticated account and empty production workspace from Convex. No warning/error logs were returned. The development QA draft is isolated from production; no appreciation was submitted or published from the production account.
+
+## Birds and Dino blinking — 25 September
+
+- Added five solid voxel birds above AHN, using a bounded looping flight path, banking, individually phased wingbeats, and gliding intervals. Bodies and two hinged wings use three instanced draw calls, do not enter the static shadow map, and release instance buffers on disposal.
+- The main campus Dino and the smaller community Dino share a 14-second blink rhythm with short eyelid closure and an occasional double blink. Eye scaling is centered on the eye instead of the character origin.
+- Inspected the desktop environment and landing at 1440px and the landing at 390px. Birds remain above the roof and outside the text area; mobile document width matched the viewport. The main campus rendered 25 idle draw calls and 439,061 triangles.
+- Observed the main Dino's closed-eye state and captured a close-up showing the thin horizontal eyelid. Independently observed the smaller community Dino entering its closed-eye state.
+- Emulated reduced motion: the campus reported paused motion, open Dino eyes, and five stationary birds. Its frame counter stayed at 3,854 across successive reads. Reset motion emulation afterward. No console warnings or errors were observed during the desktop checks.
+- `pnpm check`, `pnpm build`, and `git diff --check` passed. The change is scene-only; the appreciation backend and authentication were not modified.
 
 ## Evidence boundaries
 

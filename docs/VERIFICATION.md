@@ -93,6 +93,13 @@ The interaction checks in this section document earlier revisions. The latest re
 - Emulated reduced motion: the campus reported paused motion, open Dino eyes, and five stationary birds. Its frame counter stayed at 3,854 across successive reads. Reset motion emulation afterward. No console warnings or errors were observed during the desktop checks.
 - `pnpm check`, `pnpm build`, and `git diff --check` passed. The change is scene-only; the appreciation backend and authentication were not modified.
 
+## Mouse camera parallax — 25 September
+
+- Inspected Deliverologi's local Three.js scenes and reused their time-based damping approach. Mouse movement now drives a bounded camera dolly across the entire hero, including the membership link, while the HTML copy stays fixed. Leaving the hero or losing focus returns the target to the resting composition.
+- Reviewed opposite desktop camera positions with the near blurred plants, Dino, AHN, Salak and clouds in view. The camera offset changed from `0.775,0.693` to `-0.961,-0.841`; the hero copy retained exactly the same bounding rectangle. Hovering the CTA produced `-0.637,0.080` and pointer exit settled to `0.000,0.000`.
+- Emulated reduced motion, moved the mouse, and confirmed a centered camera and paused render loop. Frame 3,532 stayed unchanged across reads. Narrow mobile layout remained centered, rendered the full campus, and scrolled without horizontal overflow. These were browser viewport and input-capability checks; synthetic touch dispatch is unsupported by the in-app browser, so a physical touch gesture was not tested.
+- No console warnings or errors were reported. Normal rendering remains at 25 draw calls and 439,061 triangles. `pnpm check`, `pnpm build`, and `git diff --check` passed.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

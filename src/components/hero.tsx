@@ -19,6 +19,7 @@ export function Hero({ direction }: { direction: Direction }) {
       <section
         className={`hero ${direction.dark ? "hero-night" : ""}`}
         aria-labelledby="hero-heading"
+        data-campus-interactive
       >
         <div className="hero-art">
           {direction.id === "hello-campus" ? (

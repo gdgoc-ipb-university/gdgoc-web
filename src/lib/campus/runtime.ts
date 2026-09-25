@@ -68,6 +68,9 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   canvas.dataset.foreground = "blurred-3d-garden";
   canvas.dataset.birds = String(model.birds.count);
   host.append(canvas);
+  // Include the copy and CTA in the hover surface without moving the HTML content.
+  const pointerSurface = host.closest<HTMLElement>("[data-campus-interactive]") ?? host;
+  const finePointer = window.matchMedia("(hover: hover) and (pointer: fine)");
   const target = new THREE.Vector2();
   const current = new THREE.Vector2();
   const cloudOrigins = model.clouds.map((c) => c.position.x);
@@ -94,7 +97,9 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     last = now;
     if (animated) {
       elapsed += dt;
-      current.lerp(target, 0.09);
+      // Time-based damping keeps the same soft response at different frame rates.
+      current.lerp(target, 1 - Math.exp(-3 * dt));
+      if (current.distanceToSquared(target) < 0.000001) current.copy(target);
       model.dino.position.y = 0.07 + Math.sin(elapsed * 1.7) * 0.023;
       model.dino.rotation.z = Math.sin(elapsed * 1.7) * 0.009;
       model.clouds.forEach((c, i) => {
@@ -109,8 +114,9 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     model.dinoEyes.scale.y = eyeOpenness;
     model.birds.update(animated ? elapsed : 0);
     canvas.dataset.dinoEyes = eyeOpenness < 0.15 ? "closed" : "open";
-    camera.position.set(8.5 + current.x * 0.28, 8.7 + current.y * 0.09, 35);
-    camera.lookAt(-1 + current.x * 0.06, mobile ? 5.6 : 7.8, -8);
+    // A small sideways/upward dolly adds depth while the campus stays near its framing.
+    camera.position.set(8.5 + current.x * 0.75, 8.7 + current.y * 0.3, 35);
+    camera.lookAt(-1 + current.x * 0.08, (mobile ? 5.6 : 7.8) + current.y * 0.035, -8);
     if (placeForeground) {
       foreground.place(camera);
       placeForeground = false;
@@ -127,6 +133,7 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     frames++;
     canvas.dataset.frame = String(frames);
     canvas.dataset.motion = animated ? "playing" : "paused";
+    canvas.dataset.cameraOffset = `${current.x.toFixed(3)},${current.y.toFixed(3)}`;
     canvas.dataset.drawCalls = String(renderer.info.render.calls);
     canvas.dataset.triangles = String(renderer.info.render.triangles);
     if (!ready) {
@@ -143,6 +150,8 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     const { width, height } = host.getBoundingClientRect();
     if (!width || !height || disposed) return;
     mobile = width < 760;
+    target.set(0, 0);
+    current.set(0, 0);
     // Preserve the whole horizontal composition on phones, rather than cropping AHN.
     camera.aspect = width / height;
     camera.fov = THREE.MathUtils.radToDeg(
@@ -159,11 +168,12 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     invalidate();
   }
   function move(event: PointerEvent) {
-    if (!animated || event.pointerType === "touch") return;
-    const rect = host.getBoundingClientRect();
+    if (!animated || mobile || !finePointer.matches || event.pointerType !== "mouse") return;
+    const rect = pointerSurface.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
     target.set(
-      (event.clientX - rect.left) / rect.width - 0.5,
-      (event.clientY - rect.top) / rect.height - 0.5,
+      THREE.MathUtils.clamp(((event.clientX - rect.left) / rect.width) * 2 - 1, -1, 1),
+      THREE.MathUtils.clamp(1 - ((event.clientY - rect.top) / rect.height) * 2, -1, 1),
     );
     invalidate();
   }
@@ -175,6 +185,10 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
     cancelAnimationFrame(raf);
     raf = 0;
     last = 0;
+    if (!visible || document.hidden) {
+      target.set(0, 0);
+      current.set(0, 0);
+    }
     invalidate();
   }
   function contextLost(event: Event) {
@@ -201,8 +215,11 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   intersection.observe(host);
   const size = new ResizeObserver(resize);
   size.observe(host);
-  host.addEventListener("pointermove", move);
-  host.addEventListener("pointerleave", reset);
+  pointerSurface.addEventListener("pointermove", move, { passive: true });
+  pointerSurface.addEventListener("pointerleave", reset);
+  pointerSurface.addEventListener("pointercancel", reset);
+  finePointer.addEventListener("change", reset);
+  window.addEventListener("blur", reset);
   document.addEventListener("visibilitychange", visibility);
   canvas.addEventListener("webglcontextlost", contextLost);
   canvas.addEventListener("webglcontextrestored", restored);
@@ -210,6 +227,8 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
   return {
     setAnimated(value: boolean) {
       animated = value;
+      target.set(0, 0);
+      current.set(0, 0);
       last = 0;
       renderer.shadowMap.needsUpdate = true;
       cancelAnimationFrame(raf);
@@ -221,8 +240,11 @@ export function mountCampus(host: HTMLDivElement, options: Options) {
       cancelAnimationFrame(raf);
       intersection.disconnect();
       size.disconnect();
-      host.removeEventListener("pointermove", move);
-      host.removeEventListener("pointerleave", reset);
+      pointerSurface.removeEventListener("pointermove", move);
+      pointerSurface.removeEventListener("pointerleave", reset);
+      pointerSurface.removeEventListener("pointercancel", reset);
+      finePointer.removeEventListener("change", reset);
+      window.removeEventListener("blur", reset);
       document.removeEventListener("visibilitychange", visibility);
       canvas.removeEventListener("webglcontextlost", contextLost);
       canvas.removeEventListener("webglcontextrestored", restored);

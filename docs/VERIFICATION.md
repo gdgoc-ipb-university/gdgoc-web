@@ -110,6 +110,8 @@ The interaction checks in this section document earlier revisions. The latest re
 - The WhatsApp destination displayed the expected **Members GDGOC 26/27** invitation. Both invitation links use a new tab, and no membership was submitted or claimed. The development browser reported no warnings or errors after completion.
 - The 320px first screen had no horizontal overflow and retained 16px input text. After the authenticated checks, the single clearly labeled onboarding QA profile was removed from development; the temporary internal cleanup function was also removed. No production profile or older appreciation draft was changed by this cleanup.
 - The official GDG chapter loaded with its **Join us** button. Production Convex deployment completed with the additive `memberProfiles.by_owner` index and no index deletions, before releasing the new frontend.
+- Application commit `69e195b` was pushed to the verified private `dikaprilio/gdgoc-web` repository. Vercel deployment `dpl_AFwSqEz7pj1CHMqrrbGQho62LCT7` passed its production build, reached **READY**, and was aliased to `https://gdgoc-web.vercel.app/`.
+- Reloaded the existing signed-in production appreciation workspace and observed its automatic redirect to `/onboarding`, with the four-step indicator and Google-prefilled name. At the 864px browser viewport, the page had no horizontal overflow, the name input was 16px with `enterkeyhint=next`, and the viewport meta included `interactive-widget=resizes-content`. The live form and illustration rendered without console warnings or errors. No production onboarding values were submitted, and the pre-existing production draft was untouched. Temporary browser emulations were reset and QA tabs closed.
 
 ## Evidence boundaries
 

@@ -10,6 +10,11 @@ export const appreciationValues = v.object({
 export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
 
 export default defineSchema({
+  memberProfiles: defineTable({
+    ownerId: v.string(), fullName: v.string(), campus: v.string(), studyProgram: v.string(),
+    nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4)),
+    revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
+  }).index("by_owner", ["ownerId"]),
   appreciations: defineTable({
     ownerId: v.string(), ownerName: v.string(), ownerEmail: v.string(), clientId: v.string(),
     values: appreciationValues, status: appreciationStatus, revision: v.number(),

@@ -11,6 +11,7 @@
 import type * as appreciations from "../appreciations.js";
 import type * as auth from "../auth.js";
 import type * as http from "../http.js";
+import type * as members from "../members.js";
 
 import type {
   ApiFromModules,
@@ -22,6 +23,7 @@ declare const fullApi: ApiFromModules<{
   appreciations: typeof appreciations;
   auth: typeof auth;
   http: typeof http;
+  members: typeof members;
 }>;
 
 /**

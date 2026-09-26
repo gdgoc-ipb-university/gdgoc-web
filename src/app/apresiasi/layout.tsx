@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { MemberProvider } from "@/components/member-provider";
 import { Header } from "@/components/header";
+import { MemberGate } from "@/components/onboarding/member-gate";
 import "./apresiasi.css";
 
 export const metadata: Metadata = {
@@ -10,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function AppreciationLayout({ children }: { children: React.ReactNode }) {
-  return <><a className="skip-link" href="#main">Lewati ke konten</a><Header /><MemberProvider>{children}</MemberProvider></>;
+  return <><a className="skip-link" href="#main">Lewati ke konten</a><Header /><MemberProvider><MemberGate>{children}</MemberGate></MemberProvider></>;
 }

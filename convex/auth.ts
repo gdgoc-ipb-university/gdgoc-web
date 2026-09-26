@@ -42,8 +42,9 @@ export const viewer = query({
   handler: async (ctx) => {
     const user = await authComponent.safeGetAuthUser(ctx);
     if (!user) return null;
+    const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     return {
-      id: user._id, name: user.name, email: user.email,
+      id: user._id, name: profile?.fullName || user.name, email: user.email,
       isAdmin: isReviewer(user.email, user.emailVerified),
     };
   },

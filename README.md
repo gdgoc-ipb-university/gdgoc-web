@@ -15,7 +15,7 @@ Open [the landing](http://127.0.0.1:3104), [the full scene](http://127.0.0.1:310
 The [CTA + footer concept gallery](http://127.0.0.1:3104/footer-directions) contains four new light concepts: Taman kampus, Meja kolaborasi, Gerbang komunitas, and Mosaik karya. Original PNGs and WebPs are in `public/footer-directions/`; the complete prompts and reference are recorded in `design/footer-directions/prompts.json`. These are generated design options, not four implemented footer components.
 
 ```sh
-pnpm test # backend permissions, validation, autosave and form interactions
+pnpm test # backend permissions, onboarding, accessibility, autosave and forms
 pnpm check # ESLint + Next route types + TypeScript
 pnpm build
 pnpm start
@@ -26,6 +26,8 @@ Node 24 and pnpm 11.22.0 are used. The landing has no backend dependency. The Ap
 ## Apresiasi
 
 `/apresiasi` provides Google sign-in, private autosaved drafts, a review-before-submit form, documentation links (no uploads), and submission status. `/apresiasi/admin` is a verified-email allowlist review queue; it is locked until `APPRECIATION_ADMIN_EMAILS` is explicitly configured. Publication is a manual Media & Creative workflow, with the Instagram post URL recorded after publishing.
+
+The first authenticated visit opens a four-screen `/onboarding`: name, campus and study program, optional WhatsApp invitation, and optional GDG Community invitation. Progress is saved per account after each forward action, and completed users do not repeat the flow. Searchable education comboboxes accept unlisted values and support keyboard navigation, mobile input hints, and accessible labels/errors. The resulting profile prefills new appreciation drafts. See `docs/ONBOARDING.md` for persistence, accessibility, and suggestion-source details.
 
 ## Selected direction
 

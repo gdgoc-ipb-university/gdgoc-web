@@ -50,9 +50,10 @@ export const create = mutation({
     if (existing) return existing._id;
     const drafts = await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", user._id)).filter((q) => q.eq(q.field("status"), "draft")).take(10);
     if (drafts.length >= 10) throw new ConvexError("Kamu sudah punya 10 draft. Lanjutkan atau hapus salah satunya terlebih dahulu.");
+    const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     return ctx.db.insert("appreciations", {
       ownerId: user._id, ownerName: user.name, ownerEmail: user.email, clientId,
-      values: { ...emptyAppreciation, fullName: user.name },
+      values: { ...emptyAppreciation, fullName: profile?.fullName || user.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "" },
       status: "draft", revision: 0, updatedAt: Date.now(),
     });
   },

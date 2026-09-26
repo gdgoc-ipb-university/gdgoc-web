@@ -1,4 +1,4 @@
-# Verification — 25 September 2026
+# Verification — 26 September 2026
 
 ## Initial and perspective revision checks
 
@@ -99,6 +99,17 @@ The interaction checks in this section document earlier revisions. The latest re
 - Reviewed opposite desktop camera positions with the near blurred plants, Dino, AHN, Salak and clouds in view. The camera offset changed from `0.775,0.693` to `-0.961,-0.841`; the hero copy retained exactly the same bounding rectangle. Hovering the CTA produced `-0.637,0.080` and pointer exit settled to `0.000,0.000`.
 - Emulated reduced motion, moved the mouse, and confirmed a centered camera and paused render loop. Frame 3,532 stayed unchanged across reads. Narrow mobile layout remained centered, rendered the full campus, and scrolled without horizontal overflow. These were browser viewport and input-capability checks; synthetic touch dispatch is unsupported by the in-app browser, so a physical touch gesture was not tested.
 - No console warnings or errors were reported. Normal rendering remains at 25 draw calls and 439,061 triangles. `pnpm check`, `pnpm build`, and `git diff --check` passed.
+
+## First-time member onboarding — 26 September
+
+- Implemented four screens for name, campus/program, WhatsApp invitation, and GDG Community invitation. Inspected the Ngonlenin combobox primitive and followed its searchable, labeled, keyboard-operated pattern using React Aria Components.
+- `pnpm test`: 34 tests across 5 files passed. Coverage includes active verified sessions, owner isolation, required fields and ordering, custom education values, revision conflicts/retries, completion, new-draft prefill without modifying older drafts, focus/error handling, selection without premature submit, mobile Next behavior, pointer submission with input focus retained, Back navigation, and optional invitations.
+- Axe-core found no applicable A/AA semantic violations across all four screen fixtures. Rendered contrast was checked separately because JSDOM has no pixel layout. Normal body/hint/placeholder text ratios exceed 4.5:1, the input border exceeds 3:1, and the primary button is 5.17:1. This is scoped verification, not a full WCAG certification.
+- Completed real Google sign-in against the development backend, observed automatic onboarding, saved an explicitly labeled development name and education values, and reloaded to confirm the saved invitation screen resumed. Completed the flow without joining either external service, reached the authenticated appreciation workspace, then opened `/onboarding` again and was returned to the workspace without repeating the introduction.
+- Reviewed the desktop form and mobile layout at 390 × 844. Text inputs were 16px and exposed the expected `next`/`done` hints. In a 390 × 480 viewport representing reduced keyboard space, the focused program input and dropdown remained visible and the page had no horizontal overflow. This was a viewport/keyboard interaction check, not a physical phone test.
+- The WhatsApp destination displayed the expected **Members GDGOC 26/27** invitation. Both invitation links use a new tab, and no membership was submitted or claimed. The development browser reported no warnings or errors after completion.
+- The 320px first screen had no horizontal overflow and retained 16px input text. After the authenticated checks, the single clearly labeled onboarding QA profile was removed from development; the temporary internal cleanup function was also removed. No production profile or older appreciation draft was changed by this cleanup.
+- The official GDG chapter loaded with its **Join us** button. Production Convex deployment completed with the additive `memberProfiles.by_owner` index and no index deletions, before releasing the new frontend.
 
 ## Evidence boundaries
 

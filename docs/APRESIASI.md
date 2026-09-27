@@ -2,34 +2,36 @@
 
 ## Environments
 
-The dedicated Convex project is `dika/gdgoc-web`.
+The Convex project is `lisafronaldio123/gdgoc-ipb-web`.
 
 | Environment | Deployment | Frontend |
 | --- | --- | --- |
-| Development | `befitting-schnauzer-650` | `http://127.0.0.1:3104` |
-| Production | `formal-dachshund-94` | `https://gdgoc-web.vercel.app` |
+| Development | One personal dev deployment per member | `http://127.0.0.1:3104` |
+| Production | `adamant-lobster-969` | `https://gdgoc-ipb-web.vercel.app` |
 
-Copy `.env.example` into a local environment file, then run `pnpm exec convex dev`. Never put production backend URLs into the development environment. Convex generates the typed API in `convex/_generated`.
+Each team member gets their own dev deployment. Run `pnpm exec convex dev`, choose the existing `gdgoc-ipb-web` project, and Convex writes `CONVEX_DEPLOYMENT`, `NEXT_PUBLIC_CONVEX_URL`, and `NEXT_PUBLIC_CONVEX_SITE_URL` to `.env.local`. Never put production backend URLs into the development environment. Convex generates the typed API in `convex/_generated`.
 
-Vercel production variables:
+Vercel does not store the Convex URLs. The build command `pnpm exec convex deploy --cmd 'pnpm build'` uses the `CONVEX_DEPLOY_KEY` production secret to deploy the backend, then injects the production URLs into `next build`. Vercel production also stores `NEXT_PUBLIC_SITE_URL=https://gdgoc-ipb-web.vercel.app`.
 
-```text
-NEXT_PUBLIC_CONVEX_URL=https://formal-dachshund-94.convex.cloud
-NEXT_PUBLIC_CONVEX_SITE_URL=https://formal-dachshund-94.convex.site
-NEXT_PUBLIC_SITE_URL=https://gdgoc-web.vercel.app
+Each Convex deployment has its own `BETTER_AUTH_SECRET` and `SITE_URL`. `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are stored in Convex only. Supply secret values through CLI stdin or the Convex dashboard; never commit them, include them in command arguments, or use `NEXT_PUBLIC_` for secrets. For example:
+
+```sh
+openssl rand -base64 32 | pnpm exec convex env --prod set BETTER_AUTH_SECRET
+pnpm exec convex env --prod set GOOGLE_CLIENT_SECRET # prompts for the value
 ```
 
-Each Convex deployment has its own `BETTER_AUTH_SECRET` and `SITE_URL`. `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are stored in Convex only. Supply secret values through CLI stdin or the Convex dashboard; never commit them, include them in command arguments, or use `NEXT_PUBLIC_` for secrets.
+Use `--deployment dev` instead of `--prod` for your development deployment. Convex environment changes apply immediately without a redeploy.
 
 ## Google authentication
 
-Google Cloud project: `gdgoc-web-509612`, client `GDGoC Web`. The client uses these exact redirects:
+Use a Google OAuth web client with these exact redirects:
 
 ```text
-https://gdgoc-web.vercel.app/api/auth/callback/google
+https://gdgoc-ipb-web.vercel.app/api/auth/callback/google
 http://127.0.0.1:3104/api/auth/callback/google
-http://localhost:3104/api/auth/callback/google
 ```
+
+Add `https://gdgoc-ipb-web.vercel.app` and `http://127.0.0.1:3104` as authorized JavaScript origins. Store the client's ID and secret on each Convex deployment that should allow sign-in. Until both are set, the `auth:configuration` query reports `googleEnabled: false` and the sign-in button is disabled.
 
 The normal local URL is `127.0.0.1:3104`; Convex development `SITE_URL` must match it. To use localhost instead, change the development `SITE_URL` and the frontend origin together. Vercel preview aliases are not registered for Google login.
 
@@ -56,10 +58,11 @@ The React provider uses `ConvexProviderWithAuth` and a small session-aware token
 pnpm test
 pnpm check
 pnpm build
-pnpm exec convex deploy --yes
-pnpm dlx vercel@59.23.2 deploy --prod --yes --scope bibobaggins-projects
+git push origin main
 ```
 
-Deploy the backend before the frontend. Verify the production alias, same-origin Google callback, authenticated session, saved draft after a reload, and reviewer access restrictions. Do not use the local fixture or unit tests as evidence that production OAuth works. Keep any live test content explicitly labeled and remove test drafts after checking persistence.
+Pushing to `main` starts the Vercel production build, which deploys Convex before building the frontend. Other branches are skipped by the Ignored Build Step. To redeploy without a new commit, use **Create Deployment** with the `main` branch in the Vercel dashboard.
+
+After the deployment is ready, verify the production alias, same-origin Google callback, authenticated session, saved draft after a reload, and reviewer access restrictions. Do not use the local fixture or unit tests as evidence that production OAuth works. Keep any live test content explicitly labeled and remove test drafts after checking persistence.
 
 The Vitest suite covers actual Better Auth component sessions in `convex-test`, owner/reviewer access, revision conflicts, validation, review transitions, idempotency, autosave races and recovery, and form preview/submit interactions. Browser viewport emulation is separate from physical-device testing.

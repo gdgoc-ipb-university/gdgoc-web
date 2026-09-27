@@ -113,6 +113,14 @@ The interaction checks in this section document earlier revisions. The latest re
 - Application commit `69e195b` was pushed to the verified private `dikaprilio/gdgoc-web` repository. Vercel deployment `dpl_AFwSqEz7pj1CHMqrrbGQho62LCT7` passed its production build, reached **READY**, and was aliased to `https://gdgoc-web.vercel.app/`.
 - Reloaded the existing signed-in production appreciation workspace and observed its automatic redirect to `/onboarding`, with the four-step indicator and Google-prefilled name. At the 864px browser viewport, the page had no horizontal overflow, the name input was 16px with `enterkeyhint=next`, and the viewport meta included `interactive-widget=resizes-content`. The live form and illustration rendered without console warnings or errors. No production onboarding values were submitted, and the pre-existing production draft was untouched. Temporary browser emulations were reset and QA tabs closed.
 
+## Git-connected deployment on new projects — 27 September
+
+- Created the Convex project `lisafronaldio123/gdgoc-ipb-web` with production deployment `adamant-lobster-969`, and set its own `BETTER_AUTH_SECRET` and `SITE_URL`. A development push created all schema indexes and installed the Better Auth component without errors.
+- Created the Vercel project `aldio-lisafrons-projects/gdgoc-ipb-web` (Next.js, Node 24.x), connected it to `gdgoc-ipb-university/gdgoc-web`, set the build command to `pnpm exec convex deploy --cmd 'pnpm build'`, and restricted builds to production with an Ignored Build Step. The production deploy key was piped from Convex into a Vercel secret without being printed or written to the repository.
+- Git-sourced deployment `dpl_DHc1qbpmsxx6xgWbte7yGE5AFzp9` of `main` (`8bba65c`) reached **Ready** and was aliased to `https://gdgoc-ipb-web.vercel.app`. The build log shows pnpm 11.22.0, a successful Next.js build, and Convex functions deployed to `adamant-lobster-969`.
+- `/`, `/apresiasi`, `/onboarding`, `/privasi`, `/environment`, `/api/auth/get-session` (signed out: `null`), and `/api/auth/convex/jwks` returned HTTP 200. The client bundle references only the production Convex URL.
+- Google credentials were not yet configured, so `auth:configuration` reported `googleEnabled: false`. Production Google sign-in was not tested.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

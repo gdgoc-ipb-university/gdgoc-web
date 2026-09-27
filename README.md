@@ -65,13 +65,22 @@ Copy introduces a community for students across Bogor, its learning areas, and t
 
 ## Deployment
 
-Live site: [gdgoc-web.vercel.app](https://gdgoc-web.vercel.app/).
+Live site: [gdgoc-ipb-web.vercel.app](https://gdgoc-ipb-web.vercel.app/).
 
-The private source repository is `dikaprilio/gdgoc-web`. Production deploys use Vercel CLI with the `gdgoc-web` project in `bibobaggins-projects`:
+The source repository is `gdgoc-ipb-university/gdgoc-web`. The `gdgoc-ipb-web` Vercel project in `aldio-lisafrons-projects` is connected to it through Vercel's Git integration: every push to `main` deploys production. Vercel runs this build command:
 
 ```sh
-pnpm dlx vercel@59.23.2 link --yes --scope bibobaggins-projects --project gdgoc-web
-pnpm dlx vercel@59.23.2 deploy --prod --yes --scope bibobaggins-projects
+pnpm exec convex deploy --cmd 'pnpm build'
 ```
 
-Node.js is pinned to 24.x, matching local validation and a [supported Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions). `.vercel/` is ignored by Git, and `.vercelignore` excludes design sources and internal documentation from CLI uploads. Production requires `NEXT_PUBLIC_CONVEX_URL`, `NEXT_PUBLIC_CONVEX_SITE_URL`, and `NEXT_PUBLIC_SITE_URL` in Vercel. Auth secrets live only in Convex. Deploy the Convex backend before deploying the frontend; see `docs/APRESIASI.md`.
+It deploys the Convex backend first, then runs `next build` with `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` set to the production deployment, so the backend always ships before the frontend that depends on it. Vercel stores `CONVEX_DEPLOY_KEY` (a production deploy key, Production environment only, secret) and `NEXT_PUBLIC_SITE_URL`. Auth secrets live only in Convex.
+
+Only production builds run. The project's Ignored Build Step skips other branches, because the deploy key is production-only and Google OAuth is not registered for preview URLs.
+
+Node.js is pinned to 24.x, matching local validation and a [supported Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions). `.vercel/` is ignored by Git, and `.vercelignore` excludes design sources and internal documentation from CLI uploads. To link a new checkout for CLI commands (environment variables, logs, inspection):
+
+```sh
+pnpm dlx --allow-build=esbuild vercel@59.23.2 link --yes --scope aldio-lisafrons-projects --project gdgoc-ipb-web
+```
+
+See `docs/APRESIASI.md` for the backend environments and release checks.

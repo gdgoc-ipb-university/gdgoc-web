@@ -48,7 +48,8 @@ export default defineSchema({
     .index("by_slug", ["slug"])
     .index("by_assignment", ["assignmentId"]),
   assignmentSubmissions: defineTable({
-    assignmentId: v.id("assignments"), ownerId: v.string(), answer: v.string(),
+    // `answer` is plain text (older submissions, previews); `answerDoc` is the sanitized rich-text JSON.
+    assignmentId: v.id("assignments"), ownerId: v.string(), answer: v.string(), answerDoc: v.optional(v.string()),
     revision: v.number(), submittedAt: v.number(),
   })
     .index("by_assignment_owner", ["assignmentId", "ownerId"])

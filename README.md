@@ -31,7 +31,7 @@ The first authenticated visit opens a five-screen `/onboarding`: name, campus an
 
 ## Dashboard
 
-`/dashboard` is the signed-in workspace, with a sidebar (a drawer on phones) using Pixelarticons. Members work on assignments, write an answer, attach up to five files (10 MB each), and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Apresiasi and the profile page (community role and division) live here too. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, promote members to admin and review Apresiasi. Owners and admins create assignments with editable slugs (`/dashboard/tugas/<slug>`, old slugs keep redirecting), review every submission, and manage members. See `docs/DASHBOARD.md`.
+`/dashboard` is the signed-in workspace, with a sidebar (a drawer on phones) using Pixelarticons. Members work on assignments, write a rich-text answer (Tiptap, with a pixel-icon toolbar), drag and drop up to five files (10 MB each) with upload progress, and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Apresiasi and the profile page (community role and division) live here too. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, promote members to admin and review Apresiasi. Owners and admins create assignments with editable slugs (`/dashboard/tugas/<slug>`, old slugs keep redirecting), review every submission, and manage members. See `docs/DASHBOARD.md`.
 
 ## Selected direction
 
@@ -74,7 +74,7 @@ The Canvas 2D runtime loads when the footer comes into view. Reduced motion remo
 
 ## Typography and content
 
-Fonts were checked directly in the supplied Figma design-system page. Pixelify Sans is used for pixel display type, Space Grotesk for supporting headings, Poppins for body, and JetBrains Mono for small labels. All fonts are self-hosted through Fontsource packages; their licenses ship with those packages. The GDGoC IPB lockup was exported from the user's Figma file.
+Fonts were checked directly in the supplied Figma design-system page. Pixelify Sans is used for pixel display type, Space Grotesk for supporting headings, Poppins for body, and JetBrains Mono for small labels. All fonts are self-hosted through Fontsource packages; their licenses ship with those packages. The GDGoC IPB lockup is a transparent SVG (`public/brand/gdgoc-ipb.svg`, rendered by `src/components/brand-logo.tsx`) exported from the GDGOC 26/27 Figma file (node `297:9358`); its white box and trace fringes were removed, and the untouched export is kept in `design/references/gdgoc-ipb-logo-figma.svg`.
 
 Copy introduces a community for students across Bogor, its learning areas, and the 2026/2027 programs. Catalyst explicitly describes Hustler, Hipster, and Hacker, following the user's correction. The main “Gabung member” CTAs open the official GDG chapter page, where “Join us” is available; program updates and contact links use `gdgoc.ipb` on Instagram. The sticky header and desktop hero keep the existing composition while the text aligns left. No event dates, program-registration availability, or unverified metrics are invented.
 

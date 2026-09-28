@@ -52,14 +52,29 @@ An assignment with submissions cannot return to draft or be deleted; close it in
 
 ### Submissions and files
 
-A submission is a text answer (up to 5,000 characters) and/or up to five files of at most 10 MB each: PDF, PNG, JPG, WebP, TXT, ZIP, DOCX, PPTX, or XLSX. Each member has one submission per assignment. Resubmitting replaces the answer and file set and updates the submission time.
+A submission is a rich-text answer (up to 5,000 characters) and/or up to five files of at most 10 MB each: PDF, PNG, JPG, WebP, TXT, ZIP, DOCX, PPTX, or XLSX. Each member has one submission per assignment. Resubmitting replaces the answer and file set and updates the submission time.
+
+### Rich-text answers
+
+The answer uses a [Tiptap](https://tiptap.dev) editor (`src/components/dashboard/rich-text-editor.tsx`). Its toolbar follows the WAI-ARIA toolbar pattern: one tab stop, with arrow keys, Home, and End to move between tools. It offers bold, italic, underline, strikethrough, inline code, two heading levels, bulleted and numbered lists, quotes, code blocks, links (Ctrl/⌘ + K opens an inline link bar), undo, and redo. Standard shortcuts apply, and a counter shows the 5,000-character limit. Toolbar icons come from `src/components/pixel-icons.tsx`. Pixelarticons has no text-formatting icons, so bold, italic, underline, strikethrough, and numbered list were drawn in the same 24×24 pixel grid.
+
+Answers are stored twice: `answerDoc`, the editor's JSON, and `answer`, a plain-text copy used for previews and older clients. `src/lib/rich-text.ts` rebuilds every document through an allowlist, on the server in `assignments.submit` and again before rendering:
+
+- Only known nodes and marks are accepted. Any other node or mark rejects the whole document.
+- Links must be absolute `http:`, `https:`, or `mailto:` URLs; any other link is removed and its text kept.
+- Depth, node count, and JSON size are bounded.
+- The character limit is counted the way the editor counts: text plus one per line break or divider.
+
+`RichTextView` renders the stored JSON with React elements rather than `innerHTML`. Anything that fails the allowlist falls back to the plain text. Earlier plain-text answers open in the editor as paragraphs, and clients from before this change can still send plain text, which clears the stored document.
 
 **Late** is computed as `submittedAt > dueAt` whenever it is read, so moving a deadline also updates the flags. Work after the deadline is accepted and marked late until an admin closes the assignment. Resubmitting after the deadline marks previously on-time work late; the form warns about this.
 
 Upload flow:
 
+Files are added from the dropzone (`src/components/dashboard/file-dropzone.tsx`) by drag and drop or the "Pilih file" button. The zone highlights while a file is dragged anywhere over the page. A file dropped outside the zone is ignored, rather than opening in the browser and leaving the form. Extra files beyond the five slots are skipped with a message.
+
 1. `assignments.generateUploadUrl` returns a Convex storage upload URL when the assignment is open.
-2. The browser posts the file with its type as `Content-Type`.
+2. The browser posts the file with its type as `Content-Type`, using `XMLHttpRequest` so each file shows a progress bar and can be cancelled.
 3. `assignments.attachFile` checks the stored size and type against the extension, and records a pending `submissionFiles` row owned by the member. A rejected file is deleted, and a message is returned instead of an error, so the deletion commits. An upload ID can be claimed only once.
 4. `assignments.submit` attaches the selected pending files, and deletes previously attached files that were removed.
 
@@ -81,9 +96,11 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 - `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, and the core team filter.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
-- `convex/assignments.test.ts`: slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, and upload cleanup.
+- `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, and upload cleanup.
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, and slugify. convex-test does not record upload content types, so type mismatches are tested here.
-- `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, pending and attached file removal, and the late warning.
+- `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, dropzone drops and free slots, upload progress and cancellation, pending and attached file removal, saved rich answers, and the late warning.
+- `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, and link validation.
+- `src/lib/rich-text.test.ts` and `src/components/rich-text-view.test.tsx`: the allowlist, unsafe links, limits, text extraction, and escaped rendering.
 
 ## Not included
 

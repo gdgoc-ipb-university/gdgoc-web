@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -10,6 +9,7 @@ import { authClient } from "@/lib/auth-client";
 import { roleLabels } from "@/lib/assignment";
 import { memberTypeLabels } from "@/lib/onboarding";
 import { AccountBar, AppreciationFooter, GoogleMark, LoadingPanel } from "../appreciation/shared";
+import { BrandLogo } from "../brand-logo";
 import { Header } from "../header";
 import { Arrow, PixelDino } from "../icons";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
@@ -71,13 +71,13 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
   return <div className="dash-app" data-menu-open={open}>
     <a className="skip-link" href="#main">Lewati ke konten</a>
     <header className="dash-topbar">
-      <Link href="/" className="dash-topbar-brand" aria-label="GDGoC IPB — beranda"><Image src="/brand/gdgoc-ipb.png" alt="Google Developer Group IPB University" width={402} height={87} /></Link>
+      <Link href="/" className="dash-topbar-brand" aria-label="GDGoC IPB — beranda"><BrandLogo /></Link>
       <button ref={toggle} type="button" className="dash-menu-button" aria-expanded={open} aria-controls="dash-sidebar" onClick={() => setOpen(!open)}>
         <PixelIcon name={open ? "close" : "menu"} size={22} /><span>{open ? "Tutup" : "Menu"}</span>
       </button>
     </header>
     <aside id="dash-sidebar" className="dash-sidebar" data-open={open} aria-label="Dashboard">
-      <Link href="/" className="dash-brand" aria-label="GDGoC IPB — beranda"><Image src="/brand/gdgoc-ipb.png" alt="Google Developer Group IPB University" width={402} height={87} preload /></Link>
+      <Link href="/" className="dash-brand" aria-label="GDGoC IPB — beranda"><BrandLogo preload /></Link>
       <nav className="dash-nav" aria-label="Navigasi dashboard">{groups.map((group) => <div key={group.title} className="dash-nav-group">
         <p className="dash-nav-heading" id={`nav-${group.title}`}>{group.title}</p>
         <ul aria-labelledby={`nav-${group.title}`}>{group.items.map((item) => {

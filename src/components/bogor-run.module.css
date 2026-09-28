@@ -1,0 +1,29 @@
+.game { min-width: 0; color: var(--ink); }
+.heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 17px; }
+.eyebrow { display: flex; align-items: center; gap: 7px; color: #4b6552; font: 500 8px/1.6 var(--font-mono), monospace; letter-spacing: .07em; margin-bottom: 7px; }
+.eyebrow > span { width: 5px; height: 5px; background: #518b43; }
+.heading h3 { font: 500 clamp(23px, 2vw, 29px)/1.1 var(--font-pixel), monospace; letter-spacing: -.035em; }
+.edition { color: #526b52; border: 1px solid #c4cfb4; padding: 5px 8px; font: 500 8px/1.35 var(--font-mono), monospace; text-align: center; transform: rotate(5deg); }
+.console { border: 1px solid #bbc8ac; background: #f0f2e3; box-shadow: 4px 4px 0 #e1e6d4; }
+.hud { display: flex; align-items: center; padding: 0 8px 0 14px; min-height: 38px; gap: 20px; border-bottom: 1px solid #d9dfca; color: #52644c; font: 500 8px/1.4 var(--font-mono), monospace; letter-spacing: .05em; }
+.hud b { font-weight: 500; font-size: 12px; color: #274934; margin-left: 6px; font-variant-numeric: tabular-nums; }
+.hud button { border: 0; background: transparent; color: #30573c; width: 44px; height: 38px; margin-left: auto; display: grid; place-items: center; padding: 8px; }
+.hud button:disabled { opacity: .35; }.hud button:hover:not(:disabled) { background: #e1e8d3; }
+.hud svg { width: 16px; height: 16px; fill: currentColor; }
+.stage { position: relative; display: block; width: 100%; aspect-ratio: 48 / 23; padding: 0; border: 0; background: #f0f2e3; overflow: hidden; color: #23492f; touch-action: manipulation; scroll-margin-block: 110px; }
+.stage canvas, .poster { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
+.stage canvas { opacity: 0; }.stage[data-ready="true"] canvas { opacity: 1; }.stage[data-ready="true"] .poster { display: none; }
+.poster { background: url('/games/bogor-run/backdrop.svg') center / 100% 100%; }
+.poster::after { content: ''; position: absolute; left: 10.83%; bottom: 23.48%; width: 8.33%; height: 20%; background: url('/games/bogor-run/dino.svg') left center / 200% 100%; }
+.overlay { position: absolute; inset: 20% 20% auto; display: flex; align-items: center; flex-direction: column; gap: 8px; pointer-events: none; }
+.overlay strong { background: #faf9f2eb; padding: 3px 7px; font: 500 clamp(15px, 1.4vw, 19px)/1.2 var(--font-pixel), monospace; letter-spacing: -.03em; }
+.overlay > span { display: inline-flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 14px; white-space: nowrap; background: #fffdf1; border: 1px solid #708861; box-shadow: 3px 3px 0 #c5d0ac; font: 500 11px/1.5 var(--font-body), sans-serif; }
+.play { color: #47763c; font-size: 16px; }.stage:hover .overlay > span { background: #e4edce; }
+.stage:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; z-index: 1; }.hud button:focus-visible { outline-offset: -4px; }
+.instructions { display: flex; flex-direction: column; gap: 5px; margin-top: 16px; font-size: 10px; line-height: 1.65; color: #52614e; }
+.instructions kbd { font: 500 9px/1 var(--font-mono), monospace; border: 1px solid #bec8b1; border-radius: 2px; padding: 2px 4px; background: #f0f2e6; }
+.instructions > span:last-child { color: #64715c; font-size: 9px; }
+.retry { color: #1d54ba; background: transparent; border: 0; text-decoration: underline; padding: 10px 0; min-height: 44px; font-size: 12px; }
+.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+@media (max-width: 760px) { .heading h3 { font-size: 29px; }.hud { min-height: 44px; gap: 24px; }.hud button { height: 44px; }.instructions { font-size: 11px; }.instructions > span:last-child { font-size: 10px; }.overlay > span { min-height: 40px; font-size: 12px; }.overlay strong { font-size: 20px; } }
+@media (forced-colors: active) { .console, .overlay > span { border: 1px solid CanvasText; }.stage:focus-visible { outline-color: Highlight; }.hud svg { fill: ButtonText; } }

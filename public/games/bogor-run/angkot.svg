@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="40" viewBox="0 0 64 40" shape-rendering="crispEdges">
+  <title>Angkot hijau Bogor</title>
+  <path fill="#244734" d="M10 4h40v4h6v8h4v4h4v14H0V14h4V8h6z"/>
+  <path fill="#55aa49" d="M10 8h40v4h4v8h6v10H4V14h6z"/>
+  <path fill="#8bc25c" d="M10 8h38v4H8v6H4v-4h6z"/>
+  <path fill="#dcece2" d="M8 12h12v10H6v-6h2zm16 0h12v10H24zm16 0h8v4h4v6H40z"/>
+  <path fill="#729f98" d="M8 18h12v4H6v-4zm16 0h12v4H24zm16 0h12v4H40z"/>
+  <path fill="#e8e6b5" d="M4 25h56v4H4z"/>
+  <path fill="#317444" d="M23 12h2v18h-2zm14 0h2v18h-2z"/>
+  <path fill="#244734" d="M26 23h4v2h-4zm14 0h4v2h-4zM0 30h64v4H0z"/>
+  <path fill="#f2c64a" d="M58 23h4v5h-4z"/><path fill="#e87951" d="M2 24h3v4H2z"/>
+  <path fill="#203c38" d="M8 29h12v3h3v6H7v-3H5v-3h3zm36 0h12v3h3v6H43v-3h-2v-3h3z"/>
+  <path fill="#c5ccac" d="M11 32h6v5h-6zm36 0h6v5h-6z"/>
+  <path fill="#f7f1d8" d="M51 26h5v2h-5z"/>
+</svg>

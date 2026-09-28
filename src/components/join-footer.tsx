@@ -2,6 +2,7 @@ import { Arrow, PixelDino, PixelSpark } from "./icons";
 import { Reveal } from "./reveal";
 import { communityLinks } from "@/lib/community";
 import Link from "next/link";
+import { BogorRun } from "./bogor-run";
 
 export function JoinFooter() {
   return (
@@ -41,7 +42,9 @@ export function JoinFooter() {
           </div>
         </div>
         <div className="footer-directory">
+          <BogorRun />
           <div className="footer-identity">
+            <p className="eyebrow">DARI KAMPUS, BUAT BOGOR</p>
             <p className="footer-wordmark">GDGoC <span>IPB</span></p>
             <p>Google Developer Group on Campus<br />IPB University</p>
           </div>
@@ -50,6 +53,7 @@ export function JoinFooter() {
             <a href="#community">Tentang komunitas</a>
             <a href="#explore">Program kami</a>
             <Link href="/apresiasi">Apresiasi prestasi</Link>
+            <Link href="/dashboard">Dashboard member</Link>
             <a href={communityLinks.membership} target="_blank" rel="noreferrer">
               Halaman GDG <Arrow diagonal />
             </a>
@@ -59,6 +63,7 @@ export function JoinFooter() {
             <a href={communityLinks.instagram} target="_blank" rel="noreferrer">
               Instagram <Arrow diagonal />
             </a>
+            <Link href="/privasi">Privasi</Link>
             <p className="footer-contact">Punya ide kolaborasi?<br />Hubungi @gdgoc.ipb</p>
           </nav>
         </div>

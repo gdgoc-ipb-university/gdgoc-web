@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 34 44" shape-rendering="crispEdges">
+  <title>Keranjang talas Bogor</title>
+  <path fill="#306b43" d="M6 0h10v4h4v8h-4v4h-4v8H8V12H4V8H0V4h6zm18 7h6v4h4v7h-4v4h-8v7h-4V15h4v-4h2z"/>
+  <path fill="#70a54c" d="M6 4h6v4h4v4h-4V8H6zm20 7h4v4h-4v4h-4v-4h4z"/>
+  <path fill="#805a82" d="M5 24h8v-3h6v3h7v4h4v11H3V28h2z"/>
+  <path fill="#c69eaf" d="M7 25h5v3H7zm10-1h4v5h-4zm7 5h3v5h-3z"/>
+  <path fill="#66573c" d="M0 31h34v5h-2v8H2v-8H0z"/>
+  <path fill="#c89954" d="M3 33h28v3H3zm2 5h24v4H5z"/>
+  <path fill="#9c753f" d="M8 33h2v9H8zm8 0h2v9h-2zm8 0h2v9h-2z"/>
+</svg>

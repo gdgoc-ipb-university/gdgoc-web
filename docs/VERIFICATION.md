@@ -1,4 +1,4 @@
-# Verification — 26 September 2026
+# Verification — 28 September 2026
 
 ## Initial and perspective revision checks
 
@@ -128,6 +128,17 @@ The interaction checks in this section document earlier revisions. The latest re
 - Configured `gdgoc-ipb-web.vercel.app` as a 308 redirect to `www.gdgocipb.com` in the project's domain settings. `https://gdgoc-ipb-web.vercel.app/dashboard?x=1` and `https://gdgocipb.com/apresiasi` returned 308 to the matching `www.gdgocipb.com` path and query.
 - `https://www.gdgocipb.com/dashboard` returned 200, the only deployment its client bundle targets is `adamant-lobster-969` (the bundled Convex library also contains its example URL `happy-otter-123`), `/api/auth/get-session` returned `null` while signed out, and production Convex exposes the dashboard functions from `97968b8`.
 - Production `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not configured, so `auth:configuration` still reports `googleEnabled: false`. Production Google sign-in was not tested.
+
+## Bogor Dino footer game — 28 September
+
+- Found the organization repository `gdgoc-ipb-university/gdgoc-web` through GitHub CLI and fast-forwarded the local main branch to `2d507fb`, including the dashboard and canonical-domain changes. Feature work is based on that organization main, rather than the older personal remote. The existing Git integration deploys main; branch/PR previews are disabled in the documented Vercel configuration.
+- The light footer now has a game column, a shifted GDGoC identity column, and community navigation. It includes Dashboard and Privacy links. The membership CTA, cream background, campus environment, and authentication/backend code are retained.
+- Created five small SVG pixel assets: two-frame Dino, green angkot, taro basket, rain puddle, and a Salak/Tugu Kujang backdrop. Their combined source size is 4,335 bytes. These are original simplified illustrations, not surveyed landmarks or a transport-route map.
+- `pnpm test`: **68 tests across 11 files passed**. New coverage checks collisions with every obstacle, successful jumps at initial and maximum speed, held-key handling, paused scoring, frame/spacing bounds, retries, stored-score validation, scoped keyboard controls, offscreen pause, unmount cleanup, asset-load recovery, and accessible control semantics. `pnpm check`, `pnpm build`, and `git diff --check` passed.
+- Browser gameplay demonstrated keyboard jumping, a collision and game-over score of 42, restart, P-to-pause, resumption, and automatic pause after scrolling out of view. Reload preserved the best score. With system reduced motion emulated, the game stayed idle until explicitly started; a timed jump cleared the angkot and reached score 52 before pausing.
+- Visually reviewed the footer at 1440 × 1000, 1024 × 900, 390 × 844, and 320 × 740. Desktop uses game/identity/navigation columns; tablet keeps the game alongside the directory; mobile stacks the game and identity above two navigation columns. The document did not overflow horizontally at any checked width. Mobile checks used viewport emulation and browser input, not a physical touch device.
+- The game control fixture passed applicable axe-core A/AA checks with pixel contrast evaluated separately. Measured contrast was 5.63:1 for HUD text, 4.90:1 for secondary instructions, and 9.96:1 for the start control. Score ticks do not change the live announcement. The development browser reported no warnings/errors, and the existing campus reported `data-ready=true`. Browser viewport and reduced-motion overrides were reset after QA.
+- Served the optimized Next build on `127.0.0.1:3106`. The game loaded its runtime and local SVG assets, started on command, reached a collision at score 42, and exposed the retry control. The production-build browser reported no warnings/errors. These are local build checks; publication follows the organization's main-branch deployment workflow after PR merge.
 
 ## Evidence boundaries
 

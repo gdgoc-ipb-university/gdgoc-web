@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { advanceRun, createRun, DINO, jump, OBSTACLES, readBest, scoreOf, speedOf, startRun, type ObstacleKind, type Run } from "./engine";
+import { advanceAutoplay, advanceRun, createRun, DINO, jump, OBSTACLES, readBest, scoreOf, speedOf, startRun, type ObstacleKind, type Run } from "./engine";
 
 function advance(run: Run, seconds: number) {
   for (let tick = 0; tick < Math.ceil(seconds * 120); tick++) advanceRun(run, 1 / 120, () => 0.5);
@@ -50,6 +50,16 @@ describe("Bogor Run", () => {
     run.spawnIn = 0; advanceRun(run, 1 / 120, () => 0);
     expect(run.spawnIn).toBeGreaterThanOrEqual(1.6);
     expect(run.obstacles[1].kind).toBe("talas");
+  });
+
+  it("autonomously clears repeated obstacle cycles without changing player state", () => {
+    const demo = startRun(230);
+    const player = createRun();
+    for (let tick = 0; tick < 120 * 60; tick++) advanceAutoplay(demo, 1 / 60);
+    expect(demo.phase).toBe("running");
+    expect(demo.sequence).toBeGreaterThan(45);
+    expect(scoreOf(player)).toBe(0);
+    expect(player.phase).toBe("idle");
   });
 
   it("starts each retry cleanly and validates the browser's stored record", () => {

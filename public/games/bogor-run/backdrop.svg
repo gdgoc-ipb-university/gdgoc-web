@@ -1,20 +1,28 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="480" height="230" viewBox="0 0 480 230" shape-rendering="crispEdges">
-  <title>Salak, Tugu Kujang, dan jalanan Bogor dalam pixel art</title>
-  <path fill="#f0f2e3" d="M0 0h480v230H0z"/>
-  <path fill="#e0e7d5" d="M0 115h24v-8h20v-7h24v-9h14v-9h16v-9h12v-8h13v-9h17v5h12v9h18v8h18v6h18v10h28v11h26v12h20v23H0z"/>
-  <path fill="#d2dfc8" d="M0 143h16v-7h24v-8h24v-12h24v-12h20v-10h14v6h16v10h22v9h22v10h20v-9h20v-9h12v-9h17v-10h12v7h14v9h18v9h22v11h21v10h28v25H0z"/>
-  <path fill="#f9f8ec" d="M50 36h12v-7h28v4h12v6h12v5H50zm226-13h10v-6h22v5h16v7h-48z"/>
-  <path fill="#e6e9d9" d="M53 44h56v3H53zm226-15h42v3h-42z"/>
-  <path fill="#c0d4b1" d="M0 153h18v-12h12v-7h18v8h12v13h15v-17h10v-7h19v7h10v17h19v-10h21v-10h12v8h15v12h29v-11h15v-11h20v7h14v15h37v-13h17v-10h16v8h14v16h25v-9h13v-10h15v7h15v12h18v-19h13v-8h18v10h14v17h25v-9h15v-8h17v14h22v29H0z"/>
-  <path fill="#91ae84" d="M362 142h6v32h-6zm79 4h4v28h-4z"/>
-  <path fill="#a8c196" d="M344 136h9v-10h22v7h10v16h-12v5h-22v-7h-7zm85 2h9v-8h13v8h10v13h-9v6h-14v-7h-9z"/>
-  <path fill="#dfd4ad" d="M389 148h24v6h7v5h-38v-5h7zM396 92h10v57h-10z"/>
-  <path fill="#c7ba90" d="M402 92h4v57h-4zm-13 56h24v4h-24z"/>
-  <path fill="#b68a34" d="M400 57h4v10h5v7h-4v7h-4v6h5v5h-12v-5h3V73h-4v-5h4v-7h3z"/>
-  <path fill="#e2b653" d="M400 62h2v10h-3v12h-2V72h3z"/>
-  <path fill="#e5e5ce" d="M0 163h480v13H0z"/>
-  <path fill="#8eaa80" d="M0 175h480v2H0z"/>
-  <path fill="#f1ecda" d="M0 177h480v53H0z"/>
-  <path fill="#d8d7bd" d="M0 179h480v2H0zm18 28h22v2H18zm112 9h14v2h-14zm201-19h25v2h-25zm77 23h33v2h-33z"/>
-  <path fill="#d4dfc7" d="M18 169h4v-9h2v9h4v5H18zm304 0h4v-6h2v6h4v5h-10z"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="640" viewBox="0 0 800 320" shape-rendering="crispEdges" preserveAspectRatio="none">
+  <title>Lanskap Bogor: Gunung Salak berkabut, Tugu Kujang, dan kebun tropis</title>
+  <defs>
+    <linearGradient id="sky" x2="0" y2="1"><stop stop-color="#faf9f2"/><stop offset="1" stop-color="#eff1df"/></linearGradient>
+    <linearGradient id="mist" x2="0" y2="1"><stop stop-color="#faf9f2" stop-opacity="0"/><stop offset="1" stop-color="#eff1df"/></linearGradient>
+    <g id="tree"><path fill="#76905b" d="M21 34h6v38h-6zM14 44h8v5h-8z"/><path fill="#b5c991" d="M8 12h9V4h22v8h8v12h7v23H42v8H14v-8H0V26h8z"/><path fill="#c9d9a8" d="M8 14h9V6h20v9H20v13H8z"/><path fill="#9fb87e" d="M8 42h30v-8h14v11H40v8H14v-8H8z"/></g>
+    <g id="shrub"><path fill="#b3c28c" d="M0 16h7V8h9V2h17v8h9v8h10v10H0z"/><path fill="#c7d39f" d="M8 16h8V8h15v10H8z"/></g>
+    <g id="grass"><path fill="#a6ba82" d="M0 7h3V0h2v7h3V3h2v10H0z"/></g>
+    <g id="flower"><path fill="#7f985c" d="M4 6h2v10H4z"/><path fill="#fff4d0" d="M2 0h6v2h2v6H8v2H2V8H0V2h2z"/><path fill="#e7b84a" d="M3 3h4v4H3z"/></g>
+  </defs>
+  <path fill="url(#sky)" d="M0 0h800v320H0z"/>
+  <path fill="#e0e6d7" d="M0 214h20v-9h16v-7h18v-8h14v-8h16v-8h18v-10h16v-8h14v-12h16v-6h18v-8h12v-7h16v8h16v9h18v8h16v10h18v8h20v10h24v10h24v8h26v9h24v52H0z"/>
+  <path fill="#dde5d6" d="M310 231h21v-12h18v-11h20v-10h18v-12h14v-10h18v-12h16v-10h15v-10h12v-14h14v-10h13v-10h14V98h16v-9h18v9h18v10h16v12h18v-8h13v-10h16v9h18v12h16v11h18v13h18v13h17v13h22v14h22v12h22v12h30v12h28v-8h26v42H310z"/>
+  <path fill="#d0ddc6" d="M267 245h24v-9h21v-11h20v-9h23v-11h19v-10h17v-11h18v-12h17v10h20v10h22v12h26v-7h18v-10h16v-11h15v-11h17v-10h18v11h17v9h18v12h19v10h24v11h25v11h25v-8h20v-11h21v10h18v11h30v10h28v13H267z"/>
+  <path fill="url(#mist)" d="M0 190h800v81H0z"/>
+  <path fill="#fcfbf1" d="M366 65h9v-6h15v-7h22v6h14v7h14v6h-74zm225-27h12v-7h17v-6h19v7h12v8h13v6h-73zM54 86h10v-7h18v4h14v8H54z"/>
+  <path fill="#e4e8d8" d="M376 71h53v3h-53zm228-25h49v3h-49z"/>
+  <path fill="#c9d7b0" d="M0 257h18v-11h13v-8h22v10h18v13h21v-16h12v-9h18v8h16v15h22v-8h16v-7h16v12h28v-12h15v-9h24v9h14v17h29v-12h13v-7h22v10h26v-13h17v-8h23v9h17v20h21v-10h23v-12h18v9h18v15h26v-10h14v-9h21v10h16v12h27v-9h16v-8h23v13h21v-12h15v-9h24v10h17v13h25v-10h21v-11h16v10h19v10h27v-12h18v-10h24v12h20v29H0z"/>
+  <g transform="translate(707 123)"><path fill="#cfc5a4" d="M-10 147h50v7h8v6h-66v-6h8zM7 54h16v94H7z"/><path fill="#b9b092" d="M18 54h5v94h-5zM-10 147h50v4h-50z"/><path fill="#bb9849" d="M16 0h5v14h6v9h-6v12h-6v10h9v9H3v-9h7V25H4v-9h8V6h4z"/><path fill="#e5bb55" d="M16 6h2v15h-3v11h-3V22h4z"/></g>
+  <use href="#tree" transform="translate(-17 207) scale(.86)"/><use href="#tree" transform="translate(763 184) scale(1.16)"/>
+  <use href="#tree" transform="translate(655 228) scale(.6)"/><use href="#tree" transform="translate(92 227) scale(.72)"/>
+  <path fill="#d9e1be" d="M0 272h90v-4h48v5h143v-4h88v3h103v-6h47v5h80v3h104v-6h52v4h45v48H0z"/>
+  <use href="#shrub" transform="translate(-13 256)"/><use href="#shrub" transform="translate(770 250)"/>
+  <path fill="#8ca16b" d="M0 278h800v2H0z"/><path fill="#e5e7cc" d="M0 280h800v40H0z"/><path fill="#f3eedb" d="M0 283h800v3H0z"/>
+  <path fill="#d1d6b5" d="M16 300h34v2H16zm119 10h18v2h-18zm125-14h27v2h-27zm141 14h20v2h-20zm83-17h25v2h-25zm148 19h34v2h-34zm88-15h19v2h-19z"/>
+  <use href="#grass" x="42" y="267"/><use href="#grass" x="677" y="267"/><use href="#grass" x="364" y="267"/>
+  <use href="#flower" x="25" y="263"/><use href="#flower" x="749" y="262"/><use href="#flower" x="737" y="264"/>
 </svg>

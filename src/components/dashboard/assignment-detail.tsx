@@ -2,16 +2,17 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
+import { assignmentPath } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { MissingAssignment } from "./assignments";
-import { AssignmentStatusBadge, DueLabel, FileLink, SubmissionBadge, useNow } from "./shared";
+import { AssignmentStatusBadge, CopyLinkButton, DueLabel, FileLink, SubmissionBadge, useNow } from "./shared";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
 
 type Detail = NonNullable<FunctionReturnType<typeof api.assignments.get>>;
@@ -19,6 +20,10 @@ type Detail = NonNullable<FunctionReturnType<typeof api.assignments.get>>;
 export function AssignmentDetail({ id }: { id: string }) {
   const data = useQuery(api.assignments.get, { id });
   const now = useNow();
+  const router = useRouter();
+  // Old IDs and renamed slugs land on the current link.
+  const slug = data?.assignment.slug;
+  useEffect(() => { if (slug && slug !== id) router.replace(`/dashboard/tugas/${slug}`); }, [slug, id, router]);
   if (data === undefined) return <LoadingPanel label="Memuat tugas…" />;
   if (!data) return <MissingAssignment />;
   const { assignment } = data;
@@ -27,7 +32,7 @@ export function AssignmentDetail({ id }: { id: string }) {
     <article className="dash-assignment" aria-labelledby="assignment-title">
       <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canManage && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
-      <DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} />
+      <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
     </article>
     {data.canManage ? <><StaffControls assignment={assignment} /><SubmissionList assignment={assignment} now={now} /></> : <MemberSubmission data={data} now={now} />}
@@ -79,7 +84,7 @@ function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
       {assignment.status !== "published" && <button className="button button-blue" disabled={busy} onClick={() => void change("published")}>{assignment.status === "draft" ? "Buka untuk member" : "Buka kembali"}</button>}
       {assignment.status === "published" && <button className="button button-quiet" disabled={busy} onClick={() => void change("closed")}>Tutup pengumpulan</button>}
       {assignment.status === "published" && <button className="text-button" disabled={busy} onClick={() => void change("draft")}>Kembalikan ke draft</button>}
-      <Link className="text-button" href={`/dashboard/tugas/${assignment._id}/ubah`}>Ubah tugas <Arrow /></Link>
+      <Link className="text-button" href={`${assignmentPath(assignment)}/ubah`}>Ubah tugas <Arrow /></Link>
       {assignment.status === "draft" && (confirmDelete
         ? <span className="dash-confirm" role="group" aria-label="Konfirmasi hapus"><span>Hapus tugas ini?</span><button className="text-button text-danger" disabled={busy} onClick={() => void run(async () => { await remove({ id: assignment._id, revision: assignment.revision }); router.push("/dashboard/tugas"); })}>Ya, hapus</button><button className="text-button" onClick={() => setConfirmDelete(false)}>Batal</button></span>
         : <button className="text-button text-danger" disabled={busy} onClick={() => setConfirmDelete(true)}>Hapus draft</button>)}

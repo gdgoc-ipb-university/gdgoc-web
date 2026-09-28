@@ -7,14 +7,17 @@ export const appreciationValues = v.object({
   level: v.string(), participation: v.string(), teamName: v.string(), teamMembers: v.string(),
   eventDate: v.string(), story: v.string(), documentationLinks: v.string(), publicationConsent: v.boolean(),
 });
+export const memberType = v.union(v.literal("member"), v.literal("core"));
 export const assignmentStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("closed"));
 export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
 
 export default defineSchema({
   memberProfiles: defineTable({
     ownerId: v.string(), fullName: v.string(), campus: v.string(), studyProgram: v.string(),
-    nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4)),
+    nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4), v.literal(5)),
     revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
+    // Self-declared community role; staff can correct it. Profiles from before this field prompt once.
+    memberType: v.optional(memberType), division: v.optional(v.string()),
     // Dashboard access. Owners come from APPRECIATION_ADMIN_EMAILS, never from this table.
     role: v.optional(v.literal("admin")), deactivatedAt: v.optional(v.number()), accessUpdatedBy: v.optional(v.string()),
   }).index("by_owner", ["ownerId"])
@@ -35,11 +38,15 @@ export default defineSchema({
     status: appreciationStatus, note: v.string(), postUrl: v.string(), createdAt: v.number(),
   }).index("by_appreciation", ["appreciationId"]),
   assignments: defineTable({
-    title: v.string(), description: v.string(), dueAt: v.number(), status: assignmentStatus,
+    title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.number(), status: assignmentStatus,
     revision: v.number(), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(), publishedAt: v.optional(v.number()),
   })
     .index("by_status_due", ["status", "dueAt"])
     .index("by_updated", ["updatedAt"]),
+  // Every slug an assignment has used, so links keep working after a rename.
+  assignmentSlugs: defineTable({ slug: v.string(), assignmentId: v.id("assignments") })
+    .index("by_slug", ["slug"])
+    .index("by_assignment", ["assignmentId"]),
   assignmentSubmissions: defineTable({
     assignmentId: v.id("assignments"), ownerId: v.string(), answer: v.string(),
     revision: v.number(), submittedAt: v.number(),

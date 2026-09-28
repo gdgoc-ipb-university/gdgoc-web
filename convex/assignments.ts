@@ -4,9 +4,10 @@ import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } fr
 import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { requireMember, requireStaff } from "./access";
-import { assignmentLimits, cleanFileName, fileProblem, fromJakartaInput, isLate, maxSubmissionFiles, normalizeAssignment, pendingFileLifetime, validateAssignment } from "../src/lib/assignment";
+import { assignmentLimits, cleanFileName, fileProblem, fromJakartaInput, isLate, maxSlugLength, maxSubmissionFiles, normalizeAssignment, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
 
-const assignmentInput = v.object({ title: v.string(), description: v.string(), dueAt: v.string() });
+// `slug` is optional so a tab loaded before slugs existed can still save; it is then derived from the title.
+const assignmentInput = v.object({ title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string() });
 
 function notFound(): never { throw new ConvexError({ code: "NOT_FOUND", message: "Tugas tidak ditemukan." }); }
 function closed(): never { throw new ConvexError({ code: "CLOSED", message: "Pengumpulan tugas ini sudah ditutup." }); }
@@ -14,11 +15,39 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; description: string; dueAt: string }) {
-  const errors = validateAssignment(values);
+function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string }) {
+  const input = { ...values, slug: values.slug ?? "" };
+  const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
-  const clean = normalizeAssignment(values);
-  return { title: clean.title, description: clean.description, dueAt: fromJakartaInput(clean.dueAt) };
+  const clean = normalizeAssignment(input);
+  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt) };
+}
+
+async function slugOwner(ctx: QueryCtx | MutationCtx, slug: string) {
+  return ctx.db.query("assignmentSlugs").withIndex("by_slug", (q) => q.eq("slug", slug)).unique();
+}
+
+/** The requested slug, or the first free `-2`, `-3`… variant. A slug this assignment used before stays its own. */
+async function availableSlug(ctx: QueryCtx | MutationCtx, requested: string, id?: Id<"assignments">) {
+  const base = slugify(requested) || "tugas";
+  for (let n = 1; n <= 500; n++) {
+    const suffix = n === 1 ? "" : `-${n}`;
+    const candidate = base.slice(0, maxSlugLength - suffix.length).replace(/-+$/, "") + suffix;
+    if (reservedSlugs.includes(candidate)) continue;
+    const owner = await slugOwner(ctx, candidate);
+    if (!owner || owner.assignmentId === id) return candidate;
+  }
+  throw new ConvexError("Slug ini sudah terlalu sering dipakai. Pilih slug lain.");
+}
+
+async function claimSlug(ctx: MutationCtx, id: Id<"assignments">, slug: string) {
+  if (!(await slugOwner(ctx, slug))) await ctx.db.insert("assignmentSlugs", { slug, assignmentId: id });
+}
+
+async function findAssignment(ctx: QueryCtx, slugOrId: string) {
+  const bySlug = await slugOwner(ctx, slugOrId);
+  const id = bySlug?.assignmentId ?? ctx.db.normalizeId("assignments", slugOrId);
+  return id ? ctx.db.get(id) : null;
 }
 
 async function submissionsOf(ctx: QueryCtx | MutationCtx, id: Id<"assignments">) {
@@ -57,15 +86,28 @@ export const adminList = query({
   },
 });
 
+/** The slug a create or update would receive, for live feedback in the form. */
+export const slugPreview = query({
+  args: { slug: v.string(), id: v.optional(v.id("assignments")) },
+  handler: async (ctx, { slug, id }) => {
+    await requireStaff(ctx);
+    return availableSlug(ctx, slug.slice(0, 200), id);
+  },
+});
+
 export const create = mutation({
   args: { values: assignmentInput, publish: v.boolean() },
   handler: async (ctx, { values, publish }) => {
     const { user } = await requireStaff(ctx);
     const now = Date.now();
-    return ctx.db.insert("assignments", {
-      ...cleanAssignment(values), status: publish ? "published" : "draft", revision: 0,
+    const clean = cleanAssignment(values);
+    const slug = await availableSlug(ctx, clean.slug);
+    const id = await ctx.db.insert("assignments", {
+      ...clean, slug, status: publish ? "published" : "draft", revision: 0,
       createdBy: user._id, createdAt: now, updatedAt: now, ...(publish ? { publishedAt: now } : {}),
     });
+    await claimSlug(ctx, id, slug);
+    return id;
   },
 });
 
@@ -75,13 +117,18 @@ export const update = mutation({
     await requireStaff(ctx);
     const doc = await ctx.db.get(args.id);
     if (!doc) notFound();
-    const values = cleanAssignment(args.values);
+    const clean = cleanAssignment(args.values);
+    // Keep the current slug unless a different one was requested.
+    const slug = args.values.slug === undefined && doc.slug ? doc.slug : await availableSlug(ctx, clean.slug, doc._id);
+    const values = { ...clean, slug };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.description === values.description && doc.dueAt === values.dueAt) return;
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt) return doc.slug;
       conflict();
     }
     await ctx.db.patch(doc._id, { ...values, revision: doc.revision + 1, updatedAt: Date.now() });
+    await claimSlug(ctx, doc._id, slug);
+    return slug;
   },
 });
 
@@ -110,6 +157,7 @@ export const remove = mutation({
     if (doc.revision !== args.revision) conflict();
     if ((await submissionsOf(ctx, doc._id)).length) throw new ConvexError("Tugas yang sudah menerima kiriman tidak bisa dihapus. Tutup tugas sebagai gantinya.");
     await removeFiles(ctx, await ctx.db.query("submissionFiles").withIndex("by_assignment", (q) => q.eq("assignmentId", doc._id)).collect());
+    for (const slug of await ctx.db.query("assignmentSlugs").withIndex("by_assignment", (q) => q.eq("assignmentId", doc._id)).collect()) await ctx.db.delete(slug._id);
     await ctx.db.delete(doc._id);
   },
 });
@@ -152,7 +200,7 @@ export const list = query({
     return Promise.all([...open, ...ended].map(async (assignment) => {
       const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
       return {
-        _id: assignment._id, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
+        _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
         submittedAt: mine?.submittedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
       };
     }));
@@ -160,11 +208,11 @@ export const list = query({
 });
 
 export const get = query({
+  // A slug (current or previous) or, for older links, the assignment ID.
   args: { id: v.string() },
   handler: async (ctx, args) => {
     const { user, role } = await requireMember(ctx);
-    const id = ctx.db.normalizeId("assignments", args.id);
-    const assignment = id && await ctx.db.get(id);
+    const assignment = await findAssignment(ctx, args.id);
     if (!assignment || (role === "member" && assignment.status === "draft")) return null;
     const submission = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
     const files = await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", user._id).eq("assignmentId", assignment._id)).collect();

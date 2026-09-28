@@ -5,6 +5,7 @@ import type { Id } from "./_generated/dataModel";
 import { authComponent, isReviewer } from "./auth";
 import { appreciationValues } from "./schema";
 import { emptyAppreciation, fieldLimits, isInstagramPostUrl, normalizeAppreciation, validateAppreciation } from "../src/lib/appreciation";
+import { memberTypeLabels } from "../src/lib/onboarding";
 
 async function requireUser(ctx: QueryCtx | MutationCtx) {
   const user = await authComponent.safeGetAuthUser(ctx);
@@ -53,7 +54,10 @@ export const create = mutation({
     const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     return ctx.db.insert("appreciations", {
       ownerId: user._id, ownerName: user.name, ownerEmail: user.email, clientId,
-      values: { ...emptyAppreciation, fullName: profile?.fullName || user.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "" },
+      values: {
+        ...emptyAppreciation, fullName: profile?.fullName || user.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "",
+        memberType: profile?.memberType ? memberTypeLabels[profile.memberType] : "",
+      },
       status: "draft", revision: 0, updatedAt: Date.now(),
     });
   },

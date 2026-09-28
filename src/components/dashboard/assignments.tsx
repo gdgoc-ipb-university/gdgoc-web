@@ -2,16 +2,16 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
-import type { Doc } from "../../../convex/_generated/dataModel";
-import { assignmentLimits, normalizeAssignment, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues } from "@/lib/assignment";
+import type { Doc, Id } from "../../../convex/_generated/dataModel";
+import { assignmentLimits, assignmentPath, maxSlugLength, normalizeAssignment, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
-import { AssignmentStatusBadge, DueLabel, SubmissionBadge, useNow } from "./shared";
-import { isStaff, useDashboardViewer } from "./shell";
+import { AssignmentStatusBadge, CopyLinkButton, DueLabel, SubmissionBadge, useNow } from "./shared";
+import { isStaff, useDashboardViewer } from "./viewer";
 
 export function AssignmentsPage() {
   const viewer = useDashboardViewer();
@@ -33,8 +33,8 @@ function MemberAssignments() {
       return <section key={group.key} aria-labelledby={`group-${group.key}`}><div className="app-section-heading"><h2 id={`group-${group.key}`}>{group.title}</h2></div>
         {items.length ? <div className="dash-card-grid">{items.map((item) => <article className="app-record" key={item._id}>
           <div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} />{item.status === "closed" && <AssignmentStatusBadge status="closed" />}</div>
-          <h3><Link href={`/dashboard/tugas/${item._id}`}>{item.title}</Link></h3><p className="dash-summary">{item.summary}</p>
-          <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><Link className="text-button" href={`/dashboard/tugas/${item._id}`}>{item.status === "published" ? (item.submittedAt ? "Lihat & perbarui" : "Kerjakan") : "Lihat kiriman"}<Arrow /></Link></div>
+          <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><p className="dash-summary">{item.summary}</p>
+          <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><Link className="text-button" href={assignmentPath(item)}>{item.status === "published" ? (item.submittedAt ? "Lihat & perbarui" : "Kerjakan") : "Lihat kiriman"}<Arrow /></Link></div>
         </article>)}</div> : <div className="app-empty"><PixelSpark /><h3>Belum ada tugas.</h3><p>{group.empty}</p></div>}
       </section>;
     })}
@@ -49,8 +49,8 @@ function StaffAssignments() {
     {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat tugas…" /> : !list.results.length ? <div className="app-empty"><PixelSpark /><h2>Belum ada tugas.</h2><p>Mulai dari judul, instruksi, dan tenggat. Kamu bisa menyimpannya sebagai draft sebelum dibuka.</p><Link className="text-button" href="/dashboard/tugas/baru">Buat tugas pertama <Arrow /></Link></div>
       : <div className="dash-card-grid">{list.results.map((item) => <article className="app-record" key={item._id}>
         <div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}</span></div>
-        <h3><Link href={`/dashboard/tugas/${item._id}`}>{item.title}</Link></h3><p className="dash-summary">{item.description.slice(0, 220)}</p>
-        <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><Link className="text-button" href={`/dashboard/tugas/${item._id}`}>Kelola<Arrow /></Link></div>
+        <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><p className="dash-summary">{item.description.slice(0, 220)}</p>
+        <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><span className="dash-card-actions"><CopyLinkButton path={assignmentPath(item)} /><Link className="text-button" href={assignmentPath(item)}>Kelola<Arrow /></Link></span></div>
       </article>)}</div>}
     {list.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => list.loadMore(12)}>Muat tugas lainnya</button>}
     {list.status === "LoadingMore" && <p role="status">Memuat tugas…</p>}
@@ -59,8 +59,12 @@ function StaffAssignments() {
 
 type SaveAssignment = (values: AssignmentValues, publish: boolean) => Promise<void>;
 
-export function AssignmentForm({ initial, onSave, onCancel, creating }: { initial: AssignmentValues; onSave: SaveAssignment; onCancel: () => void; creating: boolean }) {
+export function AssignmentForm({ initial, onSave, onCancel, creating, assignmentId }: { initial: AssignmentValues; onSave: SaveAssignment; onCancel: () => void; creating: boolean; assignmentId?: Id<"assignments"> }) {
   const [values, setValues] = useState(initial);
+  // The slug follows the title until someone edits it by hand.
+  const [slugEdited, setSlugEdited] = useState(!creating);
+  const requestedSlug = slugify(values.slug) || slugify(values.title) || "tugas";
+  const previewSlug = useQuery(api.assignments.slugPreview, { slug: requestedSlug, id: assignmentId });
   const [errors, setErrors] = useState<AssignmentErrors>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -68,7 +72,7 @@ export function AssignmentForm({ initial, onSave, onCancel, creating }: { initia
   const descriptionField = useRef<HTMLTextAreaElement>(null);
   const dueField = useRef<HTMLInputElement>(null);
   function update(field: keyof AssignmentValues, value: string) {
-    setValues((current) => ({ ...current, [field]: value }));
+    setValues((current) => ({ ...current, [field]: value, ...(field === "title" && !slugEdited ? { slug: slugify(value) } : {}) }));
     setErrors((current) => ({ ...current, [field]: undefined }));
   }
   async function save(publish: boolean) {
@@ -89,6 +93,10 @@ export function AssignmentForm({ initial, onSave, onCancel, creating }: { initia
   return <form className="app-form dash-form" onSubmit={submit} noValidate><fieldset disabled={busy}><legend className="sr-only">Detail tugas</legend>
     <div className="app-form-section">
       <div className="app-field"><label htmlFor="title">Judul tugas <span className="field-required" aria-hidden="true">*</span></label><input id="title" ref={titleField} required maxLength={assignmentLimits.title} value={values.title} onChange={(event) => update("title", event.target.value)} aria-invalid={Boolean(errors.title)} aria-describedby={described("title")} placeholder="Contoh: Landing page dengan Tailwind" />{errors.title && <p className="field-error" id="title-error">{errors.title}</p>}</div>
+      <div className="app-field dash-slug-field"><label htmlFor="slug">Slug link</label>
+        <div className="dash-slug-input"><span aria-hidden="true">/dashboard/tugas/</span><input id="slug" value={values.slug} maxLength={maxSlugLength + 20} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(event) => { setSlugEdited(true); update("slug", event.target.value); }} onBlur={() => setValues((current) => ({ ...current, slug: slugify(current.slug) }))} aria-describedby="slug-hint" placeholder={slugify(values.title) || "judul-tugas"} /></div>
+        <p className="field-hint" id="slug-hint" aria-live="polite">{previewSlug && previewSlug !== requestedSlug ? <>Slug ini sudah dipakai tugas lain, jadi akan disimpan sebagai <b>{previewSlug}</b>. </> : null}Terisi otomatis dari judul, huruf kecil dan tanda hubung. Link lama tetap diarahkan jika slug diubah.{slugEdited && <> <button type="button" className="text-button dash-inline-button" onClick={() => { setSlugEdited(false); setValues((current) => ({ ...current, slug: slugify(current.title) })); }}>Samakan dengan judul</button></>}</p>
+      </div>
       <div className="app-field"><label htmlFor="description">Instruksi <span className="field-required" aria-hidden="true">*</span></label><textarea data-lenis-prevent id="description" ref={descriptionField} required rows={10} maxLength={assignmentLimits.description} value={values.description} onChange={(event) => update("description", event.target.value)} aria-invalid={Boolean(errors.description)} aria-describedby={described("description", "description-hint")} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." /><p className="field-hint" id="description-hint">Ditampilkan apa adanya, termasuk baris baru. {values.description.length}/{assignmentLimits.description} karakter.</p>{errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
       <div className="app-field dash-due-field"><label htmlFor="dueAt">Tenggat (WIB) <span className="field-required" aria-hidden="true">*</span></label><input id="dueAt" ref={dueField} type="datetime-local" required value={values.dueAt} onChange={(event) => update("dueAt", event.target.value)} aria-invalid={Boolean(errors.dueAt)} aria-describedby={described("dueAt", "due-hint")} /><p className="field-hint" id="due-hint">Kiriman setelah tenggat tetap diterima dan ditandai terlambat, sampai pengumpulan ditutup.</p>{errors.dueAt && <p className="field-error" id="dueAt-error">{errors.dueAt}</p>}</div>
     </div>
@@ -104,12 +112,13 @@ export function NewAssignmentPage() {
   const viewer = useDashboardViewer();
   const router = useRouter();
   const create = useMutation(api.assignments.create);
-  const [initial] = useState(() => ({ title: "", description: "", dueAt: toJakartaInput(defaultDue()) }));
+  const [initial] = useState(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()) }));
   if (!isStaff(viewer)) return <StaffOnly />;
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas">← Kelola tugas</Link>
     <div className="dash-intro"><p className="eyebrow">ADMIN · TUGAS BARU</p><h1>Buat tugas.</h1><p>Tulis instruksi yang bisa dikerjakan tanpa perlu bertanya lagi, lalu tentukan tenggatnya.</p></div>
     <AssignmentForm creating initial={initial} onCancel={() => router.push("/dashboard/tugas")} onSave={async (values, publish) => {
+      // The detail page swaps the ID for the saved slug.
       const id = await create({ values, publish });
       router.push(`/dashboard/tugas/${id}`);
     }} />
@@ -118,7 +127,10 @@ export function NewAssignmentPage() {
 
 export function EditAssignmentPage({ id }: { id: string }) {
   const viewer = useDashboardViewer();
+  const router = useRouter();
   const data = useQuery(api.assignments.get, isStaff(viewer) ? { id } : "skip");
+  const slug = data?.assignment.slug;
+  useEffect(() => { if (slug && slug !== id) router.replace(`/dashboard/tugas/${slug}/ubah`); }, [slug, id, router]);
   if (!isStaff(viewer)) return <StaffOnly />;
   if (data === undefined) return <LoadingPanel label="Memuat tugas…" />;
   if (!data) return <MissingAssignment />;
@@ -128,14 +140,14 @@ export function EditAssignmentPage({ id }: { id: string }) {
 function EditAssignment({ assignment }: { assignment: Doc<"assignments"> }) {
   const router = useRouter();
   const update = useMutation(api.assignments.update);
-  const [initial] = useState(() => ({ title: assignment.title, description: assignment.description, dueAt: toJakartaInput(assignment.dueAt) }));
-  const back = `/dashboard/tugas/${assignment._id}`;
+  const [initial] = useState(() => ({ title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt) }));
+  const back = assignmentPath(assignment);
   return <>
     <Link className="text-button app-back" href={back}>← Kembali ke tugas</Link>
     <div className="dash-intro"><p className="eyebrow">ADMIN · UBAH TUGAS</p><h1>Ubah tugas.</h1><p>Perubahan langsung terlihat oleh member. Mengubah tenggat juga memperbarui tanda terlambat pada kiriman.</p></div>
-    <AssignmentForm creating={false} initial={initial} onCancel={() => router.push(back)} onSave={async (values) => {
-      await update({ id: assignment._id, revision: assignment.revision, values });
-      router.push(back);
+    <AssignmentForm creating={false} assignmentId={assignment._id} initial={initial} onCancel={() => router.push(back)} onSave={async (values) => {
+      const slug = await update({ id: assignment._id, revision: assignment.revision, values });
+      router.push(`/dashboard/tugas/${slug ?? values.slug}`);
     }} />
   </>;
 }

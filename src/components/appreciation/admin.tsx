@@ -1,22 +1,18 @@
 "use client";
 
-import Link from "next/link";
 import { useState } from "react";
-import { useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { statusLabels } from "@/lib/appreciation";
 import { readableError } from "@/lib/draft-session";
-import { AccountBar, AppreciationFooter, LoadingPanel, LoginPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";
+import { LoadingPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";
 
 type QueueStatus = "submitted" | "reviewing" | "revision" | "published";
 
-export function AppreciationAdmin() {
-  const { isLoading, isAuthenticated } = useConvexAuth();
-  const viewer = useQuery(api.auth.viewer, isAuthenticated ? {} : "skip");
-  return <><main id="main" className="appreciation-page section-width"><div className="admin-intro"><p className="eyebrow">MEDIA & CREATIVE · GDGOC IPB</p><h1>Ruang apresiasi.</h1><p>Tinjau informasi, beri catatan, lalu catat link apresiasi yang sudah dipost.</p></div>
-    {isLoading || (isAuthenticated && viewer === undefined) ? <LoadingPanel /> : !viewer ? <LoginPanel admin /> : !viewer.isAdmin ? <><AccountBar viewer={viewer} /><div className="app-panel"><h2>Akses khusus tim peninjau.</h2><p>Akun ini belum memiliki akses admin. Kiriman pribadimu tetap bisa dibuka di halaman Apresiasi.</p><Link className="button button-blue" href="/apresiasi">Ke kiriman saya</Link></div></> : <><AccountBar viewer={viewer} /><Link className="text-button app-back" href="/apresiasi">← Kiriman saya</Link><ReviewQueue /></>}
-  </main><AppreciationFooter /></>;
+/** Review queue for the Media & Creative reviewers, rendered inside the dashboard. */
+export function AppreciationReview() {
+  return <><div className="admin-intro"><p className="eyebrow">MEDIA & CREATIVE · GDGOC IPB</p><h1>Ruang apresiasi.</h1><p>Tinjau informasi, beri catatan, lalu catat link apresiasi yang sudah dipost.</p></div><ReviewQueue /></>;
 }
 
 function ReviewQueue() {

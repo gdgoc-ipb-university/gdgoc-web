@@ -25,13 +25,13 @@ Node 24 and pnpm 11.22.0 are used. The landing has no backend dependency. The Ap
 
 ## Apresiasi
 
-`/apresiasi` provides Google sign-in, private autosaved drafts, a review-before-submit form, documentation links (no uploads), and submission status. `/apresiasi/admin` is a verified-email allowlist review queue; it is locked until `APPRECIATION_ADMIN_EMAILS` is explicitly configured. Publication is a manual Media & Creative workflow, with the Instagram post URL recorded after publishing.
+`/dashboard/apresiasi` provides private autosaved drafts, a review-before-submit form, documentation links (no uploads), and submission status. `/dashboard/apresiasi/tinjau` is a verified-email allowlist review queue; it is locked until `APPRECIATION_ADMIN_EMAILS` is explicitly configured. The old `/apresiasi` and `/apresiasi/admin` URLs redirect there. Publication is a manual Media & Creative workflow, with the Instagram post URL recorded after publishing.
 
-The first authenticated visit opens a four-screen `/onboarding`: name, campus and study program, optional WhatsApp invitation, and optional GDG Community invitation. Progress is saved per account after each forward action, and completed users do not repeat the flow. Searchable education comboboxes accept unlisted values and support keyboard navigation, mobile input hints, and accessible labels/errors. The resulting profile prefills new appreciation drafts. See `docs/ONBOARDING.md` for persistence, accessibility, and suggestion-source details.
+The first authenticated visit opens a five-screen `/onboarding`: name, campus and study program, Member or Core Team (with a division), optional WhatsApp invitation, and optional GDG Community invitation. Progress is saved per account after each forward action, and completed users do not repeat the flow. Searchable education comboboxes accept unlisted values and support keyboard navigation, mobile input hints, and accessible labels/errors. The resulting profile prefills new appreciation drafts. See `docs/ONBOARDING.md` for persistence, accessibility, and suggestion-source details.
 
 ## Dashboard
 
-`/dashboard` gives members and administrators a Google sign-in workspace. Members see open assignments, write an answer, attach up to five files (10 MB each), and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, can promote members to admin. Owners and admins create, open, and close assignments, review every submission, and deactivate or reactivate members. See `docs/DASHBOARD.md` for roles, upload handling, and cleanup.
+`/dashboard` is the signed-in workspace, with a sidebar (a drawer on phones) using Pixelarticons. Members work on assignments, write an answer, attach up to five files (10 MB each), and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Apresiasi and the profile page (community role and division) live here too. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, promote members to admin and review Apresiasi. Owners and admins create assignments with editable slugs (`/dashboard/tugas/<slug>`, old slugs keep redirecting), review every submission, and manage members. See `docs/DASHBOARD.md`.
 
 ## Selected direction
 

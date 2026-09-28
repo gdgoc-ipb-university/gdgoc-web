@@ -1,34 +1,23 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { useConvexAuth, useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useRef, useState } from "react";
+import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { Arrow, PixelSpark } from "../icons";
 import { readableError } from "@/lib/draft-session";
-import { AccountBar, AppreciationFooter, AppreciationIntro, LoadingPanel, LoginPanel, StatusBadge, dateLabel } from "./shared";
+import { AppreciationIntro, LoadingPanel, StatusBadge, dateLabel } from "./shared";
 import { AppreciationEditor } from "./editor";
 
-export function AppreciationHub() {
-  const { isLoading, isAuthenticated } = useConvexAuth();
-  const viewer = useQuery(api.auth.viewer, isAuthenticated ? {} : "skip");
-  const [authError, setAuthError] = useState(false);
-  useEffect(() => {
-    if (new URLSearchParams(window.location.search).has("authError")) {
-      requestAnimationFrame(() => setAuthError(true));
-    }
-  }, []);
-  return <><main id="main" className="appreciation-page section-width">
-    <AppreciationIntro compact={isAuthenticated} />
-    {authError && !isAuthenticated && <p className="app-notice" role="alert">Login belum selesai atau dibatalkan. Draft yang sudah tersimpan tetap aman; kamu bisa mencoba masuk lagi.</p>}
-    {isLoading || (isAuthenticated && viewer === undefined) ? <LoadingPanel /> : viewer ? <MemberWorkspace key={viewer.id} viewer={viewer} /> : <LoginPanel />}
-  </main><AppreciationFooter /></>;
-}
+type Viewer = { id: string; name: string; email: string; isAdmin: boolean };
 
-function MemberWorkspace({ viewer }: { viewer: NonNullable<ReturnType<typeof useQuery<typeof api.auth.viewer>>> }) {
+/** The member's appreciation drafts and submissions, rendered inside the dashboard. */
+export function AppreciationWorkspace({ viewer }: { viewer: Viewer }) {
   const [activeId, setActiveId] = useState<Id<"appreciations"> | null>(null);
-  if (activeId) return <AppreciationEditor key={activeId} id={activeId} viewer={viewer} onBack={() => setActiveId(null)} />;
-  return <><AccountBar viewer={viewer} /><DraftList onOpen={setActiveId} /></>;
+  return <>
+    <AppreciationIntro compact />
+    {activeId ? <AppreciationEditor key={activeId} id={activeId} viewer={viewer} onBack={() => setActiveId(null)} /> : <DraftList onOpen={setActiveId} />}
+  </>;
 }
 
 function DraftList({ onOpen }: { onOpen: (id: Id<"appreciations">) => void }) {

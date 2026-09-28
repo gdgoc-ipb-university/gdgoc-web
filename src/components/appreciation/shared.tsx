@@ -2,13 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "convex/react";
-import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { authClient } from "@/lib/auth-client";
 import { documentLinks, isDocumentUrl, statusLabels } from "@/lib/appreciation";
 import { readableError } from "@/lib/draft-session";
-import { Arrow, PixelDino, PixelSpark } from "../icons";
+import { Arrow, PixelSpark } from "../icons";
 import { communityLinks } from "@/lib/community";
 
 export function Trophy() {
@@ -36,51 +34,20 @@ export function GoogleMark() {
   return <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-1.99 3.02v2.51h3.23c1.89-1.74 2.98-4.31 2.98-7.36Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.23-2.51c-.9.6-2.05.97-3.39.97-2.61 0-4.83-1.76-5.62-4.13H3.04v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.38 13.92a6 6 0 0 1 0-3.84V7.49H3.04a10 10 0 0 0 0 9.02l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.95c1.47 0 2.79.5 3.83 1.5l2.87-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.49l3.34 2.59C7.17 7.71 9.39 5.95 12 5.95Z"/></svg>;
 }
 
-export function LoginPanel({ admin = false }: { admin?: boolean }) {
-  const config = useQuery(api.auth.configuration);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  async function signIn() {
-    setBusy(true); setError("");
-    try {
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: admin ? "/apresiasi/admin" : "/apresiasi", errorCallbackURL: "/apresiasi?authError=1" });
-      if (result.error) { setError("Google login belum berhasil. Coba lagi dengan akun yang ingin kamu pakai."); setBusy(false); }
-    } catch { setError("Belum bisa membuka Google login. Periksa koneksi dan coba lagi."); setBusy(false); }
-  }
-  return <div className="app-login-grid">
-    <section className="app-panel login-panel" aria-labelledby="login-title">
-      <p className="eyebrow">{admin ? "TIM MEDIA & CREATIVE" : "MULAI DARI AKUNMU"}</p>
-      <h2 id="login-title">{admin ? "Masuk untuk meninjau." : "Prestasinya sudah.\nSekarang, ceritakan."}</h2>
-      <p>Masuk dengan Google untuk menyimpan draft, melanjutkan isian di perangkat lain, dan melihat status kirimanmu.</p>
-      <button className="google-button" onClick={signIn} disabled={busy || !config?.googleEnabled}><GoogleMark />{busy ? "Membuka Google…" : "Lanjutkan dengan Google"}<Arrow /></button>
-      {config && !config.googleEnabled && <p className="app-notice" role="status">Login sedang disiapkan. Form bisa digunakan setelah koneksi Google aktif.</p>}
-      {error && <p role="alert" className="field-error">{error}</p>}
-      <p className="app-small">Kami memakai nama dan email Google untuk mengelola akun dan kirimanmu. <Link href="/privasi">Lihat penggunaan data</Link>.</p>
-    </section>
-    <aside className="app-how">
-      <p className="eyebrow">DARI KAMU, UNTUK DIRAYAKAN BERSAMA</p>
-      <ol><li><span>01</span><div><h3>Ceritakan prestasimu</h3><p>Isi pencapaian, kompetisi, dan siapa saja yang terlibat. Belum lengkap? Lanjutkan draft kapan saja.</p></div></li>
-        <li><span>02</span><div><h3>Tempel link dokumentasi</h3><p>Sertifikat, pengumuman, atau foto. Cukup link Drive atau sumber lain yang bisa dibuka tim.</p></div></li>
-        <li><span>03</span><div><h3>Kirim untuk ditinjau</h3><p>Tim Media & Creative meninjau informasi dan menyiapkan apresiasi sebagai collab post Instagram.</p></div></li></ol>
-      <div className="app-dino-note"><PixelDino /><p>Untuk <strong>member & core team</strong> GDGoC IPB.<br />Prestasi individu maupun tim, semua boleh cerita.</p></div>
-    </aside>
-  </div>;
-}
-
-export function AccountBar({ viewer, beforeLeave, dashboardLink = true }: { viewer: { name: string; email: string; isAdmin: boolean }; beforeLeave?: () => Promise<boolean>; dashboardLink?: boolean }) {
+/** Identity and sign-out, for dashboard states without the sidebar (e.g. a deactivated account). */
+export function AccountBar({ viewer }: { viewer: { name: string; email: string } }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function signOut() {
     setBusy(true); setError("");
     try {
-      if (beforeLeave && !(await beforeLeave())) { setError("Draft belum tersimpan. Coba simpan lagi sebelum keluar."); return; }
       const result = await authClient.signOut();
       if (result.error) throw result.error;
     } catch (error) { setError(readableError(error)); }
     finally { setBusy(false); }
   }
   return <div className="account-bar"><div className="account-identity"><span className="account-avatar" aria-hidden="true">{viewer.name.trim().slice(0, 1).toUpperCase()}</span><div><strong>{viewer.name}</strong><span>{viewer.email}</span></div></div>
-    <div className="account-actions">{viewer.isAdmin && <Link href="/apresiasi/admin">Panel tinjauan <Arrow /></Link>}{dashboardLink && <Link href="/dashboard">Dashboard <Arrow /></Link>}<button className="text-button" disabled={busy} onClick={signOut}>{busy ? "Sebentar…" : "Keluar"}</button></div>
+    <div className="account-actions"><button className="text-button" disabled={busy} onClick={signOut}>{busy ? "Sebentar…" : "Keluar"}</button></div>
     {error && <p className="field-error" role="alert">{error}</p>}
   </div>;
 }

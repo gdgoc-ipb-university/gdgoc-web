@@ -1583,3 +1583,24 @@ summary:focus-visible {
     font-size: 11px;
   }
 }
+
+/* Member / Core Team picker, shared by onboarding and the dashboard. */
+.role-choice { display: grid; gap: 26px; }
+.role-choice fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.role-choice legend { font-size: 13px; font-weight: 500; color: var(--ink); margin-bottom: 10px; padding: 0; }
+.role-choice legend span { color: #b9362e; }
+.role-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.role-divisions { grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
+.role-option { position: relative; display: flex; align-items: flex-start; gap: 12px; min-height: 56px; padding: 14px 15px; border: 1px solid #87968d; background: #fffefa; cursor: pointer; color: var(--ink); }
+.role-option input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; pointer-events: none; }
+.role-option > svg { flex-shrink: 0; color: #4a5b52; margin-top: 1px; }
+.role-option strong { display: block; font-size: 14px; font-weight: 500; line-height: 1.4; }
+.role-option small { display: block; font-size: 12px; line-height: 1.6; color: #526575; margin-top: 3px; }
+.role-option:hover { border-color: var(--blue); }
+.role-option[data-checked="true"] { border: 2px solid var(--blue); padding: 13px 14px; background: #eef3fd; }
+.role-option[data-checked="true"] > svg { color: var(--blue); }
+.role-option:has(input:focus-visible) { outline: 3px solid #2563eb; outline-offset: 3px; }
+.role-option:has(input:disabled) { opacity: .6; cursor: not-allowed; }
+.role-error { font-size: 12px; color: #a82c22; margin: 10px 0 0; }
+@media (max-width: 560px) { .role-options { grid-template-columns: 1fr; } }
+@media (forced-colors: active) { .role-option[data-checked="true"] { outline: 3px solid Highlight; } }

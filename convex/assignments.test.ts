@@ -76,6 +76,33 @@ describe("assignment management", () => {
   });
 });
 
+describe("assignment slugs", () => {
+  it("derives unique slugs, keeps renamed links working, and never shadows static routes", async () => {
+    const { owner, member } = await world();
+    const first = await owner.mutation(api.assignments.create, { values: { ...values(), slug: "" }, publish: true });
+    const second = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    const reserved = await owner.mutation(api.assignments.create, { values: { ...values(), slug: "Baru" }, publish: false });
+    const slugs = async () => (await owner.query(api.assignments.adminList, { paginationOpts: page })).page.map((item) => [item._id, item.slug]);
+    expect(Object.fromEntries(await slugs())).toEqual({ [first]: "bangun-landing-page", [second]: "bangun-landing-page-2", [reserved]: "baru-2" });
+    expect(await owner.query(api.assignments.slugPreview, { slug: "Bangun Landing Page" })).toBe("bangun-landing-page-3");
+    expect(await owner.query(api.assignments.slugPreview, { slug: "bangun-landing-page", id: first })).toBe("bangun-landing-page");
+    await expect(member.query(api.assignments.slugPreview, { slug: "x" })).rejects.toThrow("hanya untuk admin");
+
+    expect(await owner.mutation(api.assignments.update, { id: first, revision: 0, values: { ...values(), slug: "Landing Komunitas" } })).toBe("landing-komunitas");
+    expect((await member.query(api.assignments.get, { id: "landing-komunitas" }))?.assignment._id).toBe(first);
+    expect((await member.query(api.assignments.get, { id: "bangun-landing-page" }))?.assignment.slug).toBe("landing-komunitas");
+    expect((await member.query(api.assignments.get, { id: first }))?.assignment.slug).toBe("landing-komunitas");
+    // The old slug still belongs to the first assignment, so the second keeps its own variant.
+    expect(await owner.query(api.assignments.slugPreview, { slug: "bangun-landing-page", id: second })).toBe("bangun-landing-page-2");
+    expect(await owner.query(api.assignments.slugPreview, { slug: "bangun-landing-page" })).toBe("bangun-landing-page-3");
+    // Saving without a slug keeps the current one.
+    expect(await owner.mutation(api.assignments.update, { id: first, revision: 1, values: { title: "Judul baru", description: "Instruksi.", dueAt: values().dueAt } })).toBe("landing-komunitas");
+
+    await owner.mutation(api.assignments.remove, { id: reserved, revision: 0 });
+    expect(await owner.query(api.assignments.slugPreview, { slug: "baru" })).toBe("baru-2");
+  });
+});
+
 describe("assignment submission", () => {
   it("submits text with files, flags late work, and shows it only to the owner and admins", async () => {
     const { t, owner, member, other } = await world();

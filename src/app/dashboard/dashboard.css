@@ -1,15 +1,41 @@
 /* Builds on the Apresiasi vocabulary (panels, fields, records) loaded by the dashboard layout. */
-.dashboard-page { padding-top: 40px; }
 .dashboard-page h1:focus { outline: none; }
 
-.dash-nav { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding-block: 18px 0; margin-bottom: 38px; }
-.dash-nav a { font-size: 13px; padding: 10px 16px; border: 1px solid transparent; color: var(--muted); }
-.dash-nav a:hover { color: var(--ink); border-color: #bac6bc; }
-.dash-nav a[aria-current="page"] { color: white; background: var(--blue); border-color: var(--blue); }
-.dash-nav .dash-role { margin-left: auto; }
+/* Signed-in layout: fixed sidebar on desktop, drawer below 960px. */
+/* The gradient keeps the sidebar tint below the sticky sidebar on long pages. */
+.dash-app { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100dvh; background: linear-gradient(90deg, #f4f3ea 271px, var(--line) 271px 272px, var(--paper) 272px); }
+.dash-topbar { display: none; }
+.dash-sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 26px; padding: 26px 18px 22px; border-right: 1px solid var(--line); background: #f4f3ea; overflow-y: auto; }
+.dash-brand { display: block; padding: 0 8px; }
+.dash-brand img, .dash-topbar-brand img { display: block; width: 196px; height: auto; mix-blend-mode: multiply; }
+.dash-nav { display: grid; gap: 22px; }
+.dash-nav-heading { font: 500 10px/1 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: #6b7880; padding: 0 10px 8px; }
+.dash-nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.dash-nav-link { display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 9px 10px; font-size: 13px; color: var(--ink); border: 1px solid transparent; }
+.dash-nav-link svg { flex-shrink: 0; color: #5b6b64; }
+.dash-nav-link:hover { background: #eae9dc; }
+.dash-nav-link[aria-current="page"] { background: var(--blue); color: white; box-shadow: 3px 3px 0 var(--ink); }
+.dash-nav-link[aria-current="page"] svg { color: white; }
+.dash-nav-link:focus-visible, .dash-account-link:focus-visible, .dash-menu-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+.dash-account { margin-top: auto; display: grid; gap: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
+.dash-account-identity { display: flex; align-items: center; gap: 11px; min-width: 0; padding: 0 4px 6px; }
+.dash-account-identity > div { min-width: 0; }
+.dash-account-identity strong { display: block; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
+.dash-account-identity span:not(.account-avatar) { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.dash-account-badges { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 4px 8px; }
+.dash-account-link { display: flex; align-items: center; gap: 10px; min-height: 38px; padding: 8px 10px; font: inherit; font-size: 12px; color: var(--muted); background: none; border: 0; text-align: left; cursor: pointer; }
+.dash-account-link:hover { color: var(--ink); background: #eae9dc; }
+.dash-account .field-error { padding: 0 10px; }
+.dash-body { min-width: 0; display: flex; flex-direction: column; }
+.dash-body > main { flex: 1; width: 100%; max-width: 1180px; padding-inline: clamp(24px, 4vw, 56px); padding-block: 44px 72px; }
+.dash-body > .app-footer { width: 100%; max-width: 1180px; margin: 0; padding-inline: clamp(24px, 4vw, 56px); }
+.dash-backdrop { display: none; }
+
 .dash-role { font: 500 10px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; background: #ecefe9; color: #43523a; white-space: nowrap; }
 .dash-role[data-role="admin"] { background: #e7eefa; color: #2457b8; }
 .dash-role[data-role="owner"] { background: #fff0c5; color: #6d4d0c; }
+.dash-role[data-role="core"] { background: #fbe3df; color: #8e2c21; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.dash-role[data-role="member"] { text-transform: none; letter-spacing: 0; font-size: 11px; }
 
 .dash-intro { margin-bottom: 34px; }
 .dash-intro h1, .dash-blocked h1, .dash-assignment h1 { font: 600 clamp(40px, 5vw, 64px)/1.06 var(--font-pixel), monospace; letter-spacing: -.04em; margin-block: 16px 18px; overflow-wrap: anywhere; }
@@ -19,6 +45,7 @@
 .dash-blocked { max-width: 760px; }
 .dash-blocked h1 { font-size: clamp(34px, 4vw, 48px); }
 
+.dashboard-page.section-width { padding-top: 40px; }
 .dash-login .login-panel h1 { font-size: clamp(29px, 3vw, 39px); white-space: pre-line; line-height: 1.18; margin-block: 18px; }
 .dash-login .app-how h2 { font-size: 21px; letter-spacing: -.035em; margin-bottom: 8px; }
 
@@ -100,16 +127,58 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-member-actions .field-error { flex-basis: 100%; text-align: right; }
 .dash-member-actions .dash-confirm { justify-content: flex-end; text-align: right; }
 
+.dash-assignment-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; }
+.dash-copy { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.dash-copy .text-button { gap: 7px; font-size: 12px; }
+.dash-copy small { font-size: 11px; color: #9b3024; overflow-wrap: anywhere; }
+.dash-card-actions { display: inline-flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 6px 18px; }
+.dash-slug-input { display: flex; align-items: stretch; border: 1px solid #abb7b2; background: white; }
+.dash-slug-input:focus-within { border-color: var(--blue); outline: 2px solid #4285f43d; outline-offset: 2px; }
+.dash-slug-input > span { display: flex; align-items: center; padding: 0 0 0 13px; font: 13px var(--font-mono), monospace; color: var(--muted); white-space: nowrap; }
+.app-field .dash-slug-input input { border: 0; outline: none; padding-left: 2px; font-family: var(--font-mono), monospace; font-size: 13px; }
+.dash-inline-button { display: inline; font-size: 11px; padding: 0; }
+.dash-role-prompt { max-width: 820px; }
+.dash-role-prompt h1 { font: 600 clamp(34px, 4vw, 48px)/1.1 var(--font-pixel), monospace; letter-spacing: -.03em; margin-block: 16px 14px; }
+.dash-role-form { display: grid; gap: 22px; margin-top: 26px; }
+.dash-role-form > .button { justify-self: start; }
+.dash-profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; align-items: start; }
+.dash-profile-grid h2 { font-size: 26px; margin-block: 0 12px; overflow-wrap: anywhere; }
+.dash-facts { margin: 8px 0 18px; }
+.dash-facts > div { display: grid; gap: 3px; padding-block: 11px; border-bottom: 1px solid #e8ece4; }
+.dash-facts dt { font-size: 11px; color: var(--muted); }
+.dash-facts dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.dash-role-editor { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; justify-content: flex-end; }
+.dash-role-editor .app-field { margin: 0; min-width: 150px; }
+.dash-role-editor .app-field label { font-size: 11px; margin-bottom: 4px; }
+.dash-role-editor select { min-height: 40px; padding: 8px 10px; font-size: 13px; }
+.dash-role-editor-actions { display: flex; gap: 16px; padding-bottom: 8px; }
+.dash-role-editor .field-error { flex-basis: 100%; text-align: right; margin: 0; }
+
 @media (max-width: 1050px) {
   .dash-member { grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1fr); }
   .dash-member-actions { grid-column: 2 / -1; justify-content: flex-start; }
   .dash-member-actions .field-error, .dash-member-actions .dash-confirm { text-align: left; justify-content: flex-start; }
 }
+@media (max-width: 960px) {
+  .dash-app { display: block; background: var(--paper); }
+  .dash-topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 68px; padding: 0 20px; background: var(--paper); border-bottom: 1px solid var(--line); }
+  .dash-topbar-brand img { width: 172px; }
+  .dash-menu-button { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 12px; font: 500 12px var(--font-body), sans-serif; color: var(--ink); background: #fffefa; border: 1px solid var(--ink); box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
+  .dash-sidebar { position: fixed; z-index: 40; inset: 0 auto 0 0; width: min(300px, 86vw); height: 100dvh; transform: translateX(-100%); visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s; box-shadow: 6px 0 0 #172d4314; }
+  /* Visible immediately when opening, so focus can move into the drawer. */
+  .dash-sidebar[data-open="true"] { transform: none; visibility: visible; transition: transform .22s ease, visibility 0s; }
+  .dash-sidebar .dash-brand { display: none; }
+  .dash-backdrop { display: block; position: fixed; inset: 0; z-index: 35; background: #172d4366; }
+  .dash-profile-grid { grid-template-columns: 1fr; }
+  .dash-role-editor { justify-content: flex-start; }
+  .dash-role-editor .field-error { text-align: left; }
+}
 @media (max-width: 760px) {
-  .dashboard-page { padding-top: 26px; }
-  .dash-nav { margin-bottom: 28px; }
-  .dash-nav a { padding: 9px 12px; font-size: 12px; }
-  .dash-nav .dash-role { margin-left: 0; }
+  .dash-body > main { padding-block: 28px 50px; padding-inline: 18px; }
+  .dash-body > .app-footer { padding-inline: 18px; }
+  .dashboard-page.section-width { padding-top: 26px; }
+  .dash-slug-input > span { display: none; }
+  .app-field .dash-slug-input input { padding-left: 13px; }
   .dash-intro-action { flex-direction: column; align-items: stretch; }
   .dash-intro-action .button { align-self: flex-start; }
   .dash-stats { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
@@ -127,7 +196,8 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 @media (max-width: 360px) {
   .dash-stats { grid-template-columns: 1fr; }
 }
+@media (prefers-reduced-motion: reduce) { .dash-sidebar { transition: none; } }
 @media (forced-colors: active) {
-  .dash-nav a[aria-current="page"] { border: 2px solid CanvasText; }
+  .dash-nav-link[aria-current="page"] { border: 2px solid CanvasText; }
   .dash-instructions, .dash-answer { border-left-width: 4px; border-left-color: CanvasText; }
 }

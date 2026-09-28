@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanFileName, fileProblem, fromJakartaInput, maxFileBytes, toJakartaInput, validateAssignment } from "./assignment";
+import { cleanFileName, fileProblem, fromJakartaInput, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
 
 describe("assignment rules", () => {
   it("reads and writes deadlines in WIB regardless of the runtime time zone", () => {
@@ -30,9 +30,19 @@ describe("assignment rules", () => {
   });
 
   it("requires a title, description, and valid deadline", () => {
-    expect(validateAssignment({ title: " ", description: "", dueAt: "" })).toEqual({
+    expect(validateAssignment({ title: " ", slug: "", description: "", dueAt: "" })).toEqual({
       title: "Isi judul tugas.", description: "Jelaskan apa yang perlu dikerjakan.", dueAt: "Pilih tanggal dan jam tenggat.",
     });
-    expect(validateAssignment({ title: "Tugas", description: "Kerjakan.", dueAt: "2026-10-01T23:59" })).toEqual({});
+    expect(validateAssignment({ title: "Tugas", slug: "", description: "Kerjakan.", dueAt: "2026-10-01T23:59" })).toEqual({});
+  });
+
+  it("derives readable slugs from titles and cleans custom ones", () => {
+    expect(slugify("Proyek Akhir: Web & AI")).toBe("proyek-akhir-web-dan-ai");
+    expect(slugify("  Café — Désain UI/UX 2026!  ")).toBe("cafe-desain-ui-ux-2026");
+    expect(slugify("---")).toBe("");
+    expect(slugify("a".repeat(59) + " bb")).toBe("a".repeat(59));
+    expect(normalizeAssignment({ title: "Landing Page", slug: "", description: "x", dueAt: "" }).slug).toBe("landing-page");
+    expect(normalizeAssignment({ title: "Landing Page", slug: "Tugas Pertama!", description: "x", dueAt: "" }).slug).toBe("tugas-pertama");
+    expect(normalizeAssignment({ title: "ラベル", slug: "", description: "x", dueAt: "" }).slug).toBe("tugas");
   });
 });

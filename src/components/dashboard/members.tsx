@@ -5,14 +5,15 @@ import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { roleLabels } from "@/lib/assignment";
+import { divisions, memberTypeLabels, type MemberType } from "@/lib/onboarding";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { StaffOnly } from "./assignments";
-import { isStaff, useDashboardViewer, type DashboardViewer } from "./shell";
+import { isStaff, useDashboardViewer, type DashboardViewer } from "./viewer";
 
-type Filter = "all" | "admin" | "deactivated";
+type Filter = "all" | "admin" | "core" | "deactivated";
 type Row = FunctionReturnType<typeof api.dashboard.members>["page"][number];
-const filters: { value: Filter; label: string }[] = [{ value: "all", label: "Semua" }, { value: "admin", label: "Admin" }, { value: "deactivated", label: "Nonaktif" }];
+const filters: { value: Filter; label: string }[] = [{ value: "all", label: "Semua" }, { value: "admin", label: "Admin" }, { value: "core", label: "Core Team" }, { value: "deactivated", label: "Nonaktif" }];
 
 export function MembersPage() {
   const viewer = useDashboardViewer();
@@ -33,7 +34,7 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
   return <>
     <div className="dash-intro"><p className="eyebrow">ADMIN · ANGGOTA</p><h1>Anggota.</h1>
       <p>Member yang sudah menyelesaikan perkenalan. {viewer.role === "owner" ? "Sebagai pemilik, kamu bisa menjadikan member sebagai admin." : "Pemilik dapat mengubah peran admin."} Member nonaktif tidak bisa membuka tugas.</p></div>
-    {stats && <p className="app-small dash-count">{stats.members} member · {stats.admins} admin · {stats.deactivated} nonaktif. Pemilik diatur lewat konfigurasi server.</p>}
+    {stats && <p className="app-small dash-count">{stats.members} anggota · {stats.core} core team · {stats.admins} admin · {stats.deactivated} nonaktif. Pemilik diatur lewat konfigurasi server.</p>}
     <div className="dash-toolbar">
       <div className="app-field dash-search"><label htmlFor="member-search">Cari nama</label><input id="member-search" type="search" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Nama member" autoComplete="off" /></div>
       <div className="review-filters" role="group" aria-label="Saring anggota">{filters.map((item) => <button key={item.value} aria-pressed={filter === item.value} onClick={() => setFilter(item.value)}>{item.label}</button>)}</div>
@@ -51,6 +52,7 @@ function MemberRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
   const setRole = useMutation(api.dashboard.setRole);
   const setActive = useMutation(api.dashboard.setActive);
   const [pending, setPending] = useState<Action | null>(null);
+  const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const self = row.ownerId === viewer.id;
@@ -68,11 +70,33 @@ function MemberRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
   return <li className="dash-member" data-active={row.active}>
     <span className="account-avatar" aria-hidden="true">{row.fullName.trim().slice(0, 1).toUpperCase()}</span>
     <div className="dash-member-identity"><strong>{row.fullName}{self && <span className="app-small"> (kamu)</span>}</strong><span>{row.email}</span><span>{[row.campus, row.studyProgram].filter(Boolean).join(" · ")}</span></div>
-    <div className="dash-member-meta"><span className="dash-role" data-role={row.role}>{roleLabels[row.role]}</span>{!row.active && <span className="app-status dash-status" data-status="missing">Nonaktif</span>}<span className="app-small">Bergabung {dateLabel(row.joinedAt)}</span></div>
+    <div className="dash-member-meta"><span className="dash-role" data-role={row.role}>{roleLabels[row.role]}</span>{row.memberType && <span className="dash-role" data-role={row.memberType}>{row.memberType === "core" ? `Core · ${row.division ?? "—"}` : memberTypeLabels.member}</span>}{!row.active && <span className="app-status dash-status" data-status="missing">Nonaktif</span>}<span className="app-small">Bergabung {dateLabel(row.joinedAt)}</span></div>
     <div className="dash-member-actions">
-      {pending ? <div className="dash-confirm" role="group" aria-label={pending.label}><p>{pending.confirm}</p><button className={`text-button ${pending.danger ? "text-danger" : ""}`} disabled={busy} onClick={() => void confirm()}>{busy ? "Menyimpan…" : `Ya, ${pending.label.toLowerCase()}`}</button><button className="text-button" disabled={busy} onClick={() => { setPending(null); setError(""); }}>Batal</button></div>
-        : actions.map((action) => <button key={action.key} className={`text-button ${action.danger ? "text-danger" : ""}`} onClick={() => { setPending(action); setError(""); }}>{action.label}</button>)}
+      {editing ? <CommunityRoleEditor row={row} onDone={() => setEditing(false)} /> : pending ? <div className="dash-confirm" role="group" aria-label={pending.label}><p>{pending.confirm}</p><button className={`text-button ${pending.danger ? "text-danger" : ""}`} disabled={busy} onClick={() => void confirm()}>{busy ? "Menyimpan…" : `Ya, ${pending.label.toLowerCase()}`}</button><button className="text-button" disabled={busy} onClick={() => { setPending(null); setError(""); }}>Batal</button></div>
+        : <>{actions.map((action) => <button key={action.key} className={`text-button ${action.danger ? "text-danger" : ""}`} onClick={() => { setPending(action); setError(""); }}>{action.label}</button>)}<button className="text-button" onClick={() => { setEditing(true); setError(""); }}>Ubah peran komunitas</button></>}
       {error && <p className="field-error" role="alert">{error}</p>}
     </div>
   </li>;
+}
+
+function CommunityRoleEditor({ row, onDone }: { row: Row; onDone: () => void }) {
+  const setMemberType = useMutation(api.dashboard.setMemberType);
+  const [memberType, setType] = useState<MemberType>(row.memberType ?? "member");
+  const [division, setDivision] = useState(row.division ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (memberType === "core" && !division) { setError("Pilih divisi untuk Core Team."); return; }
+    setBusy(true); setError("");
+    try { await setMemberType({ ownerId: row.ownerId, memberType, division: memberType === "core" ? division : "" }); onDone(); }
+    catch (cause) { setError(readableError(cause)); setBusy(false); }
+  }
+  const id = `role-${row.ownerId}`;
+  return <form className="dash-role-editor" onSubmit={save} aria-label={`Peran komunitas ${row.fullName}`}>
+    <div className="app-field"><label htmlFor={`${id}-type`}>Peran</label><select id={`${id}-type`} value={memberType} disabled={busy} onChange={(event) => setType(event.target.value as MemberType)}><option value="member">{memberTypeLabels.member}</option><option value="core">{memberTypeLabels.core}</option></select></div>
+    {memberType === "core" && <div className="app-field"><label htmlFor={`${id}-division`}>Divisi</label><select id={`${id}-division`} value={division} disabled={busy} onChange={(event) => setDivision(event.target.value)}><option value="">Pilih divisi</option>{divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>}
+    <div className="dash-role-editor-actions"><button className="text-button" type="submit" disabled={busy}>{busy ? "Menyimpan…" : "Simpan"}</button><button className="text-button" type="button" disabled={busy} onClick={onDone}>Batal</button></div>
+    {error && <p className="field-error" role="alert">{error}</p>}
+  </form>;
 }

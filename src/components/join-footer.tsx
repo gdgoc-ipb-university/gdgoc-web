@@ -52,7 +52,7 @@ export function JoinFooter() {
             <p className="eyebrow">KENALI KAMI</p>
             <a href="#community">Tentang komunitas</a>
             <a href="#explore">Program kami</a>
-            <Link href="/apresiasi">Apresiasi prestasi</Link>
+            <Link href="/dashboard/apresiasi">Apresiasi prestasi</Link>
             <Link href="/dashboard">Dashboard member</Link>
             <a href={communityLinks.membership} target="_blank" rel="noreferrer">
               Halaman GDG <Arrow diagonal />

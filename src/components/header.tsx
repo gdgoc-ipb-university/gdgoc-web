@@ -60,10 +60,10 @@ export function Header({ review = false }: { review?: boolean }) {
             <Link href={home ? "#explore" : "/#explore"} onClick={() => setOpen(false)}>
               Program
             </Link>
-            <Link href="/apresiasi" aria-current={pathname.startsWith("/apresiasi") ? "page" : undefined} onClick={() => setOpen(false)}>
+            <Link href="/dashboard/apresiasi" aria-current={pathname.startsWith("/dashboard/apresiasi") ? "page" : undefined} onClick={() => setOpen(false)}>
               Apresiasi
             </Link>
-            <Link href="/dashboard" aria-current={pathname.startsWith("/dashboard") ? "page" : undefined} onClick={() => setOpen(false)}>
+            <Link href="/dashboard" aria-current={pathname.startsWith("/dashboard") && !pathname.startsWith("/dashboard/apresiasi") ? "page" : undefined} onClick={() => setOpen(false)}>
               Dashboard
             </Link>
             <a

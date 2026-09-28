@@ -4,6 +4,8 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/s
 import type { Doc } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
+import { memberType } from "./schema";
+import { validateRole } from "../src/lib/onboarding";
 
 export const viewer = query({
   args: {},
@@ -13,6 +15,8 @@ export const viewer = query({
     return {
       id: access.user._id, name: access.profile?.fullName || access.user.name, email: access.user.email,
       role: access.role, active: access.active, onboarded: Boolean(access.profile?.completedAt),
+      memberType: access.profile?.memberType ?? null, division: access.profile?.division ?? null,
+      campus: access.profile?.campus ?? "", studyProgram: access.profile?.studyProgram ?? "",
     };
   },
 });
@@ -23,13 +27,14 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
   return {
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
     email: user?.email ?? "", role, active: isActive(role, profile), joinedAt: profile.completedAt ?? profile._creationTime,
+    memberType: profile.memberType ?? null, division: profile.division ?? null,
   };
 }
 
 export const members = query({
   args: {
     search: v.string(),
-    filter: v.union(v.literal("all"), v.literal("admin"), v.literal("deactivated")),
+    filter: v.union(v.literal("all"), v.literal("admin"), v.literal("core"), v.literal("deactivated")),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { search, filter, paginationOpts }) => {
@@ -41,6 +46,7 @@ export const members = query({
     const result = await source.filter((q) => {
       const onboarded = q.neq(q.field("completedAt"), undefined);
       if (filter === "admin") return q.and(onboarded, q.eq(q.field("role"), "admin"));
+      if (filter === "core") return q.and(onboarded, q.eq(q.field("memberType"), "core"));
       if (filter === "deactivated") return q.and(onboarded, q.neq(q.field("deactivatedAt"), undefined));
       return onboarded;
     }).paginate(paginationOpts);
@@ -56,6 +62,7 @@ export const stats = query({
     return {
       members: profiles.length,
       admins: profiles.filter((profile) => profile.role === "admin").length,
+      core: profiles.filter((profile) => profile.memberType === "core").length,
       deactivated: profiles.filter((profile) => profile.deactivatedAt).length,
     };
   },
@@ -90,5 +97,18 @@ export const setActive = mutation({
     if (row.role === "admin") throw new ConvexError(actor.role === "owner" ? "Turunkan peran admin terlebih dahulu." : "Hanya pemilik yang bisa mengelola akun admin.");
     if (row.active === args.active) return;
     await ctx.db.patch(profile._id, { deactivatedAt: args.active ? undefined : Date.now(), accessUpdatedBy: actor.user._id });
+  },
+});
+
+/** Staff correction of a member's self-declared community role. */
+export const setMemberType = mutation({
+  args: { ownerId: v.string(), memberType, division: v.string() },
+  handler: async (ctx, args) => {
+    await requireStaff(ctx);
+    const { profile } = await target(ctx, args.ownerId);
+    const division = args.memberType === "core" ? args.division.trim() : "";
+    const errors = validateRole({ memberType: args.memberType, division });
+    if (Object.keys(errors).length) throw new ConvexError(Object.values(errors)[0]!);
+    await ctx.db.patch(profile._id, { memberType: args.memberType, division: division || undefined });
   },
 });

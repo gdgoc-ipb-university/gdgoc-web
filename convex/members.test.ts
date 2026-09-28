@@ -6,7 +6,7 @@ import { api, components } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
-const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer" };
+const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer", memberType: "member" as const, division: "" };
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 async function member(t: ReturnType<typeof setup>, email = "onboarding@example.com", verified = true, expiresAt = Date.now() + 3600000) {
   const user = await t.mutation(components.betterAuth.adapter.create, {
@@ -63,15 +63,38 @@ describe("first-time member onboarding", () => {
   it("finishes without claiming external membership and prefills only new appreciation drafts", async () => {
     const owner = await member(setup());
     const oldDraft = await owner.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
-    for (const step of [1, 2, 3, 4] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    for (const step of [1, 2, 3, 4, 5] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
     const completed = await owner.query(api.members.profile);
     expect(completed?.completedAt).toEqual(expect.any(Number));
     expect(completed).not.toHaveProperty("whatsappJoined");
     expect(completed).not.toHaveProperty("gdgJoined");
-    const retried = await owner.mutation(api.members.saveStep, { step: 4, revision: 3, values });
+    const retried = await owner.mutation(api.members.saveStep, { step: 5, revision: 4, values });
     expect(retried.completedAt).toBe(completed?.completedAt);
     const newDraft = await owner.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
-    expect((await owner.query(api.appreciations.get, { id: newDraft })).values).toMatchObject(values);
+    expect((await owner.query(api.appreciations.get, { id: newDraft })).values).toMatchObject({ fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram, memberType: "Member" });
     expect((await owner.query(api.appreciations.get, { id: oldDraft })).values).toMatchObject({ fullName: "Nama Google", campus: "", studyProgram: "" });
+  });
+  it("records member or core team with a division at the role step", async () => {
+    const t = setup(); const owner = await member(t);
+    await owner.mutation(api.members.saveStep, { step: 1, revision: 0, values });
+    await owner.mutation(api.members.saveStep, { step: 2, revision: 1, values });
+    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "" } })).rejects.toThrow("Lengkapi");
+    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "core", division: "Divisi Karangan" } })).rejects.toThrow("Lengkapi");
+    const saved = await owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "core", division: "Technical" } });
+    expect(saved).toMatchObject({ memberType: "core", division: "Technical", nextStep: 4 });
+    // A tab loaded before the role step still saves later screens without clearing the role.
+    const later = await owner.mutation(api.members.saveStep, { step: 4, revision: 3, values: { fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram } });
+    expect(later).toMatchObject({ memberType: "core", division: "Technical", nextStep: 5 });
+  });
+
+  it("lets onboarded members set their role later, dropping the division for members", async () => {
+    const t = setup(); const owner = await member(t);
+    await expect(owner.mutation(api.members.saveRole, { memberType: "member", division: "" })).rejects.toThrow("Selesaikan perkenalan");
+    for (const step of [1, 2, 3, 4, 5] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    await expect(owner.mutation(api.members.saveRole, { memberType: "core", division: "" })).rejects.toThrow("Lengkapi");
+    await owner.mutation(api.members.saveRole, { memberType: "core", division: "Media & Creative" });
+    expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "core", division: "Media & Creative" });
+    await owner.mutation(api.members.saveRole, { memberType: "member", division: "Media & Creative" });
+    expect(await owner.query(api.members.profile)).not.toHaveProperty("division");
   });
 });

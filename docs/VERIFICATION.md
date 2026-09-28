@@ -121,6 +121,14 @@ The interaction checks in this section document earlier revisions. The latest re
 - `/`, `/apresiasi`, `/onboarding`, `/privasi`, `/environment`, `/api/auth/get-session` (signed out: `null`), and `/api/auth/convex/jwks` returned HTTP 200. The client bundle references only the production Convex URL.
 - Google credentials were not yet configured, so `auth:configuration` reported `googleEnabled: false`. Production Google sign-in was not tested.
 
+## Production domain — 28 September
+
+- The Vercel project `gdgoc-ipb-web` serves the custom domain `gdgocipb.com`. `https://www.gdgocipb.com` is canonical; `gdgocipb.com` already redirected there with a 308.
+- Set production Convex `SITE_URL` and Vercel production `NEXT_PUBLIC_SITE_URL` to `https://www.gdgocipb.com`, replacing `https://gdgoc-ipb-web.vercel.app`. Set production `APPRECIATION_ADMIN_EMAILS` to the project owner's verified Google email.
+- Configured `gdgoc-ipb-web.vercel.app` as a 308 redirect to `www.gdgocipb.com` in the project's domain settings. `https://gdgoc-ipb-web.vercel.app/dashboard?x=1` and `https://gdgocipb.com/apresiasi` returned 308 to the matching `www.gdgocipb.com` path and query.
+- `https://www.gdgocipb.com/dashboard` returned 200, the only deployment its client bundle targets is `adamant-lobster-969` (the bundled Convex library also contains its example URL `happy-otter-123`), `/api/auth/get-session` returned `null` while signed out, and production Convex exposes the dashboard functions from `97968b8`.
+- Production `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are not configured, so `auth:configuration` still reports `googleEnabled: false`. Production Google sign-in was not tested.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

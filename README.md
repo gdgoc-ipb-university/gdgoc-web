@@ -45,11 +45,11 @@ The garden uses distinct round, columnar, and umbrella canopies, yellow/coral fl
 
 ## Footer mini game
 
-The membership CTA and footer share one full-width pixel landscape: misty Salak, Tugu Kujang, tropical trees, a road, and a light garden floor. The original monochrome Chrome Dino sprite replaces the old CTA illustration; the directory stays below the same landscape instead of containing a separate game card.
+The membership CTA and footer share one full-width pixel landscape: misty Salak, Tugu Kujang, tropical trees, a road, and a light garden floor. A chunky cream Dino with navy outlines replaces the old CTA illustration; the directory stays below the same landscape instead of containing a separate game card.
 
 Dino **plays autonomously** while the arena is visible. A separate background run jumps over angkot, taro baskets, and rain puddles without recording a player score. Choose **Ikut main** to take over the full-width arena; **Kembali ke komunitas** restores the membership copy and returns keyboard focus to its CTA. Use Space, Up, or tap to jump, and P / Escape or the pause button to pause/resume. A local control can also pause the autonomous scene.
 
-The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop animation, personal games pause when focus leaves or the viewport changes width, and personal games resume only through a player action. Reduced motion disables autoplay and decorative movement, while explicit play remains available. High scores stay in browser storage; no login or backend is needed. The original Bogor SVGs and the unmodified Chromium sprite sheet with its BSD license live in `public/games/bogor-run/`.
+The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop animation, personal games pause when focus leaves or the viewport changes width, and personal games resume only through a player action. Reduced motion disables autoplay and decorative movement, while explicit play remains available. High scores stay in browser storage; no login or backend is needed. The original Bogor SVG scenery, obstacles, and cream/navy Dino sprite sheet live in `public/games/bogor-run/`.
 
 ## Structure
 

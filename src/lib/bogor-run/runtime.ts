@@ -19,7 +19,7 @@ function loadImage(name: string) {
     const image = new Image();
     image.onload = () => resolve(image);
     image.onerror = () => reject(new Error(`Could not load Bogor Run ${name}`));
-    image.src = `${base}${name === "dino" ? "chrome-offline-sprite.png" : `${name}.svg`}`;
+    image.src = `${base}${name}.svg`;
   });
 }
 
@@ -85,8 +85,8 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
     const lift = scene.lift * scale;
     ctx.fillStyle = "#637b4530";
     ctx.fillRect(Math.round(x + 3 * scale + lift * 0.04), Math.round(ground + 2), Math.max(10, DINO.width * scale - lift * 0.18), Math.max(3, scale));
-    const spriteX = scene.phase === "over" ? 220 : !reduced && scene.phase === "running" && scene.lift === 0 ? [88, 132][Math.floor(scene.time * 12) % 2] : 0;
-    ctx.drawImage(dino, 848 + spriteX, 2, 44, 47, Math.round(x), Math.round(ground - DINO.height * scale - lift), Math.round(DINO.width * scale), Math.round(DINO.height * scale));
+    const spriteFrame = scene.phase === "over" ? 3 : !reduced && scene.phase === "running" && scene.lift === 0 ? 1 + Math.floor(scene.time * 12) % 2 : 0;
+    ctx.drawImage(dino, spriteFrame * DINO.width, 0, DINO.width, DINO.height, Math.round(x), Math.round(ground - DINO.height * scale - lift), Math.round(DINO.width * scale), Math.round(DINO.height * scale));
     for (const obstacle of scene.obstacles) {
       const shape = OBSTACLES[obstacle.kind];
       const obstacleX = position(obstacle.x);

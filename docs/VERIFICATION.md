@@ -151,6 +151,13 @@ The interaction checks in this section document earlier revisions. The latest re
 - The control fixture passed axe A/AA rules available in jsdom. Separately calculated contrast: instructions 5.93:1, secondary instructions 4.75:1, action label 10.13:1, directory copy 5.01:1. Score ticks remain outside live announcements. No application warnings/errors appeared in the local production browser checks.
 - This is a local production-build verification. Publication continues through the organization's main-branch CI/CD after review/merge; branch previews are disabled by its Vercel configuration.
 
+## Segmented scroll indicator — 28 September
+
+- Follow-up to the full-width footer PR: four equal tracks under the sticky navbar, separated by 3 px gaps. Blue fills over 0–25%, red over 25–50%, yellow over 50–75%, and green over 75–100%; earlier quarters stay filled. Reverse scrolling empties them in reverse order. The indicator remains decorative and does not announce scroll ticks.
+- `pnpm test`: **89 tests across 14 files passed**. The two new component tests use real Motion values and transforms to exercise each boundary and midpoint, reverse scrolling, and overscroll clamping. `pnpm check`, `pnpm build`, and `git diff --check` passed.
+- The optimized local browser showed all four colors with distinct gaps at the footer, and only a partially filled blue quarter after scrolling back to 20.46%. The measured transform matched the page's scroll fraction. At a 320 CSS-pixel viewport, each track measured 77.75 px, and the page had no horizontal overflow. The final cream Dino, shortened tail, and revised running feet were visually checked in the same local preview.
+- This PR is stacked on the footer branch. These checks do not publish production; deployment follows review/merge into organization main.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

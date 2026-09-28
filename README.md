@@ -45,11 +45,11 @@ The garden uses distinct round, columnar, and umbrella canopies, yellow/coral fl
 
 ## Footer mini game
 
-The footer places **Dino keliling Bogor** on the left, the GDGoC identity in the middle, and community links on the right. Tablets keep the game beside the directory; small screens stack it above the identity and links while retaining the warm-paper palette.
+The membership CTA and footer share one full-width pixel landscape: misty Salak, Tugu Kujang, tropical trees, a road, and a light garden floor. A chunky cream Dino with navy outlines replaces the old CTA illustration; the directory stays below the same landscape instead of containing a separate game card.
 
-Click/tap the game to start, then use Space, Up, or a tap to jump over green angkot, taro baskets, and rain puddles. P or the pause button pauses/resumes. The game also pauses when it leaves the viewport, focus leaves its controls, or the tab/window becomes inactive. It never starts or resumes automatically. Scores stay in browser storage; no login or backend is needed.
+Dino **plays autonomously** while the arena is visible. A separate background run jumps over angkot, taro baskets, and rain puddles without recording a player score. Choose **Ikut main** to take over the full-width arena; **Kembali ke komunitas** restores the membership copy and returns keyboard focus to its CTA. Use Space, Up, or tap to jump, and P / Escape or the pause button to pause/resume. A local control can also pause the autonomous scene.
 
-The Canvas 2D runtime loads when the footer comes into view. Reduced motion removes moving ground marks and leg animation, while the user-initiated jumping game remains available. Original pixel SVG assets and their notes live in `public/games/bogor-run/`; the five images total about 4.3 KB before compression.
+The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop animation, personal games pause when focus leaves or the viewport changes width, and personal games resume only through a player action. Reduced motion disables autoplay and decorative movement, while explicit play remains available. High scores stay in browser storage; no login or backend is needed. The original Bogor SVG scenery, obstacles, and cream/navy Dino sprite sheet live in `public/games/bogor-run/`.
 
 ## Structure
 
@@ -61,9 +61,9 @@ The Canvas 2D runtime loads when the footer comes into view. Reduced motion remo
 - `src/components/campus-environment.tsx`: progressive enhancement and accessible image fallback.
 - `src/components/scene-preloader.tsx`: first-frame loading gate with native modal focus handling and reduced-motion support.
 - `src/components/experience-provider.tsx`: system reduced motion and desktop Lenis scrolling.
-- `src/components/join-footer.tsx`: one continuous light section for the membership invitation, pixel garden, community identity, navigation, and contact.
-- `src/components/bogor-run.tsx`: lazy game initialization, keyboard/pointer controls, score display, and accessible status announcements.
-- `src/lib/bogor-run/`: deterministic-step gameplay, collision shapes, Canvas drawing, pause/resume, and browser-local best score.
+- `src/components/join-footer.tsx`: one continuous light section for the membership invitation, shared Bogor landscape, community identity, navigation, and contact.
+- `src/components/bogor-run.tsx`: full-width scene composition, autonomous/manual controls, focus restoration, and accessible status announcements.
+- `src/lib/bogor-run/`: deterministic-step gameplay, autonomous jumping, responsive projection, Canvas drawing, and browser-local best score.
 - `src/lib/community.ts`: verified official membership and Instagram destinations.
 - `src/lib/directions.ts`: visual directions and art asset paths.
 - `docs/DESIGN.md`: Figma evidence, direction choices and implementation rationale.

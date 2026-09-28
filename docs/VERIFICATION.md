@@ -140,6 +140,24 @@ The interaction checks in this section document earlier revisions. The latest re
 - The game control fixture passed applicable axe-core A/AA checks with pixel contrast evaluated separately. Measured contrast was 5.63:1 for HUD text, 4.90:1 for secondary instructions, and 9.96:1 for the start control. Score ticks do not change the live announcement. The development browser reported no warnings/errors, and the existing campus reported `data-ready=true`. Browser viewport and reduced-motion overrides were reset after QA.
 - Served the optimized Next build on `127.0.0.1:3106`. The game loaded its runtime and local SVG assets, started on command, reached a collision at score 42, and exposed the retry control. The production-build browser reported no warnings/errors. These are local build checks; publication follows the organization's main-branch deployment workflow after PR merge.
 
+## Full-width autonomous footer — 28 September
+
+- Fast-forwarded organization main to `4d32a24` after PRs #6 and #7 merged. This revision uses the latest dashboard/navigation routes and is proposed on a fresh branch.
+- Replaced the isolated game card and decorative CTA garden with one full-width canvas over a continuous light Bogor landscape. The right-side Dino plays autonomously; taking control opens a wide arena, and returning restores the membership invitation and its keyboard focus. The responsive camera keeps jumps below the game header.
+- The Dino uses an original cream/navy SVG sheet with a wider head and torso, short legs, and no accessories. Its four 44 × 47 frames retain the existing collision/animation dimensions. Scenery, obstacles, and Dino are editable SVGs; no Chromium assets are bundled.
+- `pnpm test`: **87 tests across 13 files passed**. Coverage includes two minutes of autonomous obstacle cycles, separation from player scores/storage, offscreen and reduced-motion suspension, manual takeover/return, focus restoration, resize pause, cleanup, collision/jump behavior, and projection at 320–1920 px. `pnpm check`, `pnpm build`, and `git diff --check` passed.
+- Browser QA covered desktop and 320/355 CSS-pixel mobile widths without horizontal overflow. The local optimized build on `127.0.0.1:3106` demonstrated autoplay, its pause control, personal takeover, game over, keyboard pause, return to the membership CTA, and reduced-motion disabling autoplay; the campus still reached `data-ready=true`. These are browser emulation checks, not physical-device tests.
+- After the final Dino redraw, the optimized desktop preview visually confirmed the wider cream/navy silhouette running and jumping in the shared landscape. The full 87-test suite, check, and build passed again; the 44 × 47 frame/collision dimensions are unchanged.
+- The control fixture passed axe A/AA rules available in jsdom. Separately calculated contrast: instructions 5.93:1, secondary instructions 4.75:1, action label 10.13:1, directory copy 5.01:1. Score ticks remain outside live announcements. No application warnings/errors appeared in the local production browser checks.
+- This is a local production-build verification. Publication continues through the organization's main-branch CI/CD after review/merge; branch previews are disabled by its Vercel configuration.
+
+## Segmented scroll indicator — 28 September
+
+- Follow-up to the full-width footer PR: four equal tracks under the sticky navbar, separated by 3 px gaps. Blue fills over 0–25%, red over 25–50%, yellow over 50–75%, and green over 75–100%; earlier quarters stay filled. Reverse scrolling empties them in reverse order. The indicator remains decorative and does not announce scroll ticks.
+- `pnpm test`: **89 tests across 14 files passed**. The two new component tests use real Motion values and transforms to exercise each boundary and midpoint, reverse scrolling, and overscroll clamping. `pnpm check`, `pnpm build`, and `git diff --check` passed.
+- The optimized local browser showed all four colors with distinct gaps at the footer, and only a partially filled blue quarter after scrolling back to 20.46%. The measured transform matched the page's scroll fraction. At a 320 CSS-pixel viewport, each track measured 77.75 px, and the page had no horizontal overflow. The final cream Dino, shortened tail, and revised running feet were visually checked in the same local preview.
+- This PR is stacked on the footer branch. These checks do not publish production; deployment follows review/merge into organization main.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

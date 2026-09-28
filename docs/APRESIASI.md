@@ -43,7 +43,7 @@ The React provider uses `ConvexProviderWithAuth` and a small session-aware token
 
 ## Drafts and review
 
-- `/apresiasi`: Google login, private drafts, form preview, submission and status.
+- `/dashboard/apresiasi`: private drafts, form preview, submission and status, inside the dashboard (sign-in and onboarding are handled by the dashboard). `/apresiasi` redirects here.
 - Autosave waits 800ms after editing, serializes writes, and flushes before preview or submission. Unsynced changes are backed up in localStorage under both the authenticated owner and document ID.
 - Server revisions reject competing edits. The editor preserves the local version and offers an explicit choice to copy it or use the account version. It never silently overwrites a newer draft.
 - Drafts can be partial. Submission validates the complete form, documentation HTTPS links, real past announcement date, team details when applicable, and publication consent on the server.
@@ -52,7 +52,7 @@ The React provider uses `ConvexProviderWithAuth` and a small session-aware token
 - Submitted records are locked while being reviewed. A reviewer can request a revision with a note, then the owner can edit and resubmit.
 - Publication is manual. A reviewer records an existing Instagram `/p/` or `/reel/` URL; no code publishes to Instagram.
 
-`/apresiasi/admin` requires a verified Google email in the Convex `APPRECIATION_ADMIN_EMAILS` comma-separated allowlist. It defaults to no reviewers. Set this only after the project owner identifies the reviewers. UI navigation is not the security boundary: every queue read and review mutation independently enforces the allowlist. Drafts never appear in the review queue, and review changes are recorded in `appreciationReviews`.
+`/dashboard/apresiasi/tinjau` (redirected from `/apresiasi/admin`) requires a verified Google email in the Convex `APPRECIATION_ADMIN_EMAILS` comma-separated allowlist. It defaults to no reviewers. Set this only after the project owner identifies the reviewers. UI navigation is not the security boundary: every queue read and review mutation independently enforces the allowlist. Drafts never appear in the review queue, and review changes are recorded in `appreciationReviews`.
 
 ## Release
 

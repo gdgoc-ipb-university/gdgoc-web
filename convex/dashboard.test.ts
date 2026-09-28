@@ -63,7 +63,7 @@ describe("dashboard roles and member management", () => {
     await account(t, "fresh@example.com", { onboarded: false });
     const rows = (await owner.query(api.dashboard.members, everyone)).page;
     expect(rows.map((row) => [row.email, row.role]).sort()).toEqual([["member@example.com", "member"], ["owner@example.com", "owner"]]);
-    expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, deactivated: 0 });
+    expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, core: 0, deactivated: 0 });
   });
 
   it("deactivates members, blocks their dashboard access, and protects admins and owners", async () => {
@@ -94,5 +94,17 @@ describe("dashboard roles and member management", () => {
     await account(t, "b@example.com", { name: "Bima Sakti" });
     const found = await owner.query(api.dashboard.members, { ...everyone, search: "rania" });
     expect(found.page.map((row) => row.fullName)).toEqual(["Rania Putri"]);
+  });
+  it("lets staff correct a member's community role and filter the core team", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com");
+    const member = await account(t, "member@example.com");
+    await expect(member.mutation(api.dashboard.setMemberType, { ownerId: owner.id, memberType: "core", division: "Technical" })).rejects.toThrow("hanya untuk admin");
+    await expect(owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "" })).rejects.toThrow("Pilih divisimu");
+    await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "Community & External" });
+    expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "core", division: "Community & External" });
+    const core = await owner.query(api.dashboard.members, { ...everyone, filter: "core" });
+    expect(core.page.map((row) => [row.email, row.division])).toEqual([["member@example.com", "Community & External"]]);
+    expect((await owner.query(api.dashboard.stats)).core).toBe(1);
   });
 });

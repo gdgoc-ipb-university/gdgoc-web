@@ -20,7 +20,7 @@ export const acceptedFiles: Record<string, string[]> = {
 };
 export const acceptAttribute = Object.keys(acceptedFiles).map((extension) => `.${extension}`).join(",");
 
-export type AssignmentValues = { title: string; description: string; dueAt: string };
+export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
 
 export function cleanFileName(name: string) {
@@ -58,8 +58,23 @@ export function fromJakartaInput(value: string) {
   return Number.isNaN(timestamp) || toJakartaInput(timestamp) !== value ? NaN : timestamp;
 }
 
+export const maxSlugLength = 60;
+// Static segments under /dashboard/tugas that a slug must not shadow.
+export const reservedSlugs = ["baru"];
+
+/** Lowercase ASCII words joined by hyphens, e.g. "Proyek Akhir: Web & AI" → "proyek-akhir-web-dan-ai". */
+export function slugify(value: string) {
+  return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/&/g, " dan ")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+/, "").slice(0, maxSlugLength).replace(/-+$/, "");
+}
+
+export function assignmentPath(assignment: { _id: string; slug?: string }) {
+  return `/dashboard/tugas/${assignment.slug ?? assignment._id}`;
+}
+
 export function normalizeAssignment(values: AssignmentValues): AssignmentValues {
-  return { title: values.title.trim().replace(/\s+/g, " "), description: values.description.trim(), dueAt: values.dueAt.trim() };
+  const title = values.title.trim().replace(/\s+/g, " ");
+  return { title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim() };
 }
 
 export function validateAssignment(values: AssignmentValues): AssignmentErrors {

@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
+import { assignmentPath } from "@/lib/assignment";
 import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
 import { AssignmentStatusBadge, DueLabel, SubmissionBadge, useNow } from "./shared";
-import { isStaff, useDashboardViewer } from "./shell";
+import { isStaff, useDashboardViewer } from "./viewer";
 
 export function DashboardOverview() {
   const viewer = useDashboardViewer();
@@ -34,7 +35,7 @@ function MemberOverview() {
     </dl>
     {overdue.length > 0 && <p className="app-notice">{overdue.length} tugas sudah lewat tenggat tetapi masih dibuka. Kiriman tetap diterima dan akan ditandai terlambat.</p>}
     <section aria-labelledby="next-title"><div className="app-section-heading"><div><p className="eyebrow">BERIKUTNYA</p><h2 id="next-title">Tenggat terdekat</h2></div><Link className="text-button" href="/dashboard/tugas">Semua tugas <Arrow /></Link></div>
-      {next.length ? <div className="dash-card-grid">{next.map((item) => <article className="app-record" key={item._id}><div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /></div><h3><Link href={`/dashboard/tugas/${item._id}`}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open /></article>)}</div>
+      {next.length ? <div className="dash-card-grid">{next.map((item) => <article className="app-record" key={item._id}><div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /></div><h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open /></article>)}</div>
         : <div className="app-empty"><PixelSpark /><h3>Tidak ada tenggat yang menunggu.</h3><p>{open.length ? "Semua tugas yang dibuka sudah kamu kumpulkan. Mantap!" : "Belum ada tugas yang dibuka. Tugas baru akan muncul di sini."}</p></div>}
     </section>
   </>;
@@ -52,7 +53,7 @@ function StaffOverview() {
     </dl>
     <div className="dash-actions"><Link className="button button-blue" href="/dashboard/tugas/baru">Buat tugas <span aria-hidden="true">＋</span></Link><Link className="button button-quiet" href="/dashboard/anggota">Kelola anggota</Link></div>
     <section aria-labelledby="recent-title"><div className="app-section-heading"><div><p className="eyebrow">TERBARU</p><h2 id="recent-title">Tugas yang diperbarui</h2></div><Link className="text-button" href="/dashboard/tugas">Semua tugas <Arrow /></Link></div>
-      {recent.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat tugas…" /> : recent.results.length ? <div className="dash-card-grid">{recent.results.map((item) => <article className="app-record" key={item._id}><div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}</span></div><h3><Link href={`/dashboard/tugas/${item._id}`}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /></article>)}</div>
+      {recent.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat tugas…" /> : recent.results.length ? <div className="dash-card-grid">{recent.results.map((item) => <article className="app-record" key={item._id}><div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}</span></div><h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /></article>)}</div>
         : <div className="app-empty"><PixelSpark /><h3>Belum ada tugas.</h3><p>Buat tugas pertama. Simpan sebagai draft dulu atau langsung buka untuk member.</p><Link className="text-button" href="/dashboard/tugas/baru">Buat tugas <Arrow /></Link></div>}
     </section>
   </>;

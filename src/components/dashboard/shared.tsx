@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { assignmentStatusLabels, fileSizeLabel } from "@/lib/assignment";
 import { dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
+import { PixelIcon } from "../pixel-icons";
 
 /** Current time, refreshed each minute so deadline labels stay accurate without impure renders. */
 export function useNow() {
@@ -44,4 +45,20 @@ export function SubmissionBadge({ submittedAt, late }: { submittedAt: number | n
 export function FileLink({ file }: { file: { name: string; size: number; url: string | null } }) {
   if (!file.url) return <span className="dash-file">{file.name} <small>{fileSizeLabel(file.size)} · tidak tersedia</small></span>;
   return <a className="dash-file" href={file.url} target="_blank" rel="noopener noreferrer">{file.name} <small>{fileSizeLabel(file.size)}</small><Arrow diagonal /><span className="sr-only"> (buka tab baru)</span></a>;
+}
+
+/** Copies the full, readable link of a dashboard page. */
+export function CopyLinkButton({ path }: { path: string }) {
+  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  async function copy() {
+    const url = new URL(path, window.location.origin).href;
+    try { await navigator.clipboard.writeText(url); setState("copied"); }
+    catch { setState("failed"); }
+    setTimeout(() => setState("idle"), 2500);
+  }
+  return <span className="dash-copy">
+    <button type="button" className="text-button" onClick={() => void copy()}><PixelIcon name={state === "copied" ? "check" : "copy"} size={16} />{state === "copied" ? "Link tersalin" : "Salin link"}</button>
+    <span className="sr-only" role="status">{state === "copied" ? "Link tugas tersalin." : ""}</span>
+    {state === "failed" && <small role="alert">Tidak bisa menyalin otomatis. Salin dari alamat: {path}</small>}
+  </span>;
 }

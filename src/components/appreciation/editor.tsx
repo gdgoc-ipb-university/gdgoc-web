@@ -7,7 +7,7 @@ import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { achievementLevels, fieldLimits, memberTypes, participationTypes, validateAppreciation, type AppreciationField, type AppreciationValues, type FieldErrors } from "@/lib/appreciation";
 import { DraftSession, readableError } from "@/lib/draft-session";
 import { Arrow } from "../icons";
-import { AccountBar, LoadingPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";
+import { LoadingPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";
 
 type Viewer = { id: string; name: string; email: string; isAdmin: boolean };
 type EditorProps = { id: Id<"appreciations">; viewer: Viewer; onBack: () => void };
@@ -26,7 +26,7 @@ export function AppreciationEditor({ id, viewer, onBack }: EditorProps) {
   const submit = useMutation(api.appreciations.submit);
   const remove = useMutation(api.appreciations.removeDraft);
   if (!record) return <LoadingPanel />;
-  if (!["draft", "revision"].includes(record.status)) return <><AccountBar viewer={viewer} /><button className="text-button app-back" onClick={onBack}>← Semua kiriman</button><section className="app-panel submission-receipt"><StatusBadge status={record.status} /><h2>{record.status === "published" ? "Prestasi yang ikut menginspirasi." : "Terima kasih sudah berbagi."}</h2><p>{record.status === "published" ? "Apresiasimu sudah dipost di Instagram GDGoC IPB." : "Kirimanmu tersimpan untuk ditinjau tim Media & Creative. Cek status dan catatan tim di halaman ini."}</p><p className="app-small">Dikirim {dateLabel(record.submittedAt ?? record.updatedAt)}</p>{record.reviewNote && <p className="review-note">{record.reviewNote}</p>}{record.postUrl && <a className="button button-blue" href={record.postUrl} target="_blank" rel="noopener noreferrer">Lihat post Instagram <Arrow diagonal /></a>}<details><summary>Lihat detail kiriman</summary><RecordDetails record={record} /></details></section></>;
+  if (!["draft", "revision"].includes(record.status)) return <><button className="text-button app-back" onClick={onBack}>← Semua kiriman</button><section className="app-panel submission-receipt"><StatusBadge status={record.status} /><h2>{record.status === "published" ? "Prestasi yang ikut menginspirasi." : "Terima kasih sudah berbagi."}</h2><p>{record.status === "published" ? "Apresiasimu sudah dipost di Instagram GDGoC IPB." : "Kirimanmu tersimpan untuk ditinjau tim Media & Creative. Cek status dan catatan tim di halaman ini."}</p><p className="app-small">Dikirim {dateLabel(record.submittedAt ?? record.updatedAt)}</p>{record.reviewNote && <p className="review-note">{record.reviewNote}</p>}{record.postUrl && <a className="button button-blue" href={record.postUrl} target="_blank" rel="noopener noreferrer">Lihat post Instagram <Arrow diagonal /></a>}<details><summary>Lihat detail kiriman</summary><RecordDetails record={record} /></details></section></>;
   return <DraftEditor record={record} viewer={viewer} onBack={onBack} actions={{ save, submit, remove }} />;
 }
 
@@ -107,7 +107,7 @@ export function DraftEditor({ record, viewer, onBack, actions }: { record: Doc<"
   }
   const saveText = !online ? (draft.localBackup ? "Offline · cadangan di perangkat ini" : "Offline · perubahan belum tersimpan") : { saved: "Tersimpan di akun", dirty: "Ada perubahan belum tersimpan", saving: "Menyimpan ke akun…", error: "Belum tersimpan ke akun", conflict: "Ada dua versi draft" }[draft.phase];
 
-  return <><AccountBar viewer={viewer} beforeLeave={() => session.flush()} /><div className="editor-toolbar"><button className="text-button" onClick={leave} disabled={busy || !online}>← Semua kiriman</button><span className="save-indicator" data-phase={online ? draft.phase : "error"} role="status"><i />{saveText}</span></div>
+  return <><div className="editor-toolbar"><button className="text-button" onClick={leave} disabled={busy || !online}>← Semua kiriman</button><span className="save-indicator" data-phase={online ? draft.phase : "error"} role="status"><i />{saveText}</span></div>
     {!online && <p className="app-notice" role="status">{draft.localBackup ? "Kamu bisa tetap mengisi. Perubahan disimpan di browser ini dan akan disinkronkan setelah terhubung kembali." : "Penyimpanan lokal tidak tersedia. Jangan tutup halaman sebelum koneksi pulih dan status menjadi Tersimpan di akun."}</p>}
     {draft.phase === "conflict" && <div className="app-notice" role="alert"><p>{draft.message || "Draft berubah di tab atau perangkat lain. Versi di halaman ini belum disimpan."}</p><p>Salin isianmu sebelum memakai versi akun; perubahan di halaman ini akan diganti.</p><div className="app-inline-actions"><button type="button" className="text-button" onClick={async () => { try { await navigator.clipboard.writeText(JSON.stringify(draft.values, null, 2)); setError("Isian disalin. Kamu bisa menempelkannya ke catatan sebelum memuat versi akun."); } catch { setError("Belum bisa menyalin otomatis. Salin isian penting secara manual."); } }}>Salin isian</button><button className="text-button" onClick={() => { session.useRemote(record); setPreview(false); }}>Gunakan versi akun</button></div></div>}
     {draft.phase === "error" && <div className="app-notice" role="alert">{draft.message} <button className="text-button" onClick={() => session.flush()}>Coba simpan lagi</button></div>}

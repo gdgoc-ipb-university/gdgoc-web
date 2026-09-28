@@ -63,6 +63,9 @@ export function Header({ review = false }: { review?: boolean }) {
             <Link href="/apresiasi" aria-current={pathname.startsWith("/apresiasi") ? "page" : undefined} onClick={() => setOpen(false)}>
               Apresiasi
             </Link>
+            <Link href="/dashboard" aria-current={pathname.startsWith("/dashboard") ? "page" : undefined} onClick={() => setOpen(false)}>
+              Dashboard
+            </Link>
             <a
               href={communityLinks.membership}
               className="nav-join"

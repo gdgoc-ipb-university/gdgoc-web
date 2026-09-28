@@ -25,5 +25,5 @@ export function validateOnboarding(values: OnboardingValues, step: OnboardingSte
 }
 
 export function onboardingDestination(next: string | null) {
-  return next === "review" ? "/apresiasi/admin" : "/apresiasi";
+  return next === "review" ? "/apresiasi/admin" : next === "dashboard" ? "/dashboard" : "/apresiasi";
 }

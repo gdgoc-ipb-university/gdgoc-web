@@ -92,6 +92,7 @@ describe("accessible member onboarding", () => {
     render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 4, revision: 3 }} save={gateway()} onComplete={vi.fn()} />);
     expect(screen.getByRole("link", { name: /Gabung di GDG Community/ })).toBeTruthy();
     expect(onboardingDestination("review")).toBe("/apresiasi/admin");
+    expect(onboardingDestination("dashboard")).toBe("/dashboard");
     expect(onboardingDestination("https://malicious.example/")).toBe("/apresiasi");
     expect(onboardingDestination("javascript:alert(1)")).toBe("/apresiasi");
   });

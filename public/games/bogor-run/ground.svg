@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="600" viewBox="0 0 800 300" shape-rendering="crispEdges" preserveAspectRatio="none">
+  <title>Tepi kebun dan bunga kecil di tanah Bogor</title>
+  <path fill="#edf0df" d="M0 0h800v300H0z"/>
+  <path fill="#e2e8cf" d="M0 0h800v9H0zM0 210h16v-7h12v11h18v19h12v15h16v24h14v28H0zM800 166h-13v14h-14v21h-13v19h-19v20h-16v31h-21v29h96z"/>
+  <path fill="#d6e0bb" d="M0 245h10v-12h14v17h12v20h17v30H0zM800 225h-13v-12h-13v25h-15v23h-16v21h-14v18h71z"/>
+  <path fill="#aabd85" d="M18 274h3v-14h2v10h3v-5h2v13H18zM773 252h3v-12h2v8h3v-7h2v15h-10z"/>
+  <path fill="#829c62" d="M42 282h2v-14h-2zm-8-7h2v-12h-2zM754 280h2v-18h-2z"/>
+  <path fill="#b499be" d="M31 256h7v8h-7zM39 263h8v7h-8z"/><path fill="#fff0ba" d="M751 256h8v8h-8z"/>
+  <path fill="#cbd7b2" d="M16 61h15v2H16zm733 57h26v2h-26zm-667 168h14v2H82zm556 40h18v2h-18zm-422 11h20v2h-20z"/>
+</svg>

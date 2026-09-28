@@ -1,29 +1,69 @@
-.game { min-width: 0; color: var(--ink); }
-.heading { display: flex; justify-content: space-between; gap: 16px; align-items: center; margin-bottom: 17px; }
-.eyebrow { display: flex; align-items: center; gap: 7px; color: #4b6552; font: 500 8px/1.6 var(--font-mono), monospace; letter-spacing: .07em; margin-bottom: 7px; }
-.eyebrow > span { width: 5px; height: 5px; background: #518b43; }
-.heading h3 { font: 500 clamp(23px, 2vw, 29px)/1.1 var(--font-pixel), monospace; letter-spacing: -.035em; }
-.edition { color: #526b52; border: 1px solid #c4cfb4; padding: 5px 8px; font: 500 8px/1.35 var(--font-mono), monospace; text-align: center; transform: rotate(5deg); }
-.console { border: 1px solid #bbc8ac; background: #f0f2e3; box-shadow: 4px 4px 0 #e1e6d4; }
-.hud { display: flex; align-items: center; padding: 0 8px 0 14px; min-height: 38px; gap: 20px; border-bottom: 1px solid #d9dfca; color: #52644c; font: 500 8px/1.4 var(--font-mono), monospace; letter-spacing: .05em; }
-.hud b { font-weight: 500; font-size: 12px; color: #274934; margin-left: 6px; font-variant-numeric: tabular-nums; }
-.hud button { border: 0; background: transparent; color: #30573c; width: 44px; height: 38px; margin-left: auto; display: grid; place-items: center; padding: 8px; }
-.hud button:disabled { opacity: .35; }.hud button:hover:not(:disabled) { background: #e1e8d3; }
-.hud svg { width: 16px; height: 16px; fill: currentColor; }
-.stage { position: relative; display: block; width: 100%; aspect-ratio: 48 / 23; padding: 0; border: 0; background: #f0f2e3; overflow: hidden; color: #23492f; touch-action: manipulation; scroll-margin-block: 110px; }
-.stage canvas, .poster { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; }
-.stage canvas { opacity: 0; }.stage[data-ready="true"] canvas { opacity: 1; }.stage[data-ready="true"] .poster { display: none; }
-.poster { background: url('/games/bogor-run/backdrop.svg') center / 100% 100%; }
-.poster::after { content: ''; position: absolute; left: 10.83%; bottom: 23.48%; width: 8.33%; height: 20%; background: url('/games/bogor-run/dino.svg') left center / 200% 100%; }
-.overlay { position: absolute; inset: 20% 20% auto; display: flex; align-items: center; flex-direction: column; gap: 8px; pointer-events: none; }
-.overlay strong { background: #faf9f2eb; padding: 3px 7px; font: 500 clamp(15px, 1.4vw, 19px)/1.2 var(--font-pixel), monospace; letter-spacing: -.03em; }
-.overlay > span { display: inline-flex; align-items: center; justify-content: center; gap: 14px; padding: 8px 14px; white-space: nowrap; background: #fffdf1; border: 1px solid #708861; box-shadow: 3px 3px 0 #c5d0ac; font: 500 11px/1.5 var(--font-body), sans-serif; }
-.play { color: #47763c; font-size: 16px; }.stage:hover .overlay > span { background: #e4edce; }
-.stage:focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; z-index: 1; }.hud button:focus-visible { outline-offset: -4px; }
-.instructions { display: flex; flex-direction: column; gap: 5px; margin-top: 16px; font-size: 10px; line-height: 1.65; color: #52614e; }
-.instructions kbd { font: 500 9px/1 var(--font-mono), monospace; border: 1px solid #bec8b1; border-radius: 2px; padding: 2px 4px; background: #f0f2e6; }
-.instructions > span:last-child { color: #64715c; font-size: 9px; }
-.retry { color: #1d54ba; background: transparent; border: 0; text-decoration: underline; padding: 10px 0; min-height: 44px; font-size: 12px; }
+.world {
+  --arena-height: clamp(640px, 43vw, 720px);
+  position: relative;
+  isolation: isolate;
+  background: #edf0df;
+}
+.arena { position: relative; height: var(--arena-height); overflow: hidden; scroll-margin-top: 0; }
+.scenery { position: absolute; inset: 0; background: url('/games/bogor-run/backdrop.svg') center bottom / 100% 100% no-repeat; pointer-events: none; }
+.mist { position: absolute; inset: 0; background: linear-gradient(90deg, #faf9f2f5 2%, #faf9f2e6 28%, #faf9f273 47%, #faf9f200 68%); pointer-events: none; transition: opacity .5s; }
+.invitation { position: relative; padding-top: 74px; z-index: 1; transition: opacity .25s; }
+.invitation > div { width: 53%; max-width: 620px; }
+.canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
+.poster { position: absolute; left: 73%; bottom: 12.5%; width: clamp(140.8px, 10.4762vw, 167.2px); aspect-ratio: 44 / 47; transform: translateX(-50%); background: url('/games/bogor-run/chrome-offline-sprite.png') 71.320437% 3.773585% / 2802.272727% 212.765957% no-repeat; image-rendering: pixelated; }
+.poster[data-ready="true"] { visibility: hidden; }
+.topbar { position: absolute; inset: 88px 0 auto; display: flex; align-items: start; justify-content: space-between; z-index: 3; pointer-events: none; }
+.gameTitle { margin-left: 0; }
+.eyebrow { display: flex; align-items: center; gap: 8px; color: #4b6246; font: 500 10px/1.5 var(--font-mono), monospace; letter-spacing: .08em; }
+.eyebrow > span:first-child { width: 6px; height: 6px; background: #518b43; }
+.edition { color: #68735f; margin-left: 12px; }
+.gameTitle h3 { font: 500 clamp(32px, 3.4vw, 52px)/1.1 var(--font-pixel), monospace; letter-spacing: -.025em; margin-top: 13px; }
+.back { pointer-events: auto; display: flex; gap: 18px; align-items: center; min-height: 44px; padding: 8px 0 8px 12px; border: 0; border-bottom: 1px solid #9fac89; background: #faf9f2cc; font-size: 12px; color: var(--ink); }
+.back:hover { color: var(--blue); }.back span { font-size: 20px; }
+.controls { position: absolute; bottom: 16px; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: flex-end; gap: 20px; }
+.actions { display: flex; gap: 8px; flex-shrink: 0; }
+.action { display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 44px; padding: 10px 16px; background: #faf9f2; color: #23452f; border: 1px solid #647e53; box-shadow: 3px 3px 0 #b9c79b; font: 500 12px/1.5 var(--font-body), sans-serif; }
+.action svg { width: 18px; height: 18px; }.action:hover:not(:disabled) { background: #fff6d8; }.action:disabled { opacity: .65; }
+.pause { display: grid; place-items: center; width: 44px; height: 44px; background: #f6f6e9aa; color: #365637; border: 1px solid #9bab83; }
+.pause svg { width: 15px; height: 15px; fill: currentColor; }.pause:hover:not(:disabled) { background: #faf9f2; }.pause:disabled { opacity: .4; }
+.instructions { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: #435b3e; line-height: 1.6; }
+.instructions kbd { font: 500 9px/1 var(--font-mono), monospace; }.instructions > span:last-child { color: #58684d; font-size: 9px; }
+.hud { position: absolute; z-index: 3; top: 185px; right: max(var(--gutter), calc((100% - 1280px) / 2)); display: flex; gap: 28px; color: #52644c; font: 500 9px/1.4 var(--font-mono), monospace; letter-spacing: .06em; pointer-events: none; }
+.hud b { font-size: 22px; font-weight: 500; color: #274934; margin-left: 9px; font-variant-numeric: tabular-nums; }
+.tapArea { position: absolute; inset: 175px 0 90px; z-index: 2; border: 0; background: transparent; touch-action: manipulation; }
+.result { position: absolute; z-index: 2; inset: 43% var(--gutter) auto 45%; pointer-events: none; }
+.result p { font: 500 clamp(28px, 3vw, 42px)/1.2 var(--font-pixel), monospace; color: var(--ink); }.result span { display: block; font-size: 12px; margin-top: 12px; color: #435b3e; }
+.retry { color: #1d54ba; background: #faf9f2; border: 0; text-decoration: underline; padding: 10px; min-height: 44px; font-size: 12px; }
+.directory { position: relative; background: url('/games/bogor-run/ground.svg') center bottom / 100% 100% no-repeat; }
+.world[data-playing="true"] .invitation { opacity: 0; visibility: hidden; }
+.world[data-playing="true"] .mist { opacity: .25; }
+.world[data-playing="true"] .gameTitle { margin-left: 0; }
+.world[data-playing="true"] .controls { justify-content: space-between; }
 .srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
-@media (max-width: 760px) { .heading h3 { font-size: 29px; }.hud { min-height: 44px; gap: 24px; }.hud button { height: 44px; }.instructions { font-size: 11px; }.instructions > span:last-child { font-size: 10px; }.overlay > span { min-height: 40px; font-size: 12px; }.overlay strong { font-size: 20px; } }
-@media (forced-colors: active) { .console, .overlay > span { border: 1px solid CanvasText; }.stage:focus-visible { outline-color: Highlight; }.hud svg { fill: ButtonText; } }
+@media (min-width: 761px) and (max-width: 1100px) {
+  .invitation { padding-top: 72px; }.invitation > div { width: 55%; }
+  .gameTitle { margin-left: 65%; }.topbar { top: 82px; }
+  .controls { gap: 14px; }.instructions { font-size: 9px; }
+}
+@media (max-width: 760px) {
+  .arena { height: auto; padding-bottom: 440px; }
+  .scenery { top: auto; height: 400px; background-size: auto 100%; background-position: right bottom; }
+  .mist { background: linear-gradient(#faf9f2 0%, #faf9f2 42%, #faf9f200 72%); }
+  .invitation { padding-top: 58px; }.invitation > div { width: 100%; max-width: 510px; }
+  .poster { width: 105.6px; left: 64%; bottom: 50px; }
+  .topbar { top: auto; bottom: 340px; }.gameTitle { margin-left: 0; max-width: 130px; }
+  .controls { bottom: 13px; justify-content: space-between; gap: 12px; }
+  .instructions { font-size: 9px; max-width: 145px; }.instructions > span:last-child { display: none; }
+  .action { font-size: 11px; gap: 16px; padding: 10px 12px; }.pause { background: #f6f6e9; }
+  .directory { background-size: auto 100%; }
+  .world[data-playing="true"] .arena { height: clamp(540px, calc(100svh - 110px), 680px); padding-bottom: 0; }
+  .world[data-playing="true"] .gameTitle { max-width: none; }
+  .world[data-playing="true"] .topbar { top: 58px; bottom: auto; flex-direction: column; gap: 22px; }
+  .world[data-playing="true"] .mist { background: linear-gradient(#faf9f2e6, #faf9f200 70%); }
+  .world[data-playing="true"] .back { padding-left: 0; font-size: 11px; }
+  .hud { top: 220px; left: var(--gutter); right: auto; gap: 22px; }.hud b { font-size: 20px; }
+  .tapArea { top: 280px; bottom: 75px; }
+  .result { inset: 280px var(--gutter) auto; }.result span { font-size: 11px; }
+}
+@media (prefers-reduced-motion: reduce) { .invitation, .mist { transition: none; } }
+@media (forced-colors: active) { .action, .pause, .back { border: 1px solid ButtonText; }.pause svg { fill: ButtonText; }.instructions { color: CanvasText; } }

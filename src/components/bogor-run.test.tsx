@@ -5,12 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BogorRun } from "./bogor-run";
 import type { Snapshot } from "@/lib/bogor-run/runtime";
 
-const game = vi.hoisted(() => ({ mount: vi.fn(), action: vi.fn(), togglePause: vi.fn(), pause: vi.fn(), dispose: vi.fn(), setReduced: vi.fn() }));
+const game = vi.hoisted(() => ({ mount: vi.fn(), action: vi.fn(), togglePause: vi.fn(), pause: vi.fn(), dispose: vi.fn(), setReduced: vi.fn(), setVisible: vi.fn(), toggleAutoplay: vi.fn(), leave: vi.fn() }));
 vi.mock("@/lib/bogor-run/runtime", () => ({ mountRunner: game.mount }));
-vi.mock("./experience-provider", () => ({ useExperience: () => ({ animated: false }) }));
+vi.mock("./experience-provider", () => ({ useExperience: () => ({ animated: true }) }));
 let publish: (snapshot: Snapshot) => void;
 let visibility: IntersectionObserverCallback;
-const running: Snapshot = { phase: "running", score: 12, best: 20, message: "" };
+const running: Snapshot = { phase: "running", score: 12, best: 20, message: "", autoplay: false };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -24,7 +24,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 async function ready() {
-  const button = screen.getByRole("button", { name: "Mulai main: Bogor Run" });
+  const button = screen.getByRole("button", { name: "Ikut main: Bogor Run" });
   await waitFor(() => expect((button as HTMLButtonElement).disabled).toBe(false));
   return button;
 }
@@ -64,8 +64,24 @@ describe("footer game controls", () => {
   it("pauses outside the viewport and disposes on unmount", async () => {
     const { unmount } = render(<BogorRun/>); await ready();
     act(() => visibility([{ isIntersecting: false, intersectionRatio: 0 } as IntersectionObserverEntry], {} as IntersectionObserver));
-    expect(game.pause).toHaveBeenCalledOnce();
+    expect(game.setVisible).toHaveBeenLastCalledWith(false);
     unmount(); expect(game.dispose).toHaveBeenCalledOnce();
+  });
+
+  it("lets visitors pause autoplay and return from a personal run to the invitation", async () => {
+    render(<BogorRun invitation={<a href="#join">Gabung member</a>}/>); await ready();
+    act(() => publish({ ...running, phase: "idle", autoplay: true }));
+    await userEvent.click(screen.getByRole("button", { name: "Jeda permainan otomatis" }));
+    expect(game.toggleAutoplay).toHaveBeenCalledOnce();
+    act(() => publish(running));
+    const invitation = screen.getByText("Gabung member").parentElement!;
+    expect(invitation.hasAttribute("inert")).toBe(true);
+    expect(invitation.getAttribute("aria-hidden")).toBe("true");
+    await userEvent.click(screen.getByRole("button", { name: "Kembali ke komunitas" }));
+    expect(game.leave).toHaveBeenCalledOnce();
+    act(() => publish({ ...running, phase: "idle", autoplay: true }));
+    expect(invitation.hasAttribute("inert")).toBe(false);
+    await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("link", { name: "Gabung member" })));
   });
 
   it("offers a recoverable asset-load failure", async () => {

@@ -43,6 +43,14 @@ The landing preloader releases after the renderer completes its first frame, inc
 
 The garden uses distinct round, columnar, and umbrella canopies, yellow/coral flowering trees, palms, broad tropical leaves, and a small Google-color direction post on the left. Fresher greens, turquoise water, and a more neutral warm key light keep the cel-shaded scene vibrant without changing the hero composition.
 
+## Footer mini game
+
+The footer places **Dino keliling Bogor** on the left, the GDGoC identity in the middle, and community links on the right. Tablets keep the game beside the directory; small screens stack it above the identity and links while retaining the warm-paper palette.
+
+Click/tap the game to start, then use Space, Up, or a tap to jump over green angkot, taro baskets, and rain puddles. P or the pause button pauses/resumes. The game also pauses when it leaves the viewport, focus leaves its controls, or the tab/window becomes inactive. It never starts or resumes automatically. Scores stay in browser storage; no login or backend is needed.
+
+The Canvas 2D runtime loads when the footer comes into view. Reduced motion removes moving ground marks and leg animation, while the user-initiated jumping game remains available. Original pixel SVG assets and their notes live in `public/games/bogor-run/`; the five images total about 4.3 KB before compression.
+
 ## Structure
 
 - `src/lib/campus/builder.ts`: batched toon geometry, exterior-only voxel unions, and antialiased ink contours.
@@ -54,6 +62,8 @@ The garden uses distinct round, columnar, and umbrella canopies, yellow/coral fl
 - `src/components/scene-preloader.tsx`: first-frame loading gate with native modal focus handling and reduced-motion support.
 - `src/components/experience-provider.tsx`: system reduced motion and desktop Lenis scrolling.
 - `src/components/join-footer.tsx`: one continuous light section for the membership invitation, pixel garden, community identity, navigation, and contact.
+- `src/components/bogor-run.tsx`: lazy game initialization, keyboard/pointer controls, score display, and accessible status announcements.
+- `src/lib/bogor-run/`: deterministic-step gameplay, collision shapes, Canvas drawing, pause/resume, and browser-local best score.
 - `src/lib/community.ts`: verified official membership and Instagram destinations.
 - `src/lib/directions.ts`: visual directions and art asset paths.
 - `docs/DESIGN.md`: Figma evidence, direction choices and implementation rationale.

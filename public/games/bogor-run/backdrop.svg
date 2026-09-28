@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="230" viewBox="0 0 480 230" shape-rendering="crispEdges">
+  <title>Salak, Tugu Kujang, dan jalanan Bogor dalam pixel art</title>
+  <path fill="#f0f2e3" d="M0 0h480v230H0z"/>
+  <path fill="#e0e7d5" d="M0 115h24v-8h20v-7h24v-9h14v-9h16v-9h12v-8h13v-9h17v5h12v9h18v8h18v6h18v10h28v11h26v12h20v23H0z"/>
+  <path fill="#d2dfc8" d="M0 143h16v-7h24v-8h24v-12h24v-12h20v-10h14v6h16v10h22v9h22v10h20v-9h20v-9h12v-9h17v-10h12v7h14v9h18v9h22v11h21v10h28v25H0z"/>
+  <path fill="#f9f8ec" d="M50 36h12v-7h28v4h12v6h12v5H50zm226-13h10v-6h22v5h16v7h-48z"/>
+  <path fill="#e6e9d9" d="M53 44h56v3H53zm226-15h42v3h-42z"/>
+  <path fill="#c0d4b1" d="M0 153h18v-12h12v-7h18v8h12v13h15v-17h10v-7h19v7h10v17h19v-10h21v-10h12v8h15v12h29v-11h15v-11h20v7h14v15h37v-13h17v-10h16v8h14v16h25v-9h13v-10h15v7h15v12h18v-19h13v-8h18v10h14v17h25v-9h15v-8h17v14h22v29H0z"/>
+  <path fill="#91ae84" d="M362 142h6v32h-6zm79 4h4v28h-4z"/>
+  <path fill="#a8c196" d="M344 136h9v-10h22v7h10v16h-12v5h-22v-7h-7zm85 2h9v-8h13v8h10v13h-9v6h-14v-7h-9z"/>
+  <path fill="#dfd4ad" d="M389 148h24v6h7v5h-38v-5h7zM396 92h10v57h-10z"/>
+  <path fill="#c7ba90" d="M402 92h4v57h-4zm-13 56h24v4h-24z"/>
+  <path fill="#b68a34" d="M400 57h4v10h5v7h-4v7h-4v6h5v5h-12v-5h3V73h-4v-5h4v-7h3z"/>
+  <path fill="#e2b653" d="M400 62h2v10h-3v12h-2V72h3z"/>
+  <path fill="#e5e5ce" d="M0 163h480v13H0z"/>
+  <path fill="#8eaa80" d="M0 175h480v2H0z"/>
+  <path fill="#f1ecda" d="M0 177h480v53H0z"/>
+  <path fill="#d8d7bd" d="M0 179h480v2H0zm18 28h22v2H18zm112 9h14v2h-14zm201-19h25v2h-25zm77 23h33v2h-33z"/>
+  <path fill="#d4dfc7" d="M18 169h4v-9h2v9h4v5H18zm304 0h4v-6h2v6h4v5h-10z"/>
+</svg>

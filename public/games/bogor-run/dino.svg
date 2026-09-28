@@ -2,29 +2,29 @@
   <title>Dino GDGoC krem: diam, dua langkah berlari, dan berhenti</title>
   <defs>
     <g id="body">
-      <path fill="#172d43" d="M23 1h18v2h3v17H32v3h4v2h2v6h-6v4h-3v3h-3v3H12v-3H8v-3H5v-4H2v-6H0v-8h4v7h3v3h4v-2h3v-4h4V5h2V3h3z"/>
-      <path fill="#f3e6b8" d="M23 3h17v2h2v13H30v7h4v2h2v2h-6v5h-3v3h-3v2H13v-3H9v-3H7v-4H5v-3H2v-7h1v6h4v4h6v-3h3v-4h4V5h3z"/>
+      <path fill="#172d43" d="M23 1h18v2h3v17H32v3h4v2h2v6h-6v4h-3v3h-3v2H13v-2H8v-3H4v-3H0v-4h6v2h6v-4h2v-4h4V5h2V3h3z"/>
+      <path fill="#f3e6b8" d="M23 3h17v2h2v13H30v7h4v2h2v2h-6v5h-3v3h-3v1H14v-2h-2v-3h2v-6h2v-5h4V5h3zM4 30h2v2h7v-2h2v6h-5v-2H7v-2H4z"/>
       <path fill="#fff3ce" d="M23 3h17v2H23zm-3 2h3v14h-3zm-4 21h3v3h-3zm-3 3h3v4h-3z"/>
-      <path fill="#e3d099" d="M39 5h3v13H30v7h-3V16h12zM27 29h3v5h-3v3h-3v2H13v-3h10v-3h4z"/>
+      <path fill="#e3d099" d="M39 5h3v13H30v7h-3V16h12zM27 29h3v5h-3v3h-3v1H14v-2h9v-3h4z"/>
       <path fill="#172d43" d="M25 7h3v4h-3zm10 7h9v2h-9z"/>
     </g>
     <g id="standing">
-      <path fill="#172d43" d="M12 35h8v9h4v3H12zm12 0h6v7h4v3H23v-6h1z"/>
-      <path fill="#e3d099" d="M25 37h3v7h4v-1h-7z"/>
-      <path fill="#f3e6b8" d="M14 37h4v8h4v1h-8z"/>
+      <path fill="#172d43" d="M13 35h8v8h4v4H13zm10 0h7v7h3v4H23z"/>
+      <path fill="#e3d099" d="M25 37h3v6h-3z"/>
+      <path fill="#f3e6b8" d="M15 37h4v7h-4z"/>
     </g>
   </defs>
   <use href="#standing"/><use href="#body"/>
   <g transform="translate(44)">
-    <path fill="#172d43" d="M11 35h8v5h-5v4H8v-3h3zm12 0h7v9h4v3H23z"/>
-    <path fill="#e3d099" d="M13 37h4v2h-5v3h-2v-1h3z"/>
-    <path fill="#f3e6b8" d="M25 37h3v8h4v1h-7z"/>
+    <path fill="#172d43" d="M12 35h8v6h-5v3H9v-4h3zm10 0h7v8h4v4H22z"/>
+    <path fill="#e3d099" d="M14 37h4v2h-4v3h-3v-1h3z"/>
+    <path fill="#f3e6b8" d="M24 37h3v7h-3z"/>
     <use href="#body"/>
   </g>
   <g transform="translate(88)">
-    <path fill="#172d43" d="M12 35h8v9h4v3H12zm11 0h7v3h7v4H27v-3h-4z"/>
-    <path fill="#e3d099" d="M25 37h3v3h7v1h-7v-2h-3z"/>
-    <path fill="#f3e6b8" d="M14 37h4v8h4v1h-8z"/>
+    <path fill="#172d43" d="M13 35h8v8h4v4H13zm10 0h7v4h5v4h-9v-3h-3z"/>
+    <path fill="#e3d099" d="M25 37h3v4h5v1h-5v-2h-3z"/>
+    <path fill="#f3e6b8" d="M15 37h4v7h-4z"/>
     <use href="#body"/>
   </g>
   <g transform="translate(132)">

@@ -7,6 +7,7 @@ export const appreciationValues = v.object({
   level: v.string(), participation: v.string(), teamName: v.string(), teamMembers: v.string(),
   eventDate: v.string(), story: v.string(), documentationLinks: v.string(), publicationConsent: v.boolean(),
 });
+export const assignmentStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("closed"));
 export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
 
 export default defineSchema({
@@ -14,7 +15,11 @@ export default defineSchema({
     ownerId: v.string(), fullName: v.string(), campus: v.string(), studyProgram: v.string(),
     nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4)),
     revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
-  }).index("by_owner", ["ownerId"]),
+    // Dashboard access. Owners come from APPRECIATION_ADMIN_EMAILS, never from this table.
+    role: v.optional(v.literal("admin")), deactivatedAt: v.optional(v.number()), accessUpdatedBy: v.optional(v.string()),
+  }).index("by_owner", ["ownerId"])
+    .index("by_completed", ["completedAt"])
+    .searchIndex("search_name", { searchField: "fullName" }),
   appreciations: defineTable({
     ownerId: v.string(), ownerName: v.string(), ownerEmail: v.string(), clientId: v.string(),
     values: appreciationValues, status: appreciationStatus, revision: v.number(),
@@ -29,4 +34,27 @@ export default defineSchema({
     appreciationId: v.id("appreciations"), reviewerId: v.string(),
     status: appreciationStatus, note: v.string(), postUrl: v.string(), createdAt: v.number(),
   }).index("by_appreciation", ["appreciationId"]),
+  assignments: defineTable({
+    title: v.string(), description: v.string(), dueAt: v.number(), status: assignmentStatus,
+    revision: v.number(), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(), publishedAt: v.optional(v.number()),
+  })
+    .index("by_status_due", ["status", "dueAt"])
+    .index("by_updated", ["updatedAt"]),
+  assignmentSubmissions: defineTable({
+    assignmentId: v.id("assignments"), ownerId: v.string(), answer: v.string(),
+    revision: v.number(), submittedAt: v.number(),
+  })
+    .index("by_assignment_owner", ["assignmentId", "ownerId"])
+    .index("by_assignment_submitted", ["assignmentId", "submittedAt"])
+    .index("by_owner", ["ownerId"]),
+  // Uploads start pending and are attached by a submission; unclaimed ones are removed by a cron.
+  submissionFiles: defineTable({
+    assignmentId: v.id("assignments"), ownerId: v.string(), storageId: v.id("_storage"),
+    name: v.string(), contentType: v.string(), size: v.number(), createdAt: v.number(),
+    submissionId: v.optional(v.id("assignmentSubmissions")),
+  })
+    .index("by_storage", ["storageId"])
+    .index("by_submission", ["submissionId", "createdAt"])
+    .index("by_owner_assignment", ["ownerId", "assignmentId"])
+    .index("by_assignment", ["assignmentId"]),
 });

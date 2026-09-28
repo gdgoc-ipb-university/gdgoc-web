@@ -15,7 +15,7 @@ Open [the landing](http://127.0.0.1:3104), [the full scene](http://127.0.0.1:310
 The [CTA + footer concept gallery](http://127.0.0.1:3104/footer-directions) contains four new light concepts: Taman kampus, Meja kolaborasi, Gerbang komunitas, and Mosaik karya. Original PNGs and WebPs are in `public/footer-directions/`; the complete prompts and reference are recorded in `design/footer-directions/prompts.json`. These are generated design options, not four implemented footer components.
 
 ```sh
-pnpm test # backend permissions, onboarding, accessibility, autosave and forms
+pnpm test # backend permissions, onboarding, dashboard, accessibility, autosave and forms
 pnpm check # ESLint + Next route types + TypeScript
 pnpm build
 pnpm start
@@ -28,6 +28,10 @@ Node 24 and pnpm 11.22.0 are used. The landing has no backend dependency. The Ap
 `/apresiasi` provides Google sign-in, private autosaved drafts, a review-before-submit form, documentation links (no uploads), and submission status. `/apresiasi/admin` is a verified-email allowlist review queue; it is locked until `APPRECIATION_ADMIN_EMAILS` is explicitly configured. Publication is a manual Media & Creative workflow, with the Instagram post URL recorded after publishing.
 
 The first authenticated visit opens a four-screen `/onboarding`: name, campus and study program, optional WhatsApp invitation, and optional GDG Community invitation. Progress is saved per account after each forward action, and completed users do not repeat the flow. Searchable education comboboxes accept unlisted values and support keyboard navigation, mobile input hints, and accessible labels/errors. The resulting profile prefills new appreciation drafts. See `docs/ONBOARDING.md` for persistence, accessibility, and suggestion-source details.
+
+## Dashboard
+
+`/dashboard` gives members and administrators a Google sign-in workspace. Members see open assignments, write an answer, attach up to five files (10 MB each), and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, can promote members to admin. Owners and admins create, open, and close assignments, review every submission, and deactivate or reactivate members. See `docs/DASHBOARD.md` for roles, upload handling, and cleanup.
 
 ## Selected direction
 
@@ -54,6 +58,7 @@ The garden uses distinct round, columnar, and umbrella canopies, yellow/coral fl
 - `src/lib/directions.ts`: visual directions and art asset paths.
 - `docs/DESIGN.md`: Figma evidence, direction choices and implementation rationale.
 - `docs/VERIFICATION.md`: checks and evidence boundaries.
+- `docs/DASHBOARD.md`: dashboard roles, assignments, submissions, and member management.
 
 `?motion=off` is a deterministic still mode. `?webgl=off` exercises the image fallback. `?world=cloud-club`, `?world=dino-playground`, and `?world=after-hours` preview alternate artwork in the landing layout.
 

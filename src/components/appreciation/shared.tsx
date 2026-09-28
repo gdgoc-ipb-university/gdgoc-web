@@ -32,7 +32,7 @@ export function AppreciationIntro({ compact = false }: { compact?: boolean }) {
   </div>;
 }
 
-function GoogleMark() {
+export function GoogleMark() {
   return <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24"><path fill="#4285F4" d="M21.6 12.23c0-.71-.06-1.39-.18-2.05H12v3.88h5.38a4.6 4.6 0 0 1-1.99 3.02v2.51h3.23c1.89-1.74 2.98-4.31 2.98-7.36Z"/><path fill="#34A853" d="M12 22c2.7 0 4.96-.9 6.62-2.41l-3.23-2.51c-.9.6-2.05.97-3.39.97-2.61 0-4.83-1.76-5.62-4.13H3.04v2.59A10 10 0 0 0 12 22Z"/><path fill="#FBBC05" d="M6.38 13.92a6 6 0 0 1 0-3.84V7.49H3.04a10 10 0 0 0 0 9.02l3.34-2.59Z"/><path fill="#EA4335" d="M12 5.95c1.47 0 2.79.5 3.83 1.5l2.87-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.96 5.49l3.34 2.59C7.17 7.71 9.39 5.95 12 5.95Z"/></svg>;
 }
 
@@ -67,7 +67,7 @@ export function LoginPanel({ admin = false }: { admin?: boolean }) {
   </div>;
 }
 
-export function AccountBar({ viewer, beforeLeave }: { viewer: { name: string; email: string; isAdmin: boolean }; beforeLeave?: () => Promise<boolean> }) {
+export function AccountBar({ viewer, beforeLeave, dashboardLink = true }: { viewer: { name: string; email: string; isAdmin: boolean }; beforeLeave?: () => Promise<boolean>; dashboardLink?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function signOut() {
@@ -80,12 +80,12 @@ export function AccountBar({ viewer, beforeLeave }: { viewer: { name: string; em
     finally { setBusy(false); }
   }
   return <div className="account-bar"><div className="account-identity"><span className="account-avatar" aria-hidden="true">{viewer.name.trim().slice(0, 1).toUpperCase()}</span><div><strong>{viewer.name}</strong><span>{viewer.email}</span></div></div>
-    <div className="account-actions">{viewer.isAdmin && <Link href="/apresiasi/admin">Panel tinjauan <Arrow /></Link>}<button className="text-button" disabled={busy} onClick={signOut}>{busy ? "Sebentar…" : "Keluar"}</button></div>
+    <div className="account-actions">{viewer.isAdmin && <Link href="/apresiasi/admin">Panel tinjauan <Arrow /></Link>}{dashboardLink && <Link href="/dashboard">Dashboard <Arrow /></Link>}<button className="text-button" disabled={busy} onClick={signOut}>{busy ? "Sebentar…" : "Keluar"}</button></div>
     {error && <p className="field-error" role="alert">{error}</p>}
   </div>;
 }
 
-export function LoadingPanel() { return <div className="app-panel app-loading" role="status"><span className="status-dot" /> Menghubungkan akun dan draftmu…</div>; }
+export function LoadingPanel({ label = "Menghubungkan akun dan draftmu…" }: { label?: string }) { return <div className="app-panel app-loading" role="status"><span className="status-dot" /> {label}</div>; }
 
 export function StatusBadge({ status }: { status: Doc<"appreciations">["status"] }) { return <span className="app-status" data-status={status}>{statusLabels[status]}</span>; }
 
@@ -107,6 +107,6 @@ export function RecordDetails({ record }: { record: Doc<"appreciations"> }) {
   </div>;
 }
 
-export function AppreciationFooter() {
-  return <footer className="app-footer section-width"><span>GDGoC IPB <span className="footer-color-dots" aria-hidden="true"><i /><i /><i /><i /></span></span><nav aria-label="Informasi apresiasi"><Link href="/">Beranda</Link><Link href="/privasi">Privasi</Link><a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow diagonal /></a></nav></footer>;
+export function AppreciationFooter({ label = "Informasi apresiasi" }: { label?: string }) {
+  return <footer className="app-footer section-width"><span>GDGoC IPB <span className="footer-color-dots" aria-hidden="true"><i /><i /><i /><i /></span></span><nav aria-label={label}><Link href="/">Beranda</Link><Link href="/privasi">Privasi</Link><a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow diagonal /></a></nav></footer>;
 }

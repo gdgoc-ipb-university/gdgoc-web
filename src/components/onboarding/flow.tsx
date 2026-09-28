@@ -42,11 +42,11 @@ export function OnboardingPage() {
   if (isLoading || !isAuthenticated || !viewer || profile === undefined || profile?.completedAt) {
     return <main id="main" className="onboard-loading" role="status">Menyiapkan ruang untukmu…</main>;
   }
-  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} onComplete={() => router.replace(destination)} />;
+  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} onComplete={() => router.replace(destination)} finishLabel={destination === "/dashboard" ? "Selesai, ke Dashboard" : undefined} />;
 }
 
-export function OnboardingFlow({ viewer, profile, save, onComplete }: {
-  viewer: { name: string; email: string }; profile: Doc<"memberProfiles"> | null; save: SaveStep; onComplete: () => void;
+export function OnboardingFlow({ viewer, profile, save, onComplete, finishLabel = "Selesai, ke Apresiasi" }: {
+  viewer: { name: string; email: string }; profile: Doc<"memberProfiles"> | null; save: SaveStep; onComplete: () => void; finishLabel?: string;
 }) {
   const [step, setStep] = useState<OnboardingStep>(profile?.nextStep ?? 1);
   const [values, setValues] = useState<OnboardingValues>({ fullName: profile?.fullName || viewer.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "" });
@@ -129,7 +129,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete }: {
             {step === 3 && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true">WA</div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow diagonal/><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>}
             {step === 4 && <div className="onboard-invitation"><div className="onboard-invite-icon gdg-icon" aria-hidden="true">&lt;&gt;</div><div><strong>GDG on Campus IPB University</strong><p>Buka halaman chapter, lalu pilih <b>Join us</b> untuk menjadi member.</p></div><a className="button onboard-external" href={communityLinks.membership} target="_blank" rel="noopener noreferrer">Gabung di GDG Community <Arrow diagonal/><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Sudah jadi member? Kamu bisa langsung menyelesaikan perkenalan.</p></div>}
             {error && <p className="onboard-notice" role="alert">{error} Isianmu tetap ada di halaman ini.</p>}
-            <div className="onboard-actions">{step > 1 ? <button className="onboard-back" type="button" disabled={busy || leaving} onClick={() => { setErrors({}); setError(""); setStep((step - 1) as OnboardingStep); }}><span aria-hidden="true">←</span> Kembali</button> : <span className="onboard-time">4 langkah singkat.</span>}<button className="button button-blue" type="submit" disabled={busy || leaving}>{busy ? "Menyimpan…" : step === 4 ? "Selesai, ke Apresiasi" : "Lanjut"}<Arrow /></button></div>
+            <div className="onboard-actions">{step > 1 ? <button className="onboard-back" type="button" disabled={busy || leaving} onClick={() => { setErrors({}); setError(""); setStep((step - 1) as OnboardingStep); }}><span aria-hidden="true">←</span> Kembali</button> : <span className="onboard-time">4 langkah singkat.</span>}<button className="button button-blue" type="submit" disabled={busy || leaving}>{busy ? "Menyimpan…" : step === 4 ? finishLabel : "Lanjut"}<Arrow /></button></div>
             {step > 2 ? <p className="onboard-save-note">Belum ingin bergabung? {step === 3 ? "Pilih Lanjut untuk melewati langkah ini." : "Kamu tetap bisa menyelesaikan perkenalan."}</p> : <p className="onboard-save-note">Data tersimpan setiap menekan Lanjut. Bisa diteruskan nanti.</p>}
           </form>
         </section>

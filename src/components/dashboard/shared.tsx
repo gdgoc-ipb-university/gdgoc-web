@@ -1,0 +1,47 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { assignmentStatusLabels, fileSizeLabel } from "@/lib/assignment";
+import { dateLabel } from "../appreciation/shared";
+import { Arrow } from "../icons";
+
+/** Current time, refreshed each minute so deadline labels stay accurate without impure renders. */
+export function useNow() {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
+
+const relative = new Intl.RelativeTimeFormat("id-ID", { numeric: "auto" });
+export function relativeLabel(target: number, now: number) {
+  const minutes = Math.round((target - now) / 60000);
+  if (Math.abs(minutes) < 60) return relative.format(minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (Math.abs(hours) < 48) return relative.format(hours, "hour");
+  return relative.format(Math.round(hours / 24), "day");
+}
+
+export function DueLabel({ dueAt, now, open }: { dueAt: number; now: number; open: boolean }) {
+  const passed = dueAt < now;
+  return <p className="dash-due" data-passed={passed && open}>
+    <span>Tenggat {dateLabel(dueAt)}</span>
+    {open && <span className="dash-due-relative">{passed ? `Lewat tenggat · ${relativeLabel(dueAt, now)}` : relativeLabel(dueAt, now)}</span>}
+  </p>;
+}
+
+export function AssignmentStatusBadge({ status }: { status: keyof typeof assignmentStatusLabels }) {
+  return <span className="app-status dash-status" data-status={status}>{assignmentStatusLabels[status]}</span>;
+}
+
+export function SubmissionBadge({ submittedAt, late }: { submittedAt: number | null; late: boolean }) {
+  if (!submittedAt) return <span className="app-status dash-status" data-status="missing">Belum dikumpulkan</span>;
+  return <span className="app-status dash-status" data-status={late ? "late" : "done"}>{late ? "Terkumpul · terlambat" : "Terkumpul"}</span>;
+}
+
+export function FileLink({ file }: { file: { name: string; size: number; url: string | null } }) {
+  if (!file.url) return <span className="dash-file">{file.name} <small>{fileSizeLabel(file.size)} · tidak tersedia</small></span>;
+  return <a className="dash-file" href={file.url} target="_blank" rel="noopener noreferrer">{file.name} <small>{fileSizeLabel(file.size)}</small><Arrow diagonal /><span className="sr-only"> (buka tab baru)</span></a>;
+}

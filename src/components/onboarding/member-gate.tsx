@@ -11,7 +11,7 @@ export function MemberGate({ children }: { children: React.ReactNode }) {
   const profile = useQuery(api.members.profile, isAuthenticated ? {} : "skip");
   const router = useRouter();
   const pathname = usePathname();
-  const destination = pathname === "/apresiasi/admin" ? "/onboarding?next=review" : "/onboarding";
+  const destination = pathname === "/apresiasi/admin" ? "/onboarding?next=review" : pathname.startsWith("/dashboard") ? "/onboarding?next=dashboard" : "/onboarding";
   const needsOnboarding = isAuthenticated && profile !== undefined && !profile?.completedAt;
   useEffect(() => { if (needsOnboarding) router.replace(destination); }, [needsOnboarding, destination, router]);
   if (isLoading || (isAuthenticated && (profile === undefined || needsOnboarding))) {

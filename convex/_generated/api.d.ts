@@ -8,8 +8,12 @@
  * @module
  */
 
+import type * as access from "../access.js";
 import type * as appreciations from "../appreciations.js";
+import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
+import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
 import type * as members from "../members.js";
 
@@ -20,8 +24,12 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  access: typeof access;
   appreciations: typeof appreciations;
+  assignments: typeof assignments;
   auth: typeof auth;
+  crons: typeof crons;
+  dashboard: typeof dashboard;
   http: typeof http;
   members: typeof members;
 }>;

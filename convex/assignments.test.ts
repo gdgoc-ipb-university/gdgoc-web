@@ -169,6 +169,31 @@ describe("assignment submission", () => {
     expect((await member.query(api.assignments.list))[0]).toMatchObject({ status: "closed" });
   });
 
+  it("stores rich answers through the allowlist and derives the plain text", async () => {
+    const { owner, member } = await world();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    const doc = { type: "doc", content: [
+      { type: "heading", attrs: { level: 2 }, content: [{ type: "text", text: "Hasil" }] },
+      { type: "paragraph", content: [{ type: "text", text: "Demo", marks: [{ type: "bold" }, { type: "link", attrs: { href: "javascript:alert(1)" } }] }] },
+    ] };
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "ignored", answerDoc: JSON.stringify(doc), fileIds: [] });
+    const saved = (await member.query(api.assignments.get, { id }))?.submission;
+    expect(saved?.answer).toBe("Hasil\nDemo");
+    expect(JSON.parse(saved!.answerDoc!).content[1].content[0]).toEqual({ type: "text", text: "Demo", marks: [{ type: "bold" }] });
+    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page[0].answerDoc).toBe(saved?.answerDoc);
+
+    await expect(member.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "", answerDoc: JSON.stringify({ type: "doc", content: [{ type: "image", attrs: { src: "https://x" } }] }), fileIds: [] })).rejects.toThrow("Format jawaban");
+    const long = { type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "x".repeat(5001) }] }] };
+    await expect(member.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "", answerDoc: JSON.stringify(long), fileIds: [] })).rejects.toThrow("maksimal 5000");
+    const empty = { type: "doc", content: [{ type: "paragraph" }] };
+    await expect(member.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "", answerDoc: JSON.stringify(empty), fileIds: [] })).rejects.toThrow("Tulis jawaban");
+
+    // A tab from before rich answers sends plain text, which clears the stored document.
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "Teks biasa", fileIds: [] });
+    const plain = (await member.query(api.assignments.get, { id }))?.submission;
+    expect(plain).toMatchObject({ answer: "Teks biasa", answerDoc: null, revision: 2 });
+  });
+
   it("removes pending uploads and unregistered files after a day, keeping submitted work", async () => {
     const { t, owner, member } = await world();
     const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });

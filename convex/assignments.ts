@@ -4,6 +4,7 @@ import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } fr
 import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { requireMember, requireStaff } from "./access";
+import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentLimits, cleanFileName, fileProblem, fromJakartaInput, isLate, maxSlugLength, maxSubmissionFiles, normalizeAssignment, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
 
 // `slug` is optional so a tab loaded before slugs existed can still save; it is then derived from the title.
@@ -178,7 +179,7 @@ export const submissions = query({
           attachedFiles(ctx, submission._id),
         ]);
         return {
-          _id: submission._id, answer: submission.answer, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt),
+          _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt),
           name: profile?.fullName || user?.name || "Member", email: user?.email ?? "", campus: profile?.campus ?? "",
           files: await Promise.all(files.map((file) => fileView(ctx, file))),
         };
@@ -218,7 +219,7 @@ export const get = query({
     const files = await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", user._id).eq("assignmentId", assignment._id)).collect();
     return {
       assignment, canManage: role !== "member",
-      submission: submission && { _id: submission._id, answer: submission.answer, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt) },
+      submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt) },
       files: await Promise.all(files.map((file) => fileView(ctx, file))),
     };
   },
@@ -281,19 +282,28 @@ export const removeFile = mutation({
 });
 
 export const submit = mutation({
-  args: { assignmentId: v.id("assignments"), revision: v.number(), answer: v.string(), fileIds: v.array(v.id("submissionFiles")) },
+  // `answerDoc` is the rich-text JSON; older clients send only the plain `answer`.
+  args: { assignmentId: v.id("assignments"), revision: v.number(), answer: v.string(), answerDoc: v.optional(v.string()), fileIds: v.array(v.id("submissionFiles")) },
   handler: async (ctx, args) => {
     const { user } = await requireMember(ctx);
     const assignment = await openAssignment(ctx, args.assignmentId);
-    const answer = args.answer.trim();
+    let answer = args.answer.trim();
+    let answerDoc: string | undefined;
+    if (args.answerDoc !== undefined) {
+      const doc = parseRichDoc(args.answerDoc);
+      if (!doc) throw new ConvexError({ code: "VALIDATION", message: "Format jawaban tidak dikenali. Muat ulang halaman, lalu coba lagi." });
+      if (richLength(doc) > assignmentLimits.answer) throw new ConvexError(`Jawaban maksimal ${assignmentLimits.answer} karakter.`);
+      answer = richText(doc);
+      answerDoc = answer ? JSON.stringify(doc) : undefined;
+    }
     const fileIds = [...new Set(args.fileIds)];
-    if (answer.length > assignmentLimits.answer) throw new ConvexError(`Jawaban maksimal ${assignmentLimits.answer} karakter.`);
+    if (answerDoc === undefined && answer.length > assignmentLimits.answer) throw new ConvexError(`Jawaban maksimal ${assignmentLimits.answer} karakter.`);
     if (fileIds.length > maxSubmissionFiles) throw new ConvexError(`Lampirkan maksimal ${maxSubmissionFiles} file.`);
     if (!answer && !fileIds.length) throw new ConvexError({ code: "VALIDATION", message: "Tulis jawaban atau lampirkan setidaknya satu file." });
     const existing = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
     const previous = existing ? await attachedFiles(ctx, existing._id) : [];
     if ((existing?.revision ?? 0) !== args.revision) {
-      const same = existing?.answer === answer && previous.length === fileIds.length && previous.every((file) => fileIds.includes(file._id));
+      const same = existing?.answer === answer && existing.answerDoc === answerDoc && previous.length === fileIds.length && previous.every((file) => fileIds.includes(file._id));
       if (existing && same) return existing._id;
       conflict();
     }
@@ -304,8 +314,8 @@ export const submit = mutation({
       }
     }
     const submittedAt = Date.now();
-    const submissionId = existing?._id ?? await ctx.db.insert("assignmentSubmissions", { assignmentId: assignment._id, ownerId: user._id, answer, revision: 1, submittedAt });
-    if (existing) await ctx.db.patch(existing._id, { answer, revision: existing.revision + 1, submittedAt });
+    const submissionId = existing?._id ?? await ctx.db.insert("assignmentSubmissions", { assignmentId: assignment._id, ownerId: user._id, answer, answerDoc, revision: 1, submittedAt });
+    if (existing) await ctx.db.patch(existing._id, { answer, answerDoc, revision: existing.revision + 1, submittedAt });
     for (const file of files) if (!file!.submissionId) await ctx.db.patch(file!._id, { submissionId });
     await removeFiles(ctx, previous.filter((file) => !fileIds.includes(file._id)));
     return submissionId;

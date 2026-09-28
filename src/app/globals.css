@@ -316,12 +316,13 @@ summary:focus-visible {
 .privacy-page > .button { margin-top: 40px; }
 .brand {
   display: flex;
-  width: 270px;
+  width: 250px;
   flex-shrink: 0;
 }
 .brand img {
+  display: block;
   width: 100%;
-  mix-blend-mode: multiply;
+  height: auto;
 }
 .navigation {
   display: flex;

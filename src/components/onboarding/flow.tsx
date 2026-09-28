@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
@@ -14,6 +13,7 @@ import { campusOptions, studyProgramOptions } from "@/lib/education-options";
 import { readableError } from "@/lib/draft-session";
 import { finalStep, normalizeOnboarding, onboardingDestination, roleStep, validateOnboarding, type OnboardingErrors, type OnboardingStep, type OnboardingValues, type RoleValues } from "@/lib/onboarding";
 import { Arrow } from "../icons";
+import { BrandLogo } from "../brand-logo";
 import { RoleChoice } from "../role-choice";
 import { EducationCombobox } from "./education-combobox";
 import { OnboardingArtwork } from "./artwork";
@@ -120,7 +120,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete }: {
 
   return <I18nProvider locale="id-ID"><div className="onboard-page">
     <a className="skip-link" href="#main">Lewati ke konten</a>
-    <header className="onboard-header"><Link href="/" aria-label="GDGoC IPB — beranda"><Image src="/brand/gdgoc-ipb.png" alt="Google Developer Group IPB University" width={402} height={87} preload /></Link><button className="onboard-exit" onClick={signOut} disabled={busy || leaving}>{leaving ? "Sebentar…" : "Keluar akun"}</button></header>
+    <header className="onboard-header"><Link href="/" aria-label="GDGoC IPB — beranda"><BrandLogo preload /></Link><button className="onboard-exit" onClick={signOut} disabled={busy || leaving}>{leaving ? "Sebentar…" : "Keluar akun"}</button></header>
     <main id="main" className="onboard-layout">
       <OnboardingArtwork step={step} />
       <div className="onboard-content">

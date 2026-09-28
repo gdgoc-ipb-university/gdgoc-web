@@ -1,9 +1,9 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Arrow } from "./icons";
+import { BrandLogo } from "./brand-logo";
 import { communityLinks } from "@/lib/community";
 import { ScrollProgress } from "./scroll-progress";
 import { usePathname } from "next/navigation";
@@ -27,13 +27,7 @@ export function Header({ review = false }: { review?: boolean }) {
   return (
     <header className="header">
       <Link href="/" className="brand" aria-label="GDGoC IPB — beranda">
-        <Image
-          src="/brand/gdgoc-ipb.png"
-          alt="Google Developer Group IPB University"
-          width={402}
-          height={87}
-          preload
-        />
+        <BrandLogo preload />
       </Link>
       {review ? (
         <Link href="/" className="back-link">

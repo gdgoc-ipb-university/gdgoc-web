@@ -13,7 +13,27 @@ import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { MissingAssignment } from "./assignments";
 import { AssignmentStatusBadge, CopyLinkButton, DueLabel, FileLink, SubmissionBadge, useNow } from "./shared";
+import { RichTextView } from "../rich-text-view";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
+
+/** Posts a file to a Convex upload URL with progress events (fetch has no upload progress). */
+function sendFile(url: string, file: File, onProgress: (fraction: number) => void, signal: AbortSignal) {
+  return new Promise<Id<"_storage">>((resolve, reject) => {
+    const request = new XMLHttpRequest();
+    const failed = () => reject(new Error("Unggahan gagal. Periksa koneksi, lalu coba lagi."));
+    request.open("POST", url);
+    request.setRequestHeader("Content-Type", file.type || "application/octet-stream");
+    request.upload.onprogress = (event) => { if (event.lengthComputable) onProgress(event.loaded / event.total); };
+    request.onload = () => {
+      if (request.status < 200 || request.status >= 300) return failed();
+      try { resolve((JSON.parse(request.responseText) as { storageId: Id<"_storage"> }).storageId); } catch { failed(); }
+    };
+    request.onerror = failed;
+    request.onabort = () => reject(new DOMException("Unggahan dibatalkan.", "AbortError"));
+    signal.addEventListener("abort", () => request.abort(), { once: true });
+    request.send(file);
+  });
+}
 
 type Detail = NonNullable<FunctionReturnType<typeof api.assignments.get>>;
 
@@ -46,11 +66,9 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
   const removeFile = useMutation(api.assignments.removeFile);
   const submit = useMutation(api.assignments.submit);
   const actions: SubmissionActions = {
-    async upload(file) {
+    async upload(file, { onProgress, signal }) {
       const url = await generateUploadUrl({ assignmentId: assignment._id });
-      const response = await fetch(url, { method: "POST", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file });
-      if (!response.ok) throw new Error("Unggahan gagal. Periksa koneksi, lalu coba lagi.");
-      const { storageId } = await response.json() as { storageId: Id<"_storage"> };
+      const storageId = await sendFile(url, file, onProgress, signal);
       return attachFile({ assignmentId: assignment._id, storageId, name: file.name });
     },
     removeFile: (fileId) => removeFile({ fileId }),
@@ -58,7 +76,7 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
   };
   if (assignment.status === "closed") {
     return <section className="app-form-section dash-closed" aria-labelledby="closed-title"><h2 id="closed-title">Pengumpulan sudah ditutup.</h2>
-      {submission ? <><p>Kamu mengirim pada {dateLabel(submission.submittedAt)}{submission.late ? " (terlambat)" : ""}.</p>{submission.answer && <div className="dash-answer">{submission.answer}</div>}<ul className="dash-file-list">{files.filter((file) => file.attached).map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul></>
+      {submission ? <><p>Kamu mengirim pada {dateLabel(submission.submittedAt)}{submission.late ? " (terlambat)" : ""}.</p>{submission.answer && <RichTextView className="dash-answer" json={submission.answerDoc} text={submission.answer} />}<ul className="dash-file-list">{files.filter((file) => file.attached).map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul></>
         : <p>Kamu belum mengirim tugas ini sebelum pengumpulan ditutup.</p>}
     </section>;
   }
@@ -100,7 +118,7 @@ function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; n
       : <ul className="dash-submissions">{list.results.map((item) => <li key={item._id} className="app-panel">
         <div className="app-record-top"><div><strong>{item.name}</strong><span className="app-small">{[item.email, item.campus].filter(Boolean).join(" · ")}</span></div><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /></div>
         <p className="app-small">Dikirim {dateLabel(item.submittedAt)}</p>
-        {item.answer && <div className="dash-answer">{item.answer}</div>}
+        {item.answer && <RichTextView className="dash-answer" json={item.answerDoc} text={item.answer} />}
         {item.files.length > 0 && <ul className="dash-file-list" aria-label={`Lampiran dari ${item.name}`}>{item.files.map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul>}
       </li>)}</ul>}
     {list.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => list.loadMore(20)}>Muat kiriman lainnya</button>}

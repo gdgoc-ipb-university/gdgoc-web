@@ -28,6 +28,24 @@ const paths = {
   code: ["M11 18H9v-4h2v4Zm-4-1H5v-2h2v2Zm12-2v2h-2v-2h2ZM5 15H3v-2h2v2Zm16 0h-2v-2h2v2Zm-8-1h-2v-4h2v4ZM3 13H1v-2h2v2Zm20 0h-2v-2h2v2ZM5 11H3V9h2v2Zm16 0h-2V9h2v2Zm-6-1h-2V6h2v4ZM7 9H5V7h2v2Zm12 0h-2V7h2v2Z"],
   megaphone: ["M4 6h12v2H4zM2 8h2v6H2zm2 6h12v2H4zM20 2h2v18h-2zm-2 16h2v2h-2zm-2-2h2v2h-2zm0-12h2v2h-2zm2-2h2v2h-2zM8 8h2v6H8zm-2 8h2v4H6zm2 4h4v2H8zm2-4h2v4h-2z"],
   notebook: ["M6 2h14v2H6zm0 18h14v2H6zM20 4h2v16h-2zM4 4h2v16H4z", "M2 7h6v2H2zm0 4h6v2H2zm0 4h6v2H2zM16 4h2v16h-2z"],
+  "heading-2": ["M3 6h2v12H3z", "M3 11h10v2H3z", "M11 6h2v12h-2zm4 10h6v2h-6zm0-2h2v2h-2zm2-2h2v2h-2zm2-2h2v2h-2zm-2-2h2v2h-2zm-2 0h2v2h-2z"],
+  "heading-3": ["M3 6h2v12H3z", "M3 11h10v2H3z", "M11 6h2v12h-2zm4 10h4v2h-4zm4-2h2v2h-2zm-4-2h4v2h-4zm4-2h2v2h-2zm-2-2h2v2h-2zm-2 0h2v2h-2z"],
+  bulletlist: ["M10 5h12v2H10zm0 4h8v2h-8zm0 4h12v2H10zm0 4h8v2h-8zm-4-6H4V9h2v2ZM4 9H2V7h2v2Zm4 0H6V7h2v2ZM6 7H4V5h2v2Zm-2 6h2v2H4zm0 4h2v2H4zm-2 0v-2h2v2zm4 0v-2h2v2z"],
+  "quote-text-inline": ["M2 8h4v4H2zm6 0h4v4H8zM2 6h2v2H2zm6 0h2v2H8zM4 4h2v2H4zm6 0h2v2h-2zm4 2h8v2h-8zm0 4h8v2h-8zM2 14h20v2H2zm0 4h20v2H2z"],
+  terminal: ["M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zM6 16h2v2H6zm2-2h2v2H8zm-2-2h2v2H6z"],
+  unlink: ["M4 6h5v2H4zm11 0h5v2h-5zm0 10h5v2h-5zM4 16h5v2H4zm16-8h2v8h-2zM2 8h2v8H2zm9-4h2v16h-2z"],
+  undo: ["M18 20h-6v-2h6v2Zm2-2h-2v-8h2v8Zm-10-4H8v-2H6v-2H4V8h2V6h2V4h2v4h8v2h-8v4Z"],
+  redo: ["M20 8H6v2h14zM4 10h2v8H4zm2 8h6v2H6z", "M18 6h-2v6h2zm-2-2h-2v8h2zm0 8h-2v2h2z"],
+  image: ["M4 2h16v2H4zm0 18h16v2H4zM2 4h2v16H2zm18 0h2v16h-2zm-4 8h2v2h-2zm-2 2h2v2h-2zm4 0h2v2h-2zm-8 0h2v2h-2zm2 2h2v2h-2zm2 2h2v2h-2z", "M20 16h2v2h-2zM8 16h2v2H8zm-2 2h2v2H6zM8 6h2v2H8zM6 8h2v2H6zm2 2h2v2H8zm2-2h2v2h-2z"],
+  archive: ["M3 2h18v2H3zm0 5h18v2H3zM1 4h2v3H1zm20 0h2v3h-2zm-2 5h2v11h-2zM3 9h2v11H3zm2 11h14v2H5zm4-9h6v2H9z"],
+  "file-text": ["M6 4H4v16h2zm10-2H6v2h10zm4 4h-2v14h2zm-2 14H6v2h12zM16 4h2v2h-2zm-4 0h2v6h-2z", "M12 8h6v2h-6zm-4 8h8v2H8zm0-4h8v2H8zm0-4h2v2H8z"],
+  trash: ["M18 22H6V20H18V22ZM9 6H15V4H17V6H22V8H20V20H18V8H6V20H4V8H2V6H7V4H9V6ZM15 4H9V2H15V4Z"],
+  // Drawn for this project in the same 24×24, 2px-stroke grid: Pixelarticons has no text-formatting icons.
+  bold: ["M4 4h12v2h-12zM4 6h4v2h-4zM14 6h4v2h-4zM4 8h4v2h-4zM14 8h4v2h-4zM4 10h14v2h-14zM4 12h4v2h-4zM16 12h4v2h-4zM4 14h4v2h-4zM16 14h4v2h-4zM4 16h4v2h-4zM16 16h4v2h-4zM4 18h14v2h-14z"],
+  italic: ["M10 4h10v2h-10zM14 6h4v2h-4zM14 8h4v2h-4zM12 10h4v2h-4zM12 12h4v2h-4zM10 14h4v2h-4zM10 16h4v2h-4zM4 18h10v2h-10z"],
+  underline: ["M4 4h4v2h-4zM16 4h4v2h-4zM4 6h4v2h-4zM16 6h4v2h-4zM4 8h4v2h-4zM16 8h4v2h-4zM4 10h4v2h-4zM16 10h4v2h-4zM4 12h4v2h-4zM16 12h4v2h-4zM6 14h4v2h-4zM14 14h4v2h-4zM8 16h8v2h-8zM2 20h20v2h-20z"],
+  strikethrough: ["M6 4h12v2h-12zM4 6h4v2h-4zM16 6h4v2h-4zM4 8h4v2h-4zM6 10h10v2h-10zM2 12h20v2h-20zM16 14h4v2h-4zM4 16h4v2h-4zM16 16h4v2h-4zM6 18h12v2h-12z"],
+  "list-ordered": ["M3 3h1v1h-1zM2 4h2v1h-2zM9 4h13v1h-13zM3 5h1v1h-1zM9 5h13v1h-13zM3 6h1v1h-1zM2 7h3v1h-3zM2 10h2v1h-2zM4 11h1v1h-1zM9 11h13v1h-13zM3 12h1v1h-1zM9 12h13v1h-13zM2 13h1v1h-1zM2 14h3v1h-3zM2 17h2v1h-2zM4 18h1v1h-1zM9 18h13v1h-13zM3 19h1v1h-1zM9 19h13v1h-13zM4 20h1v1h-1zM2 21h2v1h-2z"],
 } satisfies Record<string, string[]>;
 
 export type PixelIconName = keyof typeof paths;

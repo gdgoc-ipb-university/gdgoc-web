@@ -73,6 +73,8 @@ Upload flow:
 
 Files are added from the dropzone (`src/components/dashboard/file-dropzone.tsx`) by drag and drop or the "Pilih file" button. The zone highlights while a file is dragged anywhere over the page. A file dropped outside the zone is ignored, rather than opening in the browser and leaving the form. Extra files beyond the five slots are skipped with a message.
 
+Images are optimised in the browser first (`src/lib/image-optimize.ts`). PNG, JPEG, and WebP files are decoded (honouring EXIF orientation), downscaled to at most 2560 px on the long edge, and re-encoded as WebP at quality 0.82. The WebP is used only when it is smaller; browsers that cannot encode WebP keep the original. Re-encoding drops EXIF metadata such as GPS location. Because compression happens first, images up to 25 MB are accepted if the result fits the 10 MB limit. The file list shows the saving. PDF, Office, and ZIP files are already compressed containers, so they are uploaded unchanged; TXT files are small. The server still validates the final name, type, and size.
+
 1. `assignments.generateUploadUrl` returns a Convex storage upload URL when the assignment is open.
 2. The browser posts the file with its type as `Content-Type`, using `XMLHttpRequest` so each file shows a progress bar and can be cancelled.
 3. `assignments.attachFile` checks the stored size and type against the extension, and records a pending `submissionFiles` row owned by the member. A rejected file is deleted, and a message is returned instead of an error, so the deletion commits. An upload ID can be claimed only once.
@@ -98,8 +100,9 @@ All schema changes are additive, so the previous frontend keeps working during a
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
 - `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, and upload cleanup.
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, and slugify. convex-test does not record upload content types, so type mismatches are tested here.
-- `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, dropzone drops and free slots, upload progress and cancellation, pending and attached file removal, saved rich answers, and the late warning.
+- `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, dropzone drops and free slots, WebP compression before upload and oversized images, upload progress and cancellation, pending and attached file removal, saved rich answers, and the late warning.
 - `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, and link validation.
+- `src/lib/image-optimize.test.ts`: downscaling, WebP output, and keeping the original when WebP is larger, unsupported, or undecodable.
 - `src/lib/rich-text.test.ts` and `src/components/rich-text-view.test.tsx`: the allowlist, unsafe links, limits, text extraction, and escaped rendering.
 
 ## Not included

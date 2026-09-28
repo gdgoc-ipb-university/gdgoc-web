@@ -21,8 +21,8 @@ const now = Date.UTC(2026, 9, 1, 3, 0);
 const fileId = (value: string) => value as Id<"submissionFiles">;
 type Submission = { answer: string; answerDoc: string | null; revision: number; submittedAt: number; late: boolean };
 
-function Harness({ initial = [], submission = null, dueAt = now + 86400000, actions }: {
-  initial?: SubmissionFile[]; submission?: Submission | null; dueAt?: number; actions: SubmissionActions;
+function Harness({ initial = [], submission = null, dueAt = now + 86400000, actions, optimize }: {
+  initial?: SubmissionFile[]; submission?: Submission | null; dueAt?: number; actions: SubmissionActions; optimize?: (file: File) => Promise<File>;
 }) {
   const [files, setFiles] = useState(initial);
   const wrapped: SubmissionActions = {
@@ -33,7 +33,7 @@ function Harness({ initial = [], submission = null, dueAt = now + 86400000, acti
       return result;
     },
   };
-  return <SubmissionForm submission={submission} files={files} dueAt={dueAt} now={now} actions={wrapped} />;
+  return <SubmissionForm submission={submission} files={files} dueAt={dueAt} now={now} actions={wrapped} optimize={optimize} />;
 }
 function gateway() {
   return {
@@ -114,6 +114,29 @@ describe("assignment submission form", () => {
     await waitFor(() => expect(screen.queryByRole("progressbar")).toBeNull());
     expect(screen.queryByRole("alert")).toBeNull();
     expect(screen.getByRole("button", { name: "Kirim tugas" })).toBeTruthy();
+  });
+
+  it("compresses large images to WebP before uploading and shows the saving", async () => {
+    const actions = gateway();
+    const optimize = vi.fn(async (file: File) => new File([new Uint8Array(1_000_000)], file.name.replace(/\.png$/, ".webp"), { type: "image/webp" }));
+    render(<Harness actions={actions} optimize={optimize} />);
+    dropFiles(screen.getByTestId("dropzone"), [new File([new Uint8Array(12_000_000)], "poster.png", { type: "image/png" })]);
+    await waitFor(() => expect(actions.upload).toHaveBeenCalledOnce());
+    const sent = actions.upload.mock.calls[0][0];
+    expect([sent.name, sent.type, sent.size]).toEqual(["poster.webp", "image/webp", 1_000_000]);
+    expect(await screen.findByText(/WebP · hemat 92% dari 11,4 MB/)).toBeTruthy();
+  });
+
+  it("rejects images that are too large even before or after compression", async () => {
+    const actions = gateway();
+    const optimize = vi.fn(async (file: File) => file);
+    render(<Harness actions={actions} optimize={optimize} />);
+    dropFiles(screen.getByTestId("dropzone"), [new File([new Uint8Array(26 * 1024 * 1024)], "raksasa.jpg", { type: "image/jpeg" })]);
+    expect((await screen.findByRole("alert")).textContent).toContain("25 MB sebelum dikompres");
+    expect(optimize).not.toHaveBeenCalled();
+    dropFiles(screen.getByTestId("dropzone"), [new File([new Uint8Array(11 * 1024 * 1024)], "besar.jpg", { type: "image/jpeg" })]);
+    await waitFor(() => expect(screen.getByText(/tidak bisa dikompres di browser ini/)).toBeTruthy());
+    expect(actions.upload).not.toHaveBeenCalled();
   });
 
   it("deletes pending uploads immediately but replaces attached files only on resubmission", async () => {

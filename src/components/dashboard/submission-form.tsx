@@ -4,6 +4,7 @@ import { useRef, useState, type FormEvent } from "react";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { assignmentLimits, fileProblem, fileSizeLabel, maxSubmissionFiles } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
+import { isOptimizableImage, maxImageInputBytes, optimizeImage } from "@/lib/image-optimize";
 import { docFromPlainText, parseRichDoc, richText, type RichDoc } from "@/lib/rich-text";
 import { dateLabel } from "../appreciation/shared";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
@@ -20,7 +21,7 @@ export type SubmissionActions = {
   submit: (args: { revision: number; answer: string; answerDoc: string; fileIds: FileId[] }) => Promise<unknown>;
 };
 type Submission = { answer: string; answerDoc: string | null; revision: number; submittedAt: number; late: boolean };
-type Upload = { key: string; name: string; size: number; progress: number; error?: string; controller?: AbortController };
+type Upload = { key: string; name: string; size: number; progress: number; optimizing?: boolean; error?: string; controller?: AbortController };
 
 const startingDoc = (submission: Submission | null): RichDoc => parseRichDoc(submission?.answerDoc) ?? docFromPlainText(submission?.answer ?? "");
 
@@ -30,8 +31,9 @@ export function fileIcon(name: string): PixelIconName {
   return extension === "zip" ? "archive" : "file-text";
 }
 
-export function SubmissionForm({ submission, files, dueAt, now, actions }: {
+export function SubmissionForm({ submission, files, dueAt, now, actions, optimize = optimizeImage }: {
   submission: Submission | null; files: SubmissionFile[]; dueAt: number; now: number; actions: SubmissionActions;
+  optimize?: (file: File) => Promise<File>;
 }) {
   // `seed` feeds the editor when it mounts; bumping its version reloads the editor content.
   const [seed, setSeed] = useState(() => ({ version: 0, doc: startingDoc(submission) }));
@@ -42,6 +44,8 @@ export function SubmissionForm({ submission, files, dueAt, now, actions }: {
   const [error, setError] = useState("");
   const [done, setDone] = useState("");
   const [busy, setBusy] = useState(false);
+  // Original sizes of images compressed in this session, to show the saving.
+  const [savings, setSavings] = useState<Record<string, number>>({});
   const focusEditor = useRef<(() => void) | null>(null);
   const uploading = uploads.some((upload) => !upload.error);
   const shown = selected.map((id) => files.find((file) => file._id === id)).filter((file): file is SubmissionFile => Boolean(file));
@@ -53,15 +57,25 @@ export function SubmissionForm({ submission, files, dueAt, now, actions }: {
     setError(""); setDone("");
     const accepted = list.slice(0, Math.max(0, room));
     if (accepted.length < list.length) setError(accepted.length ? `Hanya ${accepted.length} file pertama yang ditambahkan. Maksimal ${maxSubmissionFiles} file per kiriman.` : `Lampiran sudah ${maxSubmissionFiles} file. Hapus salah satu untuk menambah file lain.`);
-    await Promise.all(accepted.map(async (file) => {
+    await Promise.all(accepted.map(async (original) => {
       const key = crypto.randomUUID();
-      const problem = fileProblem(file.name, file.type || "application/octet-stream", file.size);
-      if (problem) { setUploads((current) => [...current, { key, name: file.name, size: file.size, progress: 0, error: problem }]); return; }
+      const image = isOptimizableImage(original);
+      // Images may start larger than the limit because they are compressed first.
+      const early = image
+        ? original.size > maxImageInputBytes ? "Gambar maksimal 25 MB sebelum dikompres." : null
+        : fileProblem(original.name, original.type || "application/octet-stream", original.size);
+      if (early) { setUploads((current) => [...current, { key, name: original.name, size: original.size, progress: 0, error: early }]); return; }
       const controller = new AbortController();
-      setUploads((current) => [...current, { key, name: file.name, size: file.size, progress: 0, controller }]);
+      setUploads((current) => [...current, { key, name: original.name, size: original.size, progress: 0, optimizing: image, controller }]);
+      const file = image ? await optimize(original) : original;
+      if (controller.signal.aborted) { setUpload(key, null); return; }
+      const problem = fileProblem(file.name, file.type || "application/octet-stream", file.size);
+      if (problem) { setUpload(key, { name: file.name, size: file.size, optimizing: false, controller: undefined, error: image && file === original ? `${problem} Gambar tidak bisa dikompres di browser ini.` : problem }); return; }
+      setUpload(key, { name: file.name, size: file.size, optimizing: false });
       try {
         const result = await actions.upload(file, { signal: controller.signal, onProgress: (progress) => setUpload(key, { progress }) });
         if ("error" in result) throw new Error(result.error);
+        if (file !== original) setSavings((current) => ({ ...current, [result.fileId]: original.size }));
         setSelected((current) => [...current, result.fileId]);
         setUpload(key, null);
       } catch (cause) {
@@ -119,11 +133,11 @@ export function SubmissionForm({ submission, files, dueAt, now, actions }: {
       <div className="app-field">
         <span className="dash-label" id="files-label">Lampiran</span>
         <FileDropzone room={room} disabled={busy} describedBy="files-hint" onFiles={(list) => void addFiles(list)} />
-        <p className="field-hint" id="files-hint">PDF, PNG, JPG, WebP, TXT, ZIP, DOCX, PPTX, atau XLSX. File yang diunggah baru terkirim setelah kamu menekan {submission ? "Kirim ulang" : "Kirim tugas"}.</p>
+        <p className="field-hint" id="files-hint">PDF, PNG, JPG, WebP, TXT, ZIP, DOCX, PPTX, atau XLSX. Gambar (hingga 25 MB) otomatis dikecilkan ke WebP dan metadatanya dihapus; PDF, dokumen Office, dan ZIP sudah terkompresi sehingga diunggah apa adanya. File yang diunggah baru terkirim setelah kamu menekan {submission ? "Kirim ulang" : "Kirim tugas"}.</p>
         {(shown.length > 0 || uploads.length > 0) && <ul className="dash-file-list dash-upload-list" aria-labelledby="files-label">
           {shown.map((file) => <li key={file._id}>
             <PixelIcon name={fileIcon(file.name)} size={20} className="dash-file-type" />
-            <div className="dash-file-main"><FileLink file={file} />{!file.attached && <small className="dash-file-pending">Belum dikirim</small>}</div>
+            <div className="dash-file-main"><FileLink file={file} />{(savings[file._id] || !file.attached) && <span className="dash-file-notes">{savings[file._id] && <small className="dash-file-saved">WebP · hemat {Math.round((1 - file.size / savings[file._id]) * 100)}% dari {fileSizeLabel(savings[file._id])}</small>}{!file.attached && <small className="dash-file-pending">Belum dikirim</small>}</span>}</div>
             <button type="button" className="dash-icon-button" onClick={() => void removeFile(file)} aria-label={`Hapus ${file.name}`} title="Hapus"><PixelIcon name="trash" size={18} /></button>
           </li>)}
           {uploads.map((upload) => {
@@ -133,6 +147,7 @@ export function SubmissionForm({ submission, files, dueAt, now, actions }: {
               <div className="dash-file-main">
                 <span className="dash-file">{upload.name} <small>{fileSizeLabel(upload.size)}</small></span>
                 {upload.error ? <small className="field-error" role="alert">{upload.error}</small>
+                  : upload.optimizing ? <small className="dash-file-optimizing" role="status">Mengompres gambar ke WebP…</small>
                   : <span className="dash-progress-row"><span className="dash-progress" role="progressbar" aria-label={`Mengunggah ${upload.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent}><span style={{ width: `${percent}%` }} /></span><small>{percent < 100 ? `${percent}%` : "Memeriksa…"}</small></span>}
               </div>
               {upload.error

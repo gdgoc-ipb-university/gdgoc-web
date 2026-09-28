@@ -68,6 +68,6 @@ export function FileDropzone({ room, disabled, onFiles, describedBy }: { room: n
       event.target.value = "";
       if (files.length) onFiles(files);
     }} />
-    <p className="dropzone-meta">{full ? "Hapus lampiran lain untuk menambah file." : `${room} dari ${maxSubmissionFiles} slot tersisa · maksimal 10 MB per file`}</p>
+    <p className="dropzone-meta">{full ? "Hapus lampiran lain untuk menambah file." : `${room} dari ${maxSubmissionFiles} slot tersisa · maksimal 10 MB per file, gambar dikompres otomatis`}</p>
   </div>;
 }

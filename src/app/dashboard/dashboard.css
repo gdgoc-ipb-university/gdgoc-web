@@ -215,7 +215,9 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-upload-list li { flex-wrap: nowrap; gap: 12px; }
 .dash-file-type { flex-shrink: 0; color: #4a5b52; }
 .dash-file-main { flex: 1; display: grid; gap: 4px; min-width: 0; }
-.dash-file-main .dash-file-pending { justify-self: start; }
+.dash-file-notes { display: flex; flex-wrap: wrap; gap: 6px; }
+.dash-file-saved { font-size: 10px; background: #dfeedd; color: #2e692e; padding: 3px 8px; }
+.dash-file-optimizing { font-size: 11px; color: var(--muted); }
 .dash-icon-button { display: grid; place-items: center; flex-shrink: 0; width: 36px; height: 36px; padding: 0; border: 1px solid transparent; background: none; color: #56665e; cursor: pointer; }
 .dash-icon-button:hover { color: #9b3024; background: #fbeae6; border-color: #efc9c0; }
 .dash-icon-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 1px; }

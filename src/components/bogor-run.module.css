@@ -33,6 +33,7 @@
 /* The idle frame of the 353 x 47 sheet, shown until the canvas takes over. */
 .poster { position: absolute; left: 73%; bottom: 12.5%; width: clamp(140.8px, 10.4762vw, 167.2px); aspect-ratio: 44 / 47; transform: translateX(-50%); background: url('/games/bogor-run/dino.svg') left top / calc(353 / 44 * 100%) 100% no-repeat; image-rendering: pixelated; }
 .poster[data-ready="true"] { visibility: hidden; }
+.poster[data-skin="rising-star"] { background-image: url('/games/bogor-run/dino-rising-star.svg'); }
 .topbar { position: absolute; inset: 88px 0 auto; display: flex; align-items: start; justify-content: space-between; z-index: 3; pointer-events: none; }
 .gameTitle { margin-left: 0; }
 .eyebrow { display: flex; align-items: center; gap: 8px; color: #4b6246; font: 500 10px/1.5 var(--font-mono), monospace; letter-spacing: .08em; }

@@ -244,6 +244,23 @@ Not yet done with real accounts against the DEV deployment:
 - [ ] Sunday night into Monday: a run started before 00:00 WIB and saved after it says "minggu lalu", and the next run starts on a new ticket.
 - [ ] Convex dashboard for DEV: the daily "remove Bogor Run run records after 30 days" cron is listed and its runs succeed.
 
+## /rai easter egg — 29 September
+
+`/rai` is unlinked and marked noindex. It opens on a star; pressing it plays a reveal: the star rises and pixels assemble into a blue glass dino inside a Tier Gemini Rising Star badge redrawn in SVG, over a synthesized fanfare. The badge tilts with the pointer, flips to a back face, and its dino jumps on tap or Space. The page can equip a cosmetic Google Blue dino for Bogor Run. The landing page logs a one-time console hint.
+
+- `pnpm exec vitest run src/components/rai src/lib/bogor-run/skin.test.ts src/lib/bogor-run/sprites.test.ts src/lib/bogor-run/sound.test.ts src/components/bogor-run.test.tsx src/components/bogor-run-runtime.test.tsx` passes. The tests cover:
+  - the sealed gate and the reduced-motion reveal, with focus moved to the title and the fanfare played;
+  - the animated reveal's stage timing;
+  - equipping and removing the skin (`localStorage`, `aria-pressed`, the live announcement);
+  - jumps from the dino button and Space, and none from a focused control or a held key;
+  - the flip, which hides the turned-away face from assistive technology;
+  - axe with no violations (colour contrast is not included);
+  - the blue sheet matching the classic sheet pixel for pixel, recoloured;
+  - the runtime loading the skin's sheet;
+  - the footer poster and runner receiving the stored skin.
+- Headless Chromium against the dev server at 1440×900 and 390×844 covered the sealed gate, the reveal mid-flight, the open badge, pointer tilt and the back face, with no page or console errors. The footer game then drew the blue dino after the skin was equipped, and the console hint printed exactly once.
+- Not verified: iOS Safari's audio unlock for the fanfare, and touch tilt on a real phone.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

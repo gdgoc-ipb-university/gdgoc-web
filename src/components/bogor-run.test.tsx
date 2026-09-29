@@ -245,6 +245,18 @@ describe("footer game controls", () => {
     await waitFor(() => expect(document.activeElement).toBe(screen.getByRole("link", { name: "Gabung member" })));
   });
 
+  it("uses the Rising Star skin unlocked on /rai for the poster and the runner", async () => {
+    localStorage.setItem("gdgoc:bogor-run:skin:v1", "rising-star");
+    const { container } = render(<BogorRun/>);
+    await ready();
+    expect(hooks?.skin).toBe("rising-star");
+    await waitFor(() => expect(container.querySelector("[data-skin]")?.getAttribute("data-skin")).toBe("rising-star"));
+    cleanup(); localStorage.clear();
+    render(<BogorRun/>);
+    await ready();
+    expect(hooks?.skin).toBe("classic");
+  });
+
   it("offers a recoverable asset-load failure", async () => {
     game.mount.mockRejectedValueOnce(new Error("offline"));
     render(<BogorRun/>);

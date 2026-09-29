@@ -71,6 +71,21 @@ beforeEach(() => {
 afterEach(() => { runner?.dispose(); runner = undefined; vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("full-width runner lifecycle", () => {
+  it("draws the dino from the chosen skin's sheet and never touches the other sprites", async () => {
+    const sources: string[] = [];
+    vi.stubGlobal("Image", class {
+      onload?: () => void;
+      set src(value: string) { sources.push(value); queueMicrotask(() => this.onload?.()); }
+    });
+    await mount(false, { skin: "rising-star" });
+    expect(sources).toContain("/games/bogor-run/dino-rising-star.svg");
+    expect(sources).not.toContain("/games/bogor-run/dino.svg");
+    expect(sources).toContain("/games/bogor-run/elang.svg");
+    runner?.dispose(); sources.length = 0;
+    await mount();
+    expect(sources[0]).toBe("/games/bogor-run/dino.svg");
+  });
+
   it("plays autonomously and silently without recording a personal score and can be paused", async () => {
     const game = await mount();
     expect(snapshot.autoplay).toBe(true);

@@ -234,6 +234,7 @@ describe("sound playback", () => {
     ["jump", 1, 0.09],
     ["crash", 2, 0.25],
     ["milestone", 2, 0.22],
+    ["fanfare", 4, 0.75],
   ] as [SoundName, number, number][])("schedules %s within the gain cap and disconnects it afterwards", (name, layers, duration) => {
     const { sound, context, fresh } = ready();
     sound.play(name);

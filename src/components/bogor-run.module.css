@@ -1,16 +1,37 @@
 .world {
   --arena-height: clamp(640px, 43vw, 720px);
+  --header: 88px; /* the sticky site header; a playing arena fits the screen below it */
   position: relative;
   isolation: isolate;
   background: #edf0df;
 }
-.arena { position: relative; height: var(--arena-height); overflow: hidden; scroll-margin-top: 0; }
+.arena {
+  --edge: max(var(--gutter), calc((100% - 1280px) / 2));
+  --panel-width: min(340px, 31vw);
+  --panel-top: 152px;
+  position: relative; height: var(--arena-height); overflow: hidden; scroll-margin-top: 0;
+}
+/*
+ * While playing, the arena fills the screen under the header (the negative margin cancels html's 100px scroll-padding
+ * so it lines up right below it) and is a size container: the compact layout for short arenas below switches on its
+ * own height, at the same limits as getView (view.ts SHORT).
+ */
+.world[data-playing="true"] .arena { height: min(var(--arena-height), max(240px, calc(100svh - var(--header)))); scroll-margin-top: calc(var(--header) - 100px); container-type: size; }
 .scenery { position: absolute; inset: 0; background: url('/games/bogor-run/backdrop.svg') center bottom / 100% 100% no-repeat; pointer-events: none; }
 .mist { position: absolute; inset: 0; background: linear-gradient(90deg, #faf9f2f5 2%, #faf9f2e6 28%, #faf9f273 47%, #faf9f200 68%); pointer-events: none; transition: opacity .5s; }
 .invitation { position: relative; padding-top: 74px; z-index: 1; transition: opacity .25s; }
 .invitation > div { width: 53%; max-width: 620px; }
+/* Return notices after the Google sign-in: a card above the invitation, at reading size. */
+.noticeRow { position: relative; z-index: 2; padding-top: 18px; }
+.noticeRow + .invitation { padding-top: 22px; }
+.notice { display: flex; align-items: center; gap: 8px; max-width: 620px; padding: 4px 4px 4px 14px; background: #fff6d8; border: 1px solid #647e53; box-shadow: 3px 3px 0 #b9c79b; color: #23452f; }
+.notice p { flex: 1; margin: 0; padding-block: 6px; font-size: 14px; line-height: 1.6; }
+.notice button { flex-shrink: 0; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: #365637; }
+.notice button:hover { color: var(--blue); }.notice button:focus-visible { outline-offset: -4px; }
+.notice svg { width: 14px; height: 14px; fill: currentColor; }
 .canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
-.poster { position: absolute; left: 73%; bottom: 12.5%; width: clamp(140.8px, 10.4762vw, 167.2px); aspect-ratio: 44 / 47; transform: translateX(-50%); background: url('/games/bogor-run/dino.svg') left top / 400% 100% no-repeat; image-rendering: pixelated; }
+/* The idle frame of the 353 x 47 sheet, shown until the canvas takes over. */
+.poster { position: absolute; left: 73%; bottom: 12.5%; width: clamp(140.8px, 10.4762vw, 167.2px); aspect-ratio: 44 / 47; transform: translateX(-50%); background: url('/games/bogor-run/dino.svg') left top / calc(353 / 44 * 100%) 100% no-repeat; image-rendering: pixelated; }
 .poster[data-ready="true"] { visibility: hidden; }
 .topbar { position: absolute; inset: 88px 0 auto; display: flex; align-items: start; justify-content: space-between; z-index: 3; pointer-events: none; }
 .gameTitle { margin-left: 0; }
@@ -24,46 +45,202 @@
 .actions { display: flex; gap: 8px; flex-shrink: 0; }
 .action { display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 44px; padding: 10px 16px; background: #faf9f2; color: #23452f; border: 1px solid #647e53; box-shadow: 3px 3px 0 #b9c79b; font: 500 12px/1.5 var(--font-body), sans-serif; }
 .action svg { width: 18px; height: 18px; }.action:hover:not(:disabled) { background: #fff6d8; }.action:disabled { opacity: .65; }
-.pause { display: grid; place-items: center; width: 44px; height: 44px; background: #f6f6e9aa; color: #365637; border: 1px solid #9bab83; }
+.pause { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; background: #f6f6e9aa; color: #365637; border: 1px solid #9bab83; }
 .pause svg { width: 15px; height: 15px; fill: currentColor; }.pause:hover:not(:disabled) { background: #faf9f2; }.pause:disabled { opacity: .4; }
+.pause[aria-expanded="true"] { background: #274934; border-color: #274934; color: #faf9f2; }
 .instructions { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: #435b3e; line-height: 1.6; }
 .instructions kbd { font: 500 9px/1 var(--font-mono), monospace; }.instructions > span:last-child { color: #58684d; font-size: 9px; }
-.hud { position: absolute; z-index: 3; top: 185px; right: max(var(--gutter), calc((100% - 1280px) / 2)); display: flex; gap: 28px; color: #52644c; font: 500 9px/1.4 var(--font-mono), monospace; letter-spacing: .06em; pointer-events: none; }
+.hud { position: absolute; z-index: 3; top: 185px; right: var(--edge); display: flex; gap: 28px; color: #52644c; font: 500 9px/1.4 var(--font-mono), monospace; letter-spacing: .06em; pointer-events: none; }
 .hud b { font-size: 22px; font-weight: 500; color: #274934; margin-left: 9px; font-variant-numeric: tabular-nums; }
-.tapArea { position: absolute; inset: 175px 0 90px; z-index: 2; border: 0; background: transparent; touch-action: manipulation; }
+/* Chrome-style milestone blink; the runtime never sets it under reduced motion. */
+.hud b[data-flash] { animation: blink .25s steps(1, end) infinite; }
+@keyframes blink { 50% { visibility: hidden; } }
+/* Down to the ground line (87.5%, view.ts), so a press on the dino's feet still plays. */
+.tapArea, .zones { position: absolute; inset: 175px 0 12.5%; z-index: 2; }
+.tapArea { border: 0; background: transparent; touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.arena[data-phase="running"] .tapArea { touch-action: none; }
+.zones { display: grid; grid-template-rows: 1fr 1fr; pointer-events: none; animation: zones 3.6s steps(1, end) forwards; }
+.zones > span { display: grid; place-items: center; }
+.zones > span:first-child { border-bottom: 1px dashed #647e53; }
+.zones b { padding: 7px 12px; background: #faf9f2e6; border: 1px solid #9bab83; color: #274934; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .06em; text-transform: uppercase; }
+@keyframes zones { 85% { opacity: 1; } 100% { opacity: 0; } }
 .result { position: absolute; z-index: 2; inset: 43% var(--gutter) auto 45%; pointer-events: none; }
 .result p { font: 500 clamp(28px, 3vw, 42px)/1.2 var(--font-pixel), monospace; color: var(--ink); }.result span { display: block; font-size: 12px; margin-top: 12px; color: #435b3e; }
 .retry { color: #1d54ba; background: #faf9f2; border: 0; text-decoration: underline; padding: 10px; min-height: 44px; font-size: 12px; }
+
+/* Leaderboard panel: a paper card in the game's own palette, opened on pause and game over. */
+.panel {
+  /* Scroll shadows for whichever box scrolls: paper covers that move with the content hide them at either end. */
+  --shadows:
+    linear-gradient(#faf9f2 50%, #faf9f200) top / 100% 28px no-repeat local,
+    linear-gradient(#faf9f200, #faf9f2 50%) bottom / 100% 28px no-repeat local,
+    linear-gradient(#23452f59, #23452f00) top / 100% 14px no-repeat scroll,
+    linear-gradient(#23452f00, #23452f59) bottom / 100% 14px no-repeat scroll;
+  position: absolute; z-index: 4; top: var(--panel-top); right: var(--edge); width: var(--panel-width); max-height: calc(100% - var(--panel-top) - 16px); display: flex; flex-direction: column; background: #faf9f2f7; border: 1px solid #647e53; box-shadow: 3px 3px 0 #b9c79b; color: #23452f;
+}
+.panel[hidden] { display: none; }
+.panel p, .panel h4, .panel ol { margin: 0; }
+.panelResult { display: none; }
+.summary { display: contents; } /* the result and save; a column of its own only on landscape phones */
+.status { flex-shrink: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 12px 14px; border-bottom: 1px dashed #b9c79b; font-size: 12px; line-height: 1.55; color: #435b3e; }
+.status[data-kind="saved"] { color: #23452f; font-weight: 500; }
+.status[data-kind="error"] > p { color: #8a3a26; }
+.status p { display: flex; align-items: baseline; gap: 8px; }
+.dot { flex-shrink: 0; width: 6px; height: 6px; background: #518b43; }
+.status[data-kind="saving"] .dot { background: #c9a227; animation: blink .8s steps(1, end) infinite; }
+.signIn { display: inline-flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; min-height: 44px; padding: 10px 14px; background: var(--blue); color: #fff; border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font: 500 12px/1.4 var(--font-body), sans-serif; }
+.signIn svg { width: 18px; height: 18px; flex-shrink: 0; }.signIn:hover:not(:disabled) { background: #1d54ba; }.signIn:disabled { opacity: .75; }
+.link { padding: 0; min-height: 24px; border: 0; background: none; color: #1d54ba; font: inherit; font-size: 12px; text-decoration: underline; }
+.boardHead { flex-shrink: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 14px 8px; }
+.boardHead h4 { font: 500 18px/1.2 var(--font-pixel), monospace; color: #23452f; }
+.boardHead span { color: #68735f; font: 500 9px/1.4 var(--font-mono), monospace; letter-spacing: .06em; text-transform: uppercase; white-space: nowrap; }
+.tabs { flex-shrink: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: 0 14px 8px; }
+.tabs button { min-height: 32px; padding: 4px 8px; background: transparent; color: #365637; border: 1px solid #9bab83; font: 500 9px/1.3 var(--font-mono), monospace; letter-spacing: .06em; text-transform: uppercase; }
+.tabs button:hover { background: #fff6d8; }
+.tabs button[aria-selected="true"] { background: #274934; border-color: #274934; color: #faf9f2; }
+.list { flex: 1 1 auto; min-height: 66px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 14px 8px; background: var(--shadows); }
+.list:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+.list ol { list-style: none; margin: 0; padding: 0; }
+.list li, .you { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: baseline; gap: 8px; padding: 0 6px; font-size: 12px; line-height: 20px; }
+.list li + li { border-top: 1px dotted #d5dcc4; }
+.list li[data-you] { background: #fff3ce; box-shadow: inset 3px 0 #518b43; }
+.rank { color: #68735f; font: 500 10px/20px var(--font-mono), monospace; }
+.name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.name em { font-style: normal; color: #4b6246; font-size: 11px; }
+.list b, .you b { font: 500 12px/20px var(--font-mono), monospace; color: #274934; font-variant-numeric: tabular-nums; }
+.you { grid-template-columns: auto minmax(0, 1fr) auto; margin-top: 6px; padding-block: 4px; border-top: 1px solid #b9c79b; font-weight: 500; }
+.you span { color: #58684d; font-weight: 400; }
+.empty { padding: 10px 6px; font-size: 12px; line-height: 1.6; color: #58684d; }
+.more { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 8px 14px; border-top: 1px solid #d5dcc4; color: #23452f; font-size: 12px; }
+.more:hover { color: var(--blue); }.more svg { width: 16px; height: 16px; }
+/* Inset, so a scrolling sheet never clips it and it never covers the last row. */
+.more:focus-visible { outline-offset: -4px; }
+
 .directory { position: relative; background: url('/games/bogor-run/ground.svg') center bottom / 100% 100% no-repeat; }
 .world[data-playing="true"] .invitation { opacity: 0; visibility: hidden; }
 .world[data-playing="true"] .mist { opacity: .25; }
 .world[data-playing="true"] .gameTitle { margin-left: 0; }
 .world[data-playing="true"] .controls { justify-content: space-between; }
-.srOnly { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+.srOnly, .world[data-panel="true"] .instructions { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+/* With the board open on wide screens, the card takes the score's corner; the score and the crash message move left of it. */
+@media (min-width: 761px) {
+  .world[data-panel="true"] .hud { right: calc(var(--edge) + var(--panel-width) + 32px); }
+  .world[data-panel="true"] .result { left: 28%; right: calc(var(--edge) + var(--panel-width) + 32px); }
+}
 @media (min-width: 761px) and (max-width: 1100px) {
+  .arena { --panel-width: 300px; }
   .invitation { padding-top: 72px; }.invitation > div { width: 55%; }
   .gameTitle { margin-left: 65%; }.topbar { top: 82px; }
   .controls { gap: 14px; }.instructions { font-size: 9px; }
 }
 @media (max-width: 760px) {
-  .arena { height: auto; padding-bottom: 440px; }
+  .world { --header: 75px; }
+  .arena { --panel-top: 156px; height: auto; padding-bottom: 440px; }
   .scenery { top: auto; height: 400px; background-size: auto 100%; background-position: right bottom; }
   .mist { background: linear-gradient(#faf9f2 0%, #faf9f2 42%, #faf9f200 72%); }
   .invitation { padding-top: 58px; }.invitation > div { width: 100%; max-width: 510px; }
+  .noticeRow { padding-top: 16px; }.notice p { font-size: 13px; }
   .poster { width: 105.6px; left: 64%; bottom: 50px; }
   .topbar { top: auto; bottom: 340px; }.gameTitle { margin-left: 0; max-width: 130px; }
   .controls { bottom: 13px; justify-content: space-between; gap: 12px; }
   .instructions { font-size: 9px; max-width: 145px; }.instructions > span:last-child { display: none; }
   .action { font-size: 11px; gap: 16px; padding: 10px 12px; }.pause { background: #f6f6e9; }
   .directory { background-size: auto 100%; }
-  .world[data-playing="true"] .arena { height: clamp(540px, calc(100svh - 110px), 680px); padding-bottom: 0; }
+  .world[data-playing="true"] .arena { height: clamp(240px, calc(100svh - var(--header)), 680px); padding-bottom: 0; }
   .world[data-playing="true"] .gameTitle { max-width: none; }
   .world[data-playing="true"] .topbar { top: 58px; bottom: auto; flex-direction: column; gap: 22px; }
   .world[data-playing="true"] .mist { background: linear-gradient(#faf9f2e6, #faf9f200 70%); }
   .world[data-playing="true"] .back { padding-left: 0; font-size: 11px; }
+  /* Four touch targets fit in one row; the playing hints move to the tap-zone overlay and the button descriptions. */
+  .world[data-playing="true"] .controls { bottom: 4px; }
+  .world[data-playing="true"] .actions { gap: 6px; }
+  .world[data-playing="true"] .instructions { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  /* The ground is 2px above the buttons (view.ts), so their focus ring stays inside them, off the dino's feet. */
+  .world[data-playing="true"] .actions button:focus-visible { outline-offset: -4px; }
   .hud { top: 220px; left: var(--gutter); right: auto; gap: 22px; }.hud b { font-size: 20px; }
-  .tapArea { top: 280px; bottom: 75px; }
+  .tapArea, .zones { top: 280px; bottom: 50px; }
   .result { inset: 280px var(--gutter) auto; }.result span { font-size: 11px; }
+  /* The open board takes the arena: the title and score step aside (the sheet repeats the score) and the back link moves up. */
+  .world[data-panel="true"] .arena { --panel-top: 66px; }
+  .world[data-panel="true"] .gameTitle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .world[data-panel="true"] .topbar { top: 8px; }
+  .world[data-panel="true"] .hud { visibility: hidden; }
+  .world[data-panel="true"] .result { display: none; }
+  /* A full sheet down to the controls, so the stopped scene never peeks out half-covered; it scrolls as one when it must. */
+  .panel { left: var(--gutter); right: var(--gutter); bottom: 58px; width: auto; max-height: none; overflow-y: auto; overscroll-behavior: contain; background: var(--shadows), #faf9f2f7; }
+  .list { flex: none; min-height: 0; overflow: visible; background: none; }
+  .world[data-panel="true"] .canvas { visibility: hidden; }
+  .panelResult { display: block; flex-shrink: 0; padding: 12px 14px 10px; border-bottom: 1px dashed #b9c79b; }
+  .panelResult p { font: 500 22px/1.2 var(--font-pixel), monospace; color: var(--ink); }
+  .panelResult span { display: block; margin-top: 4px; font-size: 11px; color: #435b3e; }
+  .status { gap: 6px; padding: 10px 14px; }.note { font-size: 11px; }
+  .zones b { max-width: calc(100vw - 2 * var(--gutter)); text-align: center; white-space: normal; }
 }
-@media (prefers-reduced-motion: reduce) { .invitation, .mist { transition: none; } }
-@media (forced-colors: active) { .action, .pause, .back { border: 1px solid ButtonText; }.pause svg { fill: ButtonText; }.instructions { color: CanvasText; } }
+/* Short phones: the title steps aside while playing so the whole run, jump apex included, fits under the site header. */
+@media (max-width: 760px) and (max-height: 620px) {
+  .world[data-playing="true"] .gameTitle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .world[data-playing="true"] .hud { top: 118px; }
+  .tapArea, .zones { top: 160px; }
+  .result { top: 160px; }
+}
+/*
+ * Compact play layout for short arenas (landscape phones, low laptop windows): the title steps aside, the score sits
+ * top right above the highest elang, the back link joins the controls under the ground, and the tap area takes the
+ * rest, so the whole jump fits. Same limits as view.ts SHORT: under 440px, or under 600px when wider than 760px.
+ */
+@container (max-height: 439px) or ((min-width: 761px) and (max-height: 599px)) {
+  .world[data-playing="true"] .gameTitle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .world[data-playing="true"] .topbar, .world[data-panel="true"] .topbar { inset: auto 0 4px; flex-direction: row; justify-content: flex-end; gap: 0; }
+  /* As tall as the game buttons beside it, so it never reaches over the ground line. */
+  .world[data-playing="true"] .back { height: 44px; padding: 0 0 0 12px; font-size: 11px; gap: 12px; }
+  .world[data-playing="true"] .back span { font-size: 16px; line-height: 1; }
+  .world[data-playing="true"] .hud { top: 10px; left: auto; right: var(--edge); gap: 22px; }
+  .world[data-playing="true"] .hud b { font-size: 20px; }
+  .world[data-playing="true"] .tapArea, .world[data-playing="true"] .zones { inset: 0 0 50px; }
+  .world[data-playing="true"] .controls { bottom: 4px; gap: 12px; pointer-events: none; }
+  .world[data-playing="true"] .controls > * { pointer-events: auto; }
+  .world[data-playing="true"] .actions { gap: 6px; }
+  .world[data-playing="true"] .instructions { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .world[data-playing="true"] .actions button:focus-visible { outline-offset: -4px; }
+  .world[data-playing="true"] .result { inset: 24% var(--gutter) auto 36%; }
+  .world[data-playing="true"] .result p { font-size: 24px; }.world[data-playing="true"] .result span { margin-top: 6px; font-size: 11px; }
+  /* The board runs from the top edge down to the controls row and scrolls as one sheet. */
+  .world[data-playing="true"] .panel { top: 8px; bottom: 56px; max-height: none; overflow-y: auto; overscroll-behavior: contain; background: var(--shadows), #faf9f2f7; }
+  .world[data-playing="true"] .list { flex: none; min-height: 0; overflow: visible; background: none; }
+  .status { gap: 6px; padding: 10px 14px; }.note { font-size: 11px; }
+  .boardHead { padding-top: 10px; }
+}
+/* Wide and short: the board stays a card on the right, beside the crash message, over the stopped scene. */
+@container (min-width: 761px) and (max-height: 599px) {
+  .world[data-playing="true"] .panel { left: auto; right: var(--edge); width: var(--panel-width); }
+  .world[data-panel="true"] .result { inset: 30% calc(var(--edge) + var(--panel-width) + 32px) auto 28%; }
+}
+/*
+ * Landscape phones: a one-column sheet would show only the result and the save before any row, so it splits in two.
+ * The result, the save and the top-100 link sit left, the board right, and each side scrolls on its own.
+ */
+@container (max-width: 760px) and (min-width: 520px) and (max-height: 439px) {
+  .world[data-playing="true"] .panel:not([hidden]) {
+    display: grid; grid-template: "summary head" auto "summary tabs" auto "summary list" minmax(0, 1fr) "more list" auto / minmax(0, 1fr) minmax(0, 1fr);
+    overflow: hidden; background: #faf9f2f7;
+  }
+  .world[data-playing="true"] .summary { grid-area: summary; display: flex; flex-direction: column; min-height: 0; overflow-y: auto; overscroll-behavior: contain; background: var(--shadows); }
+  .world[data-playing="true"] .status { border-bottom: 0; }
+  .world[data-playing="true"] :is(.boardHead, .tabs, .list) { border-left: 1px solid #d5dcc4; }
+  .world[data-playing="true"] .boardHead { grid-area: head; }
+  .world[data-playing="true"] .tabs { grid-area: tabs; }
+  .world[data-playing="true"] .list { grid-area: list; overflow-y: auto; overscroll-behavior: contain; background: var(--shadows); }
+  .world[data-playing="true"] .more { grid-area: more; border-top: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .invitation, .mist { transition: none; }
+  .hud b[data-flash], .status[data-kind="saving"] .dot { animation: none; }
+  .zones { animation: none; }
+}
+@media (forced-colors: active) {
+  .action, .pause, .back, .panel, .tabs button, .signIn, .notice { border: 1px solid ButtonText; }
+  .pause svg, .notice svg { fill: ButtonText; }.instructions { color: CanvasText; }
+  .tabs button[aria-selected="true"], .pause[aria-expanded="true"] { forced-color-adjust: none; background: Highlight; color: HighlightText; }
+  .pause[aria-expanded="true"] svg { fill: HighlightText; }
+  .list li[data-you] { outline: 1px solid Highlight; }
+}

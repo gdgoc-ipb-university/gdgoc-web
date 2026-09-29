@@ -158,8 +158,94 @@ The interaction checks in this section document earlier revisions. The latest re
 - The optimized local browser showed all four colors with distinct gaps at the footer, and only a partially filled blue quarter after scrolling back to 20.46%. The measured transform matched the page's scroll fraction. At a 320 CSS-pixel viewport, each track measured 77.75 px, and the page had no horizontal overflow. The final cream Dino, shortened tail, and revised running feet were visually checked in the same local preview.
 - This PR is stacked on the footer branch. These checks do not publish production; deployment follows review/merge into organization main.
 
+## Bogor Run v2: ducking, Elang Jawa, sound, and leaderboard — 29 September
+
+- `pnpm test` (two workers): **235 tests across 22 files passed**. The Bogor Run and leaderboard files account for 152 of them: engine 53, sound 35, `convex/bogorRun.test.ts` 13, footer controls 14, runtime 9, projection 13, leaderboard helpers 8, and the dashboard page 7. `pnpm lint` and `pnpm typecheck` passed.
+- Engine: identical runs from the same seed and inputs, a clone that resumes identically, and `replayRun` matching the live crash. A source scan fails the test on any math outside the deterministic set. The replay rejects odd lengths, decreasing or out-of-range ticks, bad codes, non-integers, oversized logs, and early crashes. The speed curve starts at 174, rises strictly, and stays below 400. Collision tables cover every obstacle, the three bird heights, and running, ducking, and airborne poses.
+- Fairness: a depth-first solver trying none, jump, duck, and stand every four ticks cleared 25 obstacles in a row for 150 seeds from the start and 150 at a speed of at least 390. Every solution from the start replayed cleanly through `replayRun`, and the solver found nothing for deliberately packed angkots. Birds appeared only from 300 points, in all three lanes, and no kind appeared three times in a row. The autopilot survived 90 s for 60 seeds from the start and 60 near top speed; a separate run outside the suite survived 300 seeds of ten minutes each and a full hour.
+- Replay cost: a one-hour autopilot log (432,000 ticks, 2,828 inputs, score 137,403) replayed in about 82 ms in Node and about 50 ms inside a mutation on the DEV Convex deployment, well under the 1 s mutation limit.
+- DEV Convex deployment: pushed the four new tables and the `bogorRun` functions. Inside a DEV mutation, `crypto.subtle` HMAC-SHA256 reproduced RFC 4231 test case 2 and `bogorRun:issueRun` returned signed tokens. An argument array of 8,193 numbers was rejected, so the client always sends packed input strings, which the tests also cover. Production Convex was not touched.
+- Sprites: rendering `dino.svg` and `elang.svg` back, with sharp and in a headless-Chromium canvas as the game draws them, matched the cleaned pixel grids exactly. Frames, the lineup with the obstacles, and the hitbox overlays were reviewed at 8×.
+- Sound: measured in headless Chromium, the jump, crash, and milestone sounds together peaked at 0.111, under the 0.12 cap. Tests cover the lazy AudioContext and its `webkitAudioContext` fallback, silence before unlock, while muted, and in a hidden tab, the persisted mute, and cleanup. The runtime tests confirm the demo never plays a sound.
+- Browser review in headless Chromium at 1440, 1024, 768, 390, and 320 px: autoplay, running, a mid-height Elang, ducking, pause with the board open, and game over as a guest and after saving, on both tabs. The Google return URL was tidied to `/#join`, and the pending run was submitted. Convex and auth code loaded only after the game scrolled into view. Convex and auth responses were mocked for these captures, and audio was muted.
+- `/dashboard/papan-skor` was reviewed at 1440 and 390 px through a temporary preview route with mocked member, staff, pending, error, empty, loading, and far-down boards; the route was deleted afterward. The real route returned 200 and showed the sign-in panel to a guest, with no console errors.
+
+### Manual checklist before release
+
+Not yet done with a real account against the DEV deployment:
+
+- [ ] Guest: play until a crash, choose **Masuk untuk simpan skor**, finish Google sign-in, and confirm the landing returns to the game, shows the same crash, and reports "Tersimpan · peringkat #n minggu ini". Repeat after waiting more than 30 minutes and confirm the expiry notice.
+- [ ] Signed in: crash a run and confirm it saves automatically, appears in the in-game top 10 and on `/dashboard/papan-skor`, and a lower score keeps the earlier best.
+- [ ] Mute: the speaker button silences the game, stays muted after a reload, and the autoplay demo never makes a sound.
+- [ ] Duck with the keyboard: holding ↓ ducks, releasing stands, ↓ in mid-air drops fast, and P while ducking pauses without leaving the Dino crouched on resume.
+- [ ] Tap zones on a real phone: tapping the upper half jumps, holding the lower half ducks until release, the zone hint shows once, and a scroll swipe over a stopped game does not restart it.
+- [ ] Past 300 points, Elang Jawa appears at all three heights: low must be jumped, middle ducked, and high passes over a grounded Dino.
+- [ ] Safari on iOS and macOS: sound starts after the first tap or key press, and still plays after switching away from the tab and back.
+- [ ] Staff: hide and restore a player on `/dashboard/papan-skor`, and confirm the landing board updates for a guest.
+- [ ] After Monday 00:00 WIB, the "Minggu ini" board starts empty while "Sepanjang masa" keeps its scores.
+
+## Bogor Run review fixes — 29 September
+
+Five reviewers checked Bogor Run v2 for integrity, gameplay, the server, the client, and the UI, and a second pass verified each finding. The user then chose how to handle the ones that needed a decision:
+
+- Accept the bot risk and correct the docs.
+- Leave the width-based view scale as it is.
+- Keep making the course harder after five minutes, and add a one-hour finish line.
+- Moderate with the member-management hierarchy, hide deactivated members, and delete run records after 30 days.
+- Fix everything else as the review suggested.
+
+Evidence from this round:
+
+- `pnpm exec vitest run --maxWorkers=2`: **289 tests across 24 files passed**. The Bogor Run, leaderboard and dashboard board files account for 206 of them: engine 61, sound 35, projection 23, footer controls 22, `convex/bogorRun.test.ts` 19, runtime 13, the dashboard page 13, the online client 9, leaderboard helpers 8, and sprite sheets 3. `pnpm typecheck` passed, and `pnpm lint` reported no errors; its 8 warnings are all in untracked `.claude/worktrees` copies. An earlier run of the whole suite, with three workers, timed out once in `convex/appreciations.test.ts` while starting cold; it passed on the rerun and has nothing to do with this change.
+- **Early game unchanged.** Before the ramp was written, a fingerprint was recorded from the old engine: every obstacle spawned in the first five minutes for 60 seeds, the generator state at five minutes, and 60 five-minute autopilot runs. The new engine still matches it, and `engine.test.ts` asserts it.
+- **Late game is still fair.** The search solver cleared 25 obstacles in a row for 150 seeds at each of three points: the start, 28 minutes in (speed ≈ 390, pressure ≈ 0.69), and the last 100 seconds before the finish line (pressure ≈ 0.84). The two late sets included 1,374 and 1,558 cluster followers. A brute-force search tried every takeoff tick over 12 seeds, from five minutes to the hour:
+  - the tightest cluster window was 13 ticks (108 ms);
+  - single obstacles and low birds left at least 58 ticks;
+  - two consecutive jumps always had at least 25 ticks (208 ms) to spare, so none needed a fast-drop.
+
+  The suite's own sample (16 seeds at each of three points, 1,086 clusters and 1,726 back-to-back pairs) found the same 13-tick floor.
+- **Tuning.** These runs used the gameplay review's human-like bot: 0.30 s reaction, 0.15 s more for birds, and ±60 ms timing noise. It was made cluster-aware, so it jumps each cluster once, aimed at its middle.
+  - At 1440 px, the median run lasted 21.9 and 21.3 minutes on two sets of 100 seeds (p10 about 13.5, p90 about 36.5). None of the 200 runs reached the hour.
+  - At 1024 px the median was 20.9 minutes (60 seeds).
+  - A sharper bot (0.25 s reaction, 0.1 s more for birds, ±50 ms) had a median of 38.7 minutes and finished 24 of 100 runs.
+  - At 390 px the median was 7.6 minutes, against 11.1 on the old engine, or 10.0 if the bot reacts as soon as it first sees a cluster. That gap comes from the width-based view, which was left as is.
+  - The reviewer's bot without the cluster change dies at about 5.9 minutes. It plans a separate jump for each obstacle in a cluster, and its retries jump into the next obstacle, so that number reflects the bot, not the course.
+- **Finish line.** A run that reaches 432,000 ticks ends finished with no hit, and a crash on that very tick is still a crash. The demo autopilot played four whole hours to the line.
+  - Replaying a finished hour (seed 424242, 3,293 inputs, score 137,403) took a median of 127 ms in Node over nine warm runs.
+  - The old engine replayed its own hour in a median of 86 ms. The difference comes from the extra obstacles late in the run.
+  - The new engine was not timed inside a Convex mutation; the old one took about 50 ms there.
+- **Real runtime to the real `submitRun`.** The integrity review's harness drives the browser runtime on a virtual clock with jittered 60–144 Hz frames and pauses. It sends each payload to `submitRun` in convex-test at the earliest moment the pace check allows.
+  - **Before the client fixes, 1,500 fuzzed runs:** all 981 ranked runs were accepted, none differed from the local replay, and all 98 sign-in restores worked. Four one-hour runs reached the finish line and were accepted, but the runtime still refused to restore a finished run after sign-in.
+  - **After the client fixes, 300 more runs:** all 207 ranked runs were accepted, none differed, and all 22 restores worked. Three one-hour runs (at 60, 90 and 120 Hz) went through the real runtime to the finish line. Each replayed as finished, was restored after the simulated sign-in round trip, and was saved with 137,403 at rank 1.
+  - The harness predates the client's one-second ticket wait, so the runtime tests cover that wait instead.
+- **Server.** `convex/bogorRun.test.ts` checks the following:
+  - Finish line: a finished hour is accepted only after the full hour's pace and only if its replay finishes, and a second finisher ties at rank 1 behind the first.
+  - Hidden list: a hidden player below 100 visible ones stays listed for staff and can be restored.
+  - Hierarchy: the full owner/admin/member matrix, with `canHide` and `canRestore` agreeing with `setHidden`. An owner's hide survives an admin's attempts to undo it or to hide the player again. The audit fields are kept.
+  - Deactivation: deactivating a member hides them, and reactivating brings them back unless staff hid them too. A restore that cannot work returns `INACTIVE`.
+  - Pruning: runs older than 30 days are deleted while newer runs, bests, and counters are kept. The pruned run's token stays `EXPIRED`, and a backlog of 1,205 rows is cleared in batches.
+- **DEV deployment:** the final Convex code, including the `by_submitted` index, the new `gamePlayers` fields, and the daily cron, was pushed to the DEV deployment. There, `issueRun` returned a signed token, `pruneRuns` ran, a guest's `submitRun` returned `UNAUTHENTICATED`, and `board` refused a guest. Production Convex was not touched.
+- **Screens.** Headless Chromium captured the game with Convex and auth mocked at ten sizes: 1440×900, 1280×577, 1024×768, 768×1024, 390×844, 320×568, 844×390, 740×360, 667×375 and 568×320.
+  - The captures cover running, ducking, a crash while ducking, an Elang, a finished hour, pause, game over as a guest and after saving, and both return notices.
+  - During play the Dino, the ground line and the game buttons were on screen at every landscape size, and at 932×430 in a separate probe.
+  - The board showed all 10 rows at 390×844, 375×667 and 360×740, and 4–9 rows at 320×568 depending on the state, with the scroll shadow as a cue.
+  - The reviewers' own probes were rerun and now pass: focus and keys, the ground tap area, the notice card, focus rings, forced colours, and Back from Google.
+- **Dashboard page.** The real `/dashboard/papan-skor` route was loaded with mocked member, admin and owner boards at 1440, 390 and 320 px. It had no horizontal overflow, and axe found no violations. Hiding and restoring moved focus to the next row that still has a button and announced the result.
+- **Sprites.** A sharp (librsvg) render of the new `dino.svg` matches the Draft A sheet chosen before the review, pixel for pixel, in its first 294 columns. The new duck crash frame differs from duck 1 in 20 pixels, all inside the eye box.
+- **Privacy page.** `/privasi` from the dev server contains the new wording on retention, one-word names, moderation, and deactivation.
+
+### Additional manual checks
+
+Not yet done with real accounts against the DEV deployment:
+
+- [ ] Owner and admin: an admin sees "Khusus pemilik" instead of a button on owner and admin rows. An owner's hide cannot be undone by the admin, and the "Disembunyikan" list names who hid each player.
+- [ ] Deactivate a member with a score on `/dashboard/anggota`: they disappear from the landing board and show "Nonaktif" in the hidden list, and reactivating brings them back.
+- [ ] Landscape phone and a low laptop window: the compact layout fits, the Dino and buttons stay on screen with the browser toolbar shown and hidden, and the two-column board scrolls.
+- [ ] Sunday night into Monday: a run started before 00:00 WIB and saved after it says "minggu lalu", and the next run starts on a new ticket.
+- [ ] Convex dashboard for DEV: the daily "remove Bogor Run run records after 30 days" cron is listed and its runs succeed.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.
 
-Responsive testing used browser viewport emulation, not physical phones. Browser reduced motion and the forced fallback were tested; actual GPU context-loss recovery is implemented but was not fault-injected. The public deployment and private GitHub remote are verified above. Membership registration still links to the official GDG chapter. The Apresiasi backend and OAuth checks are documented separately above; no Instagram publication was performed.
+Responsive testing used browser viewport emulation, not physical phones; Bogor Run's short and landscape layouts, which depend on `100svh` and the mobile toolbar, were never tried on a real device. Bogor Run's sounds were measured but not yet listened to, and its sign-in, submission, and moderation flows have been exercised only against convex-test and mocked browser responses; the checklists above cover the real round trips. Its late-game tuning comes from simulated players, not people, and no one has played a real hour to the finish line; that path is covered by the engine tests and the runtime harness. Restoring the page from the back/forward cache after Google cannot be triggered headless, so it is covered only by a component test. Browser reduced motion and the forced fallback were tested; actual GPU context-loss recovery is implemented but was not fault-injected. The public deployment and private GitHub remote are verified above. Membership registration still links to the official GDG chapter. The Apresiasi backend and OAuth checks are documented separately above; no Instagram publication was performed.

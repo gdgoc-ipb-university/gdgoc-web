@@ -65,4 +65,27 @@ export default defineSchema({
     .index("by_submission", ["submissionId", "createdAt"])
     .index("by_owner_assignment", ["ownerId", "assignmentId"])
     .index("by_assignment", ["assignmentId"]),
+  // Bogor Run: one row per accepted, server-replayed run. `week` comes from when the run's token was issued.
+  gameRuns: defineTable({
+    ownerId: v.string(), nonce: v.string(), seed: v.number(), issuedAt: v.number(),
+    endTick: v.number(), score: v.number(), week: v.string(), submittedAt: v.number(),
+  })
+    .index("by_nonce", ["nonce"])
+    .index("by_owner", ["ownerId", "submittedAt"])
+    .index("by_submitted", ["submittedAt"]), // bogorRun.pruneRuns deletes rows after 30 days.
+  // Each player's best per period ("all" or a week key). `name` is the public short name; `hidden` mirrors gamePlayers.
+  gameBests: defineTable({
+    ownerId: v.string(), period: v.string(), score: v.number(), name: v.string(), achievedAt: v.number(), hidden: v.boolean(),
+  })
+    .index("by_owner_period", ["ownerId", "period"])
+    .index("by_period_hidden_score", ["period", "hidden", "score"]),
+  // Staff moderation that also applies to bests set later: `hiddenAt` while hidden; who hid (and as which role) and who
+  // restored last are kept. A deactivated account is hidden too, from memberProfiles.deactivatedAt, not from here.
+  gamePlayers: defineTable({
+    ownerId: v.string(), hiddenAt: v.optional(v.number()), hiddenBy: v.optional(v.string()),
+    hiddenByRole: v.optional(v.union(v.literal("owner"), v.literal("admin"))), restoredAt: v.optional(v.number()), restoredBy: v.optional(v.string()),
+  }).index("by_owner", ["ownerId"]),
+  // Player and run counts per period, kept as counters so the board never scans every run.
+  gameStats: defineTable({ period: v.string(), players: v.number(), runs: v.number() })
+    .index("by_period", ["period"]),
 });

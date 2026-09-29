@@ -15,13 +15,13 @@ Open [the landing](http://127.0.0.1:3104), [the full scene](http://127.0.0.1:310
 The [CTA + footer concept gallery](http://127.0.0.1:3104/footer-directions) contains four new light concepts: Taman kampus, Meja kolaborasi, Gerbang komunitas, and Mosaik karya. Original PNGs and WebPs are in `public/footer-directions/`; the complete prompts and reference are recorded in `design/footer-directions/prompts.json`. These are generated design options, not four implemented footer components.
 
 ```sh
-pnpm test # backend permissions, onboarding, dashboard, accessibility, autosave and forms
+pnpm test # backend permissions, onboarding, dashboard, accessibility, autosave, forms, and the Bogor Run engine and score replay
 pnpm check # ESLint + Next route types + TypeScript
 pnpm build
 pnpm start
 ```
 
-Node 24 and pnpm 11.22.0 are used. The landing has no backend dependency. The Apresiasi workspace uses Convex and Google OAuth; configure the variables in `.env.example` and follow `docs/APRESIASI.md`.
+Node 24 and pnpm 11.22.0 are used. The landing renders without a backend; only the Bogor Run leaderboard, loaded once the game scrolls into view, talks to Convex. The Apresiasi workspace uses Convex and Google OAuth; configure the variables in `.env.example` and follow `docs/APRESIASI.md`. The leaderboard adds no environment variables: its run tokens are signed with a key derived from `BETTER_AUTH_SECRET`, and without that secret the game plays unranked.
 
 ## Apresiasi
 
@@ -31,7 +31,7 @@ The first authenticated visit opens a five-screen `/onboarding`: name, campus an
 
 ## Dashboard
 
-`/dashboard` is the signed-in workspace, with a sidebar (a drawer on phones) using Pixelarticons. Members work on assignments, write a rich-text answer (Tiptap, with a pixel-icon toolbar), drag and drop up to five files (10 MB each) with upload progress, and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Apresiasi and the profile page (community role and division) live here too. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, promote members to admin and review Apresiasi. Owners and admins create assignments with editable slugs (`/dashboard/tugas/<slug>`, old slugs keep redirecting), review every submission, and manage members. See `docs/DASHBOARD.md`.
+`/dashboard` is the signed-in workspace, with a sidebar (a drawer on phones) using Pixelarticons. Members work on assignments, write a rich-text answer (Tiptap, with a pixel-icon toolbar), drag and drop up to five files (10 MB each) with upload progress, and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Apresiasi and the profile page (community role and division) live here too. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, promote members to admin and review Apresiasi. Owners and admins create assignments with editable slugs (`/dashboard/tugas/<slug>`, old slugs keep redirecting), review every submission, and manage members. `/dashboard/papan-skor` shows the Bogor Run top 100 for the week and all time. Staff can hide a player from every board and restore them from a separate hidden list. Hiding follows the member-management hierarchy: admins act only on members, and only an owner can undo an owner's hide. Deactivated members are hidden automatically until they are reactivated, and per-run records are deleted after 30 days. See `docs/DASHBOARD.md`.
 
 ## Selected direction
 
@@ -47,9 +47,11 @@ The garden uses distinct round, columnar, and umbrella canopies, yellow/coral fl
 
 The membership CTA and footer share one full-width pixel landscape: misty Salak, Tugu Kujang, tropical trees, a road, and a light garden floor. A chunky cream Dino with navy outlines replaces the old CTA illustration; the directory stays below the same landscape instead of containing a separate game card.
 
-Dino **plays autonomously** while the arena is visible. A separate background run jumps over angkot, taro baskets, and rain puddles without recording a player score. Choose **Ikut main** to take over the full-width arena; **Kembali ke komunitas** restores the membership copy and returns keyboard focus to its CTA. Use Space, Up, or tap to jump, and P / Escape or the pause button to pause/resume. A local control can also pause the autonomous scene.
+Dino **plays autonomously** while the arena is visible. A separate, silent background run jumps over angkot, taro baskets, and rain puddles, and dodges Javan hawk-eagles, without recording a player score. Choose **Ikut main** to take over the full-width arena; **Kembali ke komunitas** restores the membership copy and returns keyboard focus to its CTA. Use Space or Up to jump and hold Down to duck (Down in mid-air drops fast); on touch screens, tap the upper half of the arena to jump and hold the lower half to duck. P / Escape or the pause button pauses and resumes. A local control can also pause the autonomous scene. While playing, the arena fits the screen under the header; landscape phones and low windows get a compact layout instead of a rotate prompt.
 
-The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop animation, personal games pause when focus leaves or the viewport changes width, and personal games resume only through a player action. Reduced motion disables autoplay and decorative movement, while explicit play remains available. High scores stay in browser storage; no login or backend is needed. The original Bogor SVG scenery, obstacles, and cream/navy Dino sprite sheet live in `public/games/bogor-run/`.
+Speed rises for the whole run but stays below a bound, and obstacle spacing is timed to the speed. After five minutes the course keeps tightening, with shorter margins and clusters of two or three obstacles to clear in one jump, so most runs end well before the hour; a run that lasts the full hour ends at a finish line ("Selesai! 1 jam penuh") and is saved like any other. A search solver in the tests clears the generated patterns for 150 seeds at the start, near top speed, and just before the finish line. From 300 points the Elang Jawa flies in at three heights: jump the low one, duck the middle one, and stay on the ground under the high one. Web Audio synthesizes the jump, crash, and a chime every 500 points, when the score blinks; there are no audio files, the mute button is remembered, and the demo is always silent.
+
+The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop animation, personal games pause when focus leaves or the viewport changes width, and personal games resume only through a player action. Reduced motion disables autoplay and decorative movement, while explicit play remains available. The personal best stays in browser storage. Guests can play without signing in; a signed-in player's crashed or finished run is sent to Convex, which replays its recorded inputs on a server-signed seed before saving the score. A guest can choose **Masuk untuk simpan skor** at game over; after Google sign-in returns to the landing, that run is submitted automatically if it ended less than 30 minutes earlier. The pause and game-over panel shows the weekly (reset Monday 00:00 WIB) and all-time top 10. The original Bogor SVG scenery, obstacles, and the cream/navy Dino and Elang sprite sheets live in `public/games/bogor-run/`; their README covers the Codex provenance, controls, and scoring.
 
 ## Structure
 
@@ -62,8 +64,9 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `src/components/scene-preloader.tsx`: first-frame loading gate with native modal focus handling and reduced-motion support.
 - `src/components/experience-provider.tsx`: system reduced motion and desktop Lenis scrolling.
 - `src/components/join-footer.tsx`: one continuous light section for the membership invitation, shared Bogor landscape, community identity, navigation, and contact.
-- `src/components/bogor-run.tsx`: full-width scene composition, autonomous/manual controls, focus restoration, and accessible status announcements.
-- `src/lib/bogor-run/`: deterministic-step gameplay, autonomous jumping, responsive projection, Canvas drawing, and browser-local best score.
+- `src/components/bogor-run.tsx`: full-width scene composition, autonomous/manual controls, tap zones, the leaderboard panel, focus restoration, and accessible status announcements.
+- `src/lib/bogor-run/`: the fixed-tick engine shared with the server replay, the autopilot, responsive projection, Canvas drawing, synthesized sound, sprite frames, leaderboard helpers, and the lazily loaded Convex/auth client (`online.ts`).
+- `convex/bogorRun.ts`: signed run tokens, replay-verified score submission, the public and dashboard leaderboards, moderation, and the 30-day pruning of run records.
 - `src/lib/community.ts`: verified official membership and Instagram destinations.
 - `src/lib/directions.ts`: visual directions and art asset paths.
 - `docs/DESIGN.md`: Figma evidence, direction choices and implementation rationale.

@@ -1,35 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="176" height="47" viewBox="0 0 176 47" shape-rendering="crispEdges">
-  <title>Dino GDGoC krem: diam, dua langkah berlari, dan berhenti</title>
+<svg xmlns="http://www.w3.org/2000/svg" width="353" height="47" viewBox="0 0 353 47" shape-rendering="crispEdges">
+  <title>Dino GDGoC krem: diam, dua langkah berlari, kaget, dua langkah merunduk, dan kaget saat merunduk</title>
   <defs>
-    <g id="body">
-      <path fill="#172d43" d="M23 1h18v2h3v17H32v3h4v2h2v6h-6v4h-3v3h-3v2H13v-2H8v-3H4v-3H0v-4h6v2h6v-4h2v-4h4V5h2V3h3z"/>
-      <path fill="#f3e6b8" d="M23 3h17v2h2v13H30v7h4v2h2v2h-6v5h-3v3h-3v1H14v-2h-2v-3h2v-6h2v-5h4V5h3zM4 30h2v2h7v-2h2v6h-5v-2H7v-2H4z"/>
-      <path fill="#fff3ce" d="M23 3h17v2H23zm-3 2h3v14h-3zm-4 21h3v3h-3zm-3 3h3v4h-3z"/>
-      <path fill="#e3d099" d="M39 5h3v13H30v7h-3V16h12zM27 29h3v5h-3v3h-3v1H14v-2h9v-3h4z"/>
-      <path fill="#172d43" d="M25 7h3v4h-3zm10 7h9v2h-9z"/>
+    <g id="b">
+      <path fill="#f3e6b8" d="M4 33h22v2h-22zM8 35h16v2h-16zM10 31h18v2h-18zM12 29h16v2h-16zM14 25h20v4h-20zM16 23h12v2h-12zM18 21h10v2h-10zM22 5h2v16h-2zM24 5h16v2h-16zM24 11h4v10h-4zM26 7h14v4h-14zM28 11h6v6h-6zM34 11h6v4h-6zM34 27h2v2h-2z"/>
+      <path fill="#fff3ce" d="M22 3h20v2h-20zM20 5h2v16h-2zM14 23h2v2h-2zM12 25h2v4h-2zM10 29h2v2h-2zM2 31h2v2h-2zM8 31h2v2h-2z"/>
+      <path fill="#e3d099" d="M40 5h2v10h-2zM28 17h14v2h-14zM28 19h2v6h-2zM28 29h2v6h-2zM26 33h2v4h-2zM24 35h2v4h-2zM12 37h12v2h-12z"/>
+      <path fill="#172d43" d="M22 1h20v2h-20zM20 3h2v2h-2zM42 3h2v18h-2zM18 5h2v16h-2zM24 7h2v4h-2zM34 15h8v2h-8zM30 19h12v2h-12zM14 21h4v2h-4zM30 21h2v4h-2zM12 23h2v2h-2zM32 23h4v2h-4zM10 25h2v4h-2zM34 25h4v2h-4zM0 27h2v6h-2zM36 27h2v4h-2zM2 29h2v2h-2zM8 29h2v2h-2zM30 29h6v2h-6zM4 31h4v2h-4zM30 31h2v4h-2zM2 33h2v2h-2zM4 35h4v2h-4zM28 35h2v4h-2zM8 37h4v2h-4zM26 37h2v2h-2z"/>
     </g>
-    <g id="standing">
-      <path fill="#172d43" d="M13 35h8v8h4v4H13zm10 0h7v7h3v4H23z"/>
-      <path fill="#e3d099" d="M25 37h3v6h-3z"/>
-      <path fill="#f3e6b8" d="M15 37h4v7h-4z"/>
+    <g id="d">
+      <path fill="#f3e6b8" d="M36 5h2v8h-2zM38 5h16v2h-16zM4 7h26v2h-26zM40 7h14v4h-14zM8 9h26v6h-26zM38 11h16v2h-16zM34 13h14v2h-14zM34 17h2v4h-2zM12 19h4v2h-4zM36 19h2v2h-2z"/>
+      <path fill="#fff3ce" d="M36 3h20v2h-20zM2 5h2v2h-2zM8 5h22v2h-22zM34 5h2v8h-2zM30 7h4v2h-4z"/>
+      <path fill="#e3d099" d="M54 5h2v8h-2zM10 15h30v2h-30zM44 15h12v2h-12zM24 19h2v2h-2z"/>
+      <path fill="#172d43" d="M0 1h2v6h-2zM36 1h20v2h-20zM2 3h2v2h-2zM8 3h22v2h-22zM34 3h2v2h-2zM56 3h2v16h-2zM4 5h4v2h-4zM30 5h4v2h-4zM2 7h2v2h-2zM38 7h2v4h-2zM4 9h4v2h-4zM6 11h2v4h-2zM48 13h8v2h-8zM8 15h2v2h-2zM40 15h4v2h-4zM10 17h24v2h-24zM36 17h4v2h-4zM44 17h12v2h-12zM10 19h2v4h-2zM16 19h2v4h-2zM22 19h2v4h-2zM26 19h2v4h-2zM32 19h2v2h-2zM38 19h2v2h-2zM28 21h2v2h-2zM34 21h4v2h-4z"/>
     </g>
   </defs>
-  <use href="#standing"/><use href="#body"/>
-  <g transform="translate(44)">
-    <path fill="#172d43" d="M12 35h8v6h-5v3H9v-4h3zm10 0h7v8h4v4H22z"/>
-    <path fill="#e3d099" d="M14 37h4v2h-4v3h-3v-1h3z"/>
-    <path fill="#f3e6b8" d="M24 37h3v7h-3z"/>
-    <use href="#body"/>
-  </g>
-  <g transform="translate(88)">
-    <path fill="#172d43" d="M13 35h8v8h4v4H13zm10 0h7v4h5v4h-9v-3h-3z"/>
-    <path fill="#e3d099" d="M25 37h3v4h5v1h-5v-2h-3z"/>
-    <path fill="#f3e6b8" d="M15 37h4v7h-4z"/>
-    <use href="#body"/>
-  </g>
-  <g transform="translate(132)">
-    <use href="#standing"/><use href="#body"/>
-    <path fill="#f3e6b8" d="M24 6h6v7h-6z"/>
-    <path fill="#172d43" d="M24 6h2v2h2V6h2v2h-2v2h2v2h-2v-2h-2v2h-2v-2h2V8h-2z"/>
-  </g>
+  <use href="#b"/>
+  <use href="#b" x="44"/>
+  <use href="#b" x="88"/>
+  <use href="#b" x="132"/>
+  <use href="#d" x="176" y="22"/>
+  <use href="#d" x="235" y="22"/>
+  <use href="#d" x="294" y="22"/>
+  <path fill="#f3e6b8" d="M156 9h2v2h-2zM14 41h4v4h-4zM58 41h4v2h-4zM102 41h4v4h-4zM146 41h4v4h-4zM247 43h4v2h-4zM332 31h2v2h-2z"/>
+  <path fill="#e3d099" d="M26 39h2v6h-2zM70 39h2v6h-2zM114 39h2v4h-2zM158 39h2v6h-2zM200 43h2v2h-2zM318 43h2v2h-2z"/>
+  <path fill="#172d43" d="M12 39h2v8h-2zM14 39h12v2h-12zM14 45h8v2h-8zM18 41h2v4h-2zM20 43h2v2h-2zM24 41h2v6h-2zM26 45h8v2h-8zM28 39h2v6h-2zM30 43h4v2h-4zM52 41h6v4h-6zM56 39h14v2h-14zM58 43h6v2h-6zM62 41h2v2h-2zM68 41h2v6h-2zM70 45h8v2h-8zM72 39h2v6h-2zM74 43h4v2h-4zM100 39h2v8h-2zM102 39h12v2h-12zM102 45h8v2h-8zM106 41h2v4h-2zM108 43h2v2h-2zM112 41h2v4h-2zM114 43h10v2h-10zM116 39h2v4h-2zM118 41h6v2h-6zM144 39h2v8h-2zM146 39h12v2h-12zM146 45h8v2h-8zM150 41h2v4h-2zM152 43h2v2h-2zM154 5h2v2h-2zM154 9h2v2h-2zM156 41h2v6h-2zM158 5h2v2h-2zM158 9h2v2h-2zM158 45h8v2h-8zM160 39h2v6h-2zM162 43h4v2h-4zM182 41h4v4h-4zM188 43h4v2h-4zM198 45h8v2h-8zM263 41h2v2h-2zM253 43h2v4h-2zM259 43h2v2h-2zM245 45h8v2h-8zM300 41h4v4h-4zM306 43h4v2h-4zM316 45h8v2h-8zM330 27h2v2h-2zM334 27h2v2h-2zM330 31h2v2h-2zM334 31h2v2h-2z"/>
 </svg>

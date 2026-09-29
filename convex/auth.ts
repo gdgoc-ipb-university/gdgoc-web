@@ -44,7 +44,7 @@ export const viewer = query({
     if (!user) return null;
     const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     return {
-      id: user._id, name: profile?.fullName || user.name, email: user.email,
+      id: user._id, name: profile?.fullName || user.name, email: user.email, memberType: profile?.memberType ?? null,
       isAdmin: isReviewer(user.email, user.emailVerified),
     };
   },

@@ -13,7 +13,7 @@
 | `/dashboard/tugas/<slug>/ubah` | — | Edit title, slug, instructions, and deadline |
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
 | `/dashboard/apresiasi/tinjau` | — | Apresiasi review queue (owners only) |
-| `/dashboard/anggota` | — | Search, filter (admin, core team, deactivated), promote/demote admins, correct community roles, deactivate/reactivate members |
+| `/dashboard/anggota` | — | Search, filter (admin, core team, BoD, deactivated), promote/demote admins, set community tags (including BoD), deactivate/reactivate members |
 | `/dashboard/papan-skor` | Bogor Run top 100 this week and all time, with your own rank | Same, plus hide controls and a separate "Disembunyikan" list to restore from |
 | `/dashboard/profil` | Profile facts and community role | Same |
 
@@ -31,7 +31,7 @@ Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into
 - **Admin:** a member promoted by an owner, stored as `memberProfiles.role = "admin"`. Admins manage assignments, see all submissions, and can deactivate or reactivate members (not admins or owners). Dashboard admins do **not** gain Apresiasi review access; that stays with the allowlist.
 - **Member:** any verified account that has completed onboarding. There is no approval step.
 
-These access roles are separate from the self-declared **community role** (Member or Core Team with a division) chosen during onboarding. The community role is a label only and grants no permissions.
+These access roles are separate from the **community tag**. Members choose Member or Core Team (with a division) themselves during onboarding and on their profile. **BoD** (Board of Directors) is a third tag that only owners and admins assign, from the members page, with an optional division. A BoD member sees their tag read-only on the profile and cannot change it themselves. Community tags are labels only and grant no permissions. New Apresiasi drafts prefill the tag (Member, Core Team, or BoD), and the server accepts "BoD" as a submission's role only from a member tagged BoD.
 
 Deactivation sets `memberProfiles.deactivatedAt`. A deactivated account can still sign in but sees only a notice; every assignment query and mutation rejects it. Its submissions are kept. It also disappears from every Bogor Run board, and reactivation brings it back unless staff hid the player separately (see [Moderation](#names-and-moderation)). An admin must be demoted before deactivation, and a deactivated member must be reactivated before promotion. Nobody can change their own status. `accessUpdatedBy` records the last account that changed a role or status.
 
@@ -162,7 +162,7 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 
 ## Data model
 
-- `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`), and `division`, a `by_completed` index, and a `search_name` full-text index on `fullName`.
+- `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`/`bod`), and `division`, a `by_completed` index, and a `search_name` full-text index on `fullName`.
 - `assignments`: optional `slug`, plus `by_status_due` and `by_updated` indexes.
 - `assignmentSlugs`: every slug an assignment has used (`by_slug`, `by_assignment`).
 - `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`).
@@ -176,7 +176,7 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 ## Tests
 
-- `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, and the core team filter.
+- `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, and BoD tagging with an optional division. `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
 - `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, and upload cleanup.
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, and slugify. convex-test does not record upload content types, so type mismatches are tested here.

@@ -6,7 +6,7 @@ The first authenticated visit to any `/dashboard` page redirects accounts withou
 
 1. **Kenalan:** a name prefilled from Google, editable before saving.
 2. **Kampus:** searchable campus and study-program comboboxes. Both accept names outside the suggestions.
-3. **Peran:** Member or Core Team. Core Team then requires one division: Program & Development, Media & Creative, Technical, Community & External, or Secretary Treasurer. The list lives in `src/lib/onboarding.ts`.
+3. **Peran:** Member or Core Team. Core Team then requires one division: Program & Development, Media & Creative, Technical, Community & External, or Secretary Treasurer. The list lives in `src/lib/onboarding.ts`. BoD (Board of Directors) is not offered here; only owners and admins assign it from the members page.
 4. **WhatsApp:** an optional invitation to the group supplied by the community owner.
 5. **Jadi member:** an optional invitation to the official GDG chapter, followed by completion and a return to the dashboard.
 
@@ -20,7 +20,7 @@ External invitations open a new tab. Opening an invitation is not treated as pro
 
 Each **Lanjut** saves that screen before advancing. Reload resumes the next saved screen; unsaved keystrokes are not described as saved. Back preserves local values, and a failed save keeps edits on screen. Required fields and lengths are validated on the server, forward skipping is rejected, and revision checks prevent an old tab from overwriting newer data. Identical request retries are safe. Completion does not repeat on later visits. The only return destinations are `/dashboard` and `/dashboard/apresiasi/tinjau`. `members.saveRole` changes the role after completion.
 
-New appreciation drafts prefill the chosen name, campus, study program, and Member/Core Team role. Existing drafts keep their existing values. The additive schema keeps the previous frontend functional during backend-first deployment. Google permissions and appreciation review authorization do not change.
+New appreciation drafts prefill the chosen name, campus, study program, and community tag (Member, Core Team, or BoD). Existing drafts keep their existing values. The additive schema keeps the previous frontend functional during backend-first deployment. Google permissions and appreciation review authorization do not change.
 
 ## Combobox and mobile behavior
 

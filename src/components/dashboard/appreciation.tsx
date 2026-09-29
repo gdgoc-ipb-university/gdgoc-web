@@ -7,7 +7,7 @@ import { isReviewer, useDashboardViewer } from "./viewer";
 
 export function DashboardAppreciation() {
   const viewer = useDashboardViewer();
-  return <AppreciationWorkspace key={viewer.id} viewer={{ id: viewer.id, name: viewer.name, email: viewer.email, isAdmin: isReviewer(viewer) }} />;
+  return <AppreciationWorkspace key={viewer.id} viewer={{ id: viewer.id, name: viewer.name, email: viewer.email, isAdmin: isReviewer(viewer), memberType: viewer.memberType }} />;
 }
 
 export function DashboardAppreciationReview() {

@@ -38,6 +38,7 @@
 .dash-role[data-role="admin"] { background: #e7eefa; color: #2457b8; }
 .dash-role[data-role="owner"] { background: #fff0c5; color: #6d4d0c; }
 .dash-role[data-role="core"] { background: #fbe3df; color: #8e2c21; text-transform: none; letter-spacing: 0; font-size: 11px; }
+.dash-role[data-role="bod"] { background: #e3f3e6; color: #1e6b34; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .dash-role[data-role="member"] { text-transform: none; letter-spacing: 0; font-size: 11px; }
 
 .dash-intro { margin-bottom: 34px; }

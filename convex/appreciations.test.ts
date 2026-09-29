@@ -28,6 +28,18 @@ async function user(t: ReturnType<typeof setup>, email = "member@example.com", v
 afterEach(() => vi.unstubAllEnvs());
 
 describe("private appreciation workflow", () => {
+  it("offers BoD as the role only to members staff tagged as BoD", async () => {
+    const t = setup(); const member = await user(t);
+    const first = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
+    const ownerId = (await member.query(api.appreciations.get, { id: first })).ownerId;
+    await member.mutation(api.appreciations.save, { id: first, revision: 0, values: { ...complete, memberType: "BoD" } });
+    await expect(member.mutation(api.appreciations.submit, { id: first, revision: 1 })).rejects.toThrow("Lengkapi isian");
+    await t.run((ctx) => ctx.db.insert("memberProfiles", { ownerId, fullName: "Member Pengujian", campus: "Kampus Bogor", studyProgram: "", nextStep: 5, revision: 5, updatedAt: Date.now(), completedAt: Date.now(), memberType: "bod" }));
+    const second = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
+    expect((await member.query(api.appreciations.get, { id: second })).values.memberType).toBe("BoD");
+    expect(await member.mutation(api.appreciations.submit, { id: first, revision: 1 })).toBe(first);
+  });
+
   it("requires an active verified session, including for guessed record IDs", async () => {
     const t = setup();
     await expect(t.query(api.appreciations.mine, { paginationOpts: page })).rejects.toThrow("Masuk kembali");

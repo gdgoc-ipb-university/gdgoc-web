@@ -97,4 +97,16 @@ describe("first-time member onboarding", () => {
     await owner.mutation(api.members.saveRole, { memberType: "member", division: "Media & Creative" });
     expect(await owner.query(api.members.profile)).not.toHaveProperty("division");
   });
+
+  it("never lets members declare or drop BoD themselves", async () => {
+    const t = setup(); const owner = await member(t);
+    for (const step of [1, 2] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "bod", division: "" } })).rejects.toThrow("Lengkapi");
+    for (const step of [3, 4, 5] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    await expect(owner.mutation(api.members.saveRole, { memberType: "bod", division: "" })).rejects.toThrow("Lengkapi");
+    const profile = (await owner.query(api.members.profile))!;
+    await t.run((ctx) => ctx.db.patch(profile._id, { memberType: "bod", division: "Technical" }));
+    await expect(owner.mutation(api.members.saveRole, { memberType: "member", division: "" })).rejects.toThrow("diatur oleh admin");
+    expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "bod", division: "Technical" });
+  });
 });

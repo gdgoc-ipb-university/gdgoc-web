@@ -58,6 +58,7 @@ export const saveRole = mutation({
     if (!user?.emailVerified) throw new ConvexError("Masuk kembali dengan akun Google untuk melanjutkan.");
     const existing = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     if (!existing?.completedAt) throw new ConvexError("Selesaikan perkenalan terlebih dahulu.");
+    if (existing.memberType === "bod") throw new ConvexError({ code: "FORBIDDEN", message: "Peran BoD diatur oleh admin. Hubungi admin untuk mengubahnya." });
     const division = args.memberType === "core" ? args.division.trim() : "";
     const errors = validateRole({ memberType: args.memberType, division });
     if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });

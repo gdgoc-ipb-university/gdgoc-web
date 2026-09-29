@@ -1,6 +1,12 @@
 export const divisions = ["Program & Development", "Media & Creative", "Technical", "Community & External", "Secretary Treasurer"] as const;
-export type MemberType = "member" | "core";
-export const memberTypeLabels: Record<MemberType, string> = { member: "Member", core: "Core Team" };
+/** Community tags. BoD (Board of Directors) is a tag like Core Team, not dashboard access, and only staff assign it. */
+export type MemberType = "member" | "core" | "bod";
+export const memberTypeLabels: Record<MemberType, string> = { member: "Member", core: "Core Team", bod: "BoD" };
+
+/** "Core Team · Technical", "BoD · Technical", "BoD", or "Member". */
+export function memberTagLabel(type: MemberType, division?: string | null) {
+  return type !== "member" && division ? `${memberTypeLabels[type]} · ${division}` : memberTypeLabels[type];
+}
 
 export type OnboardingValues = { fullName: string; campus: string; studyProgram: string; memberType: MemberType | ""; division: string };
 export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
@@ -17,13 +23,21 @@ export function normalizeOnboarding(values: OnboardingValues): OnboardingValues 
     campus: values.campus.trim().replace(/\s+/g, " "),
     studyProgram: values.studyProgram.trim().replace(/\s+/g, " "),
     memberType: values.memberType,
-    division: values.memberType === "core" ? values.division.trim() : "",
+    division: values.memberType === "core" || values.memberType === "bod" ? values.division.trim() : "",
   };
 }
 
+/** The member's own choice (onboarding, profile): Member or Core Team; BoD cannot be self-declared. */
 export function validateRole(values: RoleValues): OnboardingErrors {
   if (values.memberType !== "member" && values.memberType !== "core") return { memberType: "Pilih Member atau Core Team." };
   if (values.memberType === "core" && !divisions.some((division) => division === values.division)) return { division: "Pilih divisimu di Core Team." };
+  return {};
+}
+
+/** Staff assignment: any tag; Core Team needs a division, BoD may have one. */
+export function validateStaffRole(values: RoleValues): OnboardingErrors {
+  if (values.memberType !== "bod") return validateRole(values);
+  if (values.division && !divisions.some((division) => division === values.division)) return { division: "Pilih divisi yang tersedia atau kosongkan untuk BoD." };
   return {};
 }
 

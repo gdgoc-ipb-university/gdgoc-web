@@ -5,6 +5,7 @@ import type { Doc } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
+import { syncBoardVisibility } from "./bogorRun";
 import { validateRole } from "../src/lib/onboarding";
 
 export const viewer = query({
@@ -97,6 +98,8 @@ export const setActive = mutation({
     if (row.role === "admin") throw new ConvexError(actor.role === "owner" ? "Turunkan peran admin terlebih dahulu." : "Hanya pemilik yang bisa mengelola akun admin.");
     if (row.active === args.active) return;
     await ctx.db.patch(profile._id, { deactivatedAt: args.active ? undefined : Date.now(), accessUpdatedBy: actor.user._id });
+    // Deactivation also takes the member off the Bogor Run boards; reactivation brings them back unless staff hid them.
+    await syncBoardVisibility(ctx, args.ownerId, !args.active);
   },
 });
 

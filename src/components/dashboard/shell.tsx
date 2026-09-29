@@ -60,6 +60,7 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
       { href: "/dashboard", label: "Ringkasan", icon: "home", current: pathname === "/dashboard" },
       { href: "/dashboard/tugas", label: isStaff(viewer) ? "Kelola tugas" : "Tugas", icon: "clipboard-note", current: at("/dashboard/tugas") },
       { href: "/dashboard/apresiasi", label: "Apresiasi", icon: "trophy", current: pathname === "/dashboard/apresiasi" },
+      { href: "/dashboard/papan-skor", label: "Papan skor", icon: "gamepad", current: at("/dashboard/papan-skor") },
     ] },
     ...(isStaff(viewer) ? [{ title: "Kelola", items: [
       ...(isReviewer(viewer) ? [{ href: "/dashboard/apresiasi/tinjau", label: "Tinjau apresiasi", icon: "shield" as const, current: at("/dashboard/apresiasi/tinjau") }] : []),

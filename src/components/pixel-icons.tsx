@@ -46,6 +46,8 @@ const paths = {
   underline: ["M4 4h4v2h-4zM16 4h4v2h-4zM4 6h4v2h-4zM16 6h4v2h-4zM4 8h4v2h-4zM16 8h4v2h-4zM4 10h4v2h-4zM16 10h4v2h-4zM4 12h4v2h-4zM16 12h4v2h-4zM6 14h4v2h-4zM14 14h4v2h-4zM8 16h8v2h-8zM2 20h20v2h-20z"],
   strikethrough: ["M6 4h12v2h-12zM4 6h4v2h-4zM16 6h4v2h-4zM4 8h4v2h-4zM6 10h10v2h-10zM2 12h20v2h-20zM16 14h4v2h-4zM4 16h4v2h-4zM16 16h4v2h-4zM6 18h12v2h-12z"],
   "list-ordered": ["M3 3h1v1h-1zM2 4h2v1h-2zM9 4h13v1h-13zM3 5h1v1h-1zM9 5h13v1h-13zM3 6h1v1h-1zM2 7h3v1h-3zM2 10h2v1h-2zM4 11h1v1h-1zM9 11h13v1h-13zM3 12h1v1h-1zM9 12h13v1h-13zM2 13h1v1h-1zM2 14h3v1h-3zM2 17h2v1h-2zM4 18h1v1h-1zM9 18h13v1h-13zM3 19h1v1h-1zM9 19h13v1h-13zM4 20h1v1h-1zM2 21h2v1h-2z"],
+  // Drawn for this project, like the text-formatting icons: a controller with stepped corners, a d-pad and two buttons.
+  gamepad: ["M4 5h16v2H4zm0 12h16v2H4zM2 7h2v10H2zm18 0h2v10h-2z", "M8 9h2v6H8zm-2 2h6v2H6zm8-2h2v2h-2zm2 4h2v2h-2z"],
 } satisfies Record<string, string[]>;
 
 export type PixelIconName = keyof typeof paths;

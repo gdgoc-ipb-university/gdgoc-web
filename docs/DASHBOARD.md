@@ -1,6 +1,6 @@
 # Dashboard: roles, assignments, and members
 
-`/dashboard` is the signed-in area for members and administrators, and the home of Apresiasi. It uses Google sign-in (Better Auth on Convex) and the onboarding member profile. No extra OAuth scopes or environment variables are required.
+`/dashboard` is the signed-in area for members and administrators, the home of Apresiasi, and the full Bogor Run leaderboard. It uses Google sign-in (Better Auth on Convex) and the onboarding member profile. No extra OAuth scopes or environment variables are required.
 
 ## Routes
 
@@ -14,6 +14,7 @@
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
 | `/dashboard/apresiasi/tinjau` | — | Apresiasi review queue (owners only) |
 | `/dashboard/anggota` | — | Search, filter (admin, core team, deactivated), promote/demote admins, correct community roles, deactivate/reactivate members |
+| `/dashboard/papan-skor` | Bogor Run top 100 this week and all time, with your own rank | Same, plus hide controls and a separate "Disembunyikan" list to restore from |
 | `/dashboard/profil` | Profile facts and community role | Same |
 
 Signed-out visitors see a Google sign-in panel that returns them to the page they opened, e.g. a shared assignment link. A first sign-in goes through `/onboarding`. Onboarded accounts without a community role (they onboarded before the role step) get a one-screen role prompt before the dashboard opens. The old `/apresiasi` and `/apresiasi/admin` URLs redirect permanently to the dashboard pages (`next.config.ts`).
@@ -22,7 +23,7 @@ Signed-out visitors see a Google sign-in panel that returns them to the page the
 
 Signed-in pages use a sticky sidebar grouped into Belajar, Kelola (staff only), and Akun, with the account, role badges, a link back to the site, and sign-out at the bottom. Below 960px it becomes a drawer opened from the top bar; opening moves focus into it, and Escape or the backdrop closes it. Sign-in, onboarding, role prompt, and deactivated states keep the public site header instead.
 
-Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into `src/components/pixel-icons.tsx`; add new icons there as 24×24 paths.
+Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into `src/components/pixel-icons.tsx`; add new icons there as 24×24 paths. The `gamepad` icon for Papan skor is hand-drawn in the same grid, not copied from Pixelarticons.
 
 ## Roles
 
@@ -32,9 +33,9 @@ Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into
 
 These access roles are separate from the self-declared **community role** (Member or Core Team with a division) chosen during onboarding. The community role is a label only and grants no permissions.
 
-Deactivation sets `memberProfiles.deactivatedAt`. A deactivated account can still sign in but sees only a notice; every assignment query and mutation rejects it. Its submissions are kept. An admin must be demoted before deactivation, and a deactivated member must be reactivated before promotion. Nobody can change their own status. `accessUpdatedBy` records the last account that changed a role or status.
+Deactivation sets `memberProfiles.deactivatedAt`. A deactivated account can still sign in but sees only a notice; every assignment query and mutation rejects it. Its submissions are kept. It also disappears from every Bogor Run board, and reactivation brings it back unless staff hid the player separately (see [Moderation](#names-and-moderation)). An admin must be demoted before deactivation, and a deactivated member must be reactivated before promotion. Nobody can change their own status. `accessUpdatedBy` records the last account that changed a role or status.
 
-All rules are enforced in Convex (`convex/access.ts`, `convex/dashboard.ts`, `convex/assignments.ts`); the UI only hides actions the server would refuse.
+All rules are enforced in Convex (`convex/access.ts`, `convex/dashboard.ts`, `convex/assignments.ts`, `convex/bogorRun.ts`); the UI only hides actions the server would refuse.
 
 ## Assignments
 
@@ -84,6 +85,81 @@ The hourly `remove unclaimed assignment uploads` cron (`convex/crons.ts`) delete
 
 File URLs come from `ctx.storage.getUrl`. They are unguessable, but not authenticated, and are returned only to the submitting member and to admins.
 
+## Papan skor (Bogor Run leaderboard)
+
+Bogor Run is the runner game in the landing-page footer (`public/games/bogor-run/README.md`). Anyone can play. Saving a score needs a verified Google account that is not deactivated; onboarding is not required. The game's pause and game-over panel shows the weekly and all-time top 10 to everyone, guests included, and links here with "Lihat 100 besar".
+
+### The page
+
+`/dashboard/papan-skor` has two tabs, "Minggu ini" (with the week's dates) and "Sepanjang masa". Both boards stay subscribed, so switching is instant; arrow keys, Home, and End move between tabs. The stats row shows your rank for the period (`#n`, "1.000+" past the 1,000 ranks that are counted, or "—" while hidden), your best, and the period's player and run counts.
+
+The table lists up to 100 visible players with rank, short name, score, and when the score was reached (WIB). Tied scores share a rank; among ties, whoever reached the score first is listed first. Your row is highlighted with a "Kamu" badge, and a "Lihat barismu" link jumps to it when it is below the top 10. An empty board links to the game at `/#join`.
+
+### Names and moderation
+
+The public name is `shortName()` of the onboarding full name, or the Google name without a profile: the first name and the last initial ("Aldio Lisafron" → "Aldio L."). A one-word name has nothing to shorten and is shown whole ("Sukarno" stays "Sukarno"); the privacy page says so. A leading initial such as "M." is skipped, invisible characters are dropped, and names are capped at 24 characters. The name is refreshed whenever the player improves a best. No query returns owner ids, emails, or photos.
+
+The ranked table holds visible players only. Owners and admins also get a staff-only **Disembunyikan** section below it (`#board-hidden`): up to 100 hidden players of the period, highest score first. They are listed apart from the top 100, so hidden players never push anyone off it, and a hidden player with a low score is still listed (up to the cap in [Limits](#limits)). Each row says who hid the player, as which role, and when ("Disembunyikan oleh Rahma D. (pemilik) pada …"), or that the account is deactivated, with a "Nonaktif" badge. "Sembunyikan" and "Tampilkan lagi" ask for confirmation, then call `bogorRun.setHidden`, which hides or restores the player on every board, including bests they set later. Hidden scores stay stored; public ranks are counted without them. The player sees a notice on this page and "disembunyikan admin" in the game.
+
+Who may hide or restore whom is modelled on `dashboard.setActive`:
+
+- Nobody can hide or restore themselves.
+- Admins act only on members. Only owners act on admins and on other owners.
+- An admin cannot restore a player an owner hid. Hiding a player who is already hidden changes nothing, so the original hider (and their role) stays on record.
+- A player hidden only because their account is deactivated comes back when it is reactivated, and `setHidden` refuses to restore them (`INACTIVE`). Restoring a deactivated player whom staff also hid clears the staff hide; the score returns on reactivation, and the confirmation says so.
+
+`board` applies the same rules per row (`canHide`, `canRestore`), and the page offers a button only where the server would accept it. Otherwise the row shows a lock with "Khusus pemilik" or "Tampil saat akun aktif", and your own row shows nothing. A refusal from the server (`FORBIDDEN` or `INACTIVE`, with an Indonesian message) appears in the confirmation row.
+
+`gamePlayers` keeps the audit: `hiddenAt` while staff hide the player, `hiddenBy` and `hiddenByRole` for the last hide (kept after a restore), and `restoredAt` and `restoredBy` for the last restore. `gameBests.hidden` is derived from it and from the account: a best is hidden while staff hide the player or while the account is deactivated. `syncBoardVisibility` recomputes it, and both `setHidden` and `dashboard.setActive` call it.
+
+### Functions
+
+| Function | Access | Purpose |
+| --- | --- | --- |
+| `bogorRun.issueRun` | Public mutation | A random seed and its signed token. Writes nothing. |
+| `bogorRun.submitRun` | Verified, active account | Replays a crashed or finished run and saves its score |
+| `bogorRun.leaderboard` | Public query | Top 10 visible players and the viewer's own standing |
+| `bogorRun.board` | Members (`requireMember`) | Top 100 visible players with `achievedAt`, `canHide`, and player/run counts; staff also get `hiddenEntries` (up to 100, with the audit fields, `inactive`, and `canRestore`) and `canModerate` |
+| `bogorRun.setHidden` | Staff (`requireStaff`), under the rules above | Hides or restores a player on every board |
+| `bogorRun.pruneRuns` | Internal, daily cron | Deletes `gameRuns` rows older than 30 days |
+
+`submitRun` returns `{ ok: false, code, message }` for expected rejections (`UNAUTHENTICATED`, `DEACTIVATED`, `INVALID`, `TOO_EARLY`, `EXPIRED`, `USED`) with an Indonesian message, instead of throwing. A rank is `null` when the player is hidden or past 1,000. `setHidden` throws a `ConvexError` with `{ code, message }`: `FORBIDDEN`, `INACTIVE`, or `NOT_FOUND`.
+
+### Replay verification
+
+1. **Token.** `issueRun` rolls a uint32 seed and signs `{ v: 1, seed, issuedAt, nonce }` (base64url JSON plus an HMAC-SHA256 signature, `convex/bogorRunToken.ts`). The key is `HMAC(BETTER_AUTH_SECRET, "gdgoc:bogor-run:token:v1")`, so no new secret is needed; without `BETTER_AUTH_SECRET` it returns `null` and the game plays unranked. The browser keeps one ticket ready while the game is on the page (`keepTicketFresh` in `online.ts`). A ticket is used only within 10 minutes of its fetch, and never after the week it was issued in has ended. It is renewed shortly before its 10 minutes are up, right after its week ends, and as soon as a hidden tab comes back. Hidden tabs fetch nothing, and without a ticket the page retries every minute. A run that starts while a ticket is still on its way holds its first tick for up to 1 s, then adopts the ticket and keeps the keys pressed meanwhile. If none arrives, the run plays unranked.
+2. **Play.** The browser and Convex run the same engine (`src/lib/bogor-run/engine.ts`): fixed 1/120 s ticks, a seeded PRNG stored on the run, world-space spawning, and only arithmetic that gives identical results everywhere. The browser records each jump, duck, and stand that changes the state as `[tick, code]`.
+3. **Submit.** When a signed-in player crashes or reaches the one-hour finish line, the run is submitted automatically: the token, the inputs, the end tick, and the score. The inputs always travel as a packed base-36 string (`packInputs`), because Convex rejects argument arrays longer than 8,192 elements.
+4. **Checks,** in order: a verified, active account; a valid signature and exact claim shape; a nonce no other account has used (`USED`; a resubmit from the same account gets its current standing back); an end tick from 1 to 432,000 and a non-negative integer score; at least 97% of the simulated time, minus 1 s, since `issuedAt` (`TOO_EARLY`); at most the simulated time plus 12 hours (`EXPIRED`). Finally the replay must be valid, end on exactly the end tick (a crash, or the finish line at 432,000), and produce exactly the claimed score. A rejected attempt does not use up its nonce, so an honest retry still works.
+5. **Save.** An accepted run adds a `gameRuns` row without its inputs, updates the week's and all-time `gameBests` only when the score improves, and increments the `gameStats` counters.
+
+A guest who chooses "Masuk untuk simpan skor" has the run kept in `sessionStorage` (`gdgoc:bogor-run:pending:v1`) during the Google sign-in, which returns to `/?skor=simpan#join` (or `/?skor=gagal#join` on failure). The landing removes the parameter, scrolls to the game, replays the run locally to show its end, and submits it. The pending run is read once, and ignored 30 minutes after game over. A guest who comes back without signing in, for example with Back from Google, sees the run again with "Skor tadi belum tersimpan. Masuk untuk menyimpannya." and the sign-in button. A signed-in player whose session cannot get its Convex token sees a connection error with "Coba simpan lagi", not the sign-in button.
+
+### The one-hour finish line
+
+A run that survives `LIMITS.maxTicks` (432,000 ticks, one hour) ends there as finished, not crashed. The engine sets the phase to `"over"` with `finished: true` and no hit, and `replayRun` returns `finished: true`. `submitRun` accepts it like a crash, under the same pace check, so it saves no earlier than about 58 minutes after its ticket was issued. The game shows "Selesai! 1 jam penuh" with the Dino standing. The score depends only on how long the run lasted, so every finisher scores 137,403; among equal scores, whoever saved first is listed first. After five minutes the course keeps getting harder (see the game's README), so reaching the hour takes a strong player.
+
+### Run records
+
+The daily `remove Bogor Run run records after 30 days` cron (`convex/crons.ts`, 20:41 UTC, which is 03:41 WIB) runs `bogorRun.pruneRuns`. It deletes `gameRuns` rows saved more than 30 days earlier (`RUN_RETENTION`), 1,000 at a time, and reschedules itself while more remain. Single use still holds: a token is `EXPIRED` at most 13 hours after it was issued (the simulated hour plus 12 hours), long before its row is deleted. Bests, player records, and the `gameStats` counters are kept.
+
+### Weeks
+
+A week starts on Monday at 00:00 WIB (UTC+7) and is keyed by that Monday's date (`weekKey`). A run counts toward the week its ticket was issued in, not the week it was saved. The browser drops a ticket when its week ends, so an honest run counts for the week it started in: one started late on Sunday stays in that week even if it ends on Monday, and the game then says "Tersimpan · peringkat #n minggu lalu". Clients pass the current week explicitly (the dashboard page from a ticking clock), because Convex query results do not re-run as time passes.
+
+The server accepts a run until its simulated time plus 12 hours after the ticket was issued. So last week's board can still change until about 13:00 WIB on Monday, from a ticket issued just before midnight and held for a full hour's run. This is by design.
+
+### Limits
+
+- Replay verification cannot tell a bot from a person, and a bot needs no real-time play. The pace check only proves the ticket is old enough: it was issued at least 97% of the simulated time, minus 1 s, before the save. A script can fetch tickets without signing in, several at once, compute a run in a fraction of a second, and save it once each ticket has aged. The demo autopilot ships in the browser bundle and plays to the finish line, so such a run scores the ceiling of 137,403, the same as any finisher. This risk is accepted: staff hide suspicious players with the moderation above.
+- Pauses are not recorded, so pausing to think cannot be detected; only the minimum real duration is enforced.
+- There is no per-account rate limit, and `issueRun` needs no sign-in. Each bogus submission costs at most one hour of replay, well under the 1 s mutation limit (`docs/VERIFICATION.md` has the measurements). Every accepted run counts in "Permainan tercatat", so one account can inflate that counter with many short runs; a run with no input is accepted about 2 s after its ticket was issued. Add a rate limit, with a new error code, if abuse appears.
+- A run with more than 10,000 inputs plays unranked, and the game says why.
+- The view scale follows the arena width, so a phone shows obstacles later than a desktop, and phone players meet the late game's clusters with less warning. The gameplay review's human-like bot, made cluster-aware, lasts a median of about 7.6 minutes at 390 px, against about 22 minutes at 1440 px. This was left as is.
+- The staff list shows the 100 highest hidden scores of a period. With more hidden players than that, restore a lower one from a week in which they rank higher, or in the Convex dashboard.
+- Changing the engine's physics or generation makes runs from browsers still on the old client fail replay with `INVALID`. Ship such changes with a new token version (or an engine version in the claim). The late-game ramp changed generation only after five minutes; a fingerprint test in `engine.test.ts` pins the first five.
+- Ranks are counted exactly up to 1,000, which keeps rank reads bounded; past that the rank is `null`.
+
 ## Data model
 
 - `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`), and `division`, a `by_completed` index, and a `search_name` full-text index on `fullName`.
@@ -91,6 +167,10 @@ File URLs come from `ctx.storage.getUrl`. They are unguessable, but not authenti
 - `assignmentSlugs`: every slug an assignment has used (`by_slug`, `by_assignment`).
 - `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`).
 - `submissionFiles`: pending or attached uploads (`by_storage`, `by_submission`, `by_owner_assignment`, `by_assignment`).
+- `gameRuns`: one row per accepted Bogor Run run, with seed, nonce, times, end tick, score, and week, but not its inputs (`by_nonce`, `by_owner`, `by_submitted`). Rows are deleted 30 days after they were saved.
+- `gameBests`: each player's best per period, `"all"` or a week key, with the public short name and a `hidden` flag, set while staff hide the player or the account is deactivated (`by_owner_period`, `by_period_hidden_score`).
+- `gamePlayers`: staff moderation per player, which also applies to later bests: `hiddenAt` while hidden, `hiddenBy` and `hiddenByRole` of the last hide, and `restoredAt` and `restoredBy` of the last restore (`by_owner`).
+- `gameStats`: player and run counters per period, so the board never scans every run (`by_period`).
 
 All schema changes are additive, so the previous frontend keeps working during a backend-first deploy.
 
@@ -104,6 +184,11 @@ All schema changes are additive, so the previous frontend keeps working during a
 - `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, and link validation.
 - `src/lib/image-optimize.test.ts`: downscaling, WebP output, and keeping the original when WebP is larger, unsupported, or undecodable.
 - `src/lib/rich-text.test.ts` and `src/components/rich-text-view.test.tsx`: the allowlist, unsafe links, limits, text extraction, and escaped rendering.
+- `convex/bogorRun.test.ts`: token signatures checked against Node's HMAC, accepted replayed runs (including packed logs), forged and tampered tokens, edited inputs, scores, and end ticks, `TOO_EARLY` and `EXPIRED`, single use and `USED`, guests and deactivated accounts, improving bests with the week taken from the token, shared tie ranks and tie order at the cut, the rank cap, hidden players, and no owner ids or emails in public results. It also covers the one-hour finish line, the staff hidden list beyond the top 100, the moderation hierarchy and its audit fields, hiding on deactivation and restoring on reactivation, and pruning run records after 30 days, in batches.
+- `src/lib/bogor-run/leaderboard.test.ts`: WIB weeks in any runtime time zone, Monday keys, Indonesian week labels, short names, and packed input logs.
+- `src/lib/bogor-run/engine.test.ts`: determinism, replay validation, a one-hour replay's cost, a fingerprint that pins the first five minutes, late-game pressure and clusters, the finish line, brute-forced late-game jump windows, and a search solver that clears 25 obstacles in a row for 150 seeds at the start, near top speed (28 minutes in), and in the last 100 seconds before the finish line.
+- `src/components/dashboard/leaderboard.test.tsx`: axe semantics, keyboard tabs, shared ranks, WIB times, your row, "1.000+", the hidden notice, loading and empty states, staff hiding with confirmation, pending, and failure states, the separate hidden list with who hid each player, owner-only locks for admins, deactivated players, focus after a row leaves its table, and the narrow layout.
+- `src/lib/bogor-run/online.test.ts`: ticket renewal through long runs, hidden tabs, and Monday 00:00 WIB, the sign-in state, and pending guest runs.
 
 ## Not included
 

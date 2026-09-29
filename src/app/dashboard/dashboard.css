@@ -285,3 +285,102 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
   .dash-nav-link[aria-current="page"] { border: 2px solid CanvasText; }
   .dash-instructions, .dash-answer { border-left-width: 4px; border-left-color: CanvasText; }
 }
+
+/* Papan skor (Bogor Run): period tabs, stats, and the top-100 table. */
+.dash-board-area { max-width: 940px; }
+.dash-tabs { display: flex; gap: 4px; margin-bottom: 26px; border-bottom: 1px solid var(--line); }
+.dash-tab { display: grid; gap: 3px; min-height: 52px; padding: 10px 18px 9px; margin-bottom: -1px; font: 500 13px/1.3 var(--font-body), sans-serif; color: var(--muted); text-align: left; background: none; border: 0; border-bottom: 3px solid transparent; cursor: pointer; }
+.dash-tab small { font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .04em; color: var(--muted); }
+.dash-tab:not([aria-selected="true"]):hover { color: var(--ink); background: #f0efe4; }
+.dash-tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--blue); }
+.dash-tab[aria-selected="true"] small { color: var(--blue); }
+.dash-tab:focus-visible { outline: 3px solid #2563eb; outline-offset: -3px; }
+.dash-board-panel:focus-visible { outline: 3px solid #2563eb; outline-offset: 6px; }
+.dash-board-stats { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr); }
+.dash-board-stats dd.dash-board-note { margin-top: 10px; font: 400 12px/1.5 var(--font-body), sans-serif; color: var(--muted); }
+.dash-board-note a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+/* Scrolls inside its frame rather than widening the page if a long score or name ever outgrows a phone. Positioned so the
+   frame also clips the absolutely placed .sr-only names, which would otherwise widen the page by a few pixels. */
+.dash-board-wrap { position: relative; border: 1px solid var(--line); background: #fffefa; overflow-x: auto; }
+.dash-board { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dash-board th, .dash-board td { padding: 10px 16px; text-align: left; vertical-align: middle; border-bottom: 1px solid #e8ece4; }
+.dash-board tbody tr:last-child > * { border-bottom: 0; }
+.dash-board thead th { padding-block: 12px; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: #f4f3ea; border-bottom-color: var(--line); white-space: nowrap; }
+.dash-board tbody th { font-weight: 500; overflow-wrap: anywhere; }
+.dash-board .dash-board-rank { width: 96px; }
+.dash-board .dash-board-score { width: 110px; text-align: right; font: 500 14px/1.4 var(--font-mono), monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.dash-board thead .dash-board-score, .dash-board thead .dash-board-when { font: 500 10px/1.4 var(--font-mono), monospace; }
+.dash-board .dash-board-when { width: 190px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.dash-board .dash-board-actions { width: 150px; text-align: right; }
+/* Quiet until used, so a hundred rows of moderation links don't shout; the confirmation carries the danger colour. */
+.dash-board-actions .text-button { font-size: 12px; margin-left: auto; color: var(--muted); white-space: nowrap; }
+.dash-board-actions .text-danger:is(:hover, :focus-visible, [aria-expanded="true"]) { color: #b0372a; }
+.dash-board-off .dash-board-actions .text-button, .dash-board-off .dash-board-actions-inline .text-button { color: var(--blue); }
+.dash-board-refusal { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; line-height: 1.4; color: var(--muted); white-space: nowrap; }
+.dash-board-refusal svg { flex: none; }
+/* On phones the control sits under the score (see NARROW in leaderboard.tsx) instead of in its own column. */
+.dash-board-actions-inline { display: flex; justify-content: flex-end; margin-top: 4px; font: 400 11px/1.4 var(--font-body), sans-serif; white-space: normal; }
+.dash-board-actions-inline .text-button { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.dash-board-actions-inline .text-danger:is(:hover, :focus-visible, [aria-expanded="true"]) { color: #b0372a; }
+.dash-board-actions-inline .dash-board-refusal { display: block; font-size: 11px; text-align: right; white-space: normal; }
+.dash-board-actions-inline .dash-board-refusal svg { display: inline; margin-right: 4px; vertical-align: -1px; }
+.dash-board-player { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.dash-board-when-inline { display: none; }
+.dash-board time > span { white-space: nowrap; }
+/* Mono, not the pixel face: Pixelify blurs 2, 5 and 8 together at table sizes. */
+.dash-rank { display: inline-grid; place-items: center; min-width: 34px; height: 34px; padding: 0 6px; font: 600 14px/1 var(--font-mono), monospace; font-variant-numeric: tabular-nums; color: var(--ink); }
+.dash-rank[data-top] { box-shadow: 2px 2px 0 var(--ink); }
+.dash-rank[data-top="1"] { background: var(--yellow); }
+.dash-rank[data-top="2"] { background: #d9e1e8; }
+.dash-rank[data-top="3"] { background: #efc39b; }
+.dash-board tr[data-you] > * { background: #eaf0fc; }
+.dash-board tr[data-you] > :first-child { box-shadow: inset 4px 0 0 var(--blue); }
+.dash-status[data-status="you"] { background: var(--blue); color: white; }
+.dash-board tr[data-confirming] > * { border-bottom: 0; background: #fff8f6; }
+/* Starts under the player column, so the question reads as part of the row above it. */
+.dash-board-confirm > td { padding: 0 16px 14px 112px; background: #fff8f6; }
+/* Hidden players, staff only: listed apart from the ranked table in ink (not greyed out), since every tint they sit on must keep 4.5:1. */
+.dash-board-off-note { margin: -10px 0 18px; font-size: 13px; color: var(--muted); }
+.dash-board-off-note a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
+.dash-board-area .app-notice a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.dash-board-off-area .app-section-heading { margin-block: 44px 12px; }
+.dash-board-off-area h2:focus-visible { outline: 3px solid #2563eb; outline-offset: 4px; }
+.dash-board-off-intro { max-width: 680px; margin-bottom: 20px; font-size: 14px; color: var(--muted); }
+.dash-board-off-empty { padding: 18px 20px; font-size: 13px; color: var(--muted); border: 1px dashed #afc0a8; background: #f2f4e9; }
+.dash-board-why { display: block; margin-top: 4px; font-size: 12px; font-weight: 400; line-height: 1.5; color: var(--muted); }
+.dash-board-why time > span { white-space: nowrap; }
+.dash-board-off tr[data-confirming] > *, .dash-board-off .dash-board-confirm > td { background: #f3f6fd; }
+.dash-board-off .dash-board-confirm > td { padding-left: 16px; }
+.dash-board-confirm .dash-confirm { display: flex; max-width: 640px; }
+.dash-board-confirm .dash-confirm p { font-size: 13px; line-height: 1.6; }
+.dash-board-confirm .field-error { margin: 6px 0 0; }
+.dash-board-area .app-empty > svg { width: 38px; height: 42px; }
+@media (max-width: 760px) {
+  .dash-board-stats { grid-template-columns: 1fr 1fr; }
+  .dash-board-stats > div:first-child { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .dash-tabs { gap: 0; }
+  .dash-tab { flex: 1; padding-inline: 12px; }
+  .dash-board th, .dash-board td { padding: 10px 10px; }
+  .dash-board .dash-board-rank { width: 48px; padding-right: 0; }
+  /* "Peringkat" would widen the narrow rank column; screen readers still hear the word. */
+  .dash-board thead .dash-board-rank > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .dash-board thead .dash-board-rank::after { content: "#"; content: "#" / ""; }
+  .dash-board .dash-board-score { width: auto; font-size: 13px; }
+  .dash-board .dash-board-when { display: none; }
+  .dash-board-when-inline { display: block; margin-top: 3px; font-size: 11px; font-weight: 400; color: var(--muted); }
+  .dash-rank { min-width: 30px; height: 30px; font-size: 13px; }
+  .dash-board-confirm > td, .dash-board-off .dash-board-confirm > td { padding: 0 10px 14px; }
+  .dash-board-off-intro { font-size: 13px; }
+}
+@media (max-width: 360px) {
+  .dash-board-stats { grid-template-columns: 1fr; }
+  /* Leaves the player column room for a name, its badges and (for hidden players) the reason. */
+  .dash-board th, .dash-board td { padding-inline: 8px; }
+  .dash-board .dash-board-rank { width: 40px; padding-right: 0; }
+}
+@media (forced-colors: active) {
+  .dash-tab[aria-selected="true"] { border-bottom-color: Highlight; }
+  .dash-board tr[data-you] > :first-child { border-left: 4px solid Highlight; }
+}

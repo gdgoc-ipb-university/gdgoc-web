@@ -3,6 +3,7 @@ import {
   speedOf, startRun, step, TICK_RATE, type InputCode, type ObstacleKind, type Phase,
 } from "./engine";
 import { createSound, MILESTONE_EVERY, milestoneCrossed } from "./sound";
+import { SKIN_SHEETS, type DinoSkin } from "./skin";
 import { DINO_SHEET, ELANG_SHEET, type Frame } from "./sprites";
 import { getView } from "./view";
 
@@ -29,6 +30,8 @@ export type RunnerOptions = {
    */
   ticketPending?: () => boolean;
   finish?: (run: FinishedRun) => void;
+  /** Cosmetic only: which sheet draws the dino, in the demo too. Replays and scores never see it. */
+  skin?: DinoSkin;
 };
 /** What `action` did: started a new run, resumed a pause, pressed jump, or nothing (still loading, or right after a crash). */
 export type ActionResult = "start" | "resume" | "jump" | null;
@@ -65,12 +68,12 @@ const TICKET_WAIT = 1; // s a run without a ticket holds its first tick for one 
 export const FINISH_MESSAGE = "Selesai! 1 jam penuh";
 const GROUND: readonly ObstacleKind[] = ["angkot", "talas", "genangan"];
 
-function loadImage(name: string) {
+function loadImage(src: string) {
   return new Promise<HTMLImageElement>((resolve, reject) => {
     const image = new Image();
     image.onload = () => resolve(image);
-    image.onerror = () => reject(new Error(`Could not load Bogor Run ${name}`));
-    image.src = `${base}${name}.svg`;
+    image.onerror = () => reject(new Error(`Could not load Bogor Run ${src}`));
+    image.src = src;
   });
 }
 
@@ -79,7 +82,8 @@ const randomSeed = () => Math.floor(Math.random() * 4294967296) >>> 0;
 export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Snapshot) => void, initiallyReduced: boolean, options: RunnerOptions = {}): Promise<Runner> {
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Canvas unavailable");
-  const [dino, elang, ...ground] = await Promise.all(["dino", "elang", ...GROUND].map(loadImage));
+  const sheets = [SKIN_SHEETS[options.skin ?? "classic"] ?? SKIN_SHEETS.classic, ...["elang", ...GROUND].map((name) => `${base}${name}.svg`)];
+  const [dino, elang, ...ground] = await Promise.all(sheets.map(loadImage));
   const sprites = Object.fromEntries(GROUND.map((kind, i) => [kind, ground[i]])) as Record<ObstacleKind, HTMLImageElement>;
   const sound = createSound();
   let run = createRun();

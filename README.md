@@ -66,6 +66,7 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `src/components/join-footer.tsx`: one continuous light section for the membership invitation, shared Bogor landscape, community identity, navigation, and contact.
 - `src/components/bogor-run.tsx`: full-width scene composition, autonomous/manual controls, tap zones, the leaderboard panel, focus restoration, and accessible status announcements.
 - `src/lib/bogor-run/`: the fixed-tick engine shared with the server replay, the autopilot, responsive projection, Canvas drawing, synthesized sound, sprite frames, leaderboard helpers, and the lazily loaded Convex/auth client (`online.ts`).
+- `src/app/rai/` and `src/components/rai/`: an unlinked, noindex easter egg with the Tier Gemini Rising Star badge redrawn as SVG. It unlocks the blue dino skin for Bogor Run (`src/lib/bogor-run/skin.ts`); the landing page's browser console hints at it.
 - `convex/bogorRun.ts`: signed run tokens, replay-verified score submission, the public and dashboard leaderboards, moderation, and the 30-day pruning of run records.
 - `src/lib/community.ts`: verified official membership and Instagram destinations.
 - `src/lib/directions.ts`: visual directions and art asset paths.

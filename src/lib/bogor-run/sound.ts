@@ -1,7 +1,7 @@
 // Bogor Run sound effects, synthesized with Web Audio so the game ships no audio files.
 // Nothing here reads browser globals at import time: the landing page renders on the server too.
 
-export type SoundName = "jump" | "crash" | "milestone";
+export type SoundName = "jump" | "crash" | "milestone" | "fanfare";
 export type Sound = { play(name: SoundName): void; unlock(): void; setEnabled(on: boolean): void; readonly enabled: boolean; dispose(): void };
 export const SOUND_KEY = "gdgoc:bogor-run:sound:v1";
 export const MILESTONE_EVERY = 500;
@@ -14,6 +14,13 @@ const TONES: Record<SoundName, readonly Tone[]> = {
   crash: [{ wave: "square", from: 360, to: 70, at: 0, length: 0.25, peak: 0.07 }],
   // B5 then E6: the familiar 8-bit "coin" interval.
   milestone: [{ wave: "square", from: 988, to: 988, at: 0, length: 0.08, peak: 0.06 }, { wave: "square", from: 1319, to: 1319, at: 0.07, length: 0.15, peak: 0.06 }],
+  // G5-C6-E6, then a soft G6 that rings on: the "achievement unlocked" arpeggio for the /rai easter egg.
+  fanfare: [
+    { wave: "square", from: 784, to: 784, at: 0, length: 0.1, peak: 0.025 },
+    { wave: "square", from: 1047, to: 1047, at: 0.1, length: 0.1, peak: 0.025 },
+    { wave: "square", from: 1319, to: 1319, at: 0.2, length: 0.1, peak: 0.025 },
+    { wave: "triangle", from: 1568, to: 1568, at: 0.3, length: 0.45, peak: 0.045 },
+  ],
 };
 const BURSTS: Partial<Record<SoundName, Layer>> = { crash: { at: 0, length: 0.12, peak: 0.045 } };
 const FLOOR = 0.0001; // exponential ramps cannot reach 0

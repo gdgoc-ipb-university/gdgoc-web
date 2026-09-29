@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="353" height="47" viewBox="0 0 353 47" shape-rendering="crispEdges">
+  <title>Dino biru Rising Star: diam, dua langkah berlari, kaget, dua langkah merunduk, dan kaget saat merunduk</title>
+  <defs>
+    <g id="b">
+      <path fill="#8ab4f8" d="M4 33h22v2h-22zM8 35h16v2h-16zM10 31h18v2h-18zM12 29h16v2h-16zM14 25h20v4h-20zM16 23h12v2h-12zM18 21h10v2h-10zM22 5h2v16h-2zM24 5h16v2h-16zM24 11h4v10h-4zM26 7h14v4h-14zM28 11h6v6h-6zM34 11h6v4h-6zM34 27h2v2h-2z"/>
+      <path fill="#d2e3fc" d="M22 3h20v2h-20zM20 5h2v16h-2zM14 23h2v2h-2zM12 25h2v4h-2zM10 29h2v2h-2zM2 31h2v2h-2zM8 31h2v2h-2z"/>
+      <path fill="#669df6" d="M40 5h2v10h-2zM28 17h14v2h-14zM28 19h2v6h-2zM28 29h2v6h-2zM26 33h2v4h-2zM24 35h2v4h-2zM12 37h12v2h-12z"/>
+      <path fill="#174ea6" d="M22 1h20v2h-20zM20 3h2v2h-2zM42 3h2v18h-2zM18 5h2v16h-2zM24 7h2v4h-2zM34 15h8v2h-8zM30 19h12v2h-12zM14 21h4v2h-4zM30 21h2v4h-2zM12 23h2v2h-2zM32 23h4v2h-4zM10 25h2v4h-2zM34 25h4v2h-4zM0 27h2v6h-2zM36 27h2v4h-2zM2 29h2v2h-2zM8 29h2v2h-2zM30 29h6v2h-6zM4 31h4v2h-4zM30 31h2v4h-2zM2 33h2v2h-2zM4 35h4v2h-4zM28 35h2v4h-2zM8 37h4v2h-4zM26 37h2v2h-2z"/>
+    </g>
+    <g id="d">
+      <path fill="#8ab4f8" d="M36 5h2v8h-2zM38 5h16v2h-16zM4 7h26v2h-26zM40 7h14v4h-14zM8 9h26v6h-26zM38 11h16v2h-16zM34 13h14v2h-14zM34 17h2v4h-2zM12 19h4v2h-4zM36 19h2v2h-2z"/>
+      <path fill="#d2e3fc" d="M36 3h20v2h-20zM2 5h2v2h-2zM8 5h22v2h-22zM34 5h2v8h-2zM30 7h4v2h-4z"/>
+      <path fill="#669df6" d="M54 5h2v8h-2zM10 15h30v2h-30zM44 15h12v2h-12zM24 19h2v2h-2z"/>
+      <path fill="#174ea6" d="M0 1h2v6h-2zM36 1h20v2h-20zM2 3h2v2h-2zM8 3h22v2h-22zM34 3h2v2h-2zM56 3h2v16h-2zM4 5h4v2h-4zM30 5h4v2h-4zM2 7h2v2h-2zM38 7h2v4h-2zM4 9h4v2h-4zM6 11h2v4h-2zM48 13h8v2h-8zM8 15h2v2h-2zM40 15h4v2h-4zM10 17h24v2h-24zM36 17h4v2h-4zM44 17h12v2h-12zM10 19h2v4h-2zM16 19h2v4h-2zM22 19h2v4h-2zM26 19h2v4h-2zM32 19h2v2h-2zM38 19h2v2h-2zM28 21h2v2h-2zM34 21h4v2h-4z"/>
+    </g>
+  </defs>
+  <use href="#b"/>
+  <use href="#b" x="44"/>
+  <use href="#b" x="88"/>
+  <use href="#b" x="132"/>
+  <use href="#d" x="176" y="22"/>
+  <use href="#d" x="235" y="22"/>
+  <use href="#d" x="294" y="22"/>
+  <path fill="#8ab4f8" d="M156 9h2v2h-2zM14 41h4v4h-4zM58 41h4v2h-4zM102 41h4v4h-4zM146 41h4v4h-4zM247 43h4v2h-4zM332 31h2v2h-2z"/>
+  <path fill="#669df6" d="M26 39h2v6h-2zM70 39h2v6h-2zM114 39h2v4h-2zM158 39h2v6h-2zM200 43h2v2h-2zM318 43h2v2h-2z"/>
+  <path fill="#174ea6" d="M12 39h2v8h-2zM14 39h12v2h-12zM14 45h8v2h-8zM18 41h2v4h-2zM20 43h2v2h-2zM24 41h2v6h-2zM26 45h8v2h-8zM28 39h2v6h-2zM30 43h4v2h-4zM52 41h6v4h-6zM56 39h14v2h-14zM58 43h6v2h-6zM62 41h2v2h-2zM68 41h2v6h-2zM70 45h8v2h-8zM72 39h2v6h-2zM74 43h4v2h-4zM100 39h2v8h-2zM102 39h12v2h-12zM102 45h8v2h-8zM106 41h2v4h-2zM108 43h2v2h-2zM112 41h2v4h-2zM114 43h10v2h-10zM116 39h2v4h-2zM118 41h6v2h-6zM144 39h2v8h-2zM146 39h12v2h-12zM146 45h8v2h-8zM150 41h2v4h-2zM152 43h2v2h-2zM154 5h2v2h-2zM154 9h2v2h-2zM156 41h2v6h-2zM158 5h2v2h-2zM158 9h2v2h-2zM158 45h8v2h-8zM160 39h2v6h-2zM162 43h4v2h-4zM182 41h4v4h-4zM188 43h4v2h-4zM198 45h8v2h-8zM263 41h2v2h-2zM253 43h2v4h-2zM259 43h2v2h-2zM245 45h8v2h-8zM300 41h4v4h-4zM306 43h4v2h-4zM316 45h8v2h-8zM330 27h2v2h-2zM334 27h2v2h-2zM330 31h2v2h-2zM334 31h2v2h-2z"/>
+</svg>

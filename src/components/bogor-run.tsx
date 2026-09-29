@@ -7,6 +7,7 @@ import { Arrow } from "./icons";
 import { weekKey, weekLabel } from "@/lib/bogor-run/leaderboard";
 import type { Board, Period, Saved } from "@/lib/bogor-run/online";
 import type { FinishedRun, Runner, Snapshot } from "@/lib/bogor-run/runtime";
+import { readSkin, type DinoSkin } from "@/lib/bogor-run/skin";
 import styles from "./bogor-run.module.css";
 
 type Online = typeof import("@/lib/bogor-run/online");
@@ -17,6 +18,21 @@ type Save =
   | { kind: "guest"; run: FinishedRun; endedAt: number; error?: string; leaving?: boolean }
   | { kind: "error"; message: string; retry?: { run: FinishedRun; endedAt: number } };
 type Boards = Partial<Record<Period, { state: "loading" | "ready" | "error"; board?: Board }>>;
+
+// For whoever opens the console on the landing page: the dino points at the /rai easter egg.
+const CONSOLE_DINO = [
+  "            ▄██████▄",
+  "            ██▄█████",
+  "            ████████",
+  "            ████▄▄▄",
+  "  █      ▄██████",
+  "  ██▄  ▄████████▀█",
+  "   ▀████████████",
+  "     ▀███████▀",
+  "       █▀  █▄",
+  "psst… ada dino biru yang sembunyi di /rai",
+].join("\n");
+let hinted = false;
 
 const initial: Snapshot = { phase: "idle", score: 0, best: 0, message: "", autoplay: false, flash: 0, sound: true, finished: false };
 const number = (value: number) => String(value).padStart(3, "0");
@@ -68,6 +84,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
   const hintTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [snapshot, setSnapshot] = useState(initial);
   const [load, setLoad] = useState<"waiting" | "ready" | "error">("waiting");
+  const [skin, setSkin] = useState<DinoSkin>("classic");
   const [attempt, setAttempt] = useState(0);
   const [save, setSave] = useState<Save>({ kind: "idle" });
   const [boards, setBoards] = useState<Boards>({});
@@ -155,6 +172,16 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
     });
   });
 
+  // The skin is a per-browser preference, so it is read after hydration; the server renders the classic poster.
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setSkin(readSkin()));
+    if (!hinted && process.env.NODE_ENV !== "test") {
+      hinted = true;
+      console.log(`%c${CONSOLE_DINO}`, "color:#1a73e8;font:12px/1.2 ui-monospace,monospace");
+    }
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   useEffect(() => {
     reduced.current = !animated;
     controller.current?.setReduced(!animated);
@@ -200,6 +227,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
             ticket: () => online?.takeTicket() ?? null,
             ticketPending: () => online?.ticketPending() ?? false,
             finish: (run) => { if (!disposed) onFinish(run); },
+            skin: readSkin(),
           });
         })
         .then((runner) => {
@@ -359,7 +387,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
         <div ref={copy} className={`section-width ${styles.invitation}`} inert={playing} aria-hidden={playing || undefined}>
           {invitation}
         </div>
-        <div className={styles.poster} data-ready={load === "ready"} aria-hidden="true" />
+        <div className={styles.poster} data-ready={load === "ready"} data-skin={skin} aria-hidden="true" />
         <canvas ref={canvas} className={styles.canvas} width="1600" height="640" aria-hidden="true" />
 
         {playing && <div className={`section-width ${styles.topbar}`}>

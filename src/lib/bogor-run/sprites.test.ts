@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { DINO } from "./engine";
+import { SKIN_SHEETS } from "./skin";
 import { DINO_SHEET, ELANG_SHEET, type Frame } from "./sprites";
 
 const sheet = (src: string) => readFileSync(new URL(`../../../public${src}`, import.meta.url), "utf8");
@@ -25,5 +26,15 @@ describe("sprite sheets", () => {
     for (const frame of [idle, ...run, crash]) expect([frame.w, frame.h]).toEqual([DINO.width, DINO.height]);
     for (const frame of [...duck, duckCrash]) expect([frame.w, frame.h]).toEqual([DINO.duckWidth, DINO.duckHeight]);
     expect(duckCrash.x).toBe(duck[1].x + duck[1].w); // the 7th frame, appended to the sheet
+  });
+
+  it("gives the Rising Star skin the classic sheet's exact pixels, only recoloured", () => {
+    const shape = (svg: string) => svg.replace(/<title>[^<]*<\/title>/, "").replace(/fill="#[0-9a-f]{6}"/g, "fill");
+    const fills = (svg: string) => new Set(svg.match(/#[0-9a-f]{6}/g));
+    const classic = sheet(SKIN_SHEETS.classic), blue = sheet(SKIN_SHEETS["rising-star"]);
+    expect(SKIN_SHEETS.classic).toBe(DINO_SHEET.src);
+    expect(shape(blue)).toBe(shape(classic));
+    expect(fills(blue).size).toBe(fills(classic).size);
+    expect([...fills(blue)].some((colour) => fills(classic).has(colour))).toBe(false);
   });
 });

@@ -63,7 +63,7 @@ describe("dashboard roles and member management", () => {
     await account(t, "fresh@example.com", { onboarded: false });
     const rows = (await owner.query(api.dashboard.members, everyone)).page;
     expect(rows.map((row) => [row.email, row.role]).sort()).toEqual([["member@example.com", "member"], ["owner@example.com", "owner"]]);
-    expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, core: 0, deactivated: 0 });
+    expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, core: 0, bod: 0, deactivated: 0 });
   });
 
   it("deactivates members, blocks their dashboard access, and protects admins and owners", async () => {
@@ -106,5 +106,23 @@ describe("dashboard roles and member management", () => {
     const core = await owner.query(api.dashboard.members, { ...everyone, filter: "core" });
     expect(core.page.map((row) => [row.email, row.division])).toEqual([["member@example.com", "Community & External"]]);
     expect((await owner.query(api.dashboard.stats)).core).toBe(1);
+  });
+
+  it("lets staff tag BoD with an optional division, and filter and count BoD", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com");
+    const member = await account(t, "member@example.com");
+    await expect(member.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "bod", division: "" })).rejects.toThrow("hanya untuk admin");
+    await expect(owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "bod", division: "Divisi Karangan" })).rejects.toThrow("kosongkan untuk BoD");
+    await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "bod", division: "" });
+    expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "bod", division: null, role: "member" }); // a tag, not access
+    await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "bod", division: " Technical " });
+    expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "bod", division: "Technical" });
+    const bod = await owner.query(api.dashboard.members, { ...everyone, filter: "bod" });
+    expect(bod.page.map((row) => [row.email, row.memberType, row.division])).toEqual([["member@example.com", "bod", "Technical"]]);
+    expect((await owner.query(api.dashboard.members, { ...everyone, filter: "core" })).page).toHaveLength(0);
+    expect(await owner.query(api.dashboard.stats)).toMatchObject({ bod: 1, core: 0 });
+    await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "member", division: "Technical" });
+    expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "member", division: null });
   });
 });

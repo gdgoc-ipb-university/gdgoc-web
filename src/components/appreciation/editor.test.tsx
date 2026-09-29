@@ -20,6 +20,15 @@ function actions() {
 afterEach(() => { cleanup(); window.localStorage.clear(); vi.restoreAllMocks(); });
 
 describe("appreciation editor", () => {
+  it("offers BoD as a role only to members tagged as BoD", () => {
+    const options = (container: HTMLElement) => [...container.querySelectorAll<HTMLOptionElement>("#memberType option")].map((option) => option.textContent);
+    const { container, unmount } = render(<DraftEditor record={record()} viewer={viewer} onBack={vi.fn()} actions={actions()} />);
+    expect(options(container)).not.toContain("BoD");
+    unmount();
+    const tagged = render(<DraftEditor record={record()} viewer={{ ...viewer, memberType: "bod" }} onBack={vi.fn()} actions={actions()} />);
+    expect(options(tagged.container)).toContain("BoD");
+  });
+
   it("focuses the first missing field and refuses an incomplete submission", async () => {
     const gateway = actions(); render(<DraftEditor record={record()} viewer={viewer} onBack={vi.fn()} actions={gateway} />);
     await userEvent.click(screen.getByRole("button", { name: "Tinjau sebelum kirim" }));

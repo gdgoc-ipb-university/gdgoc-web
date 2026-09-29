@@ -6,7 +6,7 @@ import { authComponent } from "./auth";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
-import { validateRole } from "../src/lib/onboarding";
+import { validateStaffRole } from "../src/lib/onboarding";
 
 export const viewer = query({
   args: {},
@@ -35,7 +35,7 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
 export const members = query({
   args: {
     search: v.string(),
-    filter: v.union(v.literal("all"), v.literal("admin"), v.literal("core"), v.literal("deactivated")),
+    filter: v.union(v.literal("all"), v.literal("admin"), v.literal("core"), v.literal("bod"), v.literal("deactivated")),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { search, filter, paginationOpts }) => {
@@ -47,7 +47,7 @@ export const members = query({
     const result = await source.filter((q) => {
       const onboarded = q.neq(q.field("completedAt"), undefined);
       if (filter === "admin") return q.and(onboarded, q.eq(q.field("role"), "admin"));
-      if (filter === "core") return q.and(onboarded, q.eq(q.field("memberType"), "core"));
+      if (filter === "core" || filter === "bod") return q.and(onboarded, q.eq(q.field("memberType"), filter));
       if (filter === "deactivated") return q.and(onboarded, q.neq(q.field("deactivatedAt"), undefined));
       return onboarded;
     }).paginate(paginationOpts);
@@ -64,6 +64,7 @@ export const stats = query({
       members: profiles.length,
       admins: profiles.filter((profile) => profile.role === "admin").length,
       core: profiles.filter((profile) => profile.memberType === "core").length,
+      bod: profiles.filter((profile) => profile.memberType === "bod").length,
       deactivated: profiles.filter((profile) => profile.deactivatedAt).length,
     };
   },
@@ -103,14 +104,14 @@ export const setActive = mutation({
   },
 });
 
-/** Staff correction of a member's self-declared community role. */
+/** Staff set a member's community tag: correct a self-declared Member/Core Team, or assign BoD. */
 export const setMemberType = mutation({
   args: { ownerId: v.string(), memberType, division: v.string() },
   handler: async (ctx, args) => {
     await requireStaff(ctx);
     const { profile } = await target(ctx, args.ownerId);
-    const division = args.memberType === "core" ? args.division.trim() : "";
-    const errors = validateRole({ memberType: args.memberType, division });
+    const division = args.memberType === "member" ? "" : args.division.trim();
+    const errors = validateStaffRole({ memberType: args.memberType, division });
     if (Object.keys(errors).length) throw new ConvexError(Object.values(errors)[0]!);
     await ctx.db.patch(profile._id, { memberType: args.memberType, division: division || undefined });
   },

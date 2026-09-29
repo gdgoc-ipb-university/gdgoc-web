@@ -91,6 +91,10 @@ export const submit = mutation({
     if (doc.revision !== args.revision) return conflict();
     const values = normalizeAppreciation(doc.values);
     const errors = validateAppreciation(values);
+    if (values.memberType === "BoD" && !errors.memberType) {
+      const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", doc.ownerId)).unique();
+      if (profile?.memberType !== "bod") errors.memberType = "Peran BoD hanya untuk pengurus yang ditetapkan admin.";
+    }
     if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai sebelum mengirim.", fields: errors });
     const now = Date.now();
     await ctx.db.patch(doc._id, { values, status: "submitted", submittedAt: now, updatedAt: now, revision: doc.revision + 1 });

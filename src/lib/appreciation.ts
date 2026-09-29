@@ -1,4 +1,5 @@
-export const memberTypes = ["Member", "Core Team"] as const;
+/** "BoD" is offered only to members staff tagged as BoD; the server checks it on submit. */
+export const memberTypes = ["Member", "Core Team", "BoD"] as const;
 export const achievementLevels = ["Kampus", "Regional", "Nasional", "Internasional"] as const;
 export const participationTypes = ["Individu", "Tim"] as const;
 

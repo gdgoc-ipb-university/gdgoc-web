@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { roleLabels } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
-import { memberTypeLabels, validateRole, type MemberType, type OnboardingErrors, type RoleValues } from "@/lib/onboarding";
+import { memberTagLabel, validateRole, type MemberType, type OnboardingErrors, type RoleValues } from "@/lib/onboarding";
 import { LoadingPanel } from "../appreciation/shared";
 import { RoleChoice } from "../role-choice";
 import { useDashboardViewer } from "./viewer";
@@ -56,7 +56,7 @@ export function ProfilePage() {
   const stats = useQuery(api.assignments.list);
   const facts = [
     ["Email", viewer.email], ["Kampus", viewer.campus || "—"], ["Program studi", viewer.studyProgram || "—"], ["Akses dashboard", roleLabels[viewer.role]],
-    ["Peran komunitas", viewer.memberType ? (viewer.memberType === "core" && viewer.division ? `${memberTypeLabels.core} · ${viewer.division}` : memberTypeLabels[viewer.memberType]) : "—"],
+    ["Peran komunitas", viewer.memberType ? memberTagLabel(viewer.memberType, viewer.division) : "—"],
   ];
   return <>
     <div className="dash-intro"><p className="eyebrow">AKUN</p><h1>Profil.</h1><p>Nama, kampus, dan program studi berasal dari perkenalanmu. Hubungi admin jika perlu mengoreksinya.</p></div>
@@ -65,8 +65,11 @@ export function ProfilePage() {
         <dl className="dash-facts">{facts.map(([term, detail]) => <div key={term}><dt>{term}</dt><dd>{detail}</dd></div>)}</dl>
         {stats ? <p className="app-small">{stats.filter((item) => item.submittedAt).length} tugas sudah kamu kumpulkan.</p> : <LoadingPanel label="Memuat ringkasan…" />}
       </section>
-      <section className="app-panel" aria-labelledby="profile-role"><h2 id="profile-role">Peran komunitas</h2><p>Pilih sesuai keterlibatanmu saat ini. Perubahan langsung tersimpan di profilmu.</p>
-        <RoleForm initial={{ memberType: viewer.memberType ?? "", division: viewer.division ?? "" }} submitLabel="Simpan peran" savedMessage="Peran komunitas tersimpan." onSave={saveRole} />
+      <section className="app-panel" aria-labelledby="profile-role"><h2 id="profile-role">Peran komunitas</h2>
+        {viewer.memberType === "bod"
+          ? <><p>Kamu tercatat sebagai <strong>{memberTagLabel("bod", viewer.division)}</strong> (Board of Directors).</p><p className="app-small">Peran BoD diatur oleh admin. Hubungi admin GDGoC IPB jika perlu mengubahnya.</p></>
+          : <><p>Pilih sesuai keterlibatanmu saat ini. Perubahan langsung tersimpan di profilmu.</p>
+            <RoleForm initial={{ memberType: viewer.memberType ?? "", division: viewer.division ?? "" }} submitLabel="Simpan peran" savedMessage="Peran komunitas tersimpan." onSave={saveRole} /></>}
       </section>
     </div>
   </>;

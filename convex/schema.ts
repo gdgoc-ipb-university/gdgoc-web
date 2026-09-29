@@ -7,7 +7,7 @@ export const appreciationValues = v.object({
   level: v.string(), participation: v.string(), teamName: v.string(), teamMembers: v.string(),
   eventDate: v.string(), story: v.string(), documentationLinks: v.string(), publicationConsent: v.boolean(),
 });
-export const memberType = v.union(v.literal("member"), v.literal("core"));
+export const memberType = v.union(v.literal("member"), v.literal("core"), v.literal("bod"));
 export const assignmentStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("closed"));
 export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
 

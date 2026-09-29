@@ -1,5 +1,6 @@
 "use client";
 
+import type { MemberType } from "@/lib/onboarding";
 import { useRef, useState } from "react";
 import { useMutation, usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
@@ -9,7 +10,7 @@ import { readableError } from "@/lib/draft-session";
 import { AppreciationIntro, LoadingPanel, StatusBadge, dateLabel } from "./shared";
 import { AppreciationEditor } from "./editor";
 
-type Viewer = { id: string; name: string; email: string; isAdmin: boolean };
+type Viewer = { id: string; name: string; email: string; isAdmin: boolean; memberType?: MemberType | null };
 
 /** The member's appreciation drafts and submissions, rendered inside the dashboard. */
 export function AppreciationWorkspace({ viewer }: { viewer: Viewer }) {

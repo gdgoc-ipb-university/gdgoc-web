@@ -34,7 +34,7 @@ const CONSOLE_DINO = [
 ].join("\n");
 let hinted = false;
 
-const initial: Snapshot = { phase: "idle", score: 0, best: 0, message: "", autoplay: false, flash: 0, sound: true, finished: false };
+const initial: Snapshot = { phase: "idle", score: 0, best: 0, message: "", autoplay: false, flash: 0, sound: true, finished: false, countdown: 0 };
 const number = (value: number) => String(value).padStart(3, "0");
 const PERIODS: readonly { id: Period; label: string }[] = [{ id: "week", label: "Minggu ini" }, { id: "all", label: "Sepanjang masa" }];
 const BOARD_TTL = 30_000;
@@ -93,11 +93,11 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
   const [closedFor, setClosedFor] = useState(snapshot.phase);
   const [hint, setHint] = useState(false);
   const [notice, setNotice] = useState("");
-  const { phase, score, best, message, autoplay, flash, sound, finished } = snapshot;
+  const { phase, score, best, message, autoplay, flash, sound, finished, countdown } = snapshot;
   const playing = phase !== "idle";
-  // The board opens on every pause and game over; closing it only lasts until the phase changes.
+  // The board opens at game over; closing it only lasts until the phase changes. Runs cannot be paused to look at it.
   if (closedFor !== phase) { setClosedFor(phase); setClosed(false); }
-  const panelOpen = (phase === "paused" || phase === "over") && !closed;
+  const panelOpen = phase === "over" && !closed;
   const shown = boards[period];
 
   function fetchBoard(which: Period, force = false) {
@@ -149,7 +149,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
     setSnapshot(value);
     if (value.phase === lastPhase.current) return;
     lastPhase.current = value.phase;
-    if (value.phase === "paused" || value.phase === "over") fetchBoard(period);
+    if (value.phase === "over") fetchBoard(period);
   });
 
   const onFinish = useEffectEvent((run: FinishedRun) => { void submit(run, Date.now()); });
@@ -286,11 +286,12 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
 
   useEffect(() => () => clearTimeout(hintTimer.current), []);
 
-  const label = phase === "running" ? "Lompat" : phase === "paused" ? "Lanjut main" : phase === "over" ? "Main lagi" : "Ikut main";
+  // "paused" only ever means interrupted (tab hidden, focus gone, game scrolled away, phone turned): no manual pause.
+  const label = phase === "running" ? "Lompat" : phase === "paused" ? (countdown ? `Lanjut dalam ${countdown}` : "Kembali ke game") : phase === "over" ? "Main lagi" : "Ikut main";
   const announcement = phase === "over"
     ? `${message} Skor ${score}. Rekor ${best}. Main lagi kalau mau.`
-    : phase === "paused" ? "Permainan dijeda. Pilih Lanjut main untuk meneruskan."
-    : phase === "running" ? "Sekarang giliranmu. Spasi atau panah atas untuk lompat, tahan panah bawah untuk menunduk. P untuk jeda."
+    : phase === "paused" ? (countdown ? `Lanjut dalam ${countdown}.` : "Permainan tertahan. Kembali ke game untuk melanjutkan.")
+    : phase === "running" ? "Sekarang giliranmu. Spasi atau panah atas untuk lompat, tahan panah bawah untuk menunduk."
     : "";
   const saveAnnouncement = phase === "idle" ? notice : phase !== "over" ? ""
     : save.kind === "saving" ? "Menyimpan skor."
@@ -298,7 +299,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
     : save.kind === "guest" ? save.error ?? "Skor belum tersimpan. Masuk dengan akun Google untuk menyimpannya."
     : save.kind === "error" ? save.message
     : save.kind === "unranked" ? UNRANKED[save.reason] : "";
-  const summary = phase !== "over" ? "Lanjut kapan pun kamu siap." : finished ? `Kamu bertahan satu jam penuh: ${score} poin.` : `Kamu dapat ${score} poin.`;
+  const summary = finished ? `Kamu bertahan satu jam penuh: ${score} poin.` : `Kamu dapat ${score} poin.`;
 
   function focusGame() { action.current?.focus({ preventScroll: true }); }
 
@@ -323,23 +324,14 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
   }
 
   /**
-   * Game keys work from anywhere in the arena, so a click on mute or a tab into the board never strands them. P and Esc
-   * pause and resume from any control; jump and duck keys belong to the game button, and during a run to every game
-   * control outside the board, whose tabs, list and links keep their own keys. Space keeps activating other buttons.
+   * Game keys work from anywhere in the arena, so a click on mute never strands them: jump and duck keys belong to the
+   * game button, and during a run to every game control outside the board. Space keeps activating other buttons.
    */
   function onKey(event: React.KeyboardEvent<HTMLElement>) {
     const runner = controller.current;
     if (!runner || event.ctrlKey || event.metaKey || event.altKey) return;
     const { key } = event;
     const target = event.target as HTMLElement;
-    if (key === "Escape" || key.toLowerCase() === "p") {
-      if (phase !== "running" && phase !== "paused") return;
-      event.preventDefault();
-      if (event.repeat) return;
-      runner.togglePause();
-      if (phase === "paused") focusGame();
-      return;
-    }
     const game = target === action.current || (phase === "running" && !panel.current?.contains(target) && key !== " ");
     if (!game) return;
     if (key === " " || key === "ArrowUp") {
@@ -366,11 +358,13 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
         aria-label="Bogor Run, Dino keliling Bogor"
         data-phase={phase}
         data-autoplay={autoplay}
-        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) controller.current?.pause(); }}
+        // Focus leaving the game interrupts a run (it freezes); coming back starts the 3-2-1 countdown.
+        onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) controller.current?.setFocused(false); }}
+        onFocus={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) controller.current?.setFocused(true); }}
         onKeyDown={onKey}
         onKeyUp={(event) => { if (event.key === "ArrowDown") controller.current?.duck(false); }}
         onMouseDown={(event) => {
-          // A press on the scenery, the score or between the controls keeps focus in the game; its blur would pause the run.
+          // A press on the scenery, the score or between the controls keeps focus in the game; its blur would freeze the run.
           if (playing && !(event.target as Element).closest("button, a, [tabindex]")) event.preventDefault();
         }}
       >
@@ -437,7 +431,10 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
           {hint && phase === "running" && <div className={styles.zones} aria-hidden="true">
             <span><b>↑ Ketuk di sini untuk lompat</b></span><span><b>↓ Tahan di sini untuk menunduk</b></span>
           </div>}
-          {(phase === "paused" || phase === "over") && <div className={styles.result} aria-hidden="true"><p>{phase === "over" ? message : "Tarik napas dulu."}</p><span>{phase === "over" ? `${summary} Satu putaran lagi?` : summary}</span></div>}
+          {phase === "over" && <div className={styles.result} aria-hidden="true"><p>{message}</p><span>{`${summary} Satu putaran lagi?`}</span></div>}
+          {phase === "paused" && <div className={styles.countdown} aria-hidden="true">
+            {countdown ? <><b key={countdown}>{countdown}</b><span>Siap-siap…</span></> : <><p>Tertahan sebentar.</p><span>Ketuk game, lalu hitung mundur 3 detik.</span></>}
+          </div>}
         </>}
 
         <div className={`section-width ${styles.controls}`}>
@@ -454,20 +451,18 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
             >
               {load === "ready" ? label : load === "error" ? "Game belum termuat" : "Menyiapkan Dino…"}<Arrow diagonal />
             </button>
-            <button
+            {/* Only the autoplay demo can be paused (WCAG 2.2.2); a player's run never is. */}
+            {!playing && <button
               type="button"
               className={styles.pause}
-              disabled={load !== "ready" || (playing && phase === "over") || (!playing && !animated)}
-              aria-label={playing ? (phase === "paused" ? "Lanjutkan permainan" : "Jeda permainan") : (autoplay ? "Jeda permainan otomatis" : "Lanjutkan permainan otomatis")}
-              onClick={() => {
-                if (playing) { controller.current?.togglePause(); focusGame(); }
-                else controller.current?.toggleAutoplay();
-              }}
+              disabled={load !== "ready" || !animated}
+              aria-label={autoplay ? "Jeda permainan otomatis" : "Lanjutkan permainan otomatis"}
+              onClick={() => controller.current?.toggleAutoplay()}
             >
-              {(playing ? phase === "paused" : !autoplay)
+              {!autoplay
                 ? <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 3 8 5-8 5z" /></svg>
                 : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zm5 0h3v10H9z" /></svg>}
-            </button>
+            </button>}
             {playing && <>
               <button type="button" className={styles.pause} aria-label="Suara permainan" aria-pressed={sound} onClick={() => { controller.current?.setSound(!sound); focusGame(); }}>
                 <svg viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges">
@@ -477,29 +472,26 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
                     : <path d="M10 5h1v1h-1zM14 5h1v1h-1zM11 6h1v1h-1zM13 6h1v1h-1zM12 7h1v2h-1zM11 9h1v1h-1zM13 9h1v1h-1zM10 10h1v1h-1zM14 10h1v1h-1z" />}
                 </svg>
               </button>
-              <button
+              {/* The board toggle exists only after a run: looking at the board never stops a game in progress. */}
+              {phase === "over" && <button
                 type="button"
                 className={styles.pause}
                 aria-label="Papan skor"
                 aria-expanded={panelOpen}
                 aria-controls={`${id}-board`}
-                onClick={() => {
-                  if (phase === "running") controller.current?.pause();
-                  else { setClosed(panelOpen); if (!panelOpen) fetchBoard(period); }
-                  focusGame(); // the game keys stay live, and P or Esc resumes
-                }}
+                onClick={() => { setClosed(panelOpen); if (!panelOpen) fetchBoard(period); focusGame(); }}
               >
                 <svg viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges">
                   <path d="M4 2h8v6H4zM1 3h3v1H2v2h1v1h1v1H2V7H1zM12 3h3v4h-1v1h-2V7h1V6h1V4h-2zM5 8h6v1H5zM6 9h4v1H6zM7 10h2v2H7zM4 12h8v2H4z" />
                 </svg>
-              </button>
+              </button>}
             </>}
           </div>
           <p id="bogor-run-controls" className={styles.instructions}>
             {playing
               ? <span><kbd>SPASI</kbd> / <kbd>↑</kbd> lompat, tahan <kbd>↓</kbd> untuk menunduk.</span>
               : <span><kbd>SPASI</kbd> / <kbd>↑</kbd> atau tap untuk lompat.</span>}
-            <span>{playing ? <>Awas angkot, talas, genangan & elang jawa. <kbd>P</kbd> jeda.</> : autoplay ? "Dino main sendiri. Mau ikut?" : "Ambil alih, lalu kejar rekor sendiri."}</span>
+            <span>{playing ? <>Awas angkot, talas, genangan & elang jawa.</> : autoplay ? "Dino main sendiri. Mau ikut?" : "Ambil alih, lalu kejar rekor sendiri."}</span>
           </p>
           {load === "error" && <button type="button" className={styles.retry} onClick={() => { setLoad("waiting"); setAttempt((value) => value + 1); }}>Muat ulang game</button>}
         </div>

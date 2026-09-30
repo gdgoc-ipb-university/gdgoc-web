@@ -7,7 +7,7 @@ import type { Board, Saved } from "@/lib/bogor-run/online";
 import type { FinishedRun, RunnerOptions, Snapshot } from "@/lib/bogor-run/runtime";
 
 const game = vi.hoisted(() => ({
-  mount: vi.fn(), action: vi.fn(), duck: vi.fn(), togglePause: vi.fn(), pause: vi.fn(), dispose: vi.fn(), setReduced: vi.fn(), setVisible: vi.fn(),
+  mount: vi.fn(), action: vi.fn(), duck: vi.fn(), setFocused: vi.fn(), dispose: vi.fn(), setReduced: vi.fn(), setVisible: vi.fn(),
   toggleAutoplay: vi.fn(), leave: vi.fn(), unlock: vi.fn(), setSound: vi.fn(), adopt: vi.fn(), restore: vi.fn(),
 }));
 const online = vi.hoisted(() => ({
@@ -22,7 +22,7 @@ vi.mock("./experience-provider", () => ({ useExperience: () => ({ animated: true
 let publish: (snapshot: Snapshot) => void;
 let hooks: RunnerOptions;
 let visibility: IntersectionObserverCallback;
-const running: Snapshot = { phase: "running", score: 12, best: 20, message: "", autoplay: false, flash: 0, sound: true, finished: false };
+const running: Snapshot = { phase: "running", score: 12, best: 20, message: "", autoplay: false, flash: 0, sound: true, finished: false, countdown: 0 };
 const over: Snapshot = { ...running, phase: "over", score: 42, best: 42, message: "Angkot duluan!" };
 const finished: FinishedRun = { seed: 7, token: "signed", inputs: [120, 1], endTick: 480, score: 42 };
 const week = (signedIn = false): Board => ({
@@ -67,7 +67,7 @@ async function ready() {
 const announcements = () => screen.getAllByRole("status").map((region) => region.textContent).join(" | ");
 
 describe("footer game controls", () => {
-  it("starts explicitly and scopes jump, duck and pause keys to the game, without repeated-key jumps", async () => {
+  it("starts explicitly and scopes jump and duck keys to the game, without repeated-key jumps or a pause key", async () => {
     render(<><BogorRun/><button>Di luar game</button></>);
     const user = userEvent.setup(); const stage = await ready();
     expect(game.action).not.toHaveBeenCalled();
@@ -85,10 +85,12 @@ describe("footer game controls", () => {
     fireEvent.keyDown(stage, { key: "ArrowDown", repeat: true }); expect(game.duck).toHaveBeenCalledOnce();
     await user.keyboard("{/ArrowDown}");
     expect(game.duck).toHaveBeenLastCalledWith(false);
-    await user.keyboard("p"); expect(game.togglePause).toHaveBeenCalledOnce();
+    // P and Esc no longer do anything: a run can't be paused.
+    expect(fireEvent.keyDown(stage, { key: "p" })).toBe(true);
+    expect(fireEvent.keyDown(stage, { key: "Escape" })).toBe(true);
     expect(game.unlock).toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: "Di luar game" }));
-    expect(game.pause).toHaveBeenCalledOnce();
+    expect(game.setFocused).toHaveBeenLastCalledWith(false); // focus leaving the game interrupts the run
     expect(game.duck).toHaveBeenLastCalledWith(false); // a crouch never outlives focus
     await user.keyboard(" "); expect(game.action).toHaveBeenCalledTimes(3);
   });
@@ -122,7 +124,7 @@ describe("footer game controls", () => {
     expect(await screen.findByText(/Tahan di sini untuk menunduk/)).toBeTruthy();
   });
 
-  it("keeps score changes out of live announcements, flashes milestones, and exposes pause/retry controls", async () => {
+  it("keeps score changes out of live announcements, flashes milestones, counts interrupted runs back in, and retries", async () => {
     render(<BogorRun/>); await ready();
     act(() => publish(running));
     const announcement = announcements();
@@ -130,10 +132,15 @@ describe("footer game controls", () => {
     expect(announcements()).toBe(announcement);
     act(() => publish({ ...running, score: 503, flash: 500 }));
     expect(screen.getByText("500").hasAttribute("data-flash")).toBe(true);
+    expect(screen.queryByRole("button", { name: /Jeda permainan|Lanjutkan permainan/ })).toBeNull(); // no pause control in a run
     act(() => publish({ ...running, phase: "paused" }));
-    await userEvent.click(screen.getByRole("button", { name: "Lanjutkan permainan" }));
-    expect(game.togglePause).toHaveBeenCalledOnce();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Lanjut main: Bogor Run" }));
+    expect(screen.getByText("Tertahan sebentar.")).toBeTruthy();
+    expect(announcements()).toContain("Permainan tertahan.");
+    const back = screen.getByRole("button", { name: "Kembali ke game: Bogor Run" });
+    act(() => publish({ ...running, phase: "paused", countdown: 3 }));
+    expect(back.textContent).toContain("Lanjut dalam 3");
+    expect(announcements()).toContain("Lanjut dalam 3.");
+    expect(screen.queryByRole("region", { name: "Papan skor" })?.hidden ?? true).toBe(true); // an interruption never opens the board
     act(() => publish(over));
     expect(announcements()).toContain("Skor 42. Rekor 42.");
     await userEvent.click(screen.getByRole("button", { name: "Main lagi: Bogor Run" }));
@@ -152,7 +159,7 @@ describe("footer game controls", () => {
     expect(mute.getAttribute("aria-pressed")).toBe("false");
   });
 
-  it("pauses outside the viewport and disposes on unmount", async () => {
+  it("tells the runner when the game scrolls away, and disposes on unmount", async () => {
     const { unmount } = render(<BogorRun/>); await ready();
     act(() => visibility([{ isIntersecting: false, intersectionRatio: 0 } as IntersectionObserverEntry], {} as IntersectionObserver));
     expect(game.setVisible).toHaveBeenLastCalledWith(false);
@@ -161,7 +168,7 @@ describe("footer game controls", () => {
     expect(stopTickets).toHaveBeenCalledOnce(); // no ticket renewals once the game is gone
   });
 
-  it("keeps game keys working after the mute and board buttons are clicked mid-run", async () => {
+  it("keeps game keys working after the mute button is clicked mid-run, and hides the board button during a run", async () => {
     const user = userEvent.setup();
     render(<BogorRun/>); const stage = await ready();
     await user.click(stage);
@@ -176,34 +183,14 @@ describe("footer game controls", () => {
     screen.getByRole("button", { name: "Kembali ke komunitas" }).focus();
     expect(fireEvent.keyDown(document.activeElement!, { key: "ArrowUp" })).toBe(false);
     expect(game.action).toHaveBeenCalledTimes(3);
-    await user.click(screen.getByRole("button", { name: "Papan skor" }));
-    expect(game.pause).toHaveBeenCalledOnce();
-    expect(document.activeElement).toBe(stage);
+    expect(screen.queryByRole("button", { name: "Papan skor" })).toBeNull(); // the board can't stop a run
     act(() => publish({ ...running, phase: "paused" }));
-    await user.keyboard("p"); expect(game.togglePause).toHaveBeenCalledOnce();
+    expect(screen.queryByRole("button", { name: "Papan skor" })).toBeNull();
+    act(() => publish(over));
+    expect(screen.getByRole("button", { name: "Papan skor" })).toBeTruthy();
   });
 
-  it("resumes with P or Esc from inside the board and hands focus back to the game", async () => {
-    const user = userEvent.setup();
-    render(<BogorRun/>); const stage = await ready();
-    act(() => publish({ ...running, phase: "paused" }));
-    const [weekTab] = within(screen.getByRole("region", { name: "Papan skor" })).getAllByRole("tab");
-    weekTab.focus();
-    await user.keyboard(" "); // Space and arrows keep working the tabs
-    expect(game.action).not.toHaveBeenCalled();
-    await user.keyboard("{Escape}");
-    expect(game.togglePause).toHaveBeenCalledOnce();
-    expect(document.activeElement).toBe(stage);
-    act(() => publish({ ...running, phase: "paused" }));
-    weekTab.focus();
-    await user.keyboard("P");
-    expect(game.togglePause).toHaveBeenCalledTimes(2);
-    // Browser shortcuts such as Ctrl+P (print) are left alone.
-    expect(fireEvent.keyDown(stage, { key: "p", ctrlKey: true })).toBe(true);
-    expect(game.togglePause).toHaveBeenCalledTimes(2);
-  });
-
-  it("keeps focus in the game when the scenery is pressed mid-run, so the run does not pause", async () => {
+  it("keeps focus in the game when the scenery is pressed mid-run, so the run is not interrupted", async () => {
     render(<BogorRun invitation={<p>Gabung member</p>}/>); await ready();
     expect(fireEvent.mouseDown(screen.getByText("Gabung member"))).toBe(true); // idle copy stays selectable
     act(() => publish(running));
@@ -266,15 +253,13 @@ describe("footer game controls", () => {
 });
 
 describe("leaderboard panel", () => {
-  it("opens on pause with weekly and all-time tabs, and closes from its toggle", async () => {
+  it("opens at game over with weekly and all-time tabs, and closes from its toggle", async () => {
     const user = userEvent.setup();
     render(<BogorRun/>); await ready();
     act(() => publish(running));
+    expect(screen.queryByRole("button", { name: "Papan skor" })).toBeNull();
+    act(() => publish(over));
     const toggle = screen.getByRole("button", { name: "Papan skor" });
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    await user.click(toggle);
-    expect(game.pause).toHaveBeenCalledOnce();
-    act(() => publish({ ...running, phase: "paused" }));
     const panel = screen.getByRole("region", { name: "Papan skor" });
     expect(toggle.getAttribute("aria-expanded")).toBe("true");
     const list = await within(panel).findByRole("tabpanel");
@@ -296,8 +281,9 @@ describe("leaderboard panel", () => {
 
     await user.click(toggle);
     expect(panel.hidden).toBe(true);
-    act(() => publish(over));
-    expect(panel.hidden).toBe(false); // a new stop reopens it
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    act(() => publish(running)); act(() => publish(over));
+    expect(panel.hidden).toBe(false); // the next game over reopens it
   });
 
   it("saves a signed-in player's run and announces the rank politely", async () => {

@@ -14,6 +14,11 @@ export type Snapshot = {
   sound: boolean;
   /** The run is over because it lasted the full hour (LIMITS.maxTicks), not because it crashed. */
   finished: boolean;
+  /**
+   * Seconds left before an interrupted run carries on by itself (3, 2, 1), or 0. A run is only ever "paused" by an
+   * interruption; players cannot pause, and the countdown starts once the game has their attention again.
+   */
+  countdown: number;
 };
 /**
  * A crashed or finished personal run, exactly as the server replays it. `token` is null for unranked runs, and then
@@ -33,13 +38,13 @@ export type RunnerOptions = {
   /** Cosmetic only: which sheet draws the dino, in the demo too. Replays and scores never see it. */
   skin?: DinoSkin;
 };
-/** What `action` did: started a new run, resumed a pause, pressed jump, or nothing (still loading, or right after a crash). */
-export type ActionResult = "start" | "resume" | "jump" | null;
+/** What `action` did: started a new run, pressed jump, or nothing (loading, just after a crash, or an interrupted run). */
+export type ActionResult = "start" | "jump" | null;
 export type Runner = {
   action: () => ActionResult;
   duck: (down: boolean) => void;
-  togglePause: () => void;
-  pause: () => void;
+  /** Whether keyboard focus is inside the game. Losing it interrupts a run; getting it back starts the countdown. */
+  setFocused: (focused: boolean) => void;
   leave: () => void;
   toggleAutoplay: () => void;
   setVisible: (visible: boolean) => void;
@@ -65,6 +70,7 @@ const FLASH_TICKS = TICK_RATE; // Chrome-style score blink after each milestone
 const DEMO_TICKS = 90 * TICK_RATE; // the backdrop demo restarts before it gets frantic
 const RESTART_GUARD = 500; // ms after a crash in which a mashed jump does not restart the run, as in Chrome
 const TICKET_WAIT = 1; // s a run without a ticket holds its first tick for one that is on its way
+const COUNTDOWN = 3; // s an interrupted run waits, counting down, before it carries on
 export const FINISH_MESSAGE = "Selesai! 1 jam penuh";
 const GROUND: readonly ObstacleKind[] = ["angkot", "talas", "genangan"];
 
@@ -112,6 +118,11 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
   let flashUntil = 0;
   let crashedAt = -Infinity;
   let hold = 0; // seconds of TICKET_WAIT left
+  // Interruptions: the run freezes unless the game is on screen, the tab is shown, the window and the game have focus.
+  let focused = true;
+  let windowFocused = true;
+  let countdown = 0;
+  let countdownTimer = 0;
   try { best = readBest(localStorage.getItem(BEST_KEY)); } catch { /* The game also works without storage. */ }
 
   const autoplay = () => run.phase === "idle" && !reduced && !ambientPaused && visible && !document.hidden;
@@ -120,7 +131,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
   function publish() {
     changed({
       phase: run.phase, score: scoreOf(run), best, message: run.finished ? FINISH_MESSAGE : run.hit ? OBSTACLES[run.hit].label : "",
-      autoplay: autoplay(), flash: run.phase === "running" && run.tick < flashUntil ? flash : 0, sound: sound.enabled, finished: run.finished,
+      autoplay: autoplay(), flash: run.phase === "running" && run.tick < flashUntil ? flash : 0, sound: sound.enabled, finished: run.finished, countdown,
     });
   }
 
@@ -267,12 +278,34 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
     if (!moving() && frame) { cancelAnimationFrame(frame); frame = 0; }
   }
 
-  function pause() {
-    if (run.phase !== "running" || disposed) return;
-    // Stand up first: inputs are ignored while paused, so a crouch held into the pause could never be released.
+  const attentive = () => visible && !document.hidden && windowFocused && focused;
+
+  function stopCountdown() { clearTimeout(countdownTimer); countdownTimer = 0; countdown = 0; }
+
+  /** Freezes a running run (or halts its countdown) when the game loses the player's attention. */
+  function interrupt() {
+    if (disposed) return;
+    if (run.phase === "paused") { if (countdownTimer) { stopCountdown(); publish(); } return; }
+    if (run.phase !== "running") return;
+    // Stand up first: inputs are ignored while frozen, so a crouch held into the interruption could never be released.
     if (run.ducking) input(INPUT.stand);
     run.phase = "paused";
     remember(); schedule(); draw(); publish();
+  }
+
+  /** Counts an interrupted run down, 3-2-1, then lets it carry on; any new interruption halts the count. */
+  function carryOn() {
+    if (disposed || run.phase !== "paused" || countdownTimer || !attentive()) return;
+    countdown = COUNTDOWN;
+    const next = () => {
+      countdown -= 1;
+      if (countdown > 0) { countdownTimer = window.setTimeout(next, 1000); publish(); return; }
+      countdownTimer = 0;
+      run.phase = "running";
+      schedule(); publish();
+    };
+    countdownTimer = window.setTimeout(next, 1000);
+    publish();
   }
 
   function begin() {
@@ -299,7 +332,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
       entrance = run.phase === "idle" && !reduced ? 0 : 1;
       begin();
       result = "start";
-    } else if (run.phase === "paused") { run.phase = "running"; result = "resume"; }
+    } else if (run.phase === "paused") { carryOn(); return null; } // no manual resume: the countdown takes over
     else input(INPUT.jump);
     schedule(); publish();
     return result;
@@ -334,6 +367,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
       step(replay);
     }
     run = replay; entrance = 1; acc = 0; prevLift = 0; ticket = null; flashUntil = 0; crashedAt = -Infinity; hold = 0;
+    stopCountdown();
     remember(); schedule(); draw(); publish();
     return true;
   }
@@ -341,7 +375,9 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
   function resize() {
     const rect = canvas.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    if (width && Math.abs(width - rect.width) > 1) pause();
+    // A width change (a turned phone) re-lays out the arena mid-run: freeze, then count the player back in.
+    const turned = width && Math.abs(width - rect.width) > 1;
+    if (turned) interrupt();
     width = rect.width; height = rect.height;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
     canvas.width = Math.round(width * ratio);
@@ -349,30 +385,36 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
     ctx!.setTransform(ratio, 0, 0, ratio, 0, 0);
     ctx!.imageSmoothingEnabled = false;
     draw();
+    if (turned) carryOn();
   }
 
-  function visibility() { if (document.hidden) pause(); schedule(); publish(); }
+  function visibility() { if (document.hidden) interrupt(); else carryOn(); schedule(); publish(); }
+  function windowBlur() { windowFocused = false; interrupt(); }
+  function windowFocus() { windowFocused = true; carryOn(); }
   const observer = new ResizeObserver(resize);
   observer.observe(canvas);
   document.addEventListener("visibilitychange", visibility);
-  window.addEventListener("blur", pause);
+  window.addEventListener("blur", windowBlur);
+  window.addEventListener("focus", windowFocus);
   resize(); publish();
   return {
-    action, duck, pause, adopt, restore,
-    togglePause() { if (run.phase === "running") pause(); else if (run.phase === "paused") void action(); },
-    leave() { remember(); run = createRun(); entrance = 1; acc = 0; prevLift = 0; schedule(); draw(); publish(); },
+    action, duck, adopt, restore,
+    setFocused(value) { focused = value; if (value) carryOn(); else interrupt(); },
+    leave() { remember(); stopCountdown(); run = createRun(); entrance = 1; acc = 0; prevLift = 0; schedule(); draw(); publish(); },
     toggleAutoplay() { ambientPaused = !ambientPaused; schedule(); publish(); },
-    setVisible(value) { visible = value; if (!value) pause(); schedule(); publish(); },
+    setVisible(value) { visible = value; if (value) carryOn(); else interrupt(); schedule(); publish(); },
     setReduced(value) { reduced = value; if (value) { entrance = 1; flashUntil = 0; } schedule(); draw(); publish(); },
     unlock() { sound.unlock(); },
     setSound(on) { sound.setEnabled(on); publish(); },
     dispose() {
       disposed = true;
       cancelAnimationFrame(frame);
+      clearTimeout(countdownTimer);
       observer.disconnect();
       sound.dispose();
       document.removeEventListener("visibilitychange", visibility);
-      window.removeEventListener("blur", pause);
+      window.removeEventListener("blur", windowBlur);
+      window.removeEventListener("focus", windowFocus);
     },
   };
 }

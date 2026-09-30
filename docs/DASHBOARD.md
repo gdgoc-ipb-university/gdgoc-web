@@ -87,7 +87,7 @@ File URLs come from `ctx.storage.getUrl`. They are unguessable, but not authenti
 
 ## Papan skor (Bogor Run leaderboard)
 
-Bogor Run is the runner game in the landing-page footer (`public/games/bogor-run/README.md`). Anyone can play. Saving a score needs a verified Google account that is not deactivated; onboarding is not required. The game's pause and game-over panel shows the weekly and all-time top 10 to everyone, guests included, and links here with "Lihat 100 besar".
+Bogor Run is the runner game in the landing-page footer (`public/games/bogor-run/README.md`). Anyone can play. Saving a score needs a verified Google account that is not deactivated; onboarding is not required. The game-over panel shows the weekly and all-time top 10 to everyone, guests included, and links here with "Lihat 100 besar".
 
 ### The page
 
@@ -152,7 +152,7 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 ### Limits
 
 - Replay verification cannot tell a bot from a person, and a bot needs no real-time play. The pace check only proves the ticket is old enough: it was issued at least 97% of the simulated time, minus 1 s, before the save. A script can fetch tickets without signing in, several at once, compute a run in a fraction of a second, and save it once each ticket has aged. The demo autopilot ships in the browser bundle and plays to the finish line, so such a run scores the ceiling of 137,403, the same as any finisher. This risk is accepted: staff hide suspicious players with the moderation above.
-- Pauses are not recorded, so pausing to think cannot be detected; only the minimum real duration is enforced.
+- Players cannot pause a run. An interruption (hidden tab, lost focus, the game scrolled away) freezes it until a 3-2-1 countdown restarts it, so a player can still stop to look at a frozen frame by switching tabs. Interruptions are not recorded, and only the minimum real duration is enforced.
 - There is no per-account rate limit, and `issueRun` needs no sign-in. Each bogus submission costs at most one hour of replay, well under the 1 s mutation limit (`docs/VERIFICATION.md` has the measurements). Every accepted run counts in "Permainan tercatat", so one account can inflate that counter with many short runs; a run with no input is accepted about 2 s after its ticket was issued. Add a rate limit, with a new error code, if abuse appears.
 - A run with more than 10,000 inputs plays unranked, and the game says why.
 - The view scale follows the arena width, so a phone shows obstacles later than a desktop, and phone players meet the late game's clusters with less warning. The gameplay review's human-like bot, made cluster-aware, lasts a median of about 7.6 minutes at 390 px, against about 22 minutes at 1440 px. This was left as is.

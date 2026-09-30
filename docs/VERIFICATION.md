@@ -261,6 +261,19 @@ Not yet done with real accounts against the DEV deployment:
 - Headless Chromium against the dev server at 1440×900 and 390×844 covered the sealed gate, the reveal mid-flight, the open badge, pointer tilt and the back face, with no page or console errors. The footer game then drew the blue dino after the skin was equipped, and the console hint printed exactly once.
 - Not verified: iOS Safari's audio unlock for the fanfare, and touch tilt on a real phone.
 
+## No pause in Bogor Run — 30 September
+
+Players can no longer pause a run: the pause button, the P and Esc keys, and the leaderboard toggle during a run are gone, and the toggle now appears only after a run. Interruptions (hidden tab, window blur, focus leaving the game, the game scrolled away, a width change) freeze the run, standing a held duck up first so the replay log stays exact. Once the game has the player's attention again, a 3-2-1 countdown lets the run carry on by itself; a new interruption halts the count, and a jump press neither resumes nor skips it. The idle demo keeps its pause button (WCAG 2.2.2).
+
+- `pnpm exec vitest run src/components/bogor-run.test.tsx src/components/bogor-run-runtime.test.tsx` passes (37 tests). The tests cover:
+  - the countdown after the game comes back on screen, after a width change, after window blur and focus, and after the tab is hidden and shown;
+  - a halted count, no manual resume, and cancelling on leave;
+  - the duck release logged at an interruption;
+  - no pause key or button during a run;
+  - the board toggle only after a run;
+  - the frozen and countdown copy and announcements.
+- Headless Chromium against the dev server at 1440×900 and 390×844: during a run the controls are only the back link, the tap area, "Lompat" and mute. A window blur shows "Tertahan sebentar.", and focus coming back shows the centred countdown, which then carries on. P and Esc do nothing, and there were no page errors.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

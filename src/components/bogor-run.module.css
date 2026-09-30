@@ -67,6 +67,12 @@
 @keyframes zones { 85% { opacity: 1; } 100% { opacity: 0; } }
 .result { position: absolute; z-index: 2; inset: 43% var(--gutter) auto 45%; pointer-events: none; }
 .result p { font: 500 clamp(28px, 3vw, 42px)/1.2 var(--font-pixel), monospace; color: var(--ink); }.result span { display: block; font-size: 12px; margin-top: 12px; color: #435b3e; }
+/* An interrupted run: a 3-2-1 before it carries on by itself, or a nudge to come back to the game. */
+.countdown { position: absolute; z-index: 2; inset: 36% var(--gutter) auto; text-align: center; pointer-events: none; }
+.countdown b { display: inline-block; font: 500 clamp(64px, 8vw, 112px)/1 var(--font-pixel), monospace; color: var(--ink); text-shadow: 3px 3px 0 #faf9f2; animation: count .45s ease-out both; }
+.countdown p { font: 500 clamp(28px, 3vw, 42px)/1.2 var(--font-pixel), monospace; color: var(--ink); }
+.countdown span { display: block; margin-top: 12px; font-size: 12px; color: #435b3e; }
+@keyframes count { from { transform: scale(1.35); opacity: 0; } to { transform: none; opacity: 1; } }
 .retry { color: #1d54ba; background: #faf9f2; border: 0; text-decoration: underline; padding: 10px; min-height: 44px; font-size: 12px; }
 
 /* Leaderboard panel: a paper card in the game's own palette, opened on pause and game over. */
@@ -161,6 +167,7 @@
   .hud { top: 220px; left: var(--gutter); right: auto; gap: 22px; }.hud b { font-size: 20px; }
   .tapArea, .zones { top: 280px; bottom: 50px; }
   .result { inset: 280px var(--gutter) auto; }.result span { font-size: 11px; }
+  .countdown { inset: 300px var(--gutter) auto; }.countdown span { font-size: 11px; }
   /* The open board takes the arena: the title and score step aside (the sheet repeats the score) and the back link moves up. */
   .world[data-panel="true"] .arena { --panel-top: 66px; }
   .world[data-panel="true"] .gameTitle { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
@@ -183,6 +190,7 @@
   .world[data-playing="true"] .hud { top: 118px; }
   .tapArea, .zones { top: 160px; }
   .result { top: 160px; }
+  .countdown { top: 150px; }
 }
 /*
  * Compact play layout for short arenas (landscape phones, low laptop windows): the title steps aside, the score sits
@@ -204,6 +212,7 @@
   .world[data-playing="true"] .instructions { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .world[data-playing="true"] .actions button:focus-visible { outline-offset: -4px; }
   .world[data-playing="true"] .result { inset: 24% var(--gutter) auto 36%; }
+  .world[data-playing="true"] .countdown { inset: 18% var(--gutter) auto; }.world[data-playing="true"] .countdown b { font-size: 56px; }
   .world[data-playing="true"] .result p { font-size: 24px; }.world[data-playing="true"] .result span { margin-top: 6px; font-size: 11px; }
   /* The board runs from the top edge down to the controls row and scrolls as one sheet. */
   .world[data-playing="true"] .panel { top: 8px; bottom: 56px; max-height: none; overflow-y: auto; overscroll-behavior: contain; background: var(--shadows), #faf9f2f7; }
@@ -234,6 +243,7 @@
   .world[data-playing="true"] .more { grid-area: more; border-top: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .countdown b { animation: none; }
   .invitation, .mist { transition: none; }
   .hud b[data-flash], .status[data-kind="saving"] .dot { animation: none; }
   .zones { animation: none; }

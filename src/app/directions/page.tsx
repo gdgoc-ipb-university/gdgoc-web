@@ -64,7 +64,7 @@ export default function DirectionsPage() {
                 </details>
                 <div className="direction-actions">
                   <Link href={`/?world=${d.id}`}>
-                    Preview landing <Arrow diagonal />
+                    Preview landing <Arrow />
                   </Link>
                   <a href={d.original} download>
                     Download PNG <Arrow down />
@@ -82,7 +82,7 @@ export default function DirectionsPage() {
             dua foto yang diberikan. Tiga arah lainnya tetap tersedia sebagai concept art.
           </p>
           <Link href="/environment">
-            Jelajahi scene 3D tanpa teks <Arrow diagonal />
+            Jelajahi scene 3D tanpa teks <Arrow />
           </Link>
           <br />
           <a
@@ -90,7 +90,7 @@ export default function DirectionsPage() {
             target="_blank"
             rel="noreferrer"
           >
-            Buka referensi Figma <Arrow diagonal />
+            Buka referensi Figma <Arrow external />
           </a>
         </aside>
       </main>

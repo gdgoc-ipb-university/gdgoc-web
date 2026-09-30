@@ -44,7 +44,7 @@ export function SubmissionBadge({ submittedAt, late }: { submittedAt: number | n
 
 export function FileLink({ file }: { file: { name: string; size: number; url: string | null } }) {
   if (!file.url) return <span className="dash-file">{file.name} <small>{fileSizeLabel(file.size)} · tidak tersedia</small></span>;
-  return <a className="dash-file" href={file.url} target="_blank" rel="noopener noreferrer">{file.name} <small>{fileSizeLabel(file.size)}</small><Arrow diagonal /><span className="sr-only"> (buka tab baru)</span></a>;
+  return <a className="dash-file" href={file.url} target="_blank" rel="noopener noreferrer">{file.name} <small>{fileSizeLabel(file.size)}</small><Arrow external /><span className="sr-only"> (buka tab baru)</span></a>;
 }
 
 /** Copies the full, readable link of a dashboard page. */

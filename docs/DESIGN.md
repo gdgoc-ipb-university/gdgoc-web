@@ -94,3 +94,16 @@ PNG originals and WebP review assets live in `public/footer-directions/`, with f
 Before the first public deployment, the user broadened the community positioning to **Komunitas Mahasiswa Bogor**. The hero, About section, closing invitation, and search metadata now describe students across Bogor while retaining the GDGoC IPB chapter identity. The four footer concept images remain the earlier visual exploration.
 
 [Next.js App Router](https://nextjs.org/docs/app/getting-started/installation), [Lenis](https://github.com/darkroomengineering/lenis), and [Motion reduced motion](https://motion.dev/docs/react-use-reduced-motion), checked alongside installed package documentation. The installed Next.js 16.3.5 docs were used for current App Router, font, image, and client-component conventions.
+
+## Icons — 30 September
+
+Every icon on the site comes from [Pixelarticons](https://pixelarticons.com) (MIT) through `PixelIcon` in `src/components/pixel-icons.tsx`. The path data is copied from the 2.4.1 package; nothing is added to the dependencies. `Arrow` wraps it with a meaning, not a direction:
+- `arrow-right` for going ahead within the site;
+- `external-link` for anything that leaves it (GDG, Instagram, WhatsApp, Google sign-in, files that open in a new tab);
+- `arrow-down` for scrolling down the page;
+- `download` for saving a file.
+
+Hard-coded ←, →, ↗ and ✓ characters, the landing's text glyphs ("</>", "{ }", "+ +"), the Dino game's hand-drawn play/pause, speaker and trophy, the header's CSS hamburger, the onboarding "WA" and "<>" badges, and the dashboard padlock and gamepad were all replaced. Pixelarticons (as of 2.4.1) has no text-formatting icons, so the rich-text toolbar keeps its bold, italic, underline, strikethrough and ordered-list icons, drawn on the same 24×24, 2px grid.
+
+Icons render at 24px (1:1 with the grid) in buttons and 18px beside small text; 18px is exact on 2× screens. They are never rotated, because rotation blurs the grid. Illustrations and brand marks stay as drawn: the Dino mascot, the Apresiasi trophy, the onboarding campus, the `/rai` badge and gate star, and Google's official G. `src/components/icon-set.test.tsx` fails if any other component draws its own SVG or uses arrow or check characters as icons.
+

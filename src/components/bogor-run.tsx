@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from "react";
 import { useExperience } from "./experience-provider";
 import { Arrow } from "./icons";
+import { PixelIcon } from "./pixel-icons";
 import { weekKey, weekLabel } from "@/lib/bogor-run/leaderboard";
 import type { Board, Period, Saved } from "@/lib/bogor-run/online";
 import type { FinishedRun, Runner, Snapshot } from "@/lib/bogor-run/runtime";
@@ -380,7 +381,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
           <div className={styles.notice}>
             <p>{notice}</p>
             <button type="button" aria-label="Tutup pesan" onClick={() => { setNotice(""); focusGame(); }}>
-              <svg viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges"><path d="M3 3h2v2H3zM5 5h2v2H5zM7 7h2v2H7zM9 9h2v2H9zM11 11h2v2h-2zM11 3h2v2h-2zM9 5h2v2H9zM5 9h2v2H5zM3 11h2v2H3z" /></svg>
+              <PixelIcon name="close" size={24} />
             </button>
           </div>
         </div>}
@@ -395,7 +396,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
             <p className={styles.eyebrow}><span aria-hidden="true" />BOGOR RUN <span className={styles.edition}>/ 01</span></p>
             <h3>Dino keliling Bogor.</h3>
           </div>
-          <button type="button" className={styles.back} onClick={() => controller.current?.leave()}>Kembali ke komunitas <span aria-hidden="true">↗</span></button>
+          <button type="button" className={styles.back} onClick={() => controller.current?.leave()}><PixelIcon name="arrow-left" size={24} />Kembali ke komunitas</button>
         </div>}
 
         {playing && <>
@@ -435,7 +436,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
             }}
           />
           {hint && phase === "running" && <div className={styles.zones} aria-hidden="true">
-            <span><b>↑ Ketuk di sini untuk lompat</b></span><span><b>↓ Tahan di sini untuk menunduk</b></span>
+            <span><b><PixelIcon name="arrow-up" size={12} /> Ketuk di sini untuk lompat</b></span><span><b><PixelIcon name="arrow-down" size={12} /> Tahan di sini untuk menunduk</b></span>
           </div>}
           {(phase === "paused" || phase === "over") && <div className={styles.result} aria-hidden="true"><p>{phase === "over" ? message : "Tarik napas dulu."}</p><span>{phase === "over" ? `${summary} Satu putaran lagi?` : summary}</span></div>}
         </>}
@@ -452,7 +453,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
               onClick={takeAction}
               onBlur={() => controller.current?.duck(false)}
             >
-              {load === "ready" ? label : load === "error" ? "Game belum termuat" : "Menyiapkan Dino…"}<Arrow diagonal />
+              {load === "ready" ? label : load === "error" ? "Game belum termuat" : "Menyiapkan Dino…"}<Arrow />
             </button>
             <button
               type="button"
@@ -464,18 +465,11 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
                 else controller.current?.toggleAutoplay();
               }}
             >
-              {(playing ? phase === "paused" : !autoplay)
-                ? <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 3 8 5-8 5z" /></svg>
-                : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 3h3v10H4zm5 0h3v10H9z" /></svg>}
+              <PixelIcon name={(playing ? phase === "paused" : !autoplay) ? "play" : "pause"} size={24} />
             </button>
             {playing && <>
               <button type="button" className={styles.pause} aria-label="Suara permainan" aria-pressed={sound} onClick={() => { controller.current?.setSound(!sound); focusGame(); }}>
-                <svg viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges">
-                  <path d="M1 6h3v4H1zM4 5h1v6H4zM5 4h1v8H5zM6 3h2v10H6z" />
-                  {sound
-                    ? <path d="M10 6h1v4h-1zM12 4h1v8h-1zM14 2h1v12h-1z" />
-                    : <path d="M10 5h1v1h-1zM14 5h1v1h-1zM11 6h1v1h-1zM13 6h1v1h-1zM12 7h1v2h-1zM11 9h1v1h-1zM13 9h1v1h-1zM10 10h1v1h-1zM14 10h1v1h-1z" />}
-                </svg>
+                <PixelIcon name={sound ? "volume-3" : "volume-x"} size={24} />
               </button>
               <button
                 type="button"
@@ -489,9 +483,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
                   focusGame(); // the game keys stay live, and P or Esc resumes
                 }}
               >
-                <svg viewBox="0 0 16 16" aria-hidden="true" shapeRendering="crispEdges">
-                  <path d="M4 2h8v6H4zM1 3h3v1H2v2h1v1h1v1H2V7H1zM12 3h3v4h-1v1h-2V7h1V6h1V4h-2zM5 8h6v1H5zM6 9h4v1H6zM7 10h2v2H7zM4 12h8v2H4z" />
-                </svg>
+                <PixelIcon name="trophy" size={24} />
               </button>
             </>}
           </div>
@@ -520,7 +512,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
               </>}
               {save.kind === "guest" && <>
                 <button type="button" className={styles.signIn} disabled={save.leaving} onClick={() => void signIn()}>
-                  {save.leaving ? "Membuka Google…" : "Masuk untuk simpan skor"}<Arrow diagonal />
+                  {save.leaving ? "Membuka Google…" : "Masuk untuk simpan skor"}<Arrow external />
                 </button>
                 <p className={styles.note}>{save.error ?? `Skor ${save.run.score} ikut tersimpan setelah login Google.`}</p>
               </>}
@@ -565,7 +557,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
               {you ? <>Kamu <span>{you.hidden ? "disembunyikan admin" : `peringkat ${rankOf(you.rank)}`}</span><b>{you.score}</b></> : <>Kamu <span>belum ada skor {period === "week" ? "minggu ini" : "tersimpan"}</span></>}
             </p>}
           </div>
-          <Link href="/dashboard/papan-skor" className={styles.more}>Lihat 100 besar <Arrow diagonal /></Link>
+          <Link href="/dashboard/papan-skor" className={styles.more}>Lihat 100 besar <Arrow /></Link>
         </section>}
 
         <span className={styles.srOnly} role="status" aria-live="polite" aria-atomic="true">{announcement}</span>

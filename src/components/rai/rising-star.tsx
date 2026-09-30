@@ -7,6 +7,8 @@ import { createSound, readSoundEnabled, type Sound } from "@/lib/bogor-run/sound
 import { readSkin, writeSkin } from "@/lib/bogor-run/skin";
 import { BadgeBack, BadgeFront, starPath } from "./badge";
 import styles from "./rising-star.module.css";
+import { PixelIcon } from "@/components/pixel-icons";
+import { Arrow } from "@/components/icons";
 
 type Stage = "sealed" | "opening" | "open";
 const REVEAL_MS = 1700;
@@ -128,7 +130,7 @@ export function RisingStar() {
         {STARS.map((star, i) => <span key={i} className={styles.twinkle} style={{ left: star.left, top: star.top, width: star.size, height: star.size, animationDelay: star.delay }} />)}
       </div>
 
-      <Link className={styles.home} href="/">← Beranda</Link>
+      <Link className={styles.home} href="/"><PixelIcon name="arrow-left" size={24} />Beranda</Link>
 
       {stage !== "open" && (
         <section className={styles.gate} aria-labelledby="rai-gate">
@@ -163,9 +165,9 @@ export function RisingStar() {
           <p className={styles.lead}>Lencana Tier Gemini Rising Star dari Google Student Ambassador, versi GDGoC IPB. Dino birunya ikut keluar dari lencana, dan boleh kamu ajak lari di Bogor Run.</p>
           <div className={styles.actions}>
             <button type="button" className={styles.primary} aria-pressed={equipped} onClick={toggleSkin}>
-              {equipped ? "Dino biru terpasang ✓" : "Pakai dino biru di Bogor Run"}
+              {equipped ? <>Dino biru terpasang <PixelIcon name="check" size={24} /></> : "Pakai dino biru di Bogor Run"}
             </button>
-            <Link className={styles.secondary} href="/#join">Main Bogor Run ↗</Link>
+            <Link className={styles.secondary} href="/#join">Main Bogor Run <Arrow /></Link>
           </div>
           <div className={styles.tools}>
             <button type="button" aria-pressed={flipped} onClick={() => setFlipped((value) => !value)}>Balik lencana</button>

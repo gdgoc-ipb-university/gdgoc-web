@@ -19,7 +19,7 @@
 .shade { position: absolute; inset: 0; background: linear-gradient(90deg, #030a1ceb 0%, #030a1cb3 34%, #030a1c00 58%); }
 [data-stage="sealed"] .shade { opacity: 0; }
 .twinkle { position: absolute; background: #d2e3fc; }
-.home { position: absolute; z-index: 2; top: 18px; left: var(--gutter); display: inline-flex; align-items: center; min-height: 44px; color: #d2e3fc; font-size: 13px; }
+.home { position: absolute; z-index: 2; top: 18px; left: var(--gutter); display: inline-flex; align-items: center; gap: 6px; min-height: 44px; color: #d2e3fc; font-size: 13px; }
 .home:hover { color: #fff; }
 .eyebrow { font: 500 11px/1.5 var(--font-mono), monospace; letter-spacing: .12em; color: #aecbfa; }
 
@@ -65,10 +65,10 @@
 .title:focus { outline: none; }
 .lead { max-width: 46ch; font-size: clamp(15px, 1.3vw, 17px); line-height: 1.65; color: #e8f0fe; }
 .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
-.primary { min-height: 48px; padding: 12px 20px; border: 0; background: #fff; color: #174ea6; box-shadow: 4px 4px 0 #0b3d91; font: 600 14px/1.3 var(--font-body), sans-serif; cursor: pointer; }
+.primary { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 12px 20px; border: 0; background: #fff; color: #174ea6; box-shadow: 4px 4px 0 #0b3d91; font: 600 14px/1.3 var(--font-body), sans-serif; cursor: pointer; }
 .primary:hover { background: #e8f0fe; }
 .primary[aria-pressed="true"] { background: #fbbc05; color: #202124; box-shadow: 4px 4px 0 #9c6500; }
-.secondary { display: inline-flex; align-items: center; min-height: 48px; padding: 12px 18px; border: 1px solid #aecbfa; color: #fff; font-size: 14px; }
+.secondary { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 12px 18px; border: 1px solid #aecbfa; color: #fff; font-size: 14px; }
 .secondary:hover { background: #ffffff1a; }
 .tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
 .tools button { min-height: 40px; padding: 8px 14px; border: 1px solid #ffffff4d; background: #ffffff14; color: #e8f0fe; font-size: 12px; cursor: pointer; }

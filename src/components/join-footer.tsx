@@ -26,7 +26,7 @@ export function JoinFooter() {
               target="_blank"
               rel="noreferrer"
             >
-              Gabung member <Arrow diagonal />
+              Gabung member <Arrow external />
             </a>
             <p className="join-note">Lewat halaman resmi Google Developer Groups</p>
           </Reveal>
@@ -46,13 +46,13 @@ export function JoinFooter() {
               <Link href="/dashboard/apresiasi">Apresiasi prestasi</Link>
               <Link href="/dashboard">Dashboard member</Link>
               <a href={communityLinks.membership} target="_blank" rel="noreferrer">
-                Halaman GDG <Arrow diagonal />
+                Halaman GDG <Arrow external />
               </a>
             </nav>
             <nav aria-label="Kanal komunitas">
               <p className="eyebrow">KABAR & KOLABORASI</p>
               <a href={communityLinks.instagram} target="_blank" rel="noreferrer">
-                Instagram <Arrow diagonal />
+                Instagram <Arrow external />
               </a>
               <Link href="/privasi">Privasi</Link>
               <p className="footer-contact">Punya ide kolaborasi?<br />Hubungi @gdgoc.ipb</p>

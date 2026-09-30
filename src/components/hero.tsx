@@ -57,7 +57,7 @@ export function Hero({ direction }: { direction: Direction }) {
             whileHover={animated ? { y: -3 } : undefined}
             whileTap={animated ? { y: 0 } : undefined}
           >
-            Gabung member <Arrow diagonal />
+            Gabung member <Arrow external />
           </motion.a>
         </div>
         <a href="#community" className="hero-scroll" aria-label="Jelajahi komunitas">

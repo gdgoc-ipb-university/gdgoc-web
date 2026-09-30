@@ -99,7 +99,7 @@
 a.dash-file { color: var(--blue); }
 a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-file small { color: var(--muted); font-size: 11px; white-space: nowrap; }
-.dash-file svg { width: 14px; height: 14px; flex-shrink: 0; }
+.dash-file svg { width: 18px; height: 18px; flex-shrink: 0; }
 .dash-file-pending { font-size: 10px; background: #fff0c5; color: #6d4d0c; padding: 3px 8px; }
 .dash-success { background: #e3efdd; border: 1px solid #b9d3ae; color: #2b5e2a; padding: 16px 20px; font-size: 13px; margin-block: 18px; }
 .dash-answer { font-size: 13px; line-height: 1.8; padding: 16px 18px; background: #f6f7f1; border-left: 3px solid #b9c7b0; margin-block: 14px; }

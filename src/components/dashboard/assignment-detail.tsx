@@ -15,6 +15,7 @@ import { MissingAssignment } from "./assignments";
 import { AssignmentStatusBadge, CopyLinkButton, DueLabel, FileLink, SubmissionBadge, useNow } from "./shared";
 import { RichTextView } from "../rich-text-view";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
+import { PixelIcon } from "../pixel-icons";
 
 /** Posts a file to a Convex upload URL with progress events (fetch has no upload progress). */
 function sendFile(url: string, file: File, onProgress: (fraction: number) => void, signal: AbortSignal) {
@@ -48,7 +49,7 @@ export function AssignmentDetail({ id }: { id: string }) {
   if (!data) return <MissingAssignment />;
   const { assignment } = data;
   return <>
-    <Link className="text-button app-back" href="/dashboard/tugas">← {data.canManage ? "Kelola tugas" : "Semua tugas"}</Link>
+    <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canManage ? "Kelola tugas" : "Semua tugas"}</Link>
     <article className="dash-assignment" aria-labelledby="assignment-title">
       <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canManage && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>

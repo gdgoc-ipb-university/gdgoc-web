@@ -12,6 +12,7 @@ import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
 import { AssignmentStatusBadge, CopyLinkButton, DueLabel, SubmissionBadge, useNow } from "./shared";
 import { isStaff, useDashboardViewer } from "./viewer";
+import { PixelIcon } from "../pixel-icons";
 
 export function AssignmentsPage() {
   const viewer = useDashboardViewer();
@@ -115,7 +116,7 @@ export function NewAssignmentPage() {
   const [initial] = useState(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()) }));
   if (!isStaff(viewer)) return <StaffOnly />;
   return <>
-    <Link className="text-button app-back" href="/dashboard/tugas">← Kelola tugas</Link>
+    <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />Kelola tugas</Link>
     <div className="dash-intro"><p className="eyebrow">ADMIN · TUGAS BARU</p><h1>Buat tugas.</h1><p>Tulis instruksi yang bisa dikerjakan tanpa perlu bertanya lagi, lalu tentukan tenggatnya.</p></div>
     <AssignmentForm creating initial={initial} onCancel={() => router.push("/dashboard/tugas")} onSave={async (values, publish) => {
       // The detail page swaps the ID for the saved slug.
@@ -143,7 +144,7 @@ function EditAssignment({ assignment }: { assignment: Doc<"assignments"> }) {
   const [initial] = useState(() => ({ title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt) }));
   const back = assignmentPath(assignment);
   return <>
-    <Link className="text-button app-back" href={back}>← Kembali ke tugas</Link>
+    <Link className="text-button app-back" href={back}><PixelIcon name="arrow-left" size={24} />Kembali ke tugas</Link>
     <div className="dash-intro"><p className="eyebrow">ADMIN · UBAH TUGAS</p><h1>Ubah tugas.</h1><p>Perubahan langsung terlihat oleh member. Mengubah tenggat juga memperbarui tanda terlambat pada kiriman.</p></div>
     <AssignmentForm creating={false} assignmentId={assignment._id} initial={initial} onCancel={() => router.push(back)} onSave={async (values) => {
       const slug = await update({ id: assignment._id, revision: assignment.revision, values });

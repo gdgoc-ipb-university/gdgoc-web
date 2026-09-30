@@ -1,6 +1,16 @@
 /** "BoD" is offered only to members staff tagged as BoD; the server checks it on submit. */
 export const memberTypes = ["Member", "Core Team", "BoD"] as const;
 export const achievementLevels = ["Kampus", "Regional", "Nasional", "Internasional"] as const;
+/**
+ * The current GDGoC IPB University chapter year, both ends inclusive. Only achievements announced within it can be
+ * submitted for appreciation. Update it when a new chapter year starts in July.
+ */
+export const chapterPeriod = { start: "2026-07-01", end: "2027-07-01", label: "1 Juli 2026 – 1 Juli 2027" } as const;
+
+/** Today's date in Bogor (WIB) as YYYY-MM-DD, the calendar the form's dates use. */
+export function todayInWib(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
+}
 export const participationTypes = ["Individu", "Tim"] as const;
 
 export const emptyAppreciation = {
@@ -65,8 +75,10 @@ export function validateAppreciation(values: AppreciationValues, now = new Date(
   if (v.participation === "Tim" && !v.teamName) errors.teamName = "Isi nama tim.";
   if (v.participation === "Tim" && !v.teamMembers) errors.teamMembers = "Cantumkan nama dan Instagram anggota tim.";
   const date = new Date(`${v.eventDate}T00:00:00.000Z`);
-  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jakarta", year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.eventDate) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== v.eventDate || v.eventDate > today || v.eventDate < "2000-01-01") {
+  const realDate = /^\d{4}-\d{2}-\d{2}$/.test(v.eventDate) && !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === v.eventDate;
+  if (realDate && (v.eventDate < chapterPeriod.start || v.eventDate > chapterPeriod.end)) {
+    errors.eventDate = `Apresiasi hanya untuk prestasi yang diumumkan dalam periode GDGoC IPB ${chapterPeriod.label}.`;
+  } else if (!realDate || v.eventDate > todayInWib(now)) {
     errors.eventDate = "Pilih tanggal pengumuman prestasi yang sudah berlangsung.";
   }
   const links = documentLinks(v.documentationLinks);

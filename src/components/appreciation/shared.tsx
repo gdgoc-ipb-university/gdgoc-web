@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { authClient } from "@/lib/auth-client";
-import { documentLinks, isDocumentUrl, statusLabels } from "@/lib/appreciation";
+import { documentLinks, isDocumentUrl, statusLabels, chapterPeriod } from "@/lib/appreciation";
 import { readableError } from "@/lib/draft-session";
 import { Arrow, PixelSpark } from "../icons";
 import { communityLinks } from "@/lib/community";
@@ -25,7 +25,7 @@ export function AppreciationIntro({ compact = false }: { compact?: boolean }) {
   return <div className={`app-intro ${compact ? "app-intro-compact" : ""}`}>
     <div><p className="eyebrow"><span className="status-dot" /> APRESIASI GDGOC IPB</p>
       <h1>Kerja kerasmu,<br /><span>layak dirayakan.</span><PixelSpark /></h1>
-      <p>Menang lomba atau meraih penghargaan? Ceritakan pencapaianmu untuk apresiasi di Instagram <a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow diagonal /></a>.</p>
+      <p>Menang lomba atau meraih penghargaan? Ceritakan pencapaianmu untuk apresiasi di Instagram <a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow diagonal /></a>. Untuk prestasi yang diumumkan dalam periode chapter {chapterPeriod.label}.</p>
     </div><Trophy />
   </div>;
 }

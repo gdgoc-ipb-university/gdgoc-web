@@ -4,14 +4,14 @@ import betterAuthTest from "@convex-dev/better-auth/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, components } from "./_generated/api";
 import schema from "./schema";
-import { emptyAppreciation, validateAppreciation } from "../src/lib/appreciation";
+import { chapterPeriod, emptyAppreciation, validateAppreciation } from "../src/lib/appreciation";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 12, cursor: null };
 const complete = {
   ...emptyAppreciation, fullName: "Member Pengujian", memberType: "Member", campus: "Kampus Bogor",
   instagram: "member.test", achievement: "Juara 1 UI/UX", eventName: "Kompetisi Pengujian", organizer: "Panitia Pengujian",
-  level: "Nasional", participation: "Individu", eventDate: "2026-01-10", story: "Tim membuat rancangan aplikasi untuk pembelajaran.",
+  level: "Nasional", participation: "Individu", eventDate: "2026-08-10", story: "Tim membuat rancangan aplikasi untuk pembelajaran.",
   documentationLinks: "https://example.com/dokumentasi", publicationConsent: true,
 };
 
@@ -137,5 +137,26 @@ describe("publication validation", () => {
     for (const key of ["teamName", "teamMembers", "eventDate", "instagram", "publicationConsent", "documentationLinks"]) expect(errors).toHaveProperty(key);
     expect(validateAppreciation({ ...complete, eventDate: "2099-01-01" })).toHaveProperty("eventDate");
     expect(validateAppreciation({ ...complete, documentationLinks: "https://127.0.0.1/doc" })).toHaveProperty("documentationLinks");
+  });
+
+  it("accepts only achievements announced in the current chapter year, 1 July 2026 to 1 July 2027 inclusive", () => {
+    const after = new Date("2027-08-15T00:00:00+07:00");
+    const period = /dalam periode GDGoC IPB 1 Juli 2026 – 1 Juli 2027/;
+    expect(chapterPeriod).toMatchObject({ start: "2026-07-01", end: "2027-07-01" });
+    for (const eventDate of ["2026-07-01", "2027-01-15", "2027-07-01"]) expect(validateAppreciation({ ...complete, eventDate }, after)).toEqual({});
+    for (const eventDate of ["2026-06-30", "2025-12-01", "2027-07-02", "2028-01-01"]) expect(validateAppreciation({ ...complete, eventDate }, after).eventDate).toMatch(period);
+    // Inside the period but not yet announced: the older "already happened" rule still applies.
+    expect(validateAppreciation({ ...complete, eventDate: "2026-12-01" }, new Date("2026-09-30T12:00:00+07:00")).eventDate).toBe("Pilih tanggal pengumuman prestasi yang sudah berlangsung.");
+    // Today counts in Bogor time: 30 September 23:30 WIB is still the 30th there.
+    expect(validateAppreciation({ ...complete, eventDate: "2026-09-30" }, new Date("2026-09-30T16:30:00Z"))).toEqual({});
+  });
+
+  it("refuses a submission from outside the chapter year on the server", async () => {
+    const member = await user(setup());
+    const id = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
+    await member.mutation(api.appreciations.save, { id, revision: 0, values: { ...complete, eventDate: "2026-06-30" } });
+    await expect(member.mutation(api.appreciations.submit, { id, revision: 1 })).rejects.toThrow("Lengkapi isian");
+    await member.mutation(api.appreciations.save, { id, revision: 1, values: complete });
+    expect(await member.mutation(api.appreciations.submit, { id, revision: 2 })).toBe(id);
   });
 });

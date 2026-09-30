@@ -263,6 +263,7 @@ summary:focus-visible {
   35% { transform: translateY(-5px); opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .navigation > a::after { transition: none; }
   .scene-preloader, .scene-preloader::backdrop { transition: none; }
   .preloader-blocks i { animation: none !important; }
 }
@@ -306,6 +307,38 @@ summary:focus-visible {
 .scroll-progress-segment[data-color="yellow"] { --progress-color: var(--yellow); }
 .scroll-progress-segment[data-color="green"] { --progress-color: var(--green); }
 .navigation > a[aria-current="page"] { color: var(--blue); }
+/* Scrollspy: the section being read is underlined in the colour of the scroll-progress quarter that is filling. */
+.navigation { --nav-accent: var(--blue); }
+.navigation[data-accent="red"] { --nav-accent: var(--red); }
+.navigation[data-accent="yellow"] { --nav-accent: var(--yellow); }
+.navigation[data-accent="green"] { --nav-accent: var(--green); }
+.navigation > a:not(.nav-cta) { position: relative; }
+.navigation > a:not(.nav-cta)::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 -8px;
+  height: 3px;
+  background: var(--nav-accent);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.25s ease, background 0.25s;
+}
+.navigation > a[aria-current="location"] { font-weight: 600; }
+.navigation > a[aria-current="location"]::after { transform: scaleX(1); }
+.nav-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  background: var(--google-blue);
+  color: #fff;
+  font: 500 16px/1 var(--font-pixel), monospace;
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.nav-cta-text { display: grid; gap: 1px; line-height: 1.2; }
+.nav-cta-text small { font: 500 9px/1.3 var(--font-mono), monospace; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.nav-quick { display: none; }
 .privacy-page { max-width: 780px; padding-block: 64px 96px; }
 .privacy-page h1 { font-size: clamp(38px, 6vw, 60px); margin-block: 18px 24px; }
 .privacy-page > p { color: var(--muted); }
@@ -331,13 +364,14 @@ summary:focus-visible {
   font-size: 13px;
   font-weight: 500;
 }
-.navigation > a:not(.nav-join):hover {
+.navigation > a:not(.nav-cta):hover {
   color: var(--blue);
 }
-.nav-join {
+.nav-cta {
   display: flex;
   align-items: center;
   gap: 28px;
+  min-height: 46px;
   padding: 12px 18px;
   border: 1px solid #172d4340;
   box-shadow: 3px 3px 0 #172d43;
@@ -345,7 +379,9 @@ summary:focus-visible {
     background 0.2s,
     translate 0.2s;
 }
-.nav-join:hover {
+.nav-cta[data-viewer="member"] { gap: 12px; padding: 7px 18px 7px 8px; }
+.nav-cta[aria-current="page"] { background: #e8f0fe; }
+.nav-cta:hover {
   background: var(--yellow);
   translate: 0 -2px;
 }
@@ -1057,11 +1093,15 @@ summary:focus-visible {
     font-size: 14px;
     padding: 6px 0;
   }
-  .navigation .nav-join {
+  .navigation .nav-cta {
     justify-content: space-between;
     padding: 13px 17px;
     margin-top: 5px;
   }
+  .navigation .nav-cta[data-viewer="member"] { justify-content: flex-start; padding: 9px 17px 9px 10px; }
+  .navigation > a:not(.nav-cta)::after { inset: auto auto 0 0; width: 28px; }
+  .nav-quick { display: flex; margin-left: auto; }
+  .nav-quick .nav-avatar { width: 36px; height: 36px; font-size: 18px; }
 }
 @media (max-width: 760px) {
   :root {

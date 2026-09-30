@@ -273,6 +273,24 @@ An appreciation's announcement date must now fall within the current chapter yea
   - the picker bounds, the hint, and focus on the date field when it is out of period.
 - Test fixtures that used January 2026 now use a date inside the period.
 
+## Dynamic public header — 30 September
+
+The public header now links Tentang kami, Program, and Bogor Run (`#join`). Apresiasi and the external "Gabung member" button are gone from it; the hero and footer keep the membership CTA.
+
+- **Scrollspy:** on the landing, the section being read gets `aria-current="location"` and an underline in the colour of the scroll-progress quarter being filled.
+- **CTA:** it reads the session from `/api/auth/get-session` after hydration, cached for a minute and cleared on every sign-out. It shows Dashboard before the check, Masuk for guests, and the pixel initial with "Hai, <first name>" and Dashboard for members. Members also get a one-tap avatar next to the menu on phones.
+
+Evidence:
+- `pnpm exec vitest run src/components/header.test.tsx src/lib/nav-viewer.test.ts` passes (7 tests). The tests cover:
+  - the links and hrefs on and off the landing;
+  - no Apresiasi or Gabung member link;
+  - the three CTA states and `aria-current` on dashboard pages;
+  - the scrollspy section and accent colour at four scroll positions;
+  - name parsing (including "M. Rizky" and bidi control characters);
+  - caching and forgetting;
+  - axe.
+- In headless Chromium against the dev server, clicking each link on the landing marked it current, with red, yellow, then green accents. A mocked member session showed the greeting CTA at 1440 px, and the quick avatar and menu CTA at 390 px. There were no page errors.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

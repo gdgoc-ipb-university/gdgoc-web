@@ -8,6 +8,7 @@ import { I18nProvider } from "react-aria-components/I18nProvider";
 import { api } from "../../../convex/_generated/api";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { authClient } from "@/lib/auth-client";
+import { forgetNavViewer } from "@/lib/nav-viewer";
 import { communityLinks } from "@/lib/community";
 import { campusOptions, studyProgramOptions } from "@/lib/education-options";
 import { readableError } from "@/lib/draft-session";
@@ -113,7 +114,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete }: {
   async function signOut() {
     if (inFlight.current) return;
     setLeaving(true); setError("");
-    try { const result = await authClient.signOut(); if (result.error) throw result.error; }
+    try { const result = await authClient.signOut(); if (result.error) throw result.error; forgetNavViewer(); }
     catch { setError("Belum bisa keluar. Periksa koneksi, lalu coba lagi."); }
     finally { setLeaving(false); }
   }

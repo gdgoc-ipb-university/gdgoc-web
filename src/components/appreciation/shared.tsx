@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import type { Doc } from "../../../convex/_generated/dataModel";
 import { authClient } from "@/lib/auth-client";
+import { forgetNavViewer } from "@/lib/nav-viewer";
 import { documentLinks, isDocumentUrl, statusLabels, chapterPeriod } from "@/lib/appreciation";
 import { readableError } from "@/lib/draft-session";
 import { Arrow, PixelSpark } from "../icons";
@@ -43,6 +44,7 @@ export function AccountBar({ viewer }: { viewer: { name: string; email: string }
     try {
       const result = await authClient.signOut();
       if (result.error) throw result.error;
+      forgetNavViewer();
     } catch (error) { setError(readableError(error)); }
     finally { setBusy(false); }
   }

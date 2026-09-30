@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useConvexAuth, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
+import { forgetNavViewer } from "@/lib/nav-viewer";
 import { roleLabels } from "@/lib/assignment";
 import { memberTypeLabels } from "@/lib/onboarding";
 import { AccountBar, AppreciationFooter, GoogleMark, LoadingPanel } from "../appreciation/shared";
@@ -105,7 +106,7 @@ function SignOutButton() {
   const [error, setError] = useState("");
   async function signOut() {
     setBusy(true); setError("");
-    try { const result = await authClient.signOut(); if (result.error) throw result.error; }
+    try { const result = await authClient.signOut(); if (result.error) throw result.error; forgetNavViewer(); }
     catch { setError("Belum bisa keluar. Periksa koneksi, lalu coba lagi."); setBusy(false); }
   }
   return <><button type="button" className="dash-account-link" onClick={() => void signOut()} disabled={busy}><PixelIcon name="logout" size={18} />{busy ? "Sebentar…" : "Keluar"}</button>{error && <p className="field-error" role="alert">{error}</p>}</>;

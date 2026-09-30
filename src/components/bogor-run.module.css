@@ -28,7 +28,7 @@
 .notice p { flex: 1; margin: 0; padding-block: 6px; font-size: 14px; line-height: 1.6; }
 .notice button { flex-shrink: 0; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: #365637; }
 .notice button:hover { color: var(--blue); }.notice button:focus-visible { outline-offset: -4px; }
-.notice svg { width: 14px; height: 14px; fill: currentColor; }
+.notice svg { width: 24px; height: 24px; }
 .canvas { position: absolute; inset: 0; width: 100%; height: 100%; image-rendering: pixelated; pointer-events: none; }
 /* The idle frame of the 353 x 47 sheet, shown until the canvas takes over. */
 .poster { position: absolute; left: 73%; bottom: 12.5%; width: clamp(140.8px, 10.4762vw, 167.2px); aspect-ratio: 44 / 47; transform: translateX(-50%); background: url('/games/bogor-run/dino.svg') left top / calc(353 / 44 * 100%) 100% no-repeat; image-rendering: pixelated; }
@@ -41,13 +41,13 @@
 .edition { color: #68735f; margin-left: 12px; }
 .gameTitle h3 { font: 500 clamp(32px, 3.4vw, 52px)/1.1 var(--font-pixel), monospace; letter-spacing: -.025em; margin-top: 13px; }
 .back { pointer-events: auto; display: flex; gap: 18px; align-items: center; min-height: 44px; padding: 8px 0 8px 12px; border: 0; border-bottom: 1px solid #9fac89; background: #faf9f2cc; font-size: 12px; color: var(--ink); }
-.back:hover { color: var(--blue); }.back span { font-size: 20px; }
+.back:hover { color: var(--blue); }
 .controls { position: absolute; bottom: 16px; left: 0; right: 0; z-index: 3; display: flex; align-items: center; justify-content: flex-end; gap: 20px; }
 .actions { display: flex; gap: 8px; flex-shrink: 0; }
 .action { display: inline-flex; align-items: center; justify-content: space-between; gap: 28px; min-height: 44px; padding: 10px 16px; background: #faf9f2; color: #23452f; border: 1px solid #647e53; box-shadow: 3px 3px 0 #b9c79b; font: 500 12px/1.5 var(--font-body), sans-serif; }
-.action svg { width: 18px; height: 18px; }.action:hover:not(:disabled) { background: #fff6d8; }.action:disabled { opacity: .65; }
+.action svg { width: 24px; height: 24px; }.action:hover:not(:disabled) { background: #fff6d8; }.action:disabled { opacity: .65; }
 .pause { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; background: #f6f6e9aa; color: #365637; border: 1px solid #9bab83; }
-.pause svg { width: 15px; height: 15px; fill: currentColor; }.pause:hover:not(:disabled) { background: #faf9f2; }.pause:disabled { opacity: .4; }
+.pause svg { width: 24px; height: 24px; }.pause:hover:not(:disabled) { background: #faf9f2; }.pause:disabled { opacity: .4; }
 .pause[aria-expanded="true"] { background: #274934; border-color: #274934; color: #faf9f2; }
 .instructions { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: #435b3e; line-height: 1.6; }
 .instructions kbd { font: 500 9px/1 var(--font-mono), monospace; }.instructions > span:last-child { color: #58684d; font-size: 9px; }
@@ -63,6 +63,7 @@
 .zones { display: grid; grid-template-rows: 1fr 1fr; pointer-events: none; animation: zones 3.6s steps(1, end) forwards; }
 .zones > span { display: grid; place-items: center; }
 .zones > span:first-child { border-bottom: 1px dashed #647e53; }
+.zones b svg { vertical-align: -2px; }
 .zones b { padding: 7px 12px; background: #faf9f2e6; border: 1px solid #9bab83; color: #274934; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .06em; text-transform: uppercase; }
 @keyframes zones { 85% { opacity: 1; } 100% { opacity: 0; } }
 .result { position: absolute; z-index: 2; inset: 43% var(--gutter) auto 45%; pointer-events: none; }
@@ -90,7 +91,7 @@
 .dot { flex-shrink: 0; width: 6px; height: 6px; background: #518b43; }
 .status[data-kind="saving"] .dot { background: #c9a227; animation: blink .8s steps(1, end) infinite; }
 .signIn { display: inline-flex; align-items: center; justify-content: space-between; gap: 20px; width: 100%; min-height: 44px; padding: 10px 14px; background: var(--blue); color: #fff; border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); font: 500 12px/1.4 var(--font-body), sans-serif; }
-.signIn svg { width: 18px; height: 18px; flex-shrink: 0; }.signIn:hover:not(:disabled) { background: #1d54ba; }.signIn:disabled { opacity: .75; }
+.signIn svg { width: 24px; height: 24px; flex-shrink: 0; }.signIn:hover:not(:disabled) { background: #1d54ba; }.signIn:disabled { opacity: .75; }
 .link { padding: 0; min-height: 24px; border: 0; background: none; color: #1d54ba; font: inherit; font-size: 12px; text-decoration: underline; }
 .boardHead { flex-shrink: 0; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 12px 14px 8px; }
 .boardHead h4 { font: 500 18px/1.2 var(--font-pixel), monospace; color: #23452f; }
@@ -113,7 +114,7 @@
 .you span { color: #58684d; font-weight: 400; }
 .empty { padding: 10px 6px; font-size: 12px; line-height: 1.6; color: #58684d; }
 .more { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 8px 14px; border-top: 1px solid #d5dcc4; color: #23452f; font-size: 12px; }
-.more:hover { color: var(--blue); }.more svg { width: 16px; height: 16px; }
+.more:hover { color: var(--blue); }.more svg { width: 18px; height: 18px; }
 /* Inset, so a scrolling sheet never clips it and it never covers the last row. */
 .more:focus-visible { outline-offset: -4px; }
 
@@ -194,7 +195,7 @@
   .world[data-playing="true"] .topbar, .world[data-panel="true"] .topbar { inset: auto 0 4px; flex-direction: row; justify-content: flex-end; gap: 0; }
   /* As tall as the game buttons beside it, so it never reaches over the ground line. */
   .world[data-playing="true"] .back { height: 44px; padding: 0 0 0 12px; font-size: 11px; gap: 12px; }
-  .world[data-playing="true"] .back span { font-size: 16px; line-height: 1; }
+  .world[data-playing="true"] 
   .world[data-playing="true"] .hud { top: 10px; left: auto; right: var(--edge); gap: 22px; }
   .world[data-playing="true"] .hud b { font-size: 20px; }
   .world[data-playing="true"] .tapArea, .world[data-playing="true"] .zones { inset: 0 0 50px; }

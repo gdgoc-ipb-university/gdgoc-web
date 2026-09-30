@@ -1,26 +1,16 @@
-export function Arrow({ diagonal = false, down = false }: { diagonal?: boolean; down?: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      viewBox="0 0 24 24"
-      width="20"
-      height="20"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      style={{ transform: diagonal ? "rotate(-45deg)" : down ? "rotate(90deg)" : undefined }}
-    >
-      <path d="M4 12h15M13 6l6 6-6 6" />
-    </svg>
-  );
+import { PixelIcon } from "./pixel-icons";
+
+/**
+ * Pixelarticons arrows for links and buttons: `external` marks a link that leaves the site (a new tab, Google, GDG,
+ * Instagram, WhatsApp), `down` points down the page, `download` saves a file; otherwise it points ahead.
+ */
+export function Arrow({ external = false, down = false, download = false, size = 24 }: { external?: boolean; down?: boolean; download?: boolean; size?: number }) {
+  return <PixelIcon name={download ? "download" : external ? "external-link" : down ? "arrow-down" : "arrow-right"} size={size} />;
 }
 
+/** The Pixelarticons sparkle, for empty states and headings. */
 export function PixelSpark({ className = "" }: { className?: string }) {
-  return (
-    <svg className={className} aria-hidden="true" viewBox="0 0 28 28" fill="currentColor">
-      <path d="M11 0h6v8h3v3h8v6h-8v3h-3v8h-6v-8H8v-3H0v-6h8V8h3z" />
-    </svg>
-  );
+  return <PixelIcon name="sparkle" size={28} className={className} />;
 }
 
 export function PixelDino() {

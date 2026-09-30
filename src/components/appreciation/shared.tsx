@@ -26,7 +26,7 @@ export function AppreciationIntro({ compact = false }: { compact?: boolean }) {
   return <div className={`app-intro ${compact ? "app-intro-compact" : ""}`}>
     <div><p className="eyebrow"><span className="status-dot" /> APRESIASI GDGOC IPB</p>
       <h1>Kerja kerasmu,<br /><span>layak dirayakan.</span><PixelSpark /></h1>
-      <p>Menang lomba atau meraih penghargaan? Ceritakan pencapaianmu untuk apresiasi di Instagram <a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow diagonal /></a>. Untuk prestasi yang diumumkan dalam periode chapter {chapterPeriod.label}.</p>
+      <p>Menang lomba atau meraih penghargaan? Ceritakan pencapaianmu untuk apresiasi di Instagram <a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow external /></a>. Untuk prestasi yang diumumkan dalam periode chapter {chapterPeriod.label}.</p>
     </div><Trophy />
   </div>;
 }
@@ -71,11 +71,11 @@ export function RecordDetails({ record }: { record: Doc<"appreciations"> }) {
     ...(v.participation === "Tim" ? [["Nama tim", v.teamName], ["Anggota tim", v.teamMembers]] : []), ["Cerita di balik prestasi", v.story],
   ];
   return <div className="record-details"><dl>{pairs.map(([title, value]) => <div key={title}><dt>{title}</dt><dd>{value || "—"}</dd></div>)}</dl>
-    <h3>Link dokumentasi</h3><ul>{documentLinks(v.documentationLinks).map((link, index) => <li key={index}>{isDocumentUrl(link) ? <a href={link} target="_blank" rel="noopener noreferrer">Dokumentasi {index + 1} <Arrow diagonal /><span>{link}</span></a> : <span>Link belum valid: {link}</span>}</li>)}</ul>
+    <h3>Link dokumentasi</h3><ul>{documentLinks(v.documentationLinks).map((link, index) => <li key={index}>{isDocumentUrl(link) ? <a href={link} target="_blank" rel="noopener noreferrer">Dokumentasi {index + 1} <Arrow external /><span>{link}</span></a> : <span>Link belum valid: {link}</span>}</li>)}</ul>
     <p className="app-small">{v.publicationConsent ? "Pengirim menyetujui penggunaan materi untuk apresiasi di Instagram GDGoC IPB." : "Persetujuan publikasi belum diberikan."}</p>
   </div>;
 }
 
 export function AppreciationFooter({ label = "Informasi apresiasi" }: { label?: string }) {
-  return <footer className="app-footer section-width"><span>GDGoC IPB <span className="footer-color-dots" aria-hidden="true"><i /><i /><i /><i /></span></span><nav aria-label={label}><Link href="/">Beranda</Link><Link href="/privasi">Privasi</Link><a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow diagonal /></a></nav></footer>;
+  return <footer className="app-footer section-width"><span>GDGoC IPB <span className="footer-color-dots" aria-hidden="true"><i /><i /><i /><i /></span></span><nav aria-label={label}><Link href="/">Beranda</Link><Link href="/privasi">Privasi</Link><a href={communityLinks.instagram} target="_blank" rel="noreferrer">@gdgoc.ipb <Arrow external /></a></nav></footer>;
 }

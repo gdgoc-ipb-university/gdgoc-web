@@ -1,6 +1,7 @@
 import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { DinoPlayground } from "@/components/dino-playground";
+import { PixelIcon, type PixelIconName } from "@/components/pixel-icons";
 import { Reveal } from "@/components/reveal";
 import { Arrow, PixelSpark } from "@/components/icons";
 import { directions } from "@/lib/directions";
@@ -15,7 +16,7 @@ const paths = [
     label: "BELAJAR & BANGUN PRODUK",
     text: "Belajar membangun produk lewat tiga peran: Hustler untuk pengelolaan proyek, Hipster untuk desain UI/UX, dan Hacker untuk pengembangan teknologi. Kolaborasi dalam tim, lalu kerjakan capstone dengan pendampingan",
     cta: "Pantau info Catalyst",
-    glyph: "</>",
+    icon: "code" as PixelIconName,
   },
   {
     n: "02",
@@ -24,7 +25,7 @@ const paths = [
     label: "UJI KARYA DI KOMPETISI",
     text: "Kompetisi nasional untuk mengadu karya di tiga kategori: Software Development, UI/UX Design, dan Business Plan. Siapkan karya terbaik bersama timmu",
     cta: "Pantau info Tech League",
-    glyph: "{ }",
+    icon: "trophy" as PixelIconName,
   },
   {
     n: "03",
@@ -33,7 +34,7 @@ const paths = [
     label: "CARI MASUKAN DARI MENTOR",
     text: "Butuh masukan untuk lomba, pitch deck, atau proyekmu? Ceritakan kebutuhanmu agar kami bisa mencarikan mentor yang sesuai",
     cta: "Tanya alur mentoring",
-    glyph: "+ +",
+    icon: "message-text" as PixelIconName,
   },
 ];
 
@@ -87,7 +88,7 @@ export default async function Home({
               ngoding, mendesain, maupun mengelola proyek
             </p>
             <a className="text-link" href="#explore">
-              Temukan program yang cocok <Arrow diagonal />
+              Temukan program yang cocok <Arrow down />
             </a>
           </Reveal>
           <DinoPlayground />
@@ -122,9 +123,9 @@ export default async function Home({
                     <div className="path-top">
                       <span>{path.n}</span>
                       <span className="path-glyph" aria-hidden="true">
-                        {path.glyph}
+                        <PixelIcon name={path.icon} size={48} />
                       </span>
-                      <Arrow diagonal />
+                      <Arrow external />
                     </div>
                     <p className="eyebrow">{path.label}</p>
                     <h3>{path.title}</h3>

@@ -5,10 +5,10 @@
 .app-intro { display: flex; align-items: center; justify-content: space-between; gap: 48px; padding-bottom: 52px; }
 .app-intro h1 { position: relative; font: 600 clamp(48px, 5.8vw, 80px)/1.06 var(--font-pixel), monospace; letter-spacing: -.045em; margin-block: 20px 24px; }
 .app-intro h1 > span { color: var(--blue); }
-.app-intro h1 > svg { position: absolute; width: 25px; height: 25px; top: 0; right: 3%; color: var(--yellow); transform: rotate(12deg); }
+.app-intro h1 > svg { position: absolute; width: 24px; height: 24px; top: 0; right: 3%; color: var(--yellow); }
 .app-intro > div > p:last-child { max-width: 630px; color: var(--muted); font-size: 15px; line-height: 1.85; }
 .app-intro p a { color: var(--blue); display: inline-flex; align-items: center; gap: 3px; }
-.app-intro p a svg { width: 14px; height: 14px; }
+.app-intro p a svg { width: 18px; height: 18px; vertical-align: -3px; }
 .pixel-trophy { width: 185px; height: 185px; flex-shrink: 0; margin-right: 7%; image-rendering: pixelated; }
 .app-intro-compact h1 { font-size: clamp(44px, 4.7vw, 64px); }
 .app-intro-compact { padding-bottom: 32px; }
@@ -53,7 +53,7 @@
 .account-identity div > span { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .account-actions { display: flex; align-items: center; gap: 24px; font-size: 12px; }
 .account-actions a { display: inline-flex; align-items: center; gap: 6px; }
-.account-actions a svg { width: 14px; }
+.account-actions a svg { width: 18px; }
 .text-button { display: inline-flex; align-items: center; gap: 10px; color: var(--blue); background: none; border: 0; padding: 3px 0; font-size: 13px; line-height: 1.5; text-align: left; }
 .text-button:hover { text-decoration: underline; text-underline-offset: 4px; }
 .app-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 24px; margin-block: 38px 28px; }
@@ -109,7 +109,7 @@
 .app-field-grid > .app-field { margin-bottom: 22px; }
 .app-team-fields { border-left: 3px solid #f1c94d; padding-left: 20px; margin-bottom: 24px; }
 .document-guide { display: flex; gap: 16px; padding: 17px; background: #eef4e8; margin-bottom: 24px; }
-.document-guide > span { font-family: var(--font-pixel); font-size: 28px; color: #47763d; }
+.document-guide > span { display: flex; color: #47763d; }
 .document-guide strong { font-size: 12px; font-weight: 500; }
 .document-guide p { font-size: 12px; color: var(--muted); margin-top: 5px; }
 .app-consent { display: flex; align-items: start; gap: 12px; border-top: 1px solid var(--line); padding-top: 22px; margin-top: 25px; }
@@ -145,7 +145,7 @@
 .record-details ul { margin-block: 15px 26px; list-style: none; padding: 0; }
 .record-details li { margin-top: 12px; }
 .record-details li a { color: var(--blue); font-size: 12px; }
-.record-details li svg { width: 14px; height: 14px; vertical-align: middle; }
+.record-details li svg { width: 18px; height: 18px; vertical-align: middle; }
 .record-details li span { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .appreciation-page details { margin-top: 24px; border-top: 1px solid var(--line); }
 .appreciation-page summary { padding-block: 18px; font-weight: 500; font-size: 13px; cursor: pointer; }
@@ -156,7 +156,7 @@
 .footer-color-dots i:nth-child(2) { background: var(--red); }.footer-color-dots i:nth-child(3) { background: var(--yellow); }.footer-color-dots i:nth-child(4) { background: var(--green); }
 .app-footer nav { display: flex; gap: 24px; align-items: center; }
 .app-footer a { display: inline-flex; gap: 4px; align-items: center; }
-.app-footer svg { width: 13px; height: 13px; }
+.app-footer svg { width: 18px; height: 18px; }
 .admin-intro { margin-bottom: 34px; }
 .admin-intro h1 { font: 600 clamp(46px, 6vw, 72px)/1.05 var(--font-pixel); letter-spacing: -.04em; margin-block: 18px; }
 .admin-intro > p:last-child { color: var(--muted); }
@@ -181,7 +181,7 @@
   .appreciation-page { padding-block: 34px 50px; }
   .app-intro { gap: 0; position: relative; padding-bottom: 32px; }
   .app-intro h1 { font-size: clamp(43px, 8vw, 60px); margin-block: 17px 20px; }
-  .app-intro h1 > svg { width: 17px; height: 17px; right: 0; top: 20px; }
+  .app-intro h1 > svg { width: 18px; height: 18px; right: 0; top: 20px; }
   .app-intro .pixel-trophy { display: none; }
   .app-intro > div > p:last-child { font-size: 13px; max-width: 540px; }
   .app-intro .eyebrow { font-size: 8px; }

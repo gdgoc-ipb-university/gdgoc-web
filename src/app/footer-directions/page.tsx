@@ -72,8 +72,8 @@ export default function FooterDirectionsPage() {
                 <p>{concept.description}</p>
                 <p className="footer-concept-note">{concept.note}</p>
                 <div className="direction-actions">
-                  <a href={`/footer-directions/${concept.slug}.png`} target="_blank" rel="noreferrer">Lihat ukuran penuh <Arrow diagonal /></a>
-                  <a href={`/footer-directions/${concept.slug}.png`} download>Download PNG <Arrow down /></a>
+                  <a href={`/footer-directions/${concept.slug}.png`} target="_blank" rel="noreferrer">Lihat ukuran penuh <Arrow external /></a>
+                  <a href={`/footer-directions/${concept.slug}.png`} download>Download PNG <Arrow download /></a>
                 </div>
               </div>
             </article>
@@ -81,7 +81,7 @@ export default function FooterDirectionsPage() {
         </div>
         <aside className="direction-note">
           <p>Keempat gambar adalah konsep visual hasil imagegen. Footer landing saat ini tetap tersedia untuk dibandingkan</p>
-          <Link href="/#join">Lihat footer saat ini <Arrow diagonal /></Link>
+          <Link href="/#join">Lihat footer saat ini <Arrow /></Link>
         </aside>
       </main>
     </>

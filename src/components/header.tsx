@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { Arrow } from "./icons";
 import { BrandLogo } from "./brand-logo";
 import { ScrollProgress } from "./scroll-progress";
+import { PixelIcon } from "./pixel-icons";
 import { cachedNavViewer, loadNavViewer, type NavViewer } from "@/lib/nav-viewer";
 
 const SECTIONS = [
@@ -111,8 +112,7 @@ export function Header({ review = false }: { review?: boolean }) {
             aria-controls="site-nav"
             onClick={() => setOpen(!open)}
           >
-            <span />
-            <span />
+            <PixelIcon name={open ? "close" : "menu"} size={24} />
           </button>
           <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open} data-accent={accent}>
             {SECTIONS.map(({ id, label }) => (

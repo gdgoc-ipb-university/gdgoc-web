@@ -40,14 +40,27 @@ const paths = {
   archive: ["M3 2h18v2H3zm0 5h18v2H3zM1 4h2v3H1zm20 0h2v3h-2zm-2 5h2v11h-2zM3 9h2v11H3zm2 11h14v2H5zm4-9h6v2H9z"],
   "file-text": ["M6 4H4v16h2zm10-2H6v2h10zm4 4h-2v14h2zm-2 14H6v2h12zM16 4h2v2h-2zm-4 0h2v6h-2z", "M12 8h6v2h-6zm-4 8h8v2H8zm0-4h8v2H8zm0-4h2v2H8z"],
   trash: ["M18 22H6V20H18V22ZM9 6H15V4H17V6H22V8H20V20H18V8H6V20H4V8H2V6H7V4H9V6ZM15 4H9V2H15V4Z"],
-  // Drawn for this project in the same 24×24, 2px-stroke grid: Pixelarticons has no text-formatting icons.
+  // From Pixelarticons 2.4.1 (same license): arrows, media, sound, brand and misc icons used across the site.
+  "arrow-right": ["M4 11v2h16v-2zm12 2v2h2v-2zm-2 2v2h2v-2zm-2 2v2h2v-2zm4-6V9h2v2z", "M14 15V7h2v8zm-2 2V5h2v12z"],
+  "arrow-up": ["M11 20h2V4h-2zm2-12h2V6h-2zm2 2h2V8h-2zm2 2h2v-2h-2zm-6-4H9V6h2z", "M15 10H7V8h8zm2 2H5v-2h12z"],
+  "arrow-down": ["M13 12h6v2h-2v2h-2v2h-2v2h-2v-2H9v-2H7v-2H5v-2h6V4h2v8Z"],
+  download: ["M21 15v4h-2v-4zm-2 4v2H5v-2zM5 15v4H3v-4zm8-12v14h-2V3z", "M7 11v2h10v-2zm2 2v2h2v-2zm4 0v2h2v-2z", "M15 11v2h2v-2z"],
+  play: ["M15 11h-2V9h2zm0 4h-2v-2h2zm-2 2h-2v-2h2zm0-8h-2V7h2zm-2-2H9V5h2zM9 21H7V3h2zm6-8h2v-2h-2zm-6 4h2v2H9z"],
+  pause: ["M10 20H4V4h6v16Zm8-16v16h-6V4h6Zm-4 2v12h2V6h-2ZM6 18h2V6H6v12Z"],
+  "volume-3": ["M11 22H9v-2H7v-2h2V6H7V4h2V2h2v20Zm8 0h-6v-2h6v2Zm2-2h-2v-2h2v2ZM7 18H5v-2h2v2Zm10 0h-4v-2h4v2Zm6 0h-2V6h2v12ZM5 10H3v4h2v2H1V8h4v2Zm14 6h-2V8h2v8Zm-4-2h-2v-4h2v4ZM7 8H5V6h2v2Zm10 0h-4V6h4v2Zm4-2h-2V4h2v2Zm-2-2h-6V2h6v2Z"],
+  "volume-x": ["M13 22h-2v-2H9v-2h2V6H9V4h2V2h2v20Zm-4-4H7v-2h2v2Zm-2-8H5v4h2v2H3V8h4v2Zm10.001 5.224h-2v-2H17v-2h-1.999v-2h2v2H19v2h-1.999v2Zm3.999 0h-2v-2h2v2Zm0-4h-2v-2h2v2ZM9 8H7V6h2v2Z"],
+  "chevron-down": ["M13 16h-2v-2h2v2Zm-2-2H9v-2h2v2Zm4 0h-2v-2h2v2Zm-6-2H7v-2h2v2Zm8 0h-2v-2h2v2ZM7 10H5V8h2v2Zm12 0h-2V8h2v2Z"],
+  whatsapp: ["M4 20h14v2H2V6h2v14Zm16 0h-2v-2h2v2Zm-9-9H9v2h2v2h2v-2h4v5h-7v-1H9v-2H7v-1H6V7h5v4Zm11 7h-2V6h2v12ZM6 6H4V4h2v2Zm14 0h-2V4h2v2Zm-2-2H6V2h12v2Z"],
+  "message-text": ["M20 2H4v2h16zm0 14H6v2h14zm2-12h-2v12h2zM4 4H2v18h2zm2 14H4v2h2zm0-6h4v2H6zm0-4h8v2H6z"],
+  lock: ["M5 8h14v2H5zm0 12h14v2H5zM3 10h2v10H3zm16 0h2v10h-2zM7 4h2v4H7zm2-2h6v2H9zm6 2h2v4h-2z"],
+  sparkle: ["M11 1h2v4h-2zm0 22h2v-4h-2zM9 5h2v4H9zm0 14h2v-4H9zm4-14h2v4h-2zm0 14h2v-4h-2zM5 9h4v2H5zm14 0h-4v2h4zM1 11h4v2H1zm22 0h-4v2h4zM5 13h4v2H5zm14 0h-4v2h4z"],
+  gamepad: ["M4 4h16v2H4zm0 14h16v2H4zM2 6h2v12H2zm18 0h2v12h-2zM8 9h2v6H8z", "M6 11h6v2H6zm8-2h2v2h-2zm2 4h2v2h-2z"],
+  // Drawn for this project in the same 24×24, 2px-stroke grid: Pixelarticons (as of 2.4.1) has no text-formatting icons.
   bold: ["M4 4h12v2h-12zM4 6h4v2h-4zM14 6h4v2h-4zM4 8h4v2h-4zM14 8h4v2h-4zM4 10h14v2h-14zM4 12h4v2h-4zM16 12h4v2h-4zM4 14h4v2h-4zM16 14h4v2h-4zM4 16h4v2h-4zM16 16h4v2h-4zM4 18h14v2h-14z"],
   italic: ["M10 4h10v2h-10zM14 6h4v2h-4zM14 8h4v2h-4zM12 10h4v2h-4zM12 12h4v2h-4zM10 14h4v2h-4zM10 16h4v2h-4zM4 18h10v2h-10z"],
   underline: ["M4 4h4v2h-4zM16 4h4v2h-4zM4 6h4v2h-4zM16 6h4v2h-4zM4 8h4v2h-4zM16 8h4v2h-4zM4 10h4v2h-4zM16 10h4v2h-4zM4 12h4v2h-4zM16 12h4v2h-4zM6 14h4v2h-4zM14 14h4v2h-4zM8 16h8v2h-8zM2 20h20v2h-20z"],
   strikethrough: ["M6 4h12v2h-12zM4 6h4v2h-4zM16 6h4v2h-4zM4 8h4v2h-4zM6 10h10v2h-10zM2 12h20v2h-20zM16 14h4v2h-4zM4 16h4v2h-4zM16 16h4v2h-4zM6 18h12v2h-12z"],
   "list-ordered": ["M3 3h1v1h-1zM2 4h2v1h-2zM9 4h13v1h-13zM3 5h1v1h-1zM9 5h13v1h-13zM3 6h1v1h-1zM2 7h3v1h-3zM2 10h2v1h-2zM4 11h1v1h-1zM9 11h13v1h-13zM3 12h1v1h-1zM9 12h13v1h-13zM2 13h1v1h-1zM2 14h3v1h-3zM2 17h2v1h-2zM4 18h1v1h-1zM9 18h13v1h-13zM3 19h1v1h-1zM9 19h13v1h-13zM4 20h1v1h-1zM2 21h2v1h-2z"],
-  // Drawn for this project, like the text-formatting icons: a controller with stepped corners, a d-pad and two buttons.
-  gamepad: ["M4 5h16v2H4zm0 12h16v2H4zM2 7h2v10H2zm18 0h2v10h-2z", "M8 9h2v6H8zm-2 2h6v2H6zm8-2h2v2h-2zm2 4h2v2h-2z"],
 } satisfies Record<string, string[]>;
 
 export type PixelIconName = keyof typeof paths;

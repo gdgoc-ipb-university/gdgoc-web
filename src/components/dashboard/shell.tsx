@@ -33,7 +33,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
 
   if (isLoading || (isAuthenticated && viewer === undefined)) return <Standalone><LoadingPanel label="Menghubungkan akunmu…" /></Standalone>;
   if (!viewer) return <Standalone><DashboardLogin /></Standalone>;
-  if (needsOnboarding) return <Standalone><p className="app-panel" role="status">Menyiapkan perkenalan singkatmu…</p><Link className="text-button" href={onboarding}>Lanjut ke perkenalan →</Link></Standalone>;
+  if (needsOnboarding) return <Standalone><p className="app-panel" role="status">Menyiapkan perkenalan singkatmu…</p><Link className="text-button" href={onboarding}>Lanjut ke perkenalan <Arrow /></Link></Standalone>;
   if (!viewer.active) {
     return <Standalone><AccountBar viewer={viewer} /><div className="app-panel dash-blocked"><p className="eyebrow">DASHBOARD GDGOC IPB</p><h1>Akunmu sedang dinonaktifkan.</h1><p>Tugas, apresiasi, dan kiriman tidak bisa dibuka untuk sementara. Semua yang sudah kamu kirim tetap tersimpan. Hubungi admin GDGoC IPB jika menurutmu ini keliru.</p></div></Standalone>;
   }

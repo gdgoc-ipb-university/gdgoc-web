@@ -13,6 +13,7 @@ import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelDino } from "../icons";
 import { useNow } from "./shared";
 import { useDashboardViewer, type DashboardViewer } from "./viewer";
+import { PixelIcon } from "../pixel-icons";
 
 export type Board = FunctionReturnType<typeof api.bogorRun.board>;
 export type BoardPeriod = "week" | "all";
@@ -173,9 +174,7 @@ function BoardView({ board, period, week, role, onSetHidden, onAnnounce }: { boa
 
 /** Marks a refusal as a locked state, so it doesn't read as one more of the quiet moderation links beside it. */
 function Lock() {
-  return <svg aria-hidden="true" focusable="false" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" shapeRendering="crispEdges">
-    <path d="M9 2h6v2H9zM7 4h2v5H7zm8 0h2v5h-2zM4 9h16v2H4zm0 2h2v9H4zm14 0h2v9h-2zM4 20h16v2H4zm7-6h2v3h-2z" />
-  </svg>;
+  return <PixelIcon name="lock" size={12} />;
 }
 
 /** Why staff see no button on a row, i.e. what setHidden would refuse. Your own row needs no explanation. */

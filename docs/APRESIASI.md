@@ -46,7 +46,8 @@ The React provider uses `ConvexProviderWithAuth` and a small session-aware token
 - `/dashboard/apresiasi`: private drafts, form preview, submission and status, inside the dashboard (sign-in and onboarding are handled by the dashboard). `/apresiasi` redirects here.
 - Autosave waits 800ms after editing, serializes writes, and flushes before preview or submission. Unsynced changes are backed up in localStorage under both the authenticated owner and document ID.
 - Server revisions reject competing edits. The editor preserves the local version and offers an explicit choice to copy it or use the account version. It never silently overwrites a newer draft.
-- Drafts can be partial. Submission validates the complete form, documentation HTTPS links, real past announcement date, team details when applicable, and publication consent on the server.
+- Drafts can be partial. Submission validates the complete form, documentation HTTPS links, a real past announcement date, team details when applicable, and publication consent on the server.
+- The announcement date must fall within the current GDGoC IPB University chapter year, 1 July 2026 to 1 July 2027 (both ends inclusive). The date picker is limited to that range, the form and intro say so, and the server rejects anything outside it. The period is `chapterPeriod` in `src/lib/appreciation.ts`; update it when a new chapter year starts in July. Drafts and submissions from before the rule keep their dates, but a draft dated outside the period cannot be submitted until its date is corrected.
 - A client-generated ID makes draft creation retry-safe. Submission is also retry-safe. Each account can hold up to ten unsubmitted drafts.
 - Documentation is provided as up to five links. The app neither uploads nor fetches the referenced documents.
 - Submitted records are locked while being reviewed. A reviewer can request a revision with a note, then the owner can edit and resubmit.

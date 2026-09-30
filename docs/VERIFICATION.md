@@ -261,6 +261,18 @@ Not yet done with real accounts against the DEV deployment:
 - Headless Chromium against the dev server at 1440×900 and 390×844 covered the sealed gate, the reveal mid-flight, the open badge, pointer tilt and the back face, with no page or console errors. The footer game then drew the blue dino after the skin was equipped, and the console hint printed exactly once.
 - Not verified: iOS Safari's audio unlock for the fanfare, and touch tilt on a real phone.
 
+## Apresiasi limited to the chapter year — 30 September
+
+An appreciation's announcement date must now fall within the current chapter year, 1 July 2026 to 1 July 2027 (inclusive). `validateAppreciation`, which runs in the form and again in `appreciations.submit`, gives a clear error for dates outside the period. The date picker's `min`/`max` stop at the period and today (WIB), and the field hint and Apresiasi intro name the period.
+
+- `pnpm exec vitest run convex/appreciations.test.ts src/components/appreciation/editor.test.tsx` passes. The tests cover:
+  - both ends of the period accepted, and the day before and after rejected with the period message;
+  - an in-period future date still rejected as not yet announced;
+  - "today" computed in WIB;
+  - the server refusing an out-of-period submission, then accepting it once corrected;
+  - the picker bounds, the hint, and focus on the date field when it is out of period.
+- Test fixtures that used January 2026 now use a date inside the period.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

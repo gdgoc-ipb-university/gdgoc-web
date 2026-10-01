@@ -291,6 +291,23 @@ Evidence:
   - axe.
 - In headless Chromium against the dev server, clicking each link on the landing marked it current, with red, yellow, then green accents. A mocked member session showed the greeting CTA at 1440 px, and the quick avatar and menu CTA at 390 px. There were no page errors.
 
+## Search and sharing metadata — 2 October
+
+The landing and `/privasi` now have canonical URLs, Open Graph and Twitter card tags with a shared 1200 × 630 image, and a description for `/privasi`. The landing adds `Organization` and `WebSite` JSON-LD. `/robots.txt` and `/sitemap.xml` are new, and `/environment` is `noindex` like the other design-review pages.
+
+Evidence:
+- `pnpm check` passes, and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` prerenders `/robots.txt` and `/sitemap.xml`.
+- Against `next start`, the served HTML was read with `curl`:
+  - `/` and `/?world=cloud-club` both have the canonical and `og:url` `https://www.gdgocipb.com`, one `<h1>`, and one JSON-LD script that parses;
+  - `/privasi` has its own canonical, `og:url`, title, and description;
+  - both have `og:image` and `twitter:image` pointing at `/brand/og-image.jpg`, which returns 200 as `image/jpeg`;
+  - `/dashboard` and `/environment` return `noindex, nofollow`, and `/onboarding` `noindex, follow`;
+  - `/robots.txt` allows `/`, disallows `/api/`, and names the sitemap, which lists the two indexable URLs.
+- The landing (`?webgl=off`) and `/privasi` rendered unchanged in the browser pane.
+- The share image's background was captured from the real scene: `design/og-image.mjs` drove headless Chrome to `/environment?motion=off` on `next start`, waited for `data-ready="true"` (set only by a rendered WebGL frame, so the static fallback can never be captured), and took a 2400 × 1260 screenshot with the toolbar hidden. The composed JPEG is 118 KB and was reviewed by eye: AHN, the Dino, the birds, and the pond are visible, and the copy sits on the paper wash.
+- The landing's title is now "GDGoC IPB University — Komunitas Teknologi Mahasiswa Bogor" (58 characters) and its description opens with "Google Developer Group on Campus IPB University" (157 characters); both were read back from the served HTML, along with the JSON-LD names. The names follow the official chapter page, which is titled "GDG on Campus IPB University - Bogor, Indonesia" and records the chapter's 2018 start as GDSC IPB. No search-volume data was used: the wording covers the chapter's known names and the existing positioning, not measured queries.
+- Not checked: the deployed site, Google's Rich Results Test, and real link previews in WhatsApp, Instagram, or X.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

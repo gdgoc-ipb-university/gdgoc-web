@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { ExperienceProvider } from "@/components/experience-provider";
+import { openGraph, siteDescription, siteName, siteUrl } from "@/lib/site";
 import "lenis/dist/lenis.css";
 import "./globals.css";
 
@@ -43,9 +44,13 @@ const poppins = localFont({
 });
 
 export const metadata: Metadata = {
-  title: { default: "GDGoC IPB — Komunitas Mahasiswa Bogor", template: "%s · GDGoC IPB" },
-  description:
-    "Komunitas mahasiswa Bogor untuk belajar coding, UI/UX, dan AI lewat sesi praktik, proyek tim, serta persiapan kompetisi bersama GDGoC IPB.",
+  metadataBase: new URL(siteUrl),
+  title: { default: "GDGoC IPB University — Komunitas Teknologi Mahasiswa Bogor", template: "%s · GDGoC IPB" },
+  description: siteDescription,
+  applicationName: siteName,
+  openGraph,
+  twitter: { card: "summary_large_image" },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, "max-image-preview": "large", "max-snippet": -1 } },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

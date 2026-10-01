@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { communityLinks } from "@/lib/community";
+import { canonical } from "@/lib/site";
 
-export const metadata: Metadata = { title: "Privasi" };
+export const metadata: Metadata = {
+  title: "Privasi",
+  description:
+    "Cara GDGoC IPB memakai dan menyimpan data dari login Google, form Apresiasi, dashboard member, dan papan skor Bogor Run, serta cara mengubah atau menghapusnya.",
+  ...canonical("/privasi"),
+};
 
 export default function PrivacyPage() {
   return <><Header /><main id="main" className="privacy-page section-width"><p className="eyebrow">GDGOC IPB · APRESIASI & DASHBOARD</p><h1>Data untuk merayakan prestasi.</h1><p>Halaman ini menjelaskan penggunaan data saat kamu memakai form Apresiasi, dashboard member GDGoC IPB, dan papan skor Bogor Run.</p>

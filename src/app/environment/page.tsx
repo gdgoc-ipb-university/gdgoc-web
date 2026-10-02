@@ -1,6 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { CampusEnvironment } from "@/components/campus-environment";
 import { PixelIcon } from "@/components/pixel-icons";
+
+// A text-free study of the hero scene, reviewed alongside /directions.
+export const metadata: Metadata = {
+  title: "Hello, Campus! scene",
+  robots: { index: false, follow: false },
+};
 
 export default function EnvironmentPage() {
   return (

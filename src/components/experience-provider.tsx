@@ -1,7 +1,6 @@
 "use client";
 
 import Lenis from "lenis";
-import { MotionConfig } from "motion/react";
 import { createContext, useContext, useEffect, useState } from "react";
 
 const Experience = createContext({ animated: false });
@@ -49,9 +48,7 @@ export function ExperienceProvider({ children }: { children: React.ReactNode }) 
 
   return (
     <Experience.Provider value={{ animated }}>
-      <MotionConfig reducedMotion="user">
-        <div data-motion={animated ? "on" : "off"}>{children}</div>
-      </MotionConfig>
+      <div data-motion={animated ? "on" : "off"}>{children}</div>
     </Experience.Provider>
   );
 }

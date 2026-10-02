@@ -19,6 +19,13 @@ export function CampusEnvironment({
   const fallbackLoaded = useRef(false);
   const fallbackRequested = useRef(false);
   const [ready, setReady] = useState(false);
+  // The preloader waits for the scene, so its code starts downloading while the page hydrates, not after.
+  const [runtime] = useState(() => {
+    if (typeof window === "undefined" || new URLSearchParams(window.location.search).get("webgl") === "off") return null;
+    const loading = import("@/lib/campus/runtime");
+    loading.catch(() => {}); // The effect below falls back when the download fails.
+    return loading;
+  });
   useEffect(() => {
     motion.current = animated;
     controller.current?.setAnimated(animated);
@@ -42,11 +49,11 @@ export function CampusEnvironment({
       fallback();
       onStatusChange?.("fallback");
     }, 12_000);
-    if (new URLSearchParams(window.location.search).get("webgl") === "off") {
+    if (!runtime) {
       fallback();
     } else {
       // Eager first frame also handles a reload at an anchor below the hero.
-      void import("@/lib/campus/runtime")
+      void runtime
         .then(({ mountCampus }) => {
           if (disposed || abandoned) return;
           controller.current = mountCampus(node, {
@@ -69,16 +76,16 @@ export function CampusEnvironment({
       controller.current?.dispose();
       controller.current = null;
     };
-  }, [onStatusChange]);
+  }, [onStatusChange, runtime]);
   return (
     <div className="campus-environment" data-ready={ready}>
       <Image
         className="campus-fallback"
-        src="/environments/01-hello-campus-ahn-cel-v2.webp"
-        alt="Kampus cel-shaded dengan AHN bertingkat, atap limas merah, taman voxel, kolam, bangku warna Google, dan Chrome Dino."
+        // A still of this scene, rendered by design/campus-fallback.mjs.
+        src="/environments/01-hello-campus-3d.webp"
+        alt="Environment 3D AHN IPB dengan atap limas merah, Chrome Dino, burung voxel di langit, taman pixel, kolam, dan Gunung Salak berkabut di kiri."
         fill
         preload
-        quality={90}
         sizes="100vw"
         onLoad={() => {
           fallbackLoaded.current = true;

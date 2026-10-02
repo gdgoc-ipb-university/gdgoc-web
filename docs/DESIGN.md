@@ -66,7 +66,7 @@ The closing invitation and footer share the same warm paper background as the la
 The new campus preloader uses a small pixel Dino, four Google-color loading blocks, and the same warm paper and fonts as the site. It waits for the actual first rendered frame, including the foreground pass, before a short fade. It has no simulated percentage or mandatory minimum delay. A native modal dialog contains keyboard focus during initialization; scroll and focus are restored on exit. Failed WebGL falls back to the reference image, with a 12-second escape for a stalled import/GPU. The first frame renders even when the hero is initially offscreen because the page was opened at a section anchor.
 
 - Desktop Lenis scrolling only on a fine pointer, with native touch scrolling.
-- Motion hover and section reveal; content is visible in SSR and when motion is off.
+- A CSS hover lift and a section reveal (IntersectionObserver with the Web Animations API); content is visible in SSR and when motion is off. These used Motion for React until it was removed to lighten the landing.
 - Small camera parallax, slowly drifting clouds, and a subtle Dino idle.
 - Render loops stop offscreen, when the document is hidden, and when motion is disabled.
 - System reduced motion remains automatic; no saved manual preference or scene controls are used.
@@ -93,7 +93,7 @@ PNG originals and WebP review assets live in `public/footer-directions/`, with f
 
 Before the first public deployment, the user broadened the community positioning to **Komunitas Mahasiswa Bogor**. The hero, About section, closing invitation, and search metadata now describe students across Bogor while retaining the GDGoC IPB chapter identity. The four footer concept images remain the earlier visual exploration.
 
-[Next.js App Router](https://nextjs.org/docs/app/getting-started/installation), [Lenis](https://github.com/darkroomengineering/lenis), and [Motion reduced motion](https://motion.dev/docs/react-use-reduced-motion), checked alongside installed package documentation. The installed Next.js 16.3.5 docs were used for current App Router, font, image, and client-component conventions.
+[Next.js App Router](https://nextjs.org/docs/app/getting-started/installation), [Lenis](https://github.com/darkroomengineering/lenis) and, until Motion was removed, [Motion reduced motion](https://motion.dev/docs/react-use-reduced-motion), checked alongside installed package documentation. The installed Next.js 16.3.5 docs were used for current App Router, font, image, and client-component conventions.
 
 ## Icons — 30 September
 

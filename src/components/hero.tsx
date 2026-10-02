@@ -2,16 +2,13 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { motion } from "motion/react";
 import { Arrow } from "./icons";
-import { useExperience } from "./experience-provider";
 import type { Direction } from "@/lib/directions";
 import { CampusEnvironment, type SceneStatus } from "./campus-environment";
 import { ScenePreloader } from "./scene-preloader";
 import { communityLinks } from "@/lib/community";
 
 export function Hero({ direction }: { direction: Direction }) {
-  const { animated } = useExperience();
   const [sceneStatus, setSceneStatus] = useState<SceneStatus>("loading");
   return (
     <>
@@ -49,16 +46,9 @@ export function Hero({ direction }: { direction: Direction }) {
             Komunitas mahasiswa Bogor untuk belajar coding, UI/UX, dan AI lewat sesi praktik,
             proyek tim, dan diskusi bersama mentor
           </p>
-          <motion.a
-            className="button button-blue"
-            href={communityLinks.membership}
-            target="_blank"
-            rel="noreferrer"
-            whileHover={animated ? { y: -3 } : undefined}
-            whileTap={animated ? { y: 0 } : undefined}
-          >
+          <a className="button button-blue" href={communityLinks.membership} target="_blank" rel="noreferrer">
             Gabung member <Arrow external />
-          </motion.a>
+          </a>
         </div>
         <a href="#community" className="hero-scroll" aria-label="Jelajahi komunitas">
           <Arrow down />

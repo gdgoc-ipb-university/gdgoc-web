@@ -291,6 +291,52 @@ Evidence:
   - axe.
 - In headless Chromium against the dev server, clicking each link on the landing marked it current, with red, yellow, then green accents. A mocked member session showed the greeting CTA at 1440 px, and the quick avatar and menu CTA at 390 px. There were no page errors.
 
+## Search and sharing metadata — 2 October
+
+The landing and `/privasi` now have canonical URLs, Open Graph and Twitter card tags with a shared 1200 × 630 image, and a description for `/privasi`. The landing adds `Organization` and `WebSite` JSON-LD. `/robots.txt` and `/sitemap.xml` are new, and `/environment` is `noindex` like the other design-review pages.
+
+Evidence:
+- `pnpm check` passes, and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` prerenders `/robots.txt` and `/sitemap.xml`.
+- Against `next start`, the served HTML was read with `curl`:
+  - `/` and `/?world=cloud-club` both have the canonical and `og:url` `https://www.gdgocipb.com`, one `<h1>`, and one JSON-LD script that parses;
+  - `/privasi` has its own canonical, `og:url`, title, and description;
+  - both have `og:image` and `twitter:image` pointing at `/brand/og-image.jpg`, which returns 200 as `image/jpeg`;
+  - `/dashboard` and `/environment` return `noindex, nofollow`, and `/onboarding` `noindex, follow`;
+  - `/robots.txt` allows `/`, disallows `/api/`, and names the sitemap, which lists the two indexable URLs.
+- The landing (`?webgl=off`) and `/privasi` rendered unchanged in the browser pane.
+- The share image's background was captured from the real scene: `design/og-image.mjs` drove headless Chrome to `/environment?motion=off` on `next start`, waited for `data-ready="true"` (set only by a rendered WebGL frame, so the static fallback can never be captured), and took a 2400 × 1260 screenshot with the toolbar hidden. The composed JPEG is 118 KB and was reviewed by eye: AHN, the Dino, the birds, and the pond are visible, and the copy sits on the paper wash.
+- The landing's title is now "GDGoC IPB University — Komunitas Teknologi Mahasiswa Bogor" (58 characters) and its description opens with "Google Developer Group on Campus IPB University" (157 characters); both were read back from the served HTML, along with the JSON-LD names. The names follow the official chapter page, which is titled "GDG on Campus IPB University - Bogor, Indonesia" and records the chapter's 2018 start as GDSC IPB. No search-volume data was used: the wording covers the chapter's known names and the existing positioning, not measured queries.
+- Not checked: the deployed site, Google's Rich Results Test, and real link previews in WhatsApp, Instagram, or X.
+
+## Landing speed — 2 October
+
+The loading screen stays as designed: the landing is still revealed on the scene's first frame. Everything around it was made lighter.
+
+- **Static landing.** The page no longer reads `?world=` on the server, so it is prerendered. `next start` now answers `/` with `x-nextjs-prerender: 1` and `Cache-Control: s-maxage=31536000` instead of `private, no-cache, no-store`. The three alternate worlds are prerendered at `/directions/<id>` (`noindex`), `/directions/hello-campus` is a 404 because that world is the landing, and `/?world=cloud-club` answers 307 to `/directions/cloud-club`.
+- **Less JavaScript.** The `motion` package is removed. The hero button's hover lift is CSS, the scroll bar is a scroll listener that writes `scaleX` directly, and Reveal uses IntersectionObserver with the Web Animations API. The landing's initial scripts went from 11 files and 250 KB to 10 files and 198 KB compressed.
+- **Earlier 3D download.** The scene's code now starts downloading while the page hydrates, not in an effect afterwards.
+- **Fallback image.** The still behind the scene is now a capture of the scene itself, 1792 × 1008, served at the default quality 75. Next's optimizer sends 23 / 46 / 90 KB at 640 / 1080 / 2048 px wide, down from 56 / 121 / 233 KB for the concept illustration at quality 90.
+
+Evidence:
+- Timings from headless Chrome against `next start` on this Mac, cache disabled, median of the runs. They compare the two builds on one machine and are not field data.
+
+  | | Before | After |
+  | --- | --- | --- |
+  | Desktop 1440 × 900, unthrottled (3 runs): loading screen gone | 1.53 s | 1.53 s |
+  | Phone 390 × 844, 4× CPU slowdown, 1.6 Mbit/s and 150 ms latency (5 runs): 3D code requested | 2.60 s | 2.18 s |
+  | Same: loading screen gone | 5.00 s | 4.59 s |
+  | Same: script transferred by then | 368 KB | 317 KB |
+  | Same: hero image transferred | 81 KB | 32 KB |
+
+- In headless Chrome at 1440 × 900, with no console or page errors on the landing, `?webgl=off`, or a world preview:
+  - the scene reached `data-ready="true"`, and hovering the hero button moved it by `0 -3px`;
+  - at 37.5 % scroll the bar read `1, 0.5, 0, 0`, the navigation accent was red with Tentang kami current, and the first Reveal block had run its animation and ended at opacity 1; at the bottom all four segments were full;
+  - `?webgl=off` showed `01-hello-campus-3d.webp` with no hero canvas, and side by side it matches the live scene's framing;
+  - the gallery's Preview links lead to `/` and the three `/directions/<id>` pages; a preview keeps the landing header (in-page section links and the scroll bar), is `noindex` with no canonical, and carries no JSON-LD.
+- `pnpm exec eslint src design next.config.ts` and `pnpm typecheck` pass.
+- Tests: with the `@` alias made to work in this checkout (its path contains a space) and on Node 26, 293 of 320 tests pass. The same 27 fail on the previous commit; all of them call `localStorage`, which is undefined under Node 26, and the project pins Node 24. The scroll-progress tests were rewritten for the new implementation, with one added for an already-scrolled page.
+- Not checked: the deployed site, PageSpeed Insights or any field data, a physical phone, and the Lenis smooth-scroll path with the new scroll bar beyond the headless run above.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

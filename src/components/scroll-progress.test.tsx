@@ -1,28 +1,27 @@
-import { act, cleanup, render, waitFor } from "@testing-library/react";
-import { motionValue } from "motion/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { act, cleanup, fireEvent, render } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { ScrollProgress } from "./scroll-progress";
 
-const progress = motionValue(0);
-vi.mock("motion/react", async (importOriginal) => ({
-  ...await importOriginal<typeof import("motion/react")>(),
-  useScroll: () => ({ scrollYProgress: progress }),
-}));
+// A 900 px window on a 3600 px page scrolls through 2700 px.
+const range = 2700;
 
-afterEach(() => { cleanup(); progress.set(0); });
+beforeEach(() => {
+  Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, value: range + 900 });
+  Object.defineProperty(window, "innerHeight", { configurable: true, value: 900 });
+  Object.defineProperty(window, "scrollY", { configurable: true, value: 0 });
+});
+afterEach(cleanup);
 
 function scales(container: HTMLElement) {
-  return Array.from(container.querySelectorAll<HTMLElement>(".scroll-progress-fill"), (fill) => {
-    const transform = fill.style.transform;
-    return transform === "none" ? 1 : Number(transform.match(/scaleX\(([^)]+)\)/)?.[1]);
-  });
+  return Array.from(container.querySelectorAll<HTMLElement>(".scroll-progress-fill"), (fill) =>
+    Number(fill.style.transform.match(/scaleX\(([^)]+)\)/)?.[1]));
 }
 
 async function scrollTo(value: number, container: HTMLElement, expected: number[]) {
-  act(() => progress.set(value));
-  await waitFor(() => {
-    scales(container).forEach((scale, index) => expect(scale).toBeCloseTo(expected[index], 5));
-  });
+  Object.defineProperty(window, "scrollY", { configurable: true, value: value * range });
+  fireEvent.scroll(window);
+  await act(async () => { await new Promise((resolve) => requestAnimationFrame(() => resolve(null))); });
+  scales(container).forEach((scale, index) => expect(scale).toBeCloseTo(expected[index], 5));
 }
 
 describe("four-quarter scroll progress", () => {
@@ -48,5 +47,13 @@ describe("four-quarter scroll progress", () => {
     await scrollTo(0.6, container, [1, 1, 0.4, 0]);
     await scrollTo(0.2, container, [0.8, 0, 0, 0]);
     await scrollTo(-0.1, container, [0, 0, 0, 0]);
+  });
+
+  it("starts from the current position on a page that was already scrolled, and stays empty on one that cannot scroll", () => {
+    Object.defineProperty(window, "scrollY", { configurable: true, value: range / 2 });
+    expect(scales(render(<ScrollProgress />).container)).toEqual([1, 1, 0, 0]);
+    cleanup();
+    Object.defineProperty(document.documentElement, "scrollHeight", { configurable: true, value: 900 });
+    expect(scales(render(<ScrollProgress />).container)).toEqual([0, 0, 0, 0]);
   });
 });

@@ -37,7 +37,7 @@ export default function DirectionsPage() {
           {directions.map((d) => (
             <article key={d.id} className="direction-card">
               <Link
-                href={`/?world=${d.id}`}
+                href={d === directions[0] ? "/" : `/directions/${d.id}`}
                 className="direction-image"
                 aria-label={`Preview ${d.name} pada landing`}
               >
@@ -63,7 +63,7 @@ export default function DirectionsPage() {
                   <p>{d.motion} Ini arahan animasi untuk pengembangan environment 3D berikutnya.</p>
                 </details>
                 <div className="direction-actions">
-                  <Link href={`/?world=${d.id}`}>
+                  <Link href={d === directions[0] ? "/" : `/directions/${d.id}`}>
                     Preview landing <Arrow />
                   </Link>
                   <a href={d.original} download>

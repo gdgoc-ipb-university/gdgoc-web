@@ -1,6 +1,6 @@
 # GDGoC IPB — Hello, Campus!
 
-GDGoC IPB — Komunitas Mahasiswa Bogor. Community profile with a geometric Three.js campus environment, Next.js App Router, Lenis, and Motion for React.
+GDGoC IPB — Komunitas Mahasiswa Bogor. Community profile with a geometric Three.js campus environment, Next.js App Router, and Lenis.
 
 ## Run locally
 
@@ -35,11 +35,11 @@ The first authenticated visit opens a five-screen `/onboarding`: name, campus an
 
 ## Selected direction
 
-**Hello, Campus!** was selected after reviewing four generated directions. The original AHN illustration was corrected using the user's front and aerial photographs, then rendered in a cel-shaded style. All five original PNGs and optimized WebPs are in `public/environments/`. The current reference is `01-hello-campus-ahn-cel-v2.png`.
+**Hello, Campus!** was selected after reviewing four generated directions. The original AHN illustration was corrected using the user's front and aerial photographs, then rendered in a cel-shaded style. All five original PNGs and optimized WebPs are in `public/environments/`. The current reference is `01-hello-campus-ahn-cel-v2.png`. `01-hello-campus-3d.webp` in the same folder is not concept art: it is a still of the finished Three.js scene, shown when the scene cannot render.
 
 The landing uses actual 3D geometry, without projecting the concept image onto it. The model includes AHN's stepped massing, long white canopies, window bands, large red pyramidal roof, dormers, faceted entrance core, narrow vertical window and stylized circular emblems. It also contains voxel trees, palms, planters and flowers, a pond, paving, lights, Google-color seats, clouds, and an extruded Chrome Dino. It is an illustrated reconstruction from photographs, not a surveyed architectural model.
 
-The landing preloader releases after the renderer completes its first frame, including the foreground blur pass. It never displays a simulated loading percentage. A failed WebGL initialization releases to the loaded reference image; a 12-second watchdog also releases a stalled import/GPU to the static layout. The initial frame is eager even when an anchor puts the hero offscreen. Desktop mouse movement across the hero, including its CTA, gives a gently damped camera parallax inspired by Deliverologi. The camera eases home on pointer exit, leaves the HTML copy fixed, and stays centered on mobile, touch devices, and reduced motion. Softly blurred 3D plants frame the lower corners while the campus stays sharp. Five voxel birds glide above AHN with staggered wingbeats and gentle banking. Their bodies and wings use three instanced draw calls. The hero Dino and smaller community Dino blink naturally, with occasional double blinks. Both the hero and the smaller community scene release GPU resources on unmount and pause when hidden or offscreen. Motion follows the operating system's reduced-motion setting.
+The landing preloader releases after the renderer completes its first frame, including the foreground blur pass. It never displays a simulated loading percentage. A failed WebGL initialization releases to a still of the same scene (`node design/campus-fallback.mjs` captures it from `/environment?motion=off` in headless Chrome; rerun it after changing the scene); a 12-second watchdog also releases a stalled import/GPU to the static layout. The initial frame is eager even when an anchor puts the hero offscreen. Desktop mouse movement across the hero, including its CTA, gives a gently damped camera parallax inspired by Deliverologi. The camera eases home on pointer exit, leaves the HTML copy fixed, and stays centered on mobile, touch devices, and reduced motion. Softly blurred 3D plants frame the lower corners while the campus stays sharp. Five voxel birds glide above AHN with staggered wingbeats and gentle banking. Their bodies and wings use three instanced draw calls. The hero Dino and smaller community Dino blink naturally, with occasional double blinks. Both the hero and the smaller community scene release GPU resources on unmount and pause when hidden or offscreen. Motion follows the operating system's reduced-motion setting.
 
 The garden uses distinct round, columnar, and umbrella canopies, yellow/coral flowering trees, palms, broad tropical leaves, and a small Google-color direction post on the left. Fresher greens, turquoise water, and a more neutral warm key light keep the cel-shaded scene vibrant without changing the hero composition.
 
@@ -60,7 +60,8 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `src/lib/campus/hills.ts`: a stepped Gunung Salak silhouette on the left and two low foothill layers with valley fog.
 - `src/lib/campus/foreground.ts`: near garden geometry and an isolated, half-resolution blur pass.
 - `src/lib/campus/runtime.ts`: renderer, directional shadow pass, responsive camera, motion, visibility and cleanup.
-- `src/components/campus-environment.tsx`: progressive enhancement and accessible image fallback.
+- `src/components/landing.tsx`: the landing page, shared by `/` and the world previews under `/directions/[world]`.
+- `src/components/campus-environment.tsx`: progressive enhancement and accessible image fallback. The scene's code starts downloading while the page hydrates, because the preloader waits for it.
 - `src/components/scene-preloader.tsx`: first-frame loading gate with native modal focus handling and reduced-motion support.
 - `src/components/experience-provider.tsx`: system reduced motion and desktop Lenis scrolling.
 - `src/components/join-footer.tsx`: one continuous light section for the membership invitation, shared Bogor landscape, community identity, navigation, and contact.
@@ -75,7 +76,7 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `docs/VERIFICATION.md`: checks and evidence boundaries.
 - `docs/DASHBOARD.md`: dashboard roles, assignments, submissions, and member management.
 
-`?motion=off` is a deterministic still mode. `?webgl=off` exercises the image fallback. `?world=cloud-club`, `?world=dino-playground`, and `?world=after-hours` preview alternate artwork in the landing layout.
+`?motion=off` is a deterministic still mode. `?webgl=off` exercises the image fallback. `/directions/cloud-club`, `/directions/dino-playground`, and `/directions/after-hours` preview alternate artwork in the landing layout; the old `/?world=` links redirect to them. They are separate routes so that the landing reads no query string on the server and is prerendered.
 
 ## Typography and content
 
@@ -85,9 +86,9 @@ Copy introduces a community for students across Bogor, its learning areas, and t
 
 ## Search and sharing
 
-Only the landing and `/privasi` are indexable. Both set a canonical URL, so `?world=`, `?motion=`, and `?webgl=` previews count as the landing. The dashboard, onboarding, `/rai`, `/environment`, and the two design galleries are `noindex`. `/robots.txt` blocks only `/api/`, so crawlers can still read those `noindex` tags, and `/sitemap.xml` lists the two indexable pages. All absolute URLs come from `NEXT_PUBLIC_SITE_URL`, falling back to `https://www.gdgocipb.com`.
+Only the landing and `/privasi` are indexable. Both set a canonical URL, so `?motion=` and `?webgl=` previews count as the landing. The dashboard, onboarding, `/rai`, `/environment`, the two design galleries, and the world previews are `noindex`. `/robots.txt` blocks only `/api/`, so crawlers can still read those `noindex` tags, and `/sitemap.xml` lists the two indexable pages. All absolute URLs come from `NEXT_PUBLIC_SITE_URL`, falling back to `https://www.gdgocipb.com`.
 
-Every page shares one Open Graph and Twitter card image, `public/brand/og-image.jpg` (1200 × 630). Its background is a still of the landing's Three.js campus, not the concept illustration: `node design/og-image.mjs` opens `/environment?motion=off` on a running local site in headless Chrome, captures the rendered scene, and adds the lockup and the hero headline. Rerun it after changing the scene, the lockup, or the headline. The landing also carries `Organization` and `WebSite` JSON-LD with the chapter's names, logo, and official GDG and Instagram pages. The landing's title leads with "GDGoC IPB University" and keeps the Komunitas Mahasiswa Bogor positioning; its description opens with the full "Google Developer Group on Campus IPB University". The JSON-LD also lists "GDG on Campus IPB University", the name on the official chapter page, and the earlier "GDSC IPB" recorded there. A page that sets its own `openGraph` must build it with `canonical()` from `src/lib/site.ts`, because Next.js replaces nested metadata instead of merging it.
+Every page shares one Open Graph and Twitter card image, `public/brand/og-image.jpg` (1200 × 630). Its background is a still of the landing's Three.js campus, not the concept illustration: `node design/og-image.mjs` opens `/environment?motion=off` on a running local site in headless Chrome (through `design/campus-still.mjs`), captures the rendered scene, and adds the lockup and the hero headline. Rerun it after changing the scene, the lockup, or the headline. The landing also carries `Organization` and `WebSite` JSON-LD with the chapter's names, logo, and official GDG and Instagram pages. The landing's title leads with "GDGoC IPB University" and keeps the Komunitas Mahasiswa Bogor positioning; its description opens with the full "Google Developer Group on Campus IPB University". The JSON-LD also lists "GDG on Campus IPB University", the name on the official chapter page, and the earlier "GDSC IPB" recorded there. A page that sets its own `openGraph` must build it with `canonical()` from `src/lib/site.ts`, because Next.js replaces nested metadata instead of merging it.
 
 ## Deployment
 

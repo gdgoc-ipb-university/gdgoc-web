@@ -62,9 +62,10 @@ function useNavViewer() {
   return viewer;
 }
 
-export function Header({ review = false }: { review?: boolean }) {
+/** `landing` marks a page laid out like the landing (the world previews), so section links and scrollspy stay on it. */
+export function Header({ review = false, landing = false }: { review?: boolean; landing?: boolean }) {
   const pathname = usePathname();
-  const home = pathname === "/";
+  const home = landing || pathname === "/";
   const inDashboard = pathname.startsWith("/dashboard");
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);

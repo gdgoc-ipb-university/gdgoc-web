@@ -174,6 +174,33 @@ describe("assignment submission", () => {
     expect(result.missing.map((row) => [row.name, row.email, row.campus])).toEqual([["Nama other", "other@example.com", "IPB University"]]);
   });
 
+  it("scores through a rubric: points per criterion, total as the score, and the rubric's sum as the maximum", async () => {
+    const { t, owner, member } = await world();
+    const rubric = [{ name: " Kejelasan masalah ", max: "40" }, { name: "Eksekusi", max: "60" }];
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), rubric: [{ name: "", max: "10" }] }, publish: true })).rejects.toThrow("Lengkapi isian");
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), rubric: [{ name: "A", max: "0" }] }, publish: true })).rejects.toThrow("Lengkapi isian");
+    const id = await owner.mutation(api.assignments.create, { values: { ...values(), maxScore: "7", rubric }, publish: true });
+    const detail = await member.query(api.assignments.get, { id });
+    expect(detail?.assignment).toMatchObject({ maxScore: 100, rubric: [{ name: "Kejelasan masalah", max: 40 }, { name: "Eksekusi", max: 60 }] });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Brief", fileIds: [] });
+    const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    await expect(owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 80, feedback: "" })).rejects.toThrow("memakai rubrik");
+    await expect(owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, points: [30], feedback: "" })).rejects.toThrow("2 kriteria");
+    await expect(owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, points: [30, 61], feedback: "" })).rejects.toThrow("Eksekusi");
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, points: [30, 55], feedback: "Bagus." });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 85, points: [30, 55], feedback: "Bagus." });
+    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page[0]).toMatchObject({ score: 85, points: [30, 55] });
+    // Feedback alone clears the points along with the score.
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, feedback: "Lihat catatan." });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: null, points: null });
+    const history = await t.run((ctx) => ctx.db.query("submissionReviews").withIndex("by_submission", (q) => q.eq("submissionId", row._id)).collect());
+    expect(history.map((entry) => entry.points ?? null)).toEqual([[30, 55], null]);
+    // Removing the rubric falls back to a plain maximum.
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: { ...values(), maxScore: "10", rubric: [] } });
+    expect((await member.query(api.assignments.get, { id }))?.assignment).toMatchObject({ maxScore: 10 });
+    expect((await member.query(api.assignments.get, { id }))?.assignment.rubric).toBeUndefined();
+  });
+
   // convex-test does not record upload content types; see src/lib/assignment.test.ts for type checks.
   it("validates uploads on the server and deletes rejected files", async () => {
     const { t, owner, member, other } = await world();

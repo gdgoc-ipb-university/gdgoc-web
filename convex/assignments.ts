@@ -5,10 +5,13 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent, isOwner } from "./auth";
 import { requireMember, requireStaff } from "./access";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
-import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
 
-// `slug` and `maxScore` are optional so a tab loaded before they existed can still save; they are then derived (title) or defaulted (100).
-const assignmentInput = v.object({ title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()) });
+// `slug`, `maxScore` and `rubric` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100) or empty.
+const assignmentInput = v.object({
+  title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()),
+  rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))),
+});
 
 function notFound(): never { throw new ConvexError({ code: "NOT_FOUND", message: "Tugas tidak ditemukan." }); }
 function closed(): never { throw new ConvexError({ code: "CLOSED", message: "Pengumpulan tugas ini sudah ditutup." }); }
@@ -16,12 +19,13 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string }) {
-  const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "" };
+function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[] }) {
+  const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "", rubric: values.rubric ?? [] };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
   const clean = normalizeAssignment(input);
-  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore) };
+  const rubric = clean.rubric!.length ? parseRubric(clean.rubric!) : undefined;
+  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric };
 }
 
 /** Display name for an account: the onboarding name, else the Google name. */
@@ -36,7 +40,7 @@ async function nameOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
 /** The review fields a member or reviewer sees on a submission. */
 async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignmentSubmissions">) {
   return {
-    score: submission.score ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
+    score: submission.score ?? null, points: submission.points ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
     reviewerName: submission.reviewedBy ? (await nameOf(ctx, submission.reviewedBy)).name : null,
     stale: isStaleReview(submission),
   };
@@ -145,7 +149,7 @@ export const update = mutation({
     const values = { ...clean, slug };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore) return doc.slug;
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null)) return doc.slug;
       conflict();
     }
     await ctx.db.patch(doc._id, { ...values, revision: doc.revision + 1, updatedAt: Date.now() });
@@ -230,7 +234,8 @@ export const missing = query({
 
 /** Score and/or feedback for one submission. The latest review is kept on the submission; every review is kept in submissionReviews. */
 export const review = mutation({
-  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), feedback: v.string() },
+  // With a rubric, `points` (one per criterion, in order) is the way to score and `score` becomes their sum; without one, `score` is given directly.
+  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string() },
   handler: async (ctx, args) => {
     const { user } = await requireStaff(ctx);
     const submission = await ctx.db.get(args.submissionId);
@@ -242,11 +247,26 @@ export const review = mutation({
     const feedback = args.feedback.trim();
     const maxScore = assignmentMaxScore(assignment);
     if (feedback.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
-    if (args.score !== undefined && (!Number.isInteger(args.score) || args.score < 0 || args.score > maxScore)) throw new ConvexError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`);
-    if (args.score === undefined && !feedback) throw new ConvexError({ code: "VALIDATION", message: "Isi nilai, umpan balik, atau keduanya." });
+    let score = args.score;
+    let points: number[] | undefined;
+    if (assignment.rubric?.length) {
+      if (args.points !== undefined) {
+        if (args.points.length !== assignment.rubric.length) throw new ConvexError({ code: "CONFLICT", message: `Rubrik tugas ini punya ${assignment.rubric.length} kriteria. Muat ulang halaman untuk memakai rubrik terbaru.` });
+        args.points.forEach((value, index) => {
+          const criterion = assignment.rubric![index];
+          if (!Number.isInteger(value) || value < 0 || value > criterion.max) throw new ConvexError(`Poin "${criterion.name}" harus bilangan bulat 0 sampai ${criterion.max}.`);
+        });
+        points = args.points;
+        score = points.reduce((sum, value) => sum + value, 0);
+      } else if (args.score !== undefined) {
+        throw new ConvexError({ code: "VALIDATION", message: "Tugas ini memakai rubrik. Isi poin tiap kriteria, bukan satu nilai total." });
+      }
+    }
+    if (score !== undefined && (!Number.isInteger(score) || score < 0 || score > maxScore)) throw new ConvexError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`);
+    if (score === undefined && !feedback) throw new ConvexError({ code: "VALIDATION", message: "Isi nilai, umpan balik, atau keduanya." });
     const now = Date.now();
-    await ctx.db.patch(submission._id, { score: args.score, feedback: feedback || undefined, reviewedAt: now, reviewedBy: user._id });
-    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score: args.score, feedback, createdAt: now });
+    await ctx.db.patch(submission._id, { score, points, feedback: feedback || undefined, reviewedAt: now, reviewedBy: user._id });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score, points, feedback, createdAt: now });
   },
 });
 

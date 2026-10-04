@@ -43,7 +43,8 @@ export default defineSchema({
     title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.number(), status: assignmentStatus,
     revision: v.number(), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(), publishedAt: v.optional(v.number()),
     // Scores run from 0 to this; older assignments without it are graded out of 100 (assignmentMaxScore).
-    maxScore: v.optional(v.number()),
+    // With a rubric, maxScore is the sum of the criteria maxes and reviews carry one point value per criterion.
+    maxScore: v.optional(v.number()), rubric: v.optional(v.array(v.object({ name: v.string(), max: v.number() }))),
   })
     .index("by_status_due", ["status", "dueAt"])
     .index("by_updated", ["updatedAt"]),
@@ -57,6 +58,7 @@ export default defineSchema({
     revision: v.number(), submittedAt: v.number(),
     // The latest review; `submittedAt > reviewedAt` means the member resubmitted since (isStaleReview).
     score: v.optional(v.number()), feedback: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
+    points: v.optional(v.array(v.number())), // one per rubric criterion, in rubric order
   })
     .index("by_assignment_owner", ["assignmentId", "ownerId"])
     .index("by_assignment_submitted", ["assignmentId", "submittedAt"])
@@ -64,7 +66,7 @@ export default defineSchema({
   // One row per review action, so a score's history survives re-reviews (like appreciationReviews).
   submissionReviews: defineTable({
     submissionId: v.id("assignmentSubmissions"), assignmentId: v.id("assignments"), reviewerId: v.string(),
-    score: v.optional(v.number()), feedback: v.string(), createdAt: v.number(),
+    score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string(), createdAt: v.number(),
   }).index("by_submission", ["submissionId", "createdAt"]),
   // Uploads start pending and are attached by a submission; unclaimed ones are removed by a cron.
   submissionFiles: defineTable({

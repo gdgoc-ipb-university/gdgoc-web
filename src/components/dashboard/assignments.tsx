@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { assignmentLimits, assignmentMaxScore, assignmentPath, defaultMaxScore, maxSlugLength, normalizeAssignment, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues } from "@/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, assignmentPath, defaultMaxScore, maxSlugLength, normalizeAssignment, rubricTotal, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues, type RubricInput } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
@@ -73,9 +73,15 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   const descriptionField = useRef<HTMLTextAreaElement>(null);
   const dueField = useRef<HTMLInputElement>(null);
   const maxScoreField = useRef<HTMLInputElement>(null);
-  function update(field: keyof AssignmentValues, value: string) {
+  function update(field: Exclude<keyof AssignmentValues, "rubric">, value: string) {
     setValues((current) => ({ ...current, [field]: value, ...(field === "title" && !slugEdited ? { slug: slugify(value) } : {}) }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+  }
+  const rubric = values.rubric ?? [];
+  const rubricSum = rubric.length ? rubricTotal(rubric) : null;
+  function setRubric(next: RubricInput[]) {
+    setValues((current) => ({ ...current, rubric: next }));
+    setErrors((current) => ({ ...current, rubric: undefined, maxScore: undefined }));
   }
   async function save(publish: boolean) {
     const found = validateAssignment(values);
@@ -101,7 +107,18 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
       </div>
       <div className="app-field"><label htmlFor="description">Instruksi <span className="field-required" aria-hidden="true">*</span></label><textarea data-lenis-prevent id="description" ref={descriptionField} required rows={10} maxLength={assignmentLimits.description} value={values.description} onChange={(event) => update("description", event.target.value)} aria-invalid={Boolean(errors.description)} aria-describedby={described("description", "description-hint")} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." /><p className="field-hint" id="description-hint">Ditampilkan apa adanya, termasuk baris baru. {values.description.length}/{assignmentLimits.description} karakter.</p>{errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
       <div className="app-field dash-due-field"><label htmlFor="dueAt">Tenggat (WIB) <span className="field-required" aria-hidden="true">*</span></label><input id="dueAt" ref={dueField} type="datetime-local" required value={values.dueAt} onChange={(event) => update("dueAt", event.target.value)} aria-invalid={Boolean(errors.dueAt)} aria-describedby={described("dueAt", "due-hint")} /><p className="field-hint" id="due-hint">Kiriman setelah tenggat tetap diterima dan ditandai terlambat, sampai pengumpulan ditutup.</p>{errors.dueAt && <p className="field-error" id="dueAt-error">{errors.dueAt}</p>}</div>
-      <div className="app-field dash-score-field"><label htmlFor="maxScore">Nilai maksimal</label><input id="maxScore" ref={maxScoreField} type="number" inputMode="numeric" min={1} max={assignmentLimits.maxScore} step={1} value={values.maxScore} onChange={(event) => update("maxScore", event.target.value)} aria-invalid={Boolean(errors.maxScore)} aria-describedby={described("maxScore", "max-score-hint")} /><p className="field-hint" id="max-score-hint">Nilai kiriman diberikan dari 0 sampai angka ini. Biarkan {defaultMaxScore} jika tidak yakin.</p>{errors.maxScore && <p className="field-error" id="maxScore-error">{errors.maxScore}</p>}</div>
+      <div className="app-field dash-score-field"><label htmlFor="maxScore">Nilai maksimal</label><input id="maxScore" ref={maxScoreField} type="number" inputMode="numeric" min={1} max={assignmentLimits.maxScore} step={1} value={rubric.length ? (rubricSum === null ? "" : String(rubricSum)) : values.maxScore} readOnly={rubric.length > 0} onChange={(event) => update("maxScore", event.target.value)} aria-invalid={Boolean(errors.maxScore)} aria-describedby={described("maxScore", "max-score-hint")} /><p className="field-hint" id="max-score-hint">{rubric.length ? "Mengikuti jumlah poin rubrik di bawah." : `Nilai kiriman diberikan dari 0 sampai angka ini. Biarkan ${defaultMaxScore} jika tidak yakin.`}</p>{errors.maxScore && <p className="field-error" id="maxScore-error">{errors.maxScore}</p>}</div>
+      <fieldset className="dash-rubric-editor" aria-describedby={described("rubric", "rubric-hint")}>
+        <legend>Rubrik <span className="app-small">(opsional)</span></legend>
+        <p className="field-hint" id="rubric-hint">Pecah penilaian menjadi kriteria dengan poin maksimal masing-masing. Peninjau mengisi poin per kriteria dan totalnya menjadi nilai. Member melihat kriterianya di halaman tugas.</p>
+        {rubric.length > 0 && <ol className="dash-rubric-rows">{rubric.map((criterion, index) => <li key={index} className="dash-rubric-row">
+          <div className="app-field"><label htmlFor={`rubric-${index}-name`}>Kriteria {index + 1}</label><input id={`rubric-${index}-name`} maxLength={assignmentLimits.rubricName} value={criterion.name} onChange={(event) => setRubric(rubric.map((item, i) => i === index ? { ...item, name: event.target.value } : item))} placeholder={index === 0 ? "Contoh: Kejelasan masalah" : ""} /></div>
+          <div className="app-field"><label htmlFor={`rubric-${index}-max`}>Poin maks</label><input id={`rubric-${index}-max`} type="number" inputMode="numeric" min={1} max={assignmentLimits.maxScore} step={1} value={criterion.max} onChange={(event) => setRubric(rubric.map((item, i) => i === index ? { ...item, max: event.target.value } : item))} /></div>
+          <button type="button" className="text-button text-danger dash-rubric-remove" onClick={() => setRubric(rubric.filter((_, i) => i !== index))} aria-label={`Hapus kriteria ${index + 1}`}><PixelIcon name="close" size={16} />Hapus</button>
+        </li>)}</ol>}
+        <div className="app-inline-actions"><button type="button" className="text-button" disabled={rubric.length >= assignmentLimits.rubricCriteria} onClick={() => setRubric([...rubric, { name: "", max: "" }])}>＋ Tambah kriteria</button>{rubric.length > 0 && <span className="app-small">{rubric.length} kriteria{rubricSum !== null ? ` · total ${rubricSum} poin` : ""}</span>}</div>
+        {errors.rubric && <p className="field-error" id="rubric-error">{errors.rubric}</p>}
+      </fieldset>
     </div>
     {error && <p className="app-notice" role="alert">{error}</p>}
     <div className="dash-form-actions"><button type="button" className="text-button" onClick={onCancel}>Batal</button>
@@ -115,7 +132,7 @@ export function NewAssignmentPage() {
   const viewer = useDashboardViewer();
   const router = useRouter();
   const create = useMutation(api.assignments.create);
-  const [initial] = useState(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()), maxScore: String(defaultMaxScore) }));
+  const [initial] = useState<AssignmentValues>(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()), maxScore: String(defaultMaxScore), rubric: [] }));
   if (!isStaff(viewer)) return <StaffOnly />;
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />Kelola tugas</Link>
@@ -143,7 +160,10 @@ export function EditAssignmentPage({ id }: { id: string }) {
 function EditAssignment({ assignment }: { assignment: Doc<"assignments"> }) {
   const router = useRouter();
   const update = useMutation(api.assignments.update);
-  const [initial] = useState(() => ({ title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt), maxScore: String(assignmentMaxScore(assignment)) }));
+  const [initial] = useState<AssignmentValues>(() => ({
+    title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt),
+    maxScore: String(assignmentMaxScore(assignment)), rubric: (assignment.rubric ?? []).map((criterion) => ({ name: criterion.name, max: String(criterion.max) })),
+  }));
   const back = assignmentPath(assignment);
   return <>
     <Link className="text-button app-back" href={back}><PixelIcon name="arrow-left" size={24} />Kembali ke tugas</Link>

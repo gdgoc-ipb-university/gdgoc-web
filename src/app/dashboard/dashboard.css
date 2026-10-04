@@ -408,3 +408,19 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-missing-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
 .dash-missing-list li { display: grid; gap: 2px; padding: 12px 14px; background: white; border: 1px solid #dfe5dc; }
 .dash-missing-list strong { font-size: 13px; }
+
+/* Rubric */
+.dash-rubric { margin-top: 18px; padding: 16px 18px; background: #f6f7f1; border-left: 3px solid #b9c7b0; max-width: 860px; }
+.dash-rubric-list { list-style: decimal inside; padding: 0; margin: 10px 0 0; display: grid; gap: 6px; font-size: 13px; }
+.dash-rubric-list li { display: flex; justify-content: space-between; gap: 16px; }
+.dash-rubric-list li b { white-space: nowrap; font-weight: 600; }
+.dash-rubric-result { margin: 6px 0 12px; max-width: 520px; }
+.dash-rubric-editor { border: 1px dashed var(--line); padding: 16px 18px; margin: 0; display: grid; gap: 12px; }
+.dash-rubric-editor legend { font-weight: 600; padding: 0 6px; }
+.dash-rubric-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+.dash-rubric-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 10px; align-items: end; }
+.dash-rubric-remove { padding-bottom: 10px; }
+.dash-rubric-points { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 14px; margin-bottom: 4px; }
+.dash-rubric-total { grid-column: 1 / -1; margin: 0; }
+.dash-review-fields[data-rubric="true"] { grid-template-columns: 1fr; }
+@media (max-width: 640px) { .dash-rubric-row { grid-template-columns: 1fr 100px; } .dash-rubric-remove { grid-column: 1 / -1; justify-self: start; padding-bottom: 0; } }

@@ -1,4 +1,4 @@
-export const assignmentLimits = { title: 160, description: 6000, answer: 5000, fileName: 120, feedback: 2000, maxScore: 1000 } as const;
+export const assignmentLimits = { title: 160, description: 6000, answer: 5000, fileName: 120, feedback: 2000, maxScore: 1000, rubricCriteria: 8, rubricName: 80 } as const;
 /** Assignments created before scores existed have no `maxScore`; they are graded out of this. */
 export const defaultMaxScore = 100;
 export function assignmentMaxScore(assignment: { maxScore?: number }) { return assignment.maxScore ?? defaultMaxScore; }
@@ -23,9 +23,25 @@ export const acceptedFiles: Record<string, string[]> = {
 };
 export const acceptAttribute = Object.keys(acceptedFiles).map((extension) => `.${extension}`).join(",");
 
-// `maxScore` is the form's text; it becomes a number on the server.
-export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string };
+/** A rubric criterion as stored: points for it run from 0 to `max`. */
+export type RubricCriterion = { name: string; max: number };
+/** A criterion as typed in the form. */
+export type RubricInput = { name: string; max: string };
+// `maxScore` and the rubric maxes are the form's text; they become numbers on the server. With a rubric, maxScore is the sum of its maxes.
+export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[] };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
+
+const wholeNumber = (value: string) => /^\d+$/.test(value);
+
+/** The sum of the criteria maxes, or null while any of them is not a whole number of at least 1. */
+export function rubricTotal(rubric: { max: string }[]) {
+  if (rubric.some((criterion) => !wholeNumber(criterion.max) || Number(criterion.max) < 1)) return null;
+  return rubric.reduce((sum, criterion) => sum + Number(criterion.max), 0);
+}
+
+export function parseRubric(rubric: RubricInput[]): RubricCriterion[] {
+  return rubric.map((criterion) => ({ name: criterion.name, max: Number(criterion.max) }));
+}
 
 export function cleanFileName(name: string) {
   const clean = name.replace(/[\\/\u0000-\u001f\u007f]/g, "").replace(/\s+/g, " ").trim();
@@ -78,7 +94,13 @@ export function assignmentPath(assignment: { _id: string; slug?: string }) {
 
 export function normalizeAssignment(values: AssignmentValues): AssignmentValues {
   const title = values.title.trim().replace(/\s+/g, " ");
-  return { title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(), maxScore: (values.maxScore ?? "").trim() || String(defaultMaxScore) };
+  // Blank rows are dropped so an abandoned "Tambah kriteria" does not block saving.
+  const rubric = (values.rubric ?? []).map((criterion) => ({ name: criterion.name.trim().replace(/\s+/g, " "), max: criterion.max.trim() })).filter((criterion) => criterion.name || criterion.max);
+  const total = rubric.length ? rubricTotal(rubric) : null;
+  return {
+    title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(),
+    maxScore: total !== null ? String(total) : (values.maxScore ?? "").trim() || String(defaultMaxScore), rubric,
+  };
 }
 
 export function validateAssignment(values: AssignmentValues): AssignmentErrors {
@@ -89,7 +111,14 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   if (!v.description) errors.description = "Jelaskan apa yang perlu dikerjakan.";
   else if (v.description.length > assignmentLimits.description) errors.description = `Maksimal ${assignmentLimits.description} karakter.`;
   if (Number.isNaN(fromJakartaInput(v.dueAt))) errors.dueAt = "Pilih tanggal dan jam tenggat.";
-  if (!/^\d+$/.test(v.maxScore) || Number(v.maxScore) < 1 || Number(v.maxScore) > assignmentLimits.maxScore) errors.maxScore = `Isi nilai maksimal berupa bilangan bulat 1 sampai ${assignmentLimits.maxScore}.`;
+  if (!wholeNumber(v.maxScore) || Number(v.maxScore) < 1 || Number(v.maxScore) > assignmentLimits.maxScore) errors.maxScore = `Isi nilai maksimal berupa bilangan bulat 1 sampai ${assignmentLimits.maxScore}.`;
+  const rubric = v.rubric ?? [];
+  if (rubric.length > assignmentLimits.rubricCriteria) errors.rubric = `Maksimal ${assignmentLimits.rubricCriteria} kriteria.`;
+  else if (rubric.some((criterion) => !criterion.name)) errors.rubric = "Beri nama setiap kriteria.";
+  else if (rubric.some((criterion) => criterion.name.length > assignmentLimits.rubricName)) errors.rubric = `Nama kriteria maksimal ${assignmentLimits.rubricName} karakter.`;
+  else if (rubric.length && rubricTotal(rubric) === null) errors.rubric = "Poin maksimal tiap kriteria harus bilangan bulat, minimal 1.";
+  else if (rubric.length && rubricTotal(rubric)! > assignmentLimits.maxScore) errors.rubric = `Jumlah poin seluruh kriteria maksimal ${assignmentLimits.maxScore}.`;
+  if (errors.rubric && rubric.length) delete errors.maxScore; // the total is derived, so the rubric message is the one to fix
   return errors;
 }
 

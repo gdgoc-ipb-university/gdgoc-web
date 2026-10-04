@@ -36,6 +36,19 @@ describe("assignment rules", () => {
     expect(validateAssignment({ title: "Tugas", slug: "", description: "Kerjakan.", dueAt: "2026-10-01T23:59", maxScore: "100" })).toEqual({});
   });
 
+  it("derives the maximum from a rubric and rejects incomplete criteria", () => {
+    const base = { title: "Tugas", slug: "", description: "Kerjakan.", dueAt: "2026-10-01T23:59", maxScore: "7" };
+    const rubric = [{ name: " Ide ", max: "40" }, { name: "Eksekusi", max: "60" }, { name: "", max: "" }];
+    expect(normalizeAssignment({ ...base, rubric })).toMatchObject({ maxScore: "100", rubric: [{ name: "Ide", max: "40" }, { name: "Eksekusi", max: "60" }] });
+    expect(validateAssignment({ ...base, rubric })).toEqual({});
+    expect(validateAssignment({ ...base, rubric: [{ name: "", max: "10" }] }).rubric).toContain("nama");
+    expect(validateAssignment({ ...base, rubric: [{ name: "Ide", max: "0" }] }).rubric).toContain("minimal 1");
+    expect(validateAssignment({ ...base, rubric: [{ name: "Ide", max: "2.5" }] }).rubric).toContain("bilangan bulat");
+    expect(validateAssignment({ ...base, rubric: [{ name: "Ide", max: "600" }, { name: "Eksekusi", max: "500" }] }).rubric).toContain("maksimal 1000");
+    expect(validateAssignment({ ...base, rubric: Array.from({ length: 9 }, (_, i) => ({ name: `K${i}`, max: "1" })) }).rubric).toContain("Maksimal 8");
+    expect(validateAssignment({ ...base, rubric: [{ name: "Ide", max: "abc" }] })).not.toHaveProperty("maxScore"); // the derived total is not blamed separately
+  });
+
   it("derives readable slugs from titles and cleans custom ones", () => {
     expect(slugify("Proyek Akhir: Web & AI")).toBe("proyek-akhir-web-dan-ai");
     expect(slugify("  Café — Désain UI/UX 2026!  ")).toBe("cafe-desain-ui-ux-2026");

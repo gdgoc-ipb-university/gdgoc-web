@@ -42,6 +42,8 @@ export default defineSchema({
   assignments: defineTable({
     title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.number(), status: assignmentStatus,
     revision: v.number(), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(), publishedAt: v.optional(v.number()),
+    // Scores run from 0 to this; older assignments without it are graded out of 100 (assignmentMaxScore).
+    maxScore: v.optional(v.number()),
   })
     .index("by_status_due", ["status", "dueAt"])
     .index("by_updated", ["updatedAt"]),
@@ -53,10 +55,17 @@ export default defineSchema({
     // `answer` is plain text (older submissions, previews); `answerDoc` is the sanitized rich-text JSON.
     assignmentId: v.id("assignments"), ownerId: v.string(), answer: v.string(), answerDoc: v.optional(v.string()),
     revision: v.number(), submittedAt: v.number(),
+    // The latest review; `submittedAt > reviewedAt` means the member resubmitted since (isStaleReview).
+    score: v.optional(v.number()), feedback: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
   })
     .index("by_assignment_owner", ["assignmentId", "ownerId"])
     .index("by_assignment_submitted", ["assignmentId", "submittedAt"])
     .index("by_owner", ["ownerId"]),
+  // One row per review action, so a score's history survives re-reviews (like appreciationReviews).
+  submissionReviews: defineTable({
+    submissionId: v.id("assignmentSubmissions"), assignmentId: v.id("assignments"), reviewerId: v.string(),
+    score: v.optional(v.number()), feedback: v.string(), createdAt: v.number(),
+  }).index("by_submission", ["submissionId", "createdAt"]),
   // Uploads start pending and are attached by a submission; unclaimed ones are removed by a cron.
   submissionFiles: defineTable({
     assignmentId: v.id("assignments"), ownerId: v.string(), storageId: v.id("_storage"),

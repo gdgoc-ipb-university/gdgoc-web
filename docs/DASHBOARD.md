@@ -41,7 +41,7 @@ All rules are enforced in Convex (`convex/access.ts`, `convex/dashboard.ts`, `co
 
 ## Assignments
 
-An assignment has a title, a slug, plain-text instructions (line breaks preserved), a deadline, and a status:
+An assignment has a title, a slug, plain-text instructions (line breaks preserved), a deadline, a maximum score (default 100), and a status:
 
 - `draft`: visible only to owners and admins. It can be deleted while it has no submissions.
 - `published`: visible to active members, who can submit and resubmit.
@@ -86,6 +86,14 @@ Images are optimised in the browser first (`src/lib/image-optimize.ts`). PNG, JP
 The hourly `remove unclaimed assignment uploads` cron (`convex/crons.ts`) deletes pending files older than 24 hours, plus storage objects created 24–72 hours ago that no `submissionFiles` row references (uploads that were never registered). **Assignment submissions are currently the only feature that stores files.** A new storage feature must be added to that check, or its files will be removed.
 
 File URLs come from `ctx.storage.getUrl`. They are unguessable, but not authenticated, and are returned only to the submitting member and to admins.
+
+### Scores and feedback
+
+Staff review each submission from the assignment page: a whole-number score from 0 to the assignment's `maxScore` (`assignmentMaxScore`, 100 for assignments created before the field existed), feedback of up to 2,000 characters, or both. `assignments.review` stores the latest review on the submission (`score`, `feedback`, `reviewedAt`, `reviewedBy`) and appends a row to `submissionReviews`, so re-reviews keep their history. Saving feedback without a score clears a previous score; the form prefills the current values so that is a deliberate act.
+
+The review carries the submission `revision` the reviewer saw. If the member resubmitted in between, the server refuses with "Member memperbarui kirimannya…" and the reviewer reloads. A resubmission after a review keeps the score but is **stale** (`isStaleReview`: `submittedAt > reviewedAt`): staff see "Diperbarui setelah dinilai" and a prompt to look again, the member sees that the score applies to the earlier version, and `reviewedCount` on the staff list counts only current reviews.
+
+Members see a result card above their form (or above the closed notice): the score out of the maximum, the feedback, when and by whom (the reviewer's display name, never their email), plus "Dinilai x/y" badges on the assignment list. Only the owner of a submission and staff can read a review.
 
 ## Papan skor (Bogor Run leaderboard)
 
@@ -165,9 +173,10 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 ## Data model
 
 - `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`/`bod`), and `division`, a `by_completed` index, and a `search_name` full-text index on `fullName`.
-- `assignments`: optional `slug`, plus `by_status_due` and `by_updated` indexes.
+- `assignments`: optional `slug` and `maxScore`, plus `by_status_due` and `by_updated` indexes.
 - `assignmentSlugs`: every slug an assignment has used (`by_slug`, `by_assignment`).
-- `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`).
+- `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`), with the latest review in optional `score`, `feedback`, `reviewedAt`, `reviewedBy`.
+- `submissionReviews`: one row per review action (`by_submission`).
 - `submissionFiles`: pending or attached uploads (`by_storage`, `by_submission`, `by_owner_assignment`, `by_assignment`).
 - `gameRuns`: one row per accepted Bogor Run run, with seed, nonce, times, end tick, score, and week, but not its inputs (`by_nonce`, `by_owner`, `by_submitted`). Rows are deleted 30 days after they were saved.
 - `gameBests`: each player's best per period, `"all"` or a week key, with the public short name and a `hidden` flag, set while staff hide the player or the account is deactivated (`by_owner_period`, `by_period_hidden_score`).
@@ -180,7 +189,7 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 - `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, and BoD tagging with an optional division. `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
-- `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, and upload cleanup.
+- `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, and the review history.
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, and slugify. convex-test does not record upload content types, so type mismatches are tested here.
 - `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, dropzone drops and free slots, WebP compression before upload and oversized images, upload progress and cancellation, pending and attached file removal, saved rich answers, and the late warning.
 - `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, and link validation.
@@ -194,4 +203,4 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 ## Not included
 
-Grading, feedback, revision requests, and group targeting are not built. The admin view lists who submitted, but not which active members have yet to submit.
+Rubrics (per-criterion scores), revision requests that reopen one member's submission, group targeting, and exports are not built. The admin view lists who submitted, but not which active members have yet to submit.

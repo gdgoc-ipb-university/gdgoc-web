@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { assignmentStatusLabels, fileSizeLabel } from "@/lib/assignment";
+import { assignmentStatusLabels, fileSizeLabel, scoreLabel } from "@/lib/assignment";
 import { dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
@@ -40,6 +40,13 @@ export function AssignmentStatusBadge({ status }: { status: keyof typeof assignm
 export function SubmissionBadge({ submittedAt, late }: { submittedAt: number | null; late: boolean }) {
   if (!submittedAt) return <span className="app-status dash-status" data-status="missing">Belum dikumpulkan</span>;
   return <span className="app-status dash-status" data-status={late ? "late" : "done"}>{late ? "Terkumpul · terlambat" : "Terkumpul"}</span>;
+}
+
+/** The review state of a submission: nothing until reviewed; the score, or "ada umpan balik"; or that it was edited after review. */
+export function ScoreBadge({ score, maxScore, reviewedAt, stale }: { score: number | null; maxScore: number; reviewedAt: number | null; stale: boolean }) {
+  if (reviewedAt === null) return null;
+  if (stale) return <span className="app-status dash-status" data-status="stale">Diperbarui setelah dinilai</span>;
+  return <span className="app-status dash-status" data-status="scored">{score === null ? "Ada umpan balik" : `Dinilai ${scoreLabel(score, maxScore)}`}</span>;
 }
 
 export function FileLink({ file }: { file: { name: string; size: number; url: string | null } }) {

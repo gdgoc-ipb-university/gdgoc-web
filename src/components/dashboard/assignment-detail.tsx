@@ -7,12 +7,12 @@ import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { assignmentPath } from "@/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, assignmentPath, scoreLabel } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { MissingAssignment } from "./assignments";
-import { AssignmentStatusBadge, CopyLinkButton, DueLabel, FileLink, SubmissionBadge, useNow } from "./shared";
+import { AssignmentStatusBadge, CopyLinkButton, DueLabel, FileLink, ScoreBadge, SubmissionBadge, useNow } from "./shared";
 import { RichTextView } from "../rich-text-view";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
 import { PixelIcon } from "../pixel-icons";
@@ -51,7 +51,7 @@ export function AssignmentDetail({ id }: { id: string }) {
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canManage ? "Kelola tugas" : "Semua tugas"}</Link>
     <article className="dash-assignment" aria-labelledby="assignment-title">
-      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canManage && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}</div>
+      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canManage && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canManage && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
@@ -75,13 +75,28 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
     removeFile: (fileId) => removeFile({ fileId }),
     submit: (args) => submit({ assignmentId: assignment._id, ...args }),
   };
+  const result = submission?.reviewedAt ? <ReviewResult submission={submission} maxScore={assignmentMaxScore(assignment)} /> : null;
   if (assignment.status === "closed") {
-    return <section className="app-form-section dash-closed" aria-labelledby="closed-title"><h2 id="closed-title">Pengumpulan sudah ditutup.</h2>
+    return <>{result}<section className="app-form-section dash-closed" aria-labelledby="closed-title"><h2 id="closed-title">Pengumpulan sudah ditutup.</h2>
       {submission ? <><p>Kamu mengirim pada {dateLabel(submission.submittedAt)}{submission.late ? " (terlambat)" : ""}.</p>{submission.answer && <RichTextView className="dash-answer" json={submission.answerDoc} text={submission.answer} />}<ul className="dash-file-list">{files.filter((file) => file.attached).map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul></>
         : <p>Kamu belum mengirim tugas ini sebelum pengumpulan ditutup.</p>}
-    </section>;
+    </section></>;
   }
-  return <SubmissionForm key={assignment._id} submission={submission} files={files} dueAt={assignment.dueAt} now={now} actions={actions} />;
+  return <>{result}<SubmissionForm key={assignment._id} submission={submission} files={files} dueAt={assignment.dueAt} now={now} actions={actions} /></>;
+}
+
+type Reviewed = { score: number | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean };
+
+/** What the member sees once a reviewer has scored or commented. */
+function ReviewResult({ submission, maxScore }: { submission: Reviewed; maxScore: number }) {
+  return <section className="app-panel dash-result" aria-labelledby="result-title">
+    <p className="eyebrow">HASIL PENILAIAN</p>
+    <h2 id="result-title">{submission.score === null ? "Ada umpan balik untukmu." : "Kirimanmu sudah dinilai."}</h2>
+    {submission.score !== null && <p className="dash-score">{submission.score}<small>dari {maxScore}</small></p>}
+    {submission.feedback && <p className="dash-feedback">{submission.feedback}</p>}
+    <p className="app-small">Dinilai {submission.reviewedAt ? dateLabel(submission.reviewedAt) : ""}{submission.reviewerName ? ` oleh ${submission.reviewerName}` : ""}.</p>
+    {submission.stale && <p className="app-notice">Kamu memperbarui kiriman setelah penilaian ini. Nilai di atas berlaku untuk versi sebelumnya sampai ditinjau lagi.</p>}
+  </section>;
 }
 
 function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
@@ -112,17 +127,55 @@ function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
   </section>;
 }
 
+type SubmissionRow = FunctionReturnType<typeof api.assignments.submissions>["page"][number];
+
 function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; now: number }) {
   const list = usePaginatedQuery(api.assignments.submissions, { id: assignment._id }, { initialNumItems: 20 });
-  return <section aria-labelledby="submissions-title"><div className="app-section-heading"><div><p className="eyebrow">KIRIMAN MEMBER</p><h2 id="submissions-title">Kiriman</h2></div>{list.status !== "LoadingFirstPage" && <span className="app-small">{list.results.length}{list.status === "CanLoadMore" ? "+" : ""} kiriman · {list.results.filter((item) => item.late).length} terlambat</span>}</div>
+  const maxScore = assignmentMaxScore(assignment);
+  const reviewed = list.results.filter((item) => item.reviewedAt !== null && !item.stale).length;
+  return <section aria-labelledby="submissions-title"><div className="app-section-heading"><div><p className="eyebrow">KIRIMAN MEMBER</p><h2 id="submissions-title">Kiriman</h2></div>{list.status !== "LoadingFirstPage" && <span className="app-small">{list.results.length}{list.status === "CanLoadMore" ? "+" : ""} kiriman · {list.results.filter((item) => item.late).length} terlambat · {reviewed} dinilai</span>}</div>
     {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat kiriman…" /> : !list.results.length ? <div className="app-empty"><h3>Belum ada kiriman.</h3><p>{assignment.status === "draft" ? "Buka tugas ini agar member bisa mulai mengumpulkan." : assignment.dueAt > now ? "Kiriman member akan muncul di sini secara otomatis." : "Tenggat sudah lewat dan belum ada member yang mengirim."}</p></div>
       : <ul className="dash-submissions">{list.results.map((item) => <li key={item._id} className="app-panel">
-        <div className="app-record-top"><div><strong>{item.name}</strong><span className="app-small">{[item.email, item.campus].filter(Boolean).join(" · ")}</span></div><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /></div>
+        <div className="app-record-top"><div><strong>{item.name}</strong><span className="app-small">{[item.email, item.campus].filter(Boolean).join(" · ")}</span></div><span className="app-inline-badges"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={maxScore} reviewedAt={item.reviewedAt} stale={item.stale} /></span></div>
         <p className="app-small">Dikirim {dateLabel(item.submittedAt)}</p>
         {item.answer && <RichTextView className="dash-answer" json={item.answerDoc} text={item.answer} />}
         {item.files.length > 0 && <ul className="dash-file-list" aria-label={`Lampiran dari ${item.name}`}>{item.files.map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul>}
+        <ReviewForm key={`${item._id}:${item.revision}`} item={item} maxScore={maxScore} />
       </li>)}</ul>}
     {list.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => list.loadMore(20)}>Muat kiriman lainnya</button>}
     {list.status === "LoadingMore" && <p role="status">Memuat kiriman…</p>}
   </section>;
+}
+
+/** Score and feedback for one submission. Keyed by revision upstream, so a resubmission resets the form to the new version. */
+function ReviewForm({ item, maxScore }: { item: SubmissionRow; maxScore: number }) {
+  const review = useMutation(api.assignments.review);
+  const [score, setScore] = useState(item.score === null ? "" : String(item.score));
+  const [feedback, setFeedback] = useState(item.feedback ?? "");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [saved, setSaved] = useState(false);
+  const id = `review-${item._id}`;
+  async function save(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const trimmed = score.trim();
+    if (trimmed && !/^\d+$/.test(trimmed)) { setError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`); return; }
+    setBusy(true); setError(""); setSaved(false);
+    try { await review({ submissionId: item._id, submissionRevision: item.revision, score: trimmed ? Number(trimmed) : undefined, feedback }); setSaved(true); }
+    catch (cause) { setError(readableError(cause)); }
+    finally { setBusy(false); }
+  }
+  return <form className="dash-review-form" onSubmit={save} aria-label={`Penilaian untuk ${item.name}`}>
+    <fieldset disabled={busy}><legend className="sr-only">Penilaian</legend>
+      {item.stale && <p className="app-notice">Member memperbarui kiriman setelah dinilai. Periksa versi terbaru, lalu simpan penilaian lagi.</p>}
+      <div className="dash-review-fields">
+        <div className="app-field"><label htmlFor={`${id}-score`}>Nilai (0–{maxScore})</label><input id={`${id}-score`} type="number" inputMode="numeric" min={0} max={maxScore} step={1} value={score} onChange={(event) => setScore(event.target.value)} placeholder="—" /></div>
+        <div className="app-field"><label htmlFor={`${id}-feedback`}>Umpan balik untuk member</label><textarea data-lenis-prevent id={`${id}-feedback`} rows={3} maxLength={assignmentLimits.feedback} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Apa yang sudah baik, apa yang perlu diperbaiki." /></div>
+      </div>
+      <div className="app-inline-actions"><button className="button button-blue" type="submit">{busy ? "Menyimpan…" : item.reviewedAt === null ? "Simpan penilaian" : "Perbarui penilaian"}</button>
+        {item.reviewedAt !== null && !saved && <span className="app-small">Dinilai {dateLabel(item.reviewedAt)}{item.reviewerName ? ` oleh ${item.reviewerName}` : ""}{item.score !== null ? ` · ${scoreLabel(item.score, maxScore)}` : ""}</span>}
+        {saved && <span className="app-small" role="status">Penilaian tersimpan. Member bisa melihatnya sekarang.</span>}</div>
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </fieldset>
+  </form>;
 }

@@ -6,11 +6,11 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { assignmentLimits, assignmentPath, maxSlugLength, normalizeAssignment, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues } from "@/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, assignmentPath, defaultMaxScore, maxSlugLength, normalizeAssignment, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
-import { AssignmentStatusBadge, CopyLinkButton, DueLabel, SubmissionBadge, useNow } from "./shared";
+import { AssignmentStatusBadge, CopyLinkButton, DueLabel, ScoreBadge, SubmissionBadge, useNow } from "./shared";
 import { isStaff, useDashboardViewer } from "./viewer";
 import { PixelIcon } from "../pixel-icons";
 
@@ -33,7 +33,7 @@ function MemberAssignments() {
       if (!items.length && !group.empty) return null;
       return <section key={group.key} aria-labelledby={`group-${group.key}`}><div className="app-section-heading"><h2 id={`group-${group.key}`}>{group.title}</h2></div>
         {items.length ? <div className="dash-card-grid">{items.map((item) => <article className="app-record" key={item._id}>
-          <div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} />{item.status === "closed" && <AssignmentStatusBadge status="closed" />}</div>
+          <div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={item.maxScore} reviewedAt={item.reviewedAt} stale={item.stale} />{item.status === "closed" && <AssignmentStatusBadge status="closed" />}</div>
           <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><p className="dash-summary">{item.summary}</p>
           <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><Link className="text-button" href={assignmentPath(item)}>{item.status === "published" ? (item.submittedAt ? "Lihat & perbarui" : "Kerjakan") : "Lihat kiriman"}<Arrow /></Link></div>
         </article>)}</div> : <div className="app-empty"><PixelSpark /><h3>Belum ada tugas.</h3><p>{group.empty}</p></div>}
@@ -49,7 +49,7 @@ function StaffAssignments() {
     <div className="dash-intro dash-intro-action"><div><p className="eyebrow">ADMIN · TUGAS</p><h1>Kelola tugas.</h1><p>Draft hanya terlihat oleh admin. Tugas yang dibuka bisa dikerjakan semua member aktif.</p></div><Link className="button button-blue" href="/dashboard/tugas/baru">Buat tugas <span aria-hidden="true">＋</span></Link></div>
     {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat tugas…" /> : !list.results.length ? <div className="app-empty"><PixelSpark /><h2>Belum ada tugas.</h2><p>Mulai dari judul, instruksi, dan tenggat. Kamu bisa menyimpannya sebagai draft sebelum dibuka.</p><Link className="text-button" href="/dashboard/tugas/baru">Buat tugas pertama <Arrow /></Link></div>
       : <div className="dash-card-grid">{list.results.map((item) => <article className="app-record" key={item._id}>
-        <div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}</span></div>
+        <div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}{item.submissionCount ? ` · ${item.reviewedCount} dinilai` : ""}</span></div>
         <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><p className="dash-summary">{item.description.slice(0, 220)}</p>
         <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><span className="dash-card-actions"><CopyLinkButton path={assignmentPath(item)} /><Link className="text-button" href={assignmentPath(item)}>Kelola<Arrow /></Link></span></div>
       </article>)}</div>}
@@ -72,6 +72,7 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   const titleField = useRef<HTMLInputElement>(null);
   const descriptionField = useRef<HTMLTextAreaElement>(null);
   const dueField = useRef<HTMLInputElement>(null);
+  const maxScoreField = useRef<HTMLInputElement>(null);
   function update(field: keyof AssignmentValues, value: string) {
     setValues((current) => ({ ...current, [field]: value, ...(field === "title" && !slugEdited ? { slug: slugify(value) } : {}) }));
     setErrors((current) => ({ ...current, [field]: undefined }));
@@ -79,8 +80,8 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   async function save(publish: boolean) {
     const found = validateAssignment(values);
     setErrors(found); setError("");
-    const first = (["title", "description", "dueAt"] as const).find((field) => found[field]);
-    if (first) { ({ title: titleField, description: descriptionField, dueAt: dueField })[first].current?.focus(); return; }
+    const first = (["title", "description", "dueAt", "maxScore"] as const).find((field) => found[field]);
+    if (first) { ({ title: titleField, description: descriptionField, dueAt: dueField, maxScore: maxScoreField })[first].current?.focus(); return; }
     setBusy(true);
     try { await onSave(normalizeAssignment(values), publish); }
     catch (cause) { setError(readableError(cause)); setBusy(false); }
@@ -100,6 +101,7 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
       </div>
       <div className="app-field"><label htmlFor="description">Instruksi <span className="field-required" aria-hidden="true">*</span></label><textarea data-lenis-prevent id="description" ref={descriptionField} required rows={10} maxLength={assignmentLimits.description} value={values.description} onChange={(event) => update("description", event.target.value)} aria-invalid={Boolean(errors.description)} aria-describedby={described("description", "description-hint")} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." /><p className="field-hint" id="description-hint">Ditampilkan apa adanya, termasuk baris baru. {values.description.length}/{assignmentLimits.description} karakter.</p>{errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
       <div className="app-field dash-due-field"><label htmlFor="dueAt">Tenggat (WIB) <span className="field-required" aria-hidden="true">*</span></label><input id="dueAt" ref={dueField} type="datetime-local" required value={values.dueAt} onChange={(event) => update("dueAt", event.target.value)} aria-invalid={Boolean(errors.dueAt)} aria-describedby={described("dueAt", "due-hint")} /><p className="field-hint" id="due-hint">Kiriman setelah tenggat tetap diterima dan ditandai terlambat, sampai pengumpulan ditutup.</p>{errors.dueAt && <p className="field-error" id="dueAt-error">{errors.dueAt}</p>}</div>
+      <div className="app-field dash-score-field"><label htmlFor="maxScore">Nilai maksimal</label><input id="maxScore" ref={maxScoreField} type="number" inputMode="numeric" min={1} max={assignmentLimits.maxScore} step={1} value={values.maxScore} onChange={(event) => update("maxScore", event.target.value)} aria-invalid={Boolean(errors.maxScore)} aria-describedby={described("maxScore", "max-score-hint")} /><p className="field-hint" id="max-score-hint">Nilai kiriman diberikan dari 0 sampai angka ini. Biarkan {defaultMaxScore} jika tidak yakin.</p>{errors.maxScore && <p className="field-error" id="maxScore-error">{errors.maxScore}</p>}</div>
     </div>
     {error && <p className="app-notice" role="alert">{error}</p>}
     <div className="dash-form-actions"><button type="button" className="text-button" onClick={onCancel}>Batal</button>
@@ -113,7 +115,7 @@ export function NewAssignmentPage() {
   const viewer = useDashboardViewer();
   const router = useRouter();
   const create = useMutation(api.assignments.create);
-  const [initial] = useState(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()) }));
+  const [initial] = useState(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()), maxScore: String(defaultMaxScore) }));
   if (!isStaff(viewer)) return <StaffOnly />;
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />Kelola tugas</Link>
@@ -141,7 +143,7 @@ export function EditAssignmentPage({ id }: { id: string }) {
 function EditAssignment({ assignment }: { assignment: Doc<"assignments"> }) {
   const router = useRouter();
   const update = useMutation(api.assignments.update);
-  const [initial] = useState(() => ({ title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt) }));
+  const [initial] = useState(() => ({ title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt), maxScore: String(assignmentMaxScore(assignment)) }));
   const back = assignmentPath(assignment);
   return <>
     <Link className="text-button app-back" href={back}><PixelIcon name="arrow-left" size={24} />Kembali ke tugas</Link>

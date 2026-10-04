@@ -1,13 +1,13 @@
 import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { authComponent, isReviewer } from "./auth";
+import { authComponent, isOwner } from "./auth";
 
 export type DashboardRole = "owner" | "admin" | "member";
 
-/** Owners are the configured reviewer allowlist; admins are promoted in the dashboard. */
+/** Owners are the configured allowlist; admins are promoted in the dashboard. Apresiasi review is a separate permission (auth.isReviewer). */
 export function roleOf(email: string, verified: boolean, profile: Doc<"memberProfiles"> | null): DashboardRole {
-  if (isReviewer(email, verified)) return "owner";
+  if (isOwner(email, verified)) return "owner";
   return profile?.role === "admin" ? "admin" : "member";
 }
 

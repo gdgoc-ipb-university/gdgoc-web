@@ -12,8 +12,8 @@
 | `/dashboard/tugas/<slug>` | Instructions and submission form | Instructions, status controls, and every submission with files |
 | `/dashboard/tugas/<slug>/ubah` | — | Edit title, slug, instructions, and deadline |
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
-| `/dashboard/apresiasi/tinjau` | — | Apresiasi review queue (owners only) |
-| `/dashboard/anggota` | — | Search, filter (admin, core team, BoD, deactivated), promote/demote admins, set community tags (including BoD), deactivate/reactivate members |
+| `/dashboard/apresiasi/tinjau` | — (unless granted review) | Apresiasi review queue: owners, plus anyone an owner made a reviewer |
+| `/dashboard/anggota` | — | Search, filter (admin, reviewer, core team, BoD, deactivated), promote/demote admins, grant/revoke Apresiasi review, set community tags (including BoD), deactivate/reactivate members |
 | `/dashboard/papan-skor` | Bogor Run top 100 this week and all time, with your own rank | Same, plus hide controls and a separate "Disembunyikan" list to restore from |
 | `/dashboard/profil` | Profile facts and community role | Same |
 
@@ -27,9 +27,11 @@ Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into
 
 ## Roles
 
-- **Owner:** a verified Google email in the Convex `APPRECIATION_ADMIN_EMAILS` allowlist, the same list that controls Apresiasi review. Owners are permanent: they cannot be demoted or deactivated from the dashboard. Only owners can promote or demote admins.
-- **Admin:** a member promoted by an owner, stored as `memberProfiles.role = "admin"`. Admins manage assignments, see all submissions, and can deactivate or reactivate members (not admins or owners). Dashboard admins do **not** gain Apresiasi review access; that stays with the allowlist.
+- **Owner:** a verified Google email in the Convex `APPRECIATION_ADMIN_EMAILS` allowlist. Owners are permanent: they cannot be demoted or deactivated from the dashboard, and they always review Apresiasi. Only owners can promote or demote admins and grant or revoke Apresiasi review.
+- **Admin:** a member promoted by an owner, stored as `memberProfiles.role = "admin"`. Admins manage assignments, see all submissions, and can deactivate or reactivate members (not admins or owners). Dashboard admins do **not** gain Apresiasi review access by being admins.
 - **Member:** any verified account that has completed onboarding. There is no approval step.
+
+**Apresiasi reviewer** is a permission, not a role: `memberProfiles.appreciationReviewer`, granted and revoked by owners from the members page for any active admin or member, typically the Media & Creative people who prepare the posts. `isReviewer` in `convex/auth.ts` is the single check (owner, or granted and not deactivated), used by `appreciations.queue`/`review`, `auth.viewer`, and `dashboard.viewer`. Deactivation suspends the permission without clearing it; revoking removes the field. A reviewer who is not staff sees only "Tinjau apresiasi" under Kelola.
 
 These access roles are separate from the **community tag**. Members choose Member or Core Team (with a division) themselves during onboarding and on their profile. **BoD** (Board of Directors) is a third tag that only owners and admins assign, from the members page, with an optional division. A BoD member sees their tag read-only on the profile and cannot change it themselves. Community tags are labels only and grant no permissions. New Apresiasi drafts prefill the tag (Member, Core Team, or BoD), and the server accepts "BoD" as a submission's role only from a member tagged BoD.
 

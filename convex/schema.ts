@@ -20,6 +20,8 @@ export default defineSchema({
     memberType: v.optional(memberType), division: v.optional(v.string()),
     // Dashboard access. Owners come from APPRECIATION_ADMIN_EMAILS, never from this table.
     role: v.optional(v.literal("admin")), deactivatedAt: v.optional(v.number()), accessUpdatedBy: v.optional(v.string()),
+    // Apresiasi review granted by an owner; separate from `role`, and suspended while deactivated.
+    appreciationReviewer: v.optional(v.boolean()),
   }).index("by_owner", ["ownerId"])
     .index("by_completed", ["completedAt"])
     .searchIndex("search_name", { searchField: "fullName" }),

@@ -8,10 +8,19 @@ import authConfig from "./auth.config";
 
 export const authComponent = createClient<DataModel>(components.betterAuth);
 
-export function isReviewer(email: string, verified: boolean) {
+/** Owners are the verified emails in APPRECIATION_ADMIN_EMAILS; they are never stored in the database. */
+export function isOwner(email: string, verified: boolean) {
   const allowed = (process.env.APPRECIATION_ADMIN_EMAILS ?? "")
     .split(",").map((value) => value.trim().toLowerCase()).filter(Boolean);
   return verified && allowed.includes(email.toLowerCase());
+}
+
+type ReviewerProfile = { appreciationReviewer?: boolean; deactivatedAt?: number } | null | undefined;
+
+/** Apresiasi review: owners, plus active accounts an owner granted `appreciationReviewer`. The one check every review path uses. */
+export function isReviewer(email: string, verified: boolean, profile: ReviewerProfile) {
+  if (isOwner(email, verified)) return true;
+  return Boolean(verified && profile?.appreciationReviewer && !profile.deactivatedAt);
 }
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => betterAuth({
@@ -45,7 +54,7 @@ export const viewer = query({
     const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     return {
       id: user._id, name: profile?.fullName || user.name, email: user.email, memberType: profile?.memberType ?? null,
-      isAdmin: isReviewer(user.email, user.emailVerified),
+      isAdmin: isReviewer(user.email, user.emailVerified, profile),
     };
   },
 });

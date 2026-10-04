@@ -2,7 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
-import { authComponent } from "./auth";
+import { authComponent, isReviewer } from "./auth";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
@@ -16,6 +16,7 @@ export const viewer = query({
     return {
       id: access.user._id, name: access.profile?.fullName || access.user.name, email: access.user.email,
       role: access.role, active: access.active, onboarded: Boolean(access.profile?.completedAt),
+      reviewer: isReviewer(access.user.email, access.user.emailVerified, access.profile),
       memberType: access.profile?.memberType ?? null, division: access.profile?.division ?? null,
       campus: access.profile?.campus ?? "", studyProgram: access.profile?.studyProgram ?? "",
     };
@@ -29,13 +30,15 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
     email: user?.email ?? "", role, active: isActive(role, profile), joinedAt: profile.completedAt ?? profile._creationTime,
     memberType: profile.memberType ?? null, division: profile.division ?? null,
+    // The granted permission only; owners review by role and are not flagged here.
+    reviewer: Boolean(profile.appreciationReviewer),
   };
 }
 
 export const members = query({
   args: {
     search: v.string(),
-    filter: v.union(v.literal("all"), v.literal("admin"), v.literal("core"), v.literal("bod"), v.literal("deactivated")),
+    filter: v.union(v.literal("all"), v.literal("admin"), v.literal("reviewer"), v.literal("core"), v.literal("bod"), v.literal("deactivated")),
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, { search, filter, paginationOpts }) => {
@@ -47,6 +50,7 @@ export const members = query({
     const result = await source.filter((q) => {
       const onboarded = q.neq(q.field("completedAt"), undefined);
       if (filter === "admin") return q.and(onboarded, q.eq(q.field("role"), "admin"));
+      if (filter === "reviewer") return q.and(onboarded, q.eq(q.field("appreciationReviewer"), true));
       if (filter === "core" || filter === "bod") return q.and(onboarded, q.eq(q.field("memberType"), filter));
       if (filter === "deactivated") return q.and(onboarded, q.neq(q.field("deactivatedAt"), undefined));
       return onboarded;
@@ -63,6 +67,7 @@ export const stats = query({
     return {
       members: profiles.length,
       admins: profiles.filter((profile) => profile.role === "admin").length,
+      reviewers: profiles.filter((profile) => profile.appreciationReviewer).length,
       core: profiles.filter((profile) => profile.memberType === "core").length,
       bod: profiles.filter((profile) => profile.memberType === "bod").length,
       deactivated: profiles.filter((profile) => profile.deactivatedAt).length,
@@ -86,6 +91,20 @@ export const setRole = mutation({
     if (row.role === args.role) return;
     if (args.role === "admin" && !row.active) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya admin.");
     await ctx.db.patch(profile._id, { role: args.role === "admin" ? "admin" : undefined, accessUpdatedBy: actor.user._id });
+  },
+});
+
+/** Owners grant or revoke Apresiasi review for an active admin or member. Owners themselves review by role. */
+export const setReviewer = mutation({
+  args: { ownerId: v.string(), reviewer: v.boolean() },
+  handler: async (ctx, args) => {
+    const actor = await requireMember(ctx);
+    if (actor.role !== "owner") throw new ConvexError({ code: "FORBIDDEN", message: "Hanya pemilik yang bisa mengatur peninjau apresiasi." });
+    const { profile, row } = await target(ctx, args.ownerId);
+    if (row.role === "owner") throw new ConvexError("Pemilik sudah menjadi peninjau lewat konfigurasi server.");
+    if (row.reviewer === args.reviewer) return;
+    if (args.reviewer && !row.active) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya peninjau.");
+    await ctx.db.patch(profile._id, { appreciationReviewer: args.reviewer ? true : undefined, accessUpdatedBy: actor.user._id });
   },
 });
 

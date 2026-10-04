@@ -14,5 +14,5 @@ export function useDashboardViewer() {
 }
 
 export function isStaff(viewer: DashboardViewer) { return viewer.role !== "member"; }
-/** Apresiasi reviewers are the configured owners (APPRECIATION_ADMIN_EMAILS). */
-export function isReviewer(viewer: DashboardViewer) { return viewer.role === "owner"; }
+/** Apresiasi reviewers: owners (APPRECIATION_ADMIN_EMAILS) and accounts an owner granted review to. The server decides; this mirrors it for navigation. */
+export function isReviewer(viewer: DashboardViewer) { return viewer.reviewer; }

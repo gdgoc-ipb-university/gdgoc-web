@@ -11,9 +11,9 @@ import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { StaffOnly } from "./assignments";
 import { isStaff, useDashboardViewer, type DashboardViewer } from "./viewer";
 
-type Filter = "all" | "admin" | "core" | "bod" | "deactivated";
+type Filter = "all" | "admin" | "reviewer" | "core" | "bod" | "deactivated";
 type Row = FunctionReturnType<typeof api.dashboard.members>["page"][number];
-const filters: { value: Filter; label: string }[] = [{ value: "all", label: "Semua" }, { value: "admin", label: "Admin" }, { value: "core", label: "Core Team" }, { value: "bod", label: "BoD" }, { value: "deactivated", label: "Nonaktif" }];
+const filters: { value: Filter; label: string }[] = [{ value: "all", label: "Semua" }, { value: "admin", label: "Admin" }, { value: "reviewer", label: "Peninjau" }, { value: "core", label: "Core Team" }, { value: "bod", label: "BoD" }, { value: "deactivated", label: "Nonaktif" }];
 
 export function MembersPage() {
   const viewer = useDashboardViewer();
@@ -33,8 +33,8 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
   const list = usePaginatedQuery(api.dashboard.members, { search, filter }, { initialNumItems: 25 });
   return <>
     <div className="dash-intro"><p className="eyebrow">ADMIN · ANGGOTA</p><h1>Anggota.</h1>
-      <p>Member yang sudah menyelesaikan perkenalan. {viewer.role === "owner" ? "Sebagai pemilik, kamu bisa menjadikan member sebagai admin." : "Pemilik dapat mengubah peran admin."} Member nonaktif tidak bisa membuka tugas.</p></div>
-    {stats && <p className="app-small dash-count">{stats.members} anggota · {stats.core} core team · {stats.bod} BoD · {stats.admins} admin · {stats.deactivated} nonaktif. Pemilik diatur lewat konfigurasi server.</p>}
+      <p>Member yang sudah menyelesaikan perkenalan. {viewer.role === "owner" ? "Sebagai pemilik, kamu bisa menjadikan member sebagai admin atau peninjau apresiasi." : "Pemilik dapat mengubah peran admin dan peninjau apresiasi."} Member nonaktif tidak bisa membuka tugas.</p></div>
+    {stats && <p className="app-small dash-count">{stats.members} anggota · {stats.core} core team · {stats.bod} BoD · {stats.admins} admin · {stats.reviewers} peninjau apresiasi · {stats.deactivated} nonaktif. Pemilik diatur lewat konfigurasi server.</p>}
     <div className="dash-toolbar">
       <div className="app-field dash-search"><label htmlFor="member-search">Cari nama</label><input id="member-search" type="search" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Nama member" autoComplete="off" /></div>
       <div className="review-filters" role="group" aria-label="Saring anggota">{filters.map((item) => <button key={item.value} aria-pressed={filter === item.value} onClick={() => setFilter(item.value)}>{item.label}</button>)}</div>
@@ -50,6 +50,7 @@ type Action = { key: string; label: string; confirm: string; danger?: boolean; r
 
 function MemberRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
   const setRole = useMutation(api.dashboard.setRole);
+  const setReviewer = useMutation(api.dashboard.setReviewer);
   const setActive = useMutation(api.dashboard.setActive);
   const [pending, setPending] = useState<Action | null>(null);
   const [editing, setEditing] = useState(false);
@@ -59,6 +60,9 @@ function MemberRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
   const actions: Action[] = [];
   if (!self && viewer.role === "owner" && row.role === "member" && row.active) actions.push({ key: "promote", label: "Jadikan admin", confirm: `Jadikan ${row.fullName} admin? Admin bisa mengelola tugas, melihat semua kiriman, dan menonaktifkan member.`, run: () => setRole({ ownerId: row.ownerId, role: "admin" }) });
   if (!self && viewer.role === "owner" && row.role === "admin") actions.push({ key: "demote", label: "Turunkan jadi member", confirm: `Cabut akses admin ${row.fullName}?`, run: () => setRole({ ownerId: row.ownerId, role: "member" }) });
+  if (!self && viewer.role === "owner" && row.role !== "owner" && row.active) actions.push(row.reviewer
+    ? { key: "unreview", label: "Cabut peninjau apresiasi", confirm: `Cabut akses tinjau apresiasi ${row.fullName}? Kiriman pribadinya tetap bisa dibuka.`, run: () => setReviewer({ ownerId: row.ownerId, reviewer: false }) }
+    : { key: "review", label: "Jadikan peninjau apresiasi", confirm: `Jadikan ${row.fullName} peninjau apresiasi? Ia bisa membuka antrean tinjauan, memberi catatan, dan mencatat link post. Akses admin tidak ikut berubah.`, run: () => setReviewer({ ownerId: row.ownerId, reviewer: true }) });
   if (!self && row.role === "member") actions.push(row.active
     ? { key: "deactivate", label: "Nonaktifkan", danger: true, confirm: `Nonaktifkan ${row.fullName}? Ia tidak bisa membuka tugas sampai diaktifkan kembali. Kirimannya tetap tersimpan.`, run: () => setActive({ ownerId: row.ownerId, active: false }) }
     : { key: "activate", label: "Aktifkan kembali", confirm: `Aktifkan kembali ${row.fullName}?`, run: () => setActive({ ownerId: row.ownerId, active: true }) });
@@ -70,7 +74,7 @@ function MemberRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
   return <li className="dash-member" data-active={row.active}>
     <span className="account-avatar" aria-hidden="true">{row.fullName.trim().slice(0, 1).toUpperCase()}</span>
     <div className="dash-member-identity"><strong>{row.fullName}{self && <span className="app-small"> (kamu)</span>}</strong><span>{row.email}</span><span>{[row.campus, row.studyProgram].filter(Boolean).join(" · ")}</span></div>
-    <div className="dash-member-meta"><span className="dash-role" data-role={row.role}>{roleLabels[row.role]}</span>{row.memberType && <span className="dash-role" data-role={row.memberType}>{row.memberType === "core" ? `Core · ${row.division ?? "—"}` : memberTagLabel(row.memberType, row.division)}</span>}{!row.active && <span className="app-status dash-status" data-status="missing">Nonaktif</span>}<span className="app-small">Bergabung {dateLabel(row.joinedAt)}</span></div>
+    <div className="dash-member-meta"><span className="dash-role" data-role={row.role}>{roleLabels[row.role]}</span>{row.reviewer && <span className="dash-role" data-role="reviewer">Peninjau Apresiasi</span>}{row.memberType &&<span className="dash-role" data-role={row.memberType}>{row.memberType === "core" ? `Core · ${row.division ?? "—"}` : memberTagLabel(row.memberType, row.division)}</span>}{!row.active && <span className="app-status dash-status" data-status="missing">Nonaktif</span>}<span className="app-small">Bergabung {dateLabel(row.joinedAt)}</span></div>
     <div className="dash-member-actions">
       {editing ? <CommunityRoleEditor row={row} onDone={() => setEditing(false)} /> : pending ? <div className="dash-confirm" role="group" aria-label={pending.label}><p>{pending.confirm}</p><button className={`text-button ${pending.danger ? "text-danger" : ""}`} disabled={busy} onClick={() => void confirm()}>{busy ? "Menyimpan…" : `Ya, ${pending.label.toLowerCase()}`}</button><button className="text-button" disabled={busy} onClick={() => { setPending(null); setError(""); }}>Batal</button></div>
         : <>{actions.map((action) => <button key={action.key} className={`text-button ${action.danger ? "text-danger" : ""}`} onClick={() => { setPending(action); setError(""); }}>{action.label}</button>)}<button className="text-button" onClick={() => { setEditing(true); setError(""); }}>Ubah peran komunitas</button></>}

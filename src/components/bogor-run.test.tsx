@@ -4,6 +4,7 @@ import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BogorRun } from "./bogor-run";
 import type { Board, Saved } from "@/lib/bogor-run/online";
+import { weekKey, weekLabel } from "@/lib/bogor-run/leaderboard";
 import type { FinishedRun, RunnerOptions, Snapshot } from "@/lib/bogor-run/runtime";
 
 const game = vi.hoisted(() => ({
@@ -25,8 +26,10 @@ let visibility: IntersectionObserverCallback;
 const running: Snapshot = { phase: "running", score: 12, best: 20, message: "", autoplay: false, flash: 0, sound: true, finished: false };
 const over: Snapshot = { ...running, phase: "over", score: 42, best: 42, message: "Angkot duluan!" };
 const finished: FinishedRun = { seed: 7, token: "signed", inputs: [120, 1], endTick: 480, score: 42 };
+// The current WIB week, so "minggu ini" stays true on any date; the "minggu lalu" test uses a 2020 key.
+const thisWeek = weekKey(Date.now());
 const week = (signedIn = false): Board => ({
-  key: "2026-09-28", signedIn,
+  key: thisWeek, signedIn,
   entries: [
     { id: "a" as Board["entries"][number]["id"], rank: 1, name: "Cici L.", score: 677, you: false },
     { id: "b" as Board["entries"][number]["id"], rank: 2, name: "Bima S.", score: 57, you: signedIn },
@@ -35,7 +38,7 @@ const week = (signedIn = false): Board => ({
   you: signedIn ? { rank: 2, score: 57, hidden: false } : null,
 });
 const allTime: Board = { key: "all", signedIn: true, entries: [{ id: "d" as Board["entries"][number]["id"], rank: 1, name: "Dimas W.", score: 4210, you: false }], you: { rank: 23, score: 1210, hidden: false } };
-const saved: Saved = { ok: true, score: 42, week: { key: "2026-09-28", best: 42, rank: 3, improved: true }, all: { best: 1204, rank: 17, improved: false } };
+const saved: Saved = { ok: true, score: 42, week: { key: thisWeek, best: 42, rank: 3, improved: true }, all: { best: 1204, rank: 17, improved: false } };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -281,7 +284,7 @@ describe("leaderboard panel", () => {
     await within(list).findByText("Cici L.");
     expect(within(list).getAllByText("02")).toHaveLength(2); // ties share a rank
     expect(online.leaderboard).toHaveBeenCalledWith("week");
-    expect(within(panel).getByText("28 Sep – 4 Okt")).toBeTruthy();
+    expect(within(panel).getByText(weekLabel(thisWeek))).toBeTruthy();
     expect(within(panel).getByRole("link", { name: /Lihat 100 besar/ }).getAttribute("href")).toBe("/dashboard/papan-skor");
 
     const [weekTab, allTab] = within(panel).getAllByRole("tab");

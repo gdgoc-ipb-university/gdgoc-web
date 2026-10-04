@@ -9,3 +9,5 @@ next-env.d.ts
 .DS_Store
 /qa/
 .vercel
+# Per-machine Claude Code state; worktrees belong under ~/.yorha/worktrees, not in the repo.
+.claude/

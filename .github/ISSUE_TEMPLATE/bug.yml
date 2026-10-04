@@ -1,0 +1,58 @@
+name: Bug
+description: Something on the site or dashboard does not work as documented.
+type: Bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are public. Do not include names, emails, submissions or anything personal; describe the situation instead.
+  - type: input
+    id: where
+    attributes:
+      label: Where
+      description: Page URL or route, e.g. `/dashboard/tugas/<slug>`
+      placeholder: https://www.gdgocipb.com/...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as a member
+        2. Open ...
+        3. Click ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: What happened instead. Error text, a screenshot with personal data cropped out, or console output helps.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: Android Chrome 141 at 390 px, macOS Safari 26, ...
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Landing & 3D
+        - Bogor Run
+        - Dashboard
+        - Tugas & penilaian
+        - Apresiasi
+        - Anggota & akses
+        - Program
+        - Infra & DevEx
+        - Docs

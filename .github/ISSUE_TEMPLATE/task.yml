@@ -1,0 +1,39 @@
+name: Task
+description: A piece of work that is neither a bug nor a new feature, such as a chore, refactor, docs change or decision.
+type: Task
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What needs doing and why now.
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: input
+    id: linear
+    attributes:
+      label: Linear issue
+      placeholder: GDG-123
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Landing & 3D
+        - Bogor Run
+        - Dashboard
+        - Tugas & penilaian
+        - Apresiasi
+        - Anggota & akses
+        - Program
+        - Infra & DevEx
+        - Docs

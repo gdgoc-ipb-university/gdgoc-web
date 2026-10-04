@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: GDGoC Web board
+    url: https://github.com/orgs/gdgoc-ipb-university/projects/1
+    about: Priorities, epics and what is being worked on. New issues are added to it automatically.
+  - name: Something broken on www.gdgocipb.com right now?
+    url: https://www.instagram.com/gdgoc.ipb/
+    about: For anything urgent or involving personal data, message the team directly instead of opening a public issue.

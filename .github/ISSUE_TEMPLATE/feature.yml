@@ -1,0 +1,53 @@
+name: Feature
+description: Something the site or dashboard should do that it does not do yet.
+type: Feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Issues are public. Keep roster names, probation details and partner terms out; link the Linear issue for that context.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is hard or impossible today, and for whom (member, staff, owner, visitor).
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should change. Rough is fine; the acceptance criteria get written when the issue becomes Ready.
+    validations:
+      required: true
+  - type: input
+    id: asked-by
+    attributes:
+      label: Who is asking
+      description: Division or program, not a person's name.
+      placeholder: Media & Creative, Catalyst, Sekben, ...
+  - type: input
+    id: linear
+    attributes:
+      label: Linear issue
+      placeholder: GDG-123
+  - type: input
+    id: deadline
+    attributes:
+      label: Needed by
+      description: A date from the organisation calendar, if there is one.
+      placeholder: 2026-11-02
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Landing & 3D
+        - Bogor Run
+        - Dashboard
+        - Tugas & penilaian
+        - Apresiasi
+        - Anggota & akses
+        - Program
+        - Infra & DevEx
+        - Docs

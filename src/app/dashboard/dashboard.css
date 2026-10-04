@@ -37,6 +37,7 @@
 .dash-role { font: 500 10px/1 var(--font-mono); letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; background: #ecefe9; color: #43523a; white-space: nowrap; }
 .dash-role[data-role="admin"] { background: #e7eefa; color: #2457b8; }
 .dash-role[data-role="owner"] { background: #fff0c5; color: #6d4d0c; }
+.dash-role[data-role="reviewer"] { background: #f3e8fb; color: #5b2d8a; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .dash-role[data-role="core"] { background: #fbe3df; color: #8e2c21; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .dash-role[data-role="bod"] { background: #e3f3e6; color: #1e6b34; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .dash-role[data-role="member"] { text-transform: none; letter-spacing: 0; font-size: 11px; }

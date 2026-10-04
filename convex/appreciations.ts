@@ -15,7 +15,8 @@ async function requireUser(ctx: QueryCtx | MutationCtx) {
 
 async function requireAdmin(ctx: QueryCtx | MutationCtx) {
   const user = await requireUser(ctx);
-  if (!isReviewer(user.email, user.emailVerified)) throw new ConvexError({ code: "FORBIDDEN", message: "Akses ini hanya untuk tim peninjau." });
+  const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
+  if (!isReviewer(user.email, user.emailVerified, profile)) throw new ConvexError({ code: "FORBIDDEN", message: "Akses ini hanya untuk tim peninjau." });
   return user;
 }
 

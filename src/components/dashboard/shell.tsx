@@ -63,9 +63,9 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
       { href: "/dashboard/apresiasi", label: "Apresiasi", icon: "trophy", current: pathname === "/dashboard/apresiasi" },
       { href: "/dashboard/papan-skor", label: "Papan skor", icon: "gamepad", current: at("/dashboard/papan-skor") },
     ] },
-    ...(isStaff(viewer) ? [{ title: "Kelola", items: [
+    ...(isStaff(viewer) || isReviewer(viewer) ? [{ title: "Kelola", items: [
       ...(isReviewer(viewer) ? [{ href: "/dashboard/apresiasi/tinjau", label: "Tinjau apresiasi", icon: "shield" as const, current: at("/dashboard/apresiasi/tinjau") }] : []),
-      { href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") },
+      ...(isStaff(viewer) ? [{ href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") }] : []),
     ] }] : []),
     { title: "Akun", items: [{ href: "/dashboard/profil", label: "Profil", icon: "user", current: at("/dashboard/profil") }] },
   ];

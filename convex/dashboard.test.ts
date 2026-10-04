@@ -63,7 +63,48 @@ describe("dashboard roles and member management", () => {
     await account(t, "fresh@example.com", { onboarded: false });
     const rows = (await owner.query(api.dashboard.members, everyone)).page;
     expect(rows.map((row) => [row.email, row.role]).sort()).toEqual([["member@example.com", "member"], ["owner@example.com", "owner"]]);
-    expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, core: 0, bod: 0, deactivated: 0 });
+    expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, reviewers: 0, core: 0, bod: 0, deactivated: 0 });
+  });
+
+  it("lets owners grant Apresiasi review to members and admins, suspended while deactivated", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com");
+    const admin = await account(t, "admin@example.com");
+    const member = await account(t, "member@example.com");
+    const queue = { status: "submitted" as const, paginationOpts: page };
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    // Admins do not review by default, and cannot grant it.
+    expect(await admin.query(api.dashboard.viewer)).toMatchObject({ role: "admin", reviewer: false });
+    await expect(admin.query(api.appreciations.queue, queue)).rejects.toThrow("tim peninjau");
+    await expect(admin.mutation(api.dashboard.setReviewer, { ownerId: member.id, reviewer: true })).rejects.toThrow("Hanya pemilik");
+    await expect(owner.mutation(api.dashboard.setReviewer, { ownerId: owner.id, reviewer: true })).rejects.toThrow("konfigurasi server");
+
+    await owner.mutation(api.dashboard.setReviewer, { ownerId: member.id, reviewer: true });
+    expect(await member.query(api.dashboard.viewer)).toMatchObject({ role: "member", reviewer: true });
+    expect(await member.query(api.auth.viewer)).toMatchObject({ isAdmin: true });
+    expect((await member.query(api.appreciations.queue, queue)).page).toEqual([]);
+    expect((await owner.query(api.dashboard.members, { ...everyone, filter: "reviewer" })).page.map((row) => [row.email, row.reviewer])).toEqual([["member@example.com", true]]);
+    expect(await owner.query(api.dashboard.stats)).toMatchObject({ reviewers: 1, admins: 1 });
+
+    // Deactivation suspends review without clearing the grant; reactivation restores it.
+    await owner.mutation(api.dashboard.setActive, { ownerId: member.id, active: false });
+    await expect(member.query(api.appreciations.queue, queue)).rejects.toThrow("tim peninjau");
+    await owner.mutation(api.dashboard.setReviewer, { ownerId: member.id, reviewer: true }); // already granted: no-op, not an error
+    const idle = await account(t, "idle@example.com");
+    await owner.mutation(api.dashboard.setActive, { ownerId: idle.id, active: false });
+    await expect(owner.mutation(api.dashboard.setReviewer, { ownerId: idle.id, reviewer: true })).rejects.toThrow("Aktifkan kembali");
+    await owner.mutation(api.dashboard.setActive, { ownerId: member.id, active: true });
+    expect((await member.query(api.appreciations.queue, queue)).page).toEqual([]);
+
+    await owner.mutation(api.dashboard.setReviewer, { ownerId: member.id, reviewer: false });
+    await expect(member.query(api.appreciations.queue, queue)).rejects.toThrow("tim peninjau");
+    const profile = await t.run((ctx) => ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", member.id)).unique());
+    expect(profile).not.toHaveProperty("appreciationReviewer");
+    // An admin can hold the permission too; it is independent of the role.
+    await owner.mutation(api.dashboard.setReviewer, { ownerId: admin.id, reviewer: true });
+    expect((await admin.query(api.appreciations.queue, queue)).page).toEqual([]);
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "member" });
+    expect(await admin.query(api.dashboard.viewer)).toMatchObject({ role: "member", reviewer: true });
   });
 
   it("deactivates members, blocks their dashboard access, and protects admins and owners", async () => {

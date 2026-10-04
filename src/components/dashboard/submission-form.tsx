@@ -104,7 +104,8 @@ export function SubmissionForm({ submission, files, dueAt, now, actions, optimiz
     try {
       await actions.submit({ revision: base, answer, answerDoc: JSON.stringify(doc), fileIds: selected });
       setBase(base + 1);
-      setDone(Date.now() > dueAt ? "Tugas terkirim dan ditandai terlambat." : "Tugas terkirim. Kamu masih bisa memperbaruinya selama pengumpulan dibuka.");
+      // Same clock as the deadline notice below (`now` from useNow), so the message and the tests agree on what "late" means.
+      setDone(now > dueAt ? "Tugas terkirim dan ditandai terlambat." : "Tugas terkirim. Kamu masih bisa memperbaruinya selama pengumpulan dibuka.");
     } catch (cause) { setError(readableError(cause)); }
     finally { setBusy(false); }
   }

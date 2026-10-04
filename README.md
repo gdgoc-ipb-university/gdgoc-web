@@ -21,7 +21,7 @@ pnpm build
 pnpm start
 ```
 
-Node 24 and pnpm 11.22.0 are used. The landing renders without a backend; only the Bogor Run leaderboard, loaded once the game scrolls into view, talks to Convex. The Apresiasi workspace uses Convex and Google OAuth; configure the variables in `.env.example` and follow `docs/APRESIASI.md`. The leaderboard adds no environment variables: its run tokens are signed with a key derived from `BETTER_AUTH_SECRET`, and without that secret the game plays unranked.
+Node 24 and pnpm 11.22.0 are used. GitHub Actions runs `pnpm check` and `pnpm test` on every pull request and on pushes to `main` (`.github/workflows/ci.yml`); it needs no Convex or Vercel secrets because the suite runs against `convex-test`. The landing renders without a backend; only the Bogor Run leaderboard, loaded once the game scrolls into view, talks to Convex. The Apresiasi workspace uses Convex and Google OAuth; configure the variables in `.env.example` and follow `docs/APRESIASI.md`. The leaderboard adds no environment variables: its run tokens are signed with a key derived from `BETTER_AUTH_SECRET`, and without that secret the game plays unranked.
 
 ## Apresiasi
 

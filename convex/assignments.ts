@@ -2,7 +2,7 @@ import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { authComponent } from "./auth";
+import { authComponent, isOwner } from "./auth";
 import { requireMember, requireStaff } from "./access";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
@@ -202,6 +202,29 @@ export const submissions = query({
         };
       })),
     };
+  },
+});
+
+/** Active, onboarded members without a submission. Staff are not expected to submit, so owners and admins are left out of both counts. */
+export const missing = query({
+  args: { id: v.id("assignments") },
+  handler: async (ctx, { id }) => {
+    await requireStaff(ctx);
+    const assignment = await ctx.db.get(id);
+    if (!assignment) notFound();
+    const submitted = new Set((await submissionsOf(ctx, id)).map((item) => item.ownerId));
+    const profiles = await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
+    const missing: { ownerId: string; name: string; email: string; campus: string }[] = [];
+    let active = 0;
+    for (const profile of profiles) {
+      if (profile.deactivatedAt || profile.role === "admin") continue;
+      const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
+      if (isOwner(user?.email ?? "", Boolean(user?.emailVerified))) continue;
+      active++;
+      if (!submitted.has(profile.ownerId)) missing.push({ ownerId: profile.ownerId, name: profile.fullName, email: user?.email ?? "", campus: profile.campus });
+    }
+    missing.sort((a, b) => a.name.localeCompare(b.name, "id"));
+    return { active, submitted: active - missing.length, missing };
   },
 });
 

@@ -56,7 +56,7 @@ export function AssignmentDetail({ id }: { id: string }) {
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
     </article>
-    {data.canManage ? <><StaffControls assignment={assignment} /><SubmissionList assignment={assignment} now={now} /></> : <MemberSubmission data={data} now={now} />}
+    {data.canManage ? <><StaffControls assignment={assignment} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</> : <MemberSubmission data={data} now={now} />}
   </>;
 }
 
@@ -144,6 +144,28 @@ function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; n
       </li>)}</ul>}
     {list.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => list.loadMore(20)}>Muat kiriman lainnya</button>}
     {list.status === "LoadingMore" && <p role="status">Memuat kiriman…</p>}
+  </section>;
+}
+
+/** Active members who have not submitted, with a copyable "Nama — email" list for a reminder. Staff only, so emails are fine here. */
+function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
+  const data = useQuery(api.assignments.missing, { id: assignment._id });
+  const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
+  async function copy() {
+    if (!data) return;
+    const text = data.missing.map((row) => `${row.name} — ${row.email}`).join("\n");
+    try { await navigator.clipboard.writeText(text); setCopied("copied"); } catch { setCopied("failed"); }
+    setTimeout(() => setCopied("idle"), 2500);
+  }
+  return <section className="dash-missing" aria-labelledby="missing-title">
+    <div className="app-section-heading"><div><p className="eyebrow">BELUM MENGUMPULKAN</p><h2 id="missing-title">Siapa yang belum</h2></div>
+      {data && <span className="app-small">{data.missing.length} dari {data.active} member aktif belum mengirim</span>}</div>
+    {!data ? <LoadingPanel label="Memeriksa member…" /> : !data.missing.length ? <p className="app-small">{data.active ? "Semua member aktif sudah mengirim tugas ini." : "Belum ada member aktif yang terdaftar."}</p>
+      : <><ul className="dash-missing-list">{data.missing.map((row) => <li key={row.ownerId}><strong>{row.name}</strong><span className="app-small">{[row.email, row.campus].filter(Boolean).join(" · ")}</span></li>)}</ul>
+        <div className="app-inline-actions"><button type="button" className="text-button" onClick={() => void copy()}><PixelIcon name={copied === "copied" ? "check" : "copy"} size={16} />{copied === "copied" ? "Daftar tersalin" : "Salin daftar nama dan email"}</button>
+          <span className="sr-only" role="status">{copied === "copied" ? "Daftar member yang belum mengumpulkan tersalin." : ""}</span>
+          {copied === "failed" && <small role="alert">Tidak bisa menyalin otomatis. Pilih dan salin daftar di atas.</small>}</div>
+        <p className="app-small">Admin dan pemilik tidak dihitung. Member nonaktif tidak ditampilkan.</p></>}
   </section>;
 }
 

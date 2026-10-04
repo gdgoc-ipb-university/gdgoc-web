@@ -9,7 +9,7 @@
 | `/dashboard` | Open, pending, and submitted counts; nearest deadlines | Member counts, recent assignments, shortcuts |
 | `/dashboard/tugas` | Open and closed assignments with their own submission status | All assignments, including drafts, with submission and late counts |
 | `/dashboard/tugas/baru` | — | Create as draft or open immediately |
-| `/dashboard/tugas/<slug>` | Instructions and submission form | Instructions, status controls, and every submission with files |
+| `/dashboard/tugas/<slug>` | Instructions and submission form | Instructions, status controls, every submission with files and its review, and who has not submitted |
 | `/dashboard/tugas/<slug>/ubah` | — | Edit title, slug, instructions, and deadline |
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
 | `/dashboard/apresiasi/tinjau` | — (unless granted review) | Apresiasi review queue: owners, plus anyone an owner made a reviewer |
@@ -86,6 +86,10 @@ Images are optimised in the browser first (`src/lib/image-optimize.ts`). PNG, JP
 The hourly `remove unclaimed assignment uploads` cron (`convex/crons.ts`) deletes pending files older than 24 hours, plus storage objects created 24–72 hours ago that no `submissionFiles` row references (uploads that were never registered). **Assignment submissions are currently the only feature that stores files.** A new storage feature must be added to that check, or its files will be removed.
 
 File URLs come from `ctx.storage.getUrl`. They are unguessable, but not authenticated, and are returned only to the submitting member and to admins.
+
+### Who has not submitted
+
+Below the submissions, a published or closed assignment lists the active, onboarded members without a submission (`assignments.missing`), alphabetically, with a "Salin daftar nama dan email" button that copies one `Nama — email` line per member for a reminder. Owners and admins are not expected to submit and are left out of both the list and the "x dari y member aktif" count; deactivated accounts are hidden. Once assignments can target a group (E4), the list follows the target instead of every active member.
 
 ### Scores and feedback
 
@@ -203,4 +207,4 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 ## Not included
 
-Rubrics (per-criterion scores), revision requests that reopen one member's submission, group targeting, and exports are not built. The admin view lists who submitted, but not which active members have yet to submit.
+Rubrics (per-criterion scores), revision requests that reopen one member's submission, group targeting, and exports are not built.

@@ -128,6 +128,37 @@ describe("assignment submission", () => {
     expect((await member.query(api.assignments.list))[0]).toMatchObject({ late: true, submittedAt: expect.any(Number) });
   });
 
+  it("lets staff score and comment on a submission, keeps history, and flags resubmissions", async () => {
+    const { t, owner, member, other } = await world();
+    const id = await owner.mutation(api.assignments.create, { values: { ...values(), maxScore: "50" }, publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Versi 1", fileIds: [] });
+    const [first] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    expect(first).toMatchObject({ revision: 1, score: null, feedback: null, reviewedAt: null, reviewerName: null, stale: false });
+    await expect(member.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 1, score: 40, feedback: "" })).rejects.toThrow("hanya untuk admin");
+    await expect(owner.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 1, score: 60, feedback: "" })).rejects.toThrow("0 sampai 50");
+    await expect(owner.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 1, score: 4.5, feedback: "" })).rejects.toThrow("bilangan bulat");
+    await expect(owner.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 1, feedback: "  " })).rejects.toThrow("Isi nilai");
+    await owner.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 1, score: 45, feedback: " Rapi. Tambahkan pengujian. " });
+
+    const mine = await member.query(api.assignments.get, { id });
+    expect(mine?.submission).toMatchObject({ score: 45, feedback: "Rapi. Tambahkan pengujian.", reviewerName: "Nama owner", stale: false, reviewedAt: expect.any(Number) });
+    expect(mine?.assignment.maxScore).toBe(50);
+    expect((await member.query(api.assignments.list))[0]).toMatchObject({ score: 45, maxScore: 50, stale: false });
+    expect((await other.query(api.assignments.get, { id }))?.submission).toBeNull();
+    expect((await owner.query(api.assignments.adminList, { paginationOpts: page })).page[0]).toMatchObject({ reviewedCount: 1 });
+
+    // A resubmission keeps the score but is flagged, and a review of the old revision is refused.
+    vi.useFakeTimers({ now: Date.now() + hour });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "Versi 2", fileIds: [] });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 45, stale: true });
+    expect((await owner.query(api.assignments.adminList, { paginationOpts: page })).page[0]).toMatchObject({ reviewedCount: 0 });
+    await expect(owner.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 1, score: 50, feedback: "" })).rejects.toThrow("memperbarui kirimannya");
+    await owner.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 2, feedback: "Versi 2 lebih jelas." });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: null, feedback: "Versi 2 lebih jelas.", stale: false });
+    const history = await t.run((ctx) => ctx.db.query("submissionReviews").withIndex("by_submission", (q) => q.eq("submissionId", first._id)).collect());
+    expect(history.map((row) => [row.score ?? null, row.feedback])).toEqual([[45, "Rapi. Tambahkan pengujian."], [null, "Versi 2 lebih jelas."]]);
+  });
+
   // convex-test does not record upload content types; see src/lib/assignment.test.ts for type checks.
   it("validates uploads on the server and deletes rejected files", async () => {
     const { t, owner, member, other } = await world();

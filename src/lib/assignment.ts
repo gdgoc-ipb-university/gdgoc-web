@@ -1,4 +1,7 @@
-export const assignmentLimits = { title: 160, description: 6000, answer: 5000, fileName: 120 } as const;
+export const assignmentLimits = { title: 160, description: 6000, answer: 5000, fileName: 120, feedback: 2000, maxScore: 1000 } as const;
+/** Assignments created before scores existed have no `maxScore`; they are graded out of this. */
+export const defaultMaxScore = 100;
+export function assignmentMaxScore(assignment: { maxScore?: number }) { return assignment.maxScore ?? defaultMaxScore; }
 export const maxSubmissionFiles = 5;
 export const maxFileBytes = 10 * 1024 * 1024;
 export const pendingFileLifetime = 24 * 60 * 60 * 1000;
@@ -20,7 +23,8 @@ export const acceptedFiles: Record<string, string[]> = {
 };
 export const acceptAttribute = Object.keys(acceptedFiles).map((extension) => `.${extension}`).join(",");
 
-export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string };
+// `maxScore` is the form's text; it becomes a number on the server.
+export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
 
 export function cleanFileName(name: string) {
@@ -74,7 +78,7 @@ export function assignmentPath(assignment: { _id: string; slug?: string }) {
 
 export function normalizeAssignment(values: AssignmentValues): AssignmentValues {
   const title = values.title.trim().replace(/\s+/g, " ");
-  return { title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim() };
+  return { title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(), maxScore: (values.maxScore ?? "").trim() || String(defaultMaxScore) };
 }
 
 export function validateAssignment(values: AssignmentValues): AssignmentErrors {
@@ -85,10 +89,18 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   if (!v.description) errors.description = "Jelaskan apa yang perlu dikerjakan.";
   else if (v.description.length > assignmentLimits.description) errors.description = `Maksimal ${assignmentLimits.description} karakter.`;
   if (Number.isNaN(fromJakartaInput(v.dueAt))) errors.dueAt = "Pilih tanggal dan jam tenggat.";
+  if (!/^\d+$/.test(v.maxScore) || Number(v.maxScore) < 1 || Number(v.maxScore) > assignmentLimits.maxScore) errors.maxScore = `Isi nilai maksimal berupa bilangan bulat 1 sampai ${assignmentLimits.maxScore}.`;
   return errors;
 }
 
 export function isLate(submittedAt: number, dueAt: number) { return submittedAt > dueAt; }
+
+/** A submission edited after it was reviewed: the score still shows, but the reviewer should look again. */
+export function isStaleReview(submission: { submittedAt: number; reviewedAt?: number | null }) {
+  return submission.reviewedAt != null && submission.submittedAt > submission.reviewedAt;
+}
+
+export function scoreLabel(score: number, maxScore: number) { return `${score}/${maxScore}`; }
 
 export const assignmentStatusLabels = { draft: "Draft", published: "Dibuka", closed: "Ditutup" } as const;
 export const roleLabels = { owner: "Pemilik", admin: "Admin", member: "Member" } as const;

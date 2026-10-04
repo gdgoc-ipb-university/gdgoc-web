@@ -386,3 +386,19 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
   .dash-tab[aria-selected="true"] { border-bottom-color: Highlight; }
   .dash-board tr[data-you] > :first-child { border-left: 4px solid Highlight; }
 }
+
+/* Scores and feedback */
+.dash-status[data-status="scored"] { background: #e3f3e6; color: #1e6b34; }
+.dash-status[data-status="stale"] { background: #f3e8fb; color: #5b2d8a; }
+.app-inline-badges { display: inline-flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+.dash-result { max-width: 860px; margin-bottom: 22px; }
+.dash-result h2 { font-size: 24px; margin: 8px 0 0; }
+.dash-score { font: 600 44px/1 var(--font-pixel), monospace; margin: 12px 0 6px; }
+.dash-score small { font: 500 13px/1 var(--font-mono); color: var(--muted); margin-left: 8px; letter-spacing: .02em; }
+.dash-feedback { white-space: pre-line; font-size: 13px; line-height: 1.8; padding: 14px 16px; background: #f6f7f1; border-left: 3px solid #b9c7b0; margin: 12px 0; }
+.dash-review-form { margin-top: 18px; padding-top: 16px; border-top: 1px dashed var(--line); }
+.dash-review-form fieldset { display: grid; gap: 12px; border: 0; padding: 0; margin: 0; min-width: 0; }
+.dash-review-fields { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; align-items: start; }
+.dash-review-fields input[type="number"] { width: 100%; }
+.dash-score-field { max-width: 240px; }
+@media (max-width: 640px) { .dash-review-fields { grid-template-columns: 1fr; } }

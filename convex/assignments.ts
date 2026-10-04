@@ -5,10 +5,10 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { requireMember, requireStaff } from "./access";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
-import { assignmentLimits, cleanFileName, fileProblem, fromJakartaInput, isLate, maxSlugLength, maxSubmissionFiles, normalizeAssignment, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
 
-// `slug` is optional so a tab loaded before slugs existed can still save; it is then derived from the title.
-const assignmentInput = v.object({ title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string() });
+// `slug` and `maxScore` are optional so a tab loaded before they existed can still save; they are then derived (title) or defaulted (100).
+const assignmentInput = v.object({ title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()) });
 
 function notFound(): never { throw new ConvexError({ code: "NOT_FOUND", message: "Tugas tidak ditemukan." }); }
 function closed(): never { throw new ConvexError({ code: "CLOSED", message: "Pengumpulan tugas ini sudah ditutup." }); }
@@ -16,12 +16,30 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string }) {
-  const input = { ...values, slug: values.slug ?? "" };
+function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string }) {
+  const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "" };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
   const clean = normalizeAssignment(input);
-  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt) };
+  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore) };
+}
+
+/** Display name for an account: the onboarding name, else the Google name. */
+async function nameOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
+  const [profile, user] = await Promise.all([
+    ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique(),
+    authComponent.getAnyUserById(ctx, ownerId),
+  ]);
+  return { name: profile?.fullName || user?.name || "Member", email: user?.email ?? "", campus: profile?.campus ?? "" };
+}
+
+/** The review fields a member or reviewer sees on a submission. */
+async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignmentSubmissions">) {
+  return {
+    score: submission.score ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
+    reviewerName: submission.reviewedBy ? (await nameOf(ctx, submission.reviewedBy)).name : null,
+    stale: isStaleReview(submission),
+  };
 }
 
 async function slugOwner(ctx: QueryCtx | MutationCtx, slug: string) {
@@ -81,7 +99,10 @@ export const adminList = query({
       ...result,
       page: await Promise.all(result.page.map(async (assignment) => {
         const submissions = await submissionsOf(ctx, assignment._id);
-        return { ...assignment, submissionCount: submissions.length, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length };
+        return {
+          ...assignment, submissionCount: submissions.length, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
+          reviewedCount: submissions.filter((item) => item.reviewedAt !== undefined && !isStaleReview(item)).length,
+        };
       })),
     };
   },
@@ -124,7 +145,7 @@ export const update = mutation({
     const values = { ...clean, slug };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt) return doc.slug;
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore) return doc.slug;
       conflict();
     }
     await ctx.db.patch(doc._id, { ...values, revision: doc.revision + 1, updatedAt: Date.now() });
@@ -173,18 +194,36 @@ export const submissions = query({
     return {
       ...result,
       page: await Promise.all(result.page.map(async (submission) => {
-        const [profile, user, files] = await Promise.all([
-          ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", submission.ownerId)).unique(),
-          authComponent.getAnyUserById(ctx, submission.ownerId),
-          attachedFiles(ctx, submission._id),
-        ]);
+        const [who, files, review] = await Promise.all([nameOf(ctx, submission.ownerId), attachedFiles(ctx, submission._id), reviewView(ctx, submission)]);
         return {
-          _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt),
-          name: profile?.fullName || user?.name || "Member", email: user?.email ?? "", campus: profile?.campus ?? "",
+          _id: submission._id, revision: submission.revision, answer: submission.answer, answerDoc: submission.answerDoc ?? null, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt),
+          ...who, ...review,
           files: await Promise.all(files.map((file) => fileView(ctx, file))),
         };
       })),
     };
+  },
+});
+
+/** Score and/or feedback for one submission. The latest review is kept on the submission; every review is kept in submissionReviews. */
+export const review = mutation({
+  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), feedback: v.string() },
+  handler: async (ctx, args) => {
+    const { user } = await requireStaff(ctx);
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
+    const assignment = await ctx.db.get(submission.assignmentId);
+    if (!assignment) notFound();
+    // The reviewer graded what they saw; a resubmission since then needs a fresh look, not a silent overwrite.
+    if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk menilai versi terbaru." });
+    const feedback = args.feedback.trim();
+    const maxScore = assignmentMaxScore(assignment);
+    if (feedback.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
+    if (args.score !== undefined && (!Number.isInteger(args.score) || args.score < 0 || args.score > maxScore)) throw new ConvexError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`);
+    if (args.score === undefined && !feedback) throw new ConvexError({ code: "VALIDATION", message: "Isi nilai, umpan balik, atau keduanya." });
+    const now = Date.now();
+    await ctx.db.patch(submission._id, { score: args.score, feedback: feedback || undefined, reviewedAt: now, reviewedBy: user._id });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score: args.score, feedback, createdAt: now });
   },
 });
 
@@ -203,6 +242,7 @@ export const list = query({
       return {
         _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
         submittedAt: mine?.submittedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
+        maxScore: assignmentMaxScore(assignment), score: mine?.score ?? null, reviewedAt: mine?.reviewedAt ?? null, stale: mine ? isStaleReview(mine) : false,
       };
     }));
   },
@@ -219,7 +259,7 @@ export const get = query({
     const files = await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", user._id).eq("assignmentId", assignment._id)).collect();
     return {
       assignment, canManage: role !== "member",
-      submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt) },
+      submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt), ...(await reviewView(ctx, submission)) },
       files: await Promise.all(files.map((file) => fileView(ctx, file))),
     };
   },

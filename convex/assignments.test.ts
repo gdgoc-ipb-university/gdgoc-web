@@ -159,6 +159,21 @@ describe("assignment submission", () => {
     expect(history.map((row) => [row.score ?? null, row.feedback])).toEqual([[45, "Rapi. Tambahkan pengujian."], [null, "Versi 2 lebih jelas."]]);
   });
 
+  it("lists active members who have not submitted, leaving out staff and deactivated accounts", async () => {
+    const { t, owner, member } = await world(); // `other` from world() is the one who never submits
+    const idle = await account(t, "idle@example.com");
+    const admin = await account(t, "admin@example.com");
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    await owner.mutation(api.dashboard.setActive, { ownerId: idle.id, active: false });
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    await expect(member.query(api.assignments.missing, { id })).rejects.toThrow("hanya untuk admin");
+    expect(await owner.query(api.assignments.missing, { id })).toMatchObject({ active: 2, submitted: 0 });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Selesai", fileIds: [] });
+    const result = await admin.query(api.assignments.missing, { id });
+    expect(result).toMatchObject({ active: 2, submitted: 1 });
+    expect(result.missing.map((row) => [row.name, row.email, row.campus])).toEqual([["Nama other", "other@example.com", "IPB University"]]);
+  });
+
   // convex-test does not record upload content types; see src/lib/assignment.test.ts for type checks.
   it("validates uploads on the server and deletes rejected files", async () => {
     const { t, owner, member, other } = await world();

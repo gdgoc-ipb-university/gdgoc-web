@@ -7,7 +7,7 @@ import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { assignmentLimits, assignmentMaxScore, assignmentPath, scoreLabel, type RubricCriterion } from "@/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, assignmentPath, matchesRubric, scoreLabel, type RubricCriterion, type RubricScore } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
@@ -77,7 +77,7 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
     removeFile: (fileId) => removeFile({ fileId }),
     submit: (args) => submit({ assignmentId: assignment._id, ...args }),
   };
-  const result = submission?.reviewedAt ? <ReviewResult submission={submission} maxScore={assignmentMaxScore(assignment)} rubric={assignment.rubric ?? null} /> : null;
+  const result = submission?.reviewedAt ? <ReviewResult submission={submission} maxScore={assignmentMaxScore(assignment)} /> : null;
   if (assignment.status === "closed") {
     return <>{result}<section className="app-form-section dash-closed" aria-labelledby="closed-title"><h2 id="closed-title">Pengumpulan sudah ditutup.</h2>
       {submission ? <><p>Kamu mengirim pada {dateLabel(submission.submittedAt)}{submission.late ? " (terlambat)" : ""}.</p>{submission.answer && <RichTextView className="dash-answer" json={submission.answerDoc} text={submission.answer} />}<ul className="dash-file-list">{files.filter((file) => file.attached).map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul></>
@@ -87,21 +87,16 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
   return <>{result}<SubmissionForm key={assignment._id} submission={submission} files={files} dueAt={assignment.dueAt} now={now} actions={actions} /></>;
 }
 
-type Reviewed = { score: number | null; points: number[] | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean };
+type Reviewed = { score: number | null; breakdown: RubricScore[] | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean };
 
-/** Per-criterion points next to the rubric, when the review was made against the rubric as it is now. */
-function RubricBreakdown({ rubric, points }: { rubric: RubricCriterion[] | null; points: number[] | null }) {
-  if (!rubric?.length || !points || points.length !== rubric.length) return null;
-  return <ol className="dash-rubric-list dash-rubric-result">{rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{scoreLabel(points[index], criterion.max)}</b></li>)}</ol>;
-}
-
-/** What the member sees once a reviewer has scored or commented. */
-function ReviewResult({ submission, maxScore, rubric }: { submission: Reviewed; maxScore: number; rubric: RubricCriterion[] | null }) {
+/** What the member sees once a reviewer has scored or commented. A rubric score shows the criteria as they were when scored. */
+function ReviewResult({ submission, maxScore }: { submission: Reviewed; maxScore: number }) {
+  const breakdown = submission.breakdown?.length ? submission.breakdown : null;
   return <section className="app-panel dash-result" aria-labelledby="result-title">
     <p className="eyebrow">HASIL PENILAIAN</p>
     <h2 id="result-title">{submission.score === null ? "Ada umpan balik untukmu." : "Kirimanmu sudah dinilai."}</h2>
-    {submission.score !== null && <p className="dash-score">{submission.score}<small>dari {maxScore}</small></p>}
-    <RubricBreakdown rubric={rubric} points={submission.points} />
+    {submission.score !== null && <p className="dash-score">{submission.score}<small>dari {breakdown ? breakdown.reduce((sum, entry) => sum + entry.max, 0) : maxScore}</small></p>}
+    {breakdown && <ol className="dash-rubric-list dash-rubric-result">{breakdown.map((entry, index) => <li key={index}><span>{entry.name}</span><b>{scoreLabel(entry.points, entry.max)}</b></li>)}</ol>}
     {submission.feedback && <p className="dash-feedback">{submission.feedback}</p>}
     <p className="app-small">Dinilai {submission.reviewedAt ? dateLabel(submission.reviewedAt) : ""}{submission.reviewerName ? ` oleh ${submission.reviewerName}` : ""}.</p>
     {submission.stale && <p className="app-notice">Kamu memperbarui kiriman setelah penilaian ini. Nilai di atas berlaku untuk versi sebelumnya sampai ditinjau lagi.</p>}
@@ -183,8 +178,10 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
   const review = useMutation(api.assignments.review);
   const criteria = rubric?.length ? rubric : null;
   const [score, setScore] = useState(item.score === null ? "" : String(item.score));
-  // Previous points only prefill when they match the rubric as it is now.
-  const [points, setPoints] = useState<string[]>(() => criteria ? criteria.map((_, index) => item.points && item.points.length === criteria.length ? String(item.points[index]) : "") : []);
+  // Previous points only prefill when they were given against the rubric as it is now.
+  const [entered, setEntered] = useState<string[]>(() => criteria && item.breakdown && matchesRubric(item.breakdown, criteria) ? item.breakdown.map((entry) => String(entry.points)) : []);
+  // One value per current criterion, so an edit to the rubric while this form is open keeps the inputs aligned.
+  const points = criteria ? criteria.map((_, index) => entered[index] ?? "") : [];
   const [feedback, setFeedback] = useState(item.feedback ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -213,7 +210,7 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
     <fieldset disabled={busy}><legend className="sr-only">Penilaian</legend>
       {item.stale && <p className="app-notice">Member memperbarui kiriman setelah dinilai. Periksa versi terbaru, lalu simpan penilaian lagi.</p>}
       {criteria && <div className="dash-rubric-points" role="group" aria-label="Poin per kriteria">
-        {criteria.map((criterion, index) => <div className="app-field" key={index}><label htmlFor={`${id}-point-${index}`}>{criterion.name} <span className="app-small">(0–{criterion.max})</span></label><input id={`${id}-point-${index}`} type="number" inputMode="numeric" min={0} max={criterion.max} step={1} value={points[index]} onChange={(event) => setPoints(points.map((value, i) => i === index ? event.target.value : value))} placeholder="—" /></div>)}
+        {criteria.map((criterion, index) => <div className="app-field" key={index}><label htmlFor={`${id}-point-${index}`}>{criterion.name} <span className="app-small">(0–{criterion.max})</span></label><input id={`${id}-point-${index}`} type="number" inputMode="numeric" min={0} max={criterion.max} step={1} value={points[index]} onChange={(event) => setEntered(points.map((value, i) => i === index ? event.target.value : value))} placeholder="—" /></div>)}
         <p className="app-small dash-rubric-total">Total {total === null ? "—" : total} dari {maxScore}</p>
       </div>}
       <div className="dash-review-fields" data-rubric={Boolean(criteria)}>

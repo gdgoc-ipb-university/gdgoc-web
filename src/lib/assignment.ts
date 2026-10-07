@@ -25,6 +25,8 @@ export const acceptAttribute = Object.keys(acceptedFiles).map((extension) => `.$
 
 /** A rubric criterion as stored: points for it run from 0 to `max`. */
 export type RubricCriterion = { name: string; max: number };
+/** A criterion as it was when a submission was scored, with the points given. */
+export type RubricScore = RubricCriterion & { points: number };
 /** A criterion as typed in the form. */
 export type RubricInput = { name: string; max: string };
 // `maxScore` and the rubric maxes are the form's text; they become numbers on the server. With a rubric, maxScore is the sum of its maxes.
@@ -41,6 +43,11 @@ export function rubricTotal(rubric: { max: string }[]) {
 
 export function parseRubric(rubric: RubricInput[]): RubricCriterion[] {
   return rubric.map((criterion) => ({ name: criterion.name, max: Number(criterion.max) }));
+}
+
+/** Whether a breakdown was scored against these exact criteria (same names and maxes, same order). */
+export function matchesRubric(breakdown: RubricScore[], rubric: RubricCriterion[]) {
+  return breakdown.length === rubric.length && breakdown.every((entry, index) => entry.name === rubric[index].name && entry.max === rubric[index].max);
 }
 
 export function cleanFileName(name: string) {

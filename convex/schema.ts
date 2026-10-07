@@ -10,6 +10,7 @@ export const appreciationValues = v.object({
 export const memberType = v.union(v.literal("member"), v.literal("core"), v.literal("bod"));
 export const assignmentStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("closed"));
 export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
+export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
 
 export default defineSchema({
   memberProfiles: defineTable({
@@ -58,7 +59,8 @@ export default defineSchema({
     revision: v.number(), submittedAt: v.number(),
     // The latest review; `submittedAt > reviewedAt` means the member resubmitted since (isStaleReview).
     score: v.optional(v.number()), feedback: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
-    points: v.optional(v.array(v.number())), // one per rubric criterion, in rubric order
+    // With a rubric: the criteria as they were when scored, each with its points, so later rubric edits do not relabel a past review.
+    breakdown: v.optional(rubricBreakdown),
   })
     .index("by_assignment_owner", ["assignmentId", "ownerId"])
     .index("by_assignment_submitted", ["assignmentId", "submittedAt"])
@@ -66,7 +68,7 @@ export default defineSchema({
   // One row per review action, so a score's history survives re-reviews (like appreciationReviews).
   submissionReviews: defineTable({
     submissionId: v.id("assignmentSubmissions"), assignmentId: v.id("assignments"), reviewerId: v.string(),
-    score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string(), createdAt: v.number(),
+    score: v.optional(v.number()), breakdown: v.optional(rubricBreakdown), feedback: v.string(), createdAt: v.number(),
   }).index("by_submission", ["submissionId", "createdAt"]),
   // Uploads start pending and are attached by a submission; unclaimed ones are removed by a cron.
   submissionFiles: defineTable({

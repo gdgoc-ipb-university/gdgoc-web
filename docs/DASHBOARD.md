@@ -103,7 +103,7 @@ Members see a result card above their form (or above the closed notice): the sco
 
 An assignment can carry a **rubric**: up to 8 criteria, each with a name (≤ 80 characters) and a whole-number maximum of at least 1, with the maxes summing to at most 1,000. With a rubric, `maxScore` is the sum of the maxes (the form shows it read-only), and members see the criteria and their points under the instructions. Blank rows in the editor are dropped on save.
 
-Reviewing a rubric assignment means filling one point value per criterion, in rubric order; `assignments.review` takes them as `points`, checks each against its criterion's max, and stores the sum as `score` together with `points` on the submission and on the `submissionReviews` row. Sending a bare `score` for a rubric assignment is refused, as is a `points` array whose length does not match the current rubric (the reviewer reloads). Feedback alone clears both score and points. The member's result card shows the per-criterion breakdown when the stored points match the current rubric; if the rubric was edited after a review, only the total is shown until the submission is reviewed again. Catalyst's capstone rubric (the product plus each role's contribution) is one such rubric, written by Program & Development.
+Reviewing a rubric assignment means filling one point value per criterion, in rubric order; `assignments.review` takes them as `points`, checks each against its criterion's max, and stores the sum as `score` together with a `breakdown` (each criterion's name, max and points, as the rubric stood at that moment) on the submission and on the `submissionReviews` row. Sending a bare `score` for a rubric assignment is refused, as are a `points` array whose length does not match the current rubric and `points` for an assignment whose rubric was removed (the reviewer reloads). Feedback alone clears both score and breakdown. The member's result card shows the breakdown as it was scored, so a later rubric edit does not relabel a past review; the review form prefills earlier points only when they were given against the current criteria. Catalyst's capstone rubric (the product plus each role's contribution) is one such rubric, written by Program & Development.
 
 ## Papan skor (Bogor Run leaderboard)
 
@@ -185,8 +185,8 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 - `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`/`bod`), and `division`, a `by_completed` index, and a `search_name` full-text index on `fullName`.
 - `assignments`: optional `slug`, `maxScore` and `rubric` (name and max per criterion), plus `by_status_due` and `by_updated` indexes.
 - `assignmentSlugs`: every slug an assignment has used (`by_slug`, `by_assignment`).
-- `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`), with the latest review in optional `score`, `points`, `feedback`, `reviewedAt`, `reviewedBy`.
-- `submissionReviews`: one row per review action, with `score` and `points` (`by_submission`).
+- `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`), with the latest review in optional `score`, `breakdown`, `feedback`, `reviewedAt`, `reviewedBy`.
+- `submissionReviews`: one row per review action, with `score` and `breakdown` (`by_submission`).
 - `submissionFiles`: pending or attached uploads (`by_storage`, `by_submission`, `by_owner_assignment`, `by_assignment`).
 - `gameRuns`: one row per accepted Bogor Run run, with seed, nonce, times, end tick, score, and week, but not its inputs (`by_nonce`, `by_owner`, `by_submitted`). Rows are deleted 30 days after they were saved.
 - `gameBests`: each player's best per period, `"all"` or a week key, with the public short name and a `hidden` flag, set while staff hide the player or the account is deactivated (`by_owner_period`, `by_period_hidden_score`).

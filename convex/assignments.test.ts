@@ -188,15 +188,20 @@ describe("assignment submission", () => {
     await expect(owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, points: [30], feedback: "" })).rejects.toThrow("2 kriteria");
     await expect(owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, points: [30, 61], feedback: "" })).rejects.toThrow("Eksekusi");
     await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, points: [30, 55], feedback: "Bagus." });
-    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 85, points: [30, 55], feedback: "Bagus." });
-    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page[0]).toMatchObject({ score: 85, points: [30, 55] });
+    const scored = [{ name: "Kejelasan masalah", max: 40, points: 30 }, { name: "Eksekusi", max: 60, points: 55 }];
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 85, breakdown: scored, feedback: "Bagus." });
+    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page[0]).toMatchObject({ score: 85, breakdown: scored });
+    // Editing the rubric later keeps the criteria the review was scored against.
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: { ...values(), rubric: [{ name: "Masalah", max: "50" }, { name: "Eksekusi", max: "50" }] } });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 85, breakdown: scored });
     // Feedback alone clears the points along with the score.
     await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, feedback: "Lihat catatan." });
-    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: null, points: null });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: null, breakdown: null });
     const history = await t.run((ctx) => ctx.db.query("submissionReviews").withIndex("by_submission", (q) => q.eq("submissionId", row._id)).collect());
-    expect(history.map((entry) => entry.points ?? null)).toEqual([[30, 55], null]);
-    // Removing the rubric falls back to a plain maximum.
-    await owner.mutation(api.assignments.update, { id, revision: 0, values: { ...values(), maxScore: "10", rubric: [] } });
+    expect(history.map((entry) => entry.breakdown ?? null)).toEqual([scored, null]);
+    // Removing the rubric falls back to a plain maximum, and points from a tab that still shows the rubric are refused.
+    await owner.mutation(api.assignments.update, { id, revision: 1, values: { ...values(), maxScore: "10", rubric: [] } });
+    await expect(owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, points: [5, 5], feedback: "" })).rejects.toThrow("tidak lagi memakai rubrik");
     expect((await member.query(api.assignments.get, { id }))?.assignment).toMatchObject({ maxScore: 10 });
     expect((await member.query(api.assignments.get, { id }))?.assignment.rubric).toBeUndefined();
   });

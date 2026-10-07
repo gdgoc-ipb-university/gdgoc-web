@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanFileName, fileProblem, fromJakartaInput, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
+import { cleanFileName, fileProblem, fromJakartaInput, matchesRubric, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
 
 describe("assignment rules", () => {
   it("reads and writes deadlines in WIB regardless of the runtime time zone", () => {
@@ -47,6 +47,14 @@ describe("assignment rules", () => {
     expect(validateAssignment({ ...base, rubric: [{ name: "Ide", max: "600" }, { name: "Eksekusi", max: "500" }] }).rubric).toContain("maksimal 1000");
     expect(validateAssignment({ ...base, rubric: Array.from({ length: 9 }, (_, i) => ({ name: `K${i}`, max: "1" })) }).rubric).toContain("Maksimal 8");
     expect(validateAssignment({ ...base, rubric: [{ name: "Ide", max: "abc" }] })).not.toHaveProperty("maxScore"); // the derived total is not blamed separately
+  });
+
+  it("matches a stored breakdown only against the same criteria in the same order", () => {
+    const breakdown = [{ name: "Ide", max: 40, points: 30 }, { name: "Eksekusi", max: 60, points: 50 }];
+    expect(matchesRubric(breakdown, [{ name: "Ide", max: 40 }, { name: "Eksekusi", max: 60 }])).toBe(true);
+    expect(matchesRubric(breakdown, [{ name: "Ide", max: 50 }, { name: "Eksekusi", max: 50 }])).toBe(false);
+    expect(matchesRubric(breakdown, [{ name: "Eksekusi", max: 60 }, { name: "Ide", max: 40 }])).toBe(false);
+    expect(matchesRubric(breakdown, [{ name: "Ide", max: 40 }])).toBe(false);
   });
 
   it("derives readable slugs from titles and cleans custom ones", () => {

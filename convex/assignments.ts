@@ -5,7 +5,7 @@ import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent, isOwner } from "./auth";
 import { requireMember, requireStaff } from "./access";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
-import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment } from "../src/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 
 // `slug`, `maxScore` and `rubric` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100) or empty.
 const assignmentInput = v.object({
@@ -40,7 +40,7 @@ async function nameOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
 /** The review fields a member or reviewer sees on a submission. */
 async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignmentSubmissions">) {
   return {
-    score: submission.score ?? null, points: submission.points ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
+    score: submission.score ?? null, breakdown: submission.breakdown ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
     reviewerName: submission.reviewedBy ? (await nameOf(ctx, submission.reviewedBy)).name : null,
     stale: isStaleReview(submission),
   };
@@ -234,7 +234,7 @@ export const missing = query({
 
 /** Score and/or feedback for one submission. The latest review is kept on the submission; every review is kept in submissionReviews. */
 export const review = mutation({
-  // With a rubric, `points` (one per criterion, in order) is the way to score and `score` becomes their sum; without one, `score` is given directly.
+  // With a rubric, `points` (one per criterion, in order) is the way to score: they are stored with their criteria as `breakdown` and `score` becomes their sum. Without one, `score` is given directly.
   args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string() },
   handler: async (ctx, args) => {
     const { user } = await requireStaff(ctx);
@@ -248,25 +248,29 @@ export const review = mutation({
     const maxScore = assignmentMaxScore(assignment);
     if (feedback.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
     let score = args.score;
-    let points: number[] | undefined;
-    if (assignment.rubric?.length) {
+    let breakdown: RubricScore[] | undefined;
+    const rubric = assignment.rubric ?? [];
+    if (rubric.length) {
       if (args.points !== undefined) {
-        if (args.points.length !== assignment.rubric.length) throw new ConvexError({ code: "CONFLICT", message: `Rubrik tugas ini punya ${assignment.rubric.length} kriteria. Muat ulang halaman untuk memakai rubrik terbaru.` });
-        args.points.forEach((value, index) => {
-          const criterion = assignment.rubric![index];
-          if (!Number.isInteger(value) || value < 0 || value > criterion.max) throw new ConvexError(`Poin "${criterion.name}" harus bilangan bulat 0 sampai ${criterion.max}.`);
+        if (args.points.length !== rubric.length) throw new ConvexError({ code: "CONFLICT", message: `Rubrik tugas ini punya ${rubric.length} kriteria. Muat ulang halaman untuk memakai rubrik terbaru.` });
+        breakdown = args.points.map((points, index) => {
+          const criterion = rubric[index];
+          if (!Number.isInteger(points) || points < 0 || points > criterion.max) throw new ConvexError(`Poin "${criterion.name}" harus bilangan bulat 0 sampai ${criterion.max}.`);
+          return { ...criterion, points };
         });
-        points = args.points;
-        score = points.reduce((sum, value) => sum + value, 0);
+        score = breakdown.reduce((sum, entry) => sum + entry.points, 0);
       } else if (args.score !== undefined) {
         throw new ConvexError({ code: "VALIDATION", message: "Tugas ini memakai rubrik. Isi poin tiap kriteria, bukan satu nilai total." });
       }
+    } else if (args.points !== undefined) {
+      // The rubric was removed after the reviewer loaded the page.
+      throw new ConvexError({ code: "CONFLICT", message: "Tugas ini tidak lagi memakai rubrik. Muat ulang halaman untuk memakai versi terbaru." });
     }
     if (score !== undefined && (!Number.isInteger(score) || score < 0 || score > maxScore)) throw new ConvexError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`);
     if (score === undefined && !feedback) throw new ConvexError({ code: "VALIDATION", message: "Isi nilai, umpan balik, atau keduanya." });
     const now = Date.now();
-    await ctx.db.patch(submission._id, { score, points, feedback: feedback || undefined, reviewedAt: now, reviewedBy: user._id });
-    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score, points, feedback, createdAt: now });
+    await ctx.db.patch(submission._id, { score, breakdown, feedback: feedback || undefined, reviewedAt: now, reviewedBy: user._id });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score, breakdown, feedback, createdAt: now });
   },
 });
 

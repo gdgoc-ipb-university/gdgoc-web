@@ -424,3 +424,9 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-rubric-total { grid-column: 1 / -1; margin: 0; }
 .dash-review-fields[data-rubric="true"] { grid-template-columns: 1fr; }
 @media (max-width: 640px) { .dash-rubric-row { grid-template-columns: 1fr 100px; } .dash-rubric-remove { grid-column: 1 / -1; justify-self: start; padding-bottom: 0; } }
+
+/* Export */
+.dash-submissions-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 16px; }
+.dash-export { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.dash-export small { color: #b0372a; max-width: 320px; text-align: right; }
+@media (max-width: 640px) { .dash-submissions-summary { justify-content: flex-start; } .dash-export { align-items: flex-start; } .dash-export small { text-align: left; } }

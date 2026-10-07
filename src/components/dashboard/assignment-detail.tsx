@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { assignmentLimits, assignmentMaxScore, assignmentPath, matchesRubric, scoreLabel, type RubricCriterion, type RubricScore } from "@/lib/assignment";
+import { exportFileName, submissionsCsv, type ExportRow } from "@/lib/assignment-export";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
@@ -137,7 +138,7 @@ function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; n
   const list = usePaginatedQuery(api.assignments.submissions, { id: assignment._id }, { initialNumItems: 20 });
   const maxScore = assignmentMaxScore(assignment);
   const reviewed = list.results.filter((item) => item.reviewedAt !== null && !item.stale).length;
-  return <section aria-labelledby="submissions-title"><div className="app-section-heading"><div><p className="eyebrow">KIRIMAN MEMBER</p><h2 id="submissions-title">Kiriman</h2></div>{list.status !== "LoadingFirstPage" && <span className="app-small">{list.results.length}{list.status === "CanLoadMore" ? "+" : ""} kiriman · {list.results.filter((item) => item.late).length} terlambat · {reviewed} dinilai</span>}</div>
+  return <section aria-labelledby="submissions-title"><div className="app-section-heading"><div><p className="eyebrow">KIRIMAN MEMBER</p><h2 id="submissions-title">Kiriman</h2></div>{list.status !== "LoadingFirstPage" && <div className="dash-submissions-summary"><span className="app-small">{list.results.length}{list.status === "CanLoadMore" ? "+" : ""} kiriman · {list.results.filter((item) => item.late).length} terlambat · {reviewed} dinilai</span>{list.results.length > 0 && <ExportButton assignment={assignment} />}</div>}</div>
     {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat kiriman…" /> : !list.results.length ? <div className="app-empty"><h3>Belum ada kiriman.</h3><p>{assignment.status === "draft" ? "Buka tugas ini agar member bisa mulai mengumpulkan." : assignment.dueAt > now ? "Kiriman member akan muncul di sini secara otomatis." : "Tenggat sudah lewat dan belum ada member yang mengirim."}</p></div>
       : <ul className="dash-submissions">{list.results.map((item) => <li key={item._id} className="app-panel">
         <div className="app-record-top"><div><strong>{item.name}</strong><span className="app-small">{[item.email, item.campus].filter(Boolean).join(" · ")}</span></div><span className="app-inline-badges"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={maxScore} reviewedAt={item.reviewedAt} stale={item.stale} /></span></div>
@@ -149,6 +150,38 @@ function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; n
     {list.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => list.loadMore(20)}>Muat kiriman lainnya</button>}
     {list.status === "LoadingMore" && <p role="status">Memuat kiriman…</p>}
   </section>;
+}
+
+/** Downloads every submission with its score as CSV, read page by page so a large assignment stays within query limits. */
+function ExportButton({ assignment }: { assignment: Doc<"assignments"> }) {
+  const convex = useConvex();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function download() {
+    setBusy(true); setError("");
+    try {
+      const rows: ExportRow[] = [];
+      let cursor: string | null = null;
+      let includesEmail = false;
+      for (;;) {
+        const page: FunctionReturnType<typeof api.assignments.exportPage> = await convex.query(api.assignments.exportPage, { id: assignment._id, paginationOpts: { numItems: 100, cursor } });
+        rows.push(...page.page); includesEmail = page.includesEmail;
+        if (page.isDone) break;
+        cursor = page.continueCursor;
+      }
+      const csv = submissionsCsv({ maxScore: assignmentMaxScore(assignment), rubric: assignment.rubric ?? null }, rows, includesEmail);
+      const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url; link.download = exportFileName(assignment.slug, Date.now());
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (cause) { setError(readableError(cause)); }
+    finally { setBusy(false); }
+  }
+  return <span className="dash-export">
+    <button type="button" className="text-button" disabled={busy} onClick={() => void download()}><Arrow download size={16} />{busy ? "Menyiapkan CSV…" : "Unduh CSV"}</button>
+    {error && <small role="alert">{error}</small>}
+  </span>;
 }
 
 /** Active members who have not submitted, with a copyable "Nama — email" list for a reminder. Staff only, so emails are fine here. */

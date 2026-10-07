@@ -206,6 +206,35 @@ describe("assignment submission", () => {
     expect((await member.query(api.assignments.get, { id }))?.assignment.rubric).toBeUndefined();
   });
 
+  it("exports every submission with its review for staff, with emails for owners only", async () => {
+    const { t, owner, member, other } = await world();
+    const admin = await account(t, "admin@example.com");
+    await t.run(async (ctx) => {
+      const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", admin.id)).unique();
+      await ctx.db.patch(profile!._id, { role: "admin" });
+    });
+    const id = await owner.mutation(api.assignments.create, { values: { ...values(), rubric: [{ name: "Ide", max: "40" }, { name: "Eksekusi", max: "60" }] }, publish: true });
+    const fileId = await attach(member, t, id, "laporan.pdf");
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Brief", fileIds: [fileId] });
+    await other.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Brief lain", fileIds: [] });
+    const [first] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page.filter((row) => row.email === "member@example.com");
+    await owner.mutation(api.assignments.review, { submissionId: first._id, submissionRevision: 1, points: [30, 50], feedback: "Rapi." });
+
+    await expect(member.query(api.assignments.exportPage, { id, paginationOpts: page })).rejects.toThrow("hanya untuk admin");
+    const firstPage = await owner.query(api.assignments.exportPage, { id, paginationOpts: { numItems: 1, cursor: null } });
+    expect(firstPage).toMatchObject({ includesEmail: true, isDone: false });
+    const rest = await owner.query(api.assignments.exportPage, { id, paginationOpts: { numItems: 1, cursor: firstPage.continueCursor } });
+    const rows = [...firstPage.page, ...rest.page];
+    expect(rows.find((row) => row.email === "member@example.com")).toMatchObject({
+      name: "Nama member", campus: "IPB University", score: 80, feedback: "Rapi.", reviewerName: "Nama owner", fileNames: ["laporan.pdf"],
+      breakdown: [{ name: "Ide", max: 40, points: 30 }, { name: "Eksekusi", max: 60, points: 50 }],
+    });
+    expect(rows.find((row) => row.email === "other@example.com")).toMatchObject({ score: null, breakdown: null, reviewedAt: null, fileNames: [] });
+    const forAdmin = await admin.query(api.assignments.exportPage, { id, paginationOpts: page });
+    expect(forAdmin.includesEmail).toBe(false);
+    expect(forAdmin.page.map((row) => row.email)).toEqual(["", ""]);
+  });
+
   // convex-test does not record upload content types; see src/lib/assignment.test.ts for type checks.
   it("validates uploads on the server and deletes rejected files", async () => {
     const { t, owner, member, other } = await world();

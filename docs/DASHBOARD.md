@@ -105,6 +105,12 @@ An assignment can carry a **rubric**: up to 8 criteria, each with a name (≤ 80
 
 Reviewing a rubric assignment means filling one point value per criterion, in rubric order; `assignments.review` takes them as `points`, checks each against its criterion's max, and stores the sum as `score` together with a `breakdown` (each criterion's name, max and points, as the rubric stood at that moment) on the submission and on the `submissionReviews` row. Sending a bare `score` for a rubric assignment is refused, as are a `points` array whose length does not match the current rubric and `points` for an assignment whose rubric was removed (the reviewer reloads). Feedback alone clears both score and breakdown. The member's result card shows the breakdown as it was scored, so a later rubric edit does not relabel a past review; the review form prefills earlier points only when they were given against the current criteria. Catalyst's capstone rubric (the product plus each role's contribution) is one such rubric, written by Program & Development.
 
+### Export
+
+"Unduh CSV" next to the submission counts downloads every submission of the assignment with its review: name, campus, submitted at (WIB), late, review status (*Belum dinilai*, *Dinilai*, *Diperbarui setelah dinilai*), score, maximum, feedback, reviewer, reviewed at (WIB) and attachment names, sorted by name. With a rubric, each current criterion gets a points column, filled only when the review was scored against the same criteria, and *Rincian rubrik* holds the breakdown as it was scored. The email column is included for owners only, because the file leaves the dashboard; admins get the same file without it.
+
+The file is built in the browser from `assignments.exportPage`, read 100 submissions at a time, as UTF-8 with a byte order mark and CRLF line ends so Excel opens it cleanly. Text cells that start with `=`, `+`, `-`, `@`, a tab or a carriage return get a leading apostrophe so a spreadsheet does not run them as formulas. The builder is `src/lib/assignment-export.ts`.
+
 ## Papan skor (Bogor Run leaderboard)
 
 Bogor Run is the runner game in the landing-page footer (`public/games/bogor-run/README.md`). Anyone can play. Saving a score needs a verified Google account that is not deactivated; onboarding is not required. The game's pause and game-over panel shows the weekly and all-time top 10 to everyone, guests included, and links here with "Lihat 100 besar".
@@ -199,8 +205,9 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 - `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, and BoD tagging with an optional division. `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
-- `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, and the review history.
+- `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, the review history, rubric scoring, and the export (staff only, paged, emails for owners only).
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, and slugify. convex-test does not record upload content types, so type mismatches are tested here.
+- `src/lib/assignment-export.test.ts`: CSV quoting, formula defusing, the byte order mark, column order with and without emails or a rubric, rubric columns that fill only for the current criteria, WIB times, and the file name.
 - `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, dropzone drops and free slots, WebP compression before upload and oversized images, upload progress and cancellation, pending and attached file removal, saved rich answers, and the late warning.
 - `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, and link validation.
 - `src/lib/image-optimize.test.ts`: downscaling, WebP output, and keeping the original when WebP is larger, unsupported, or undecodable.
@@ -213,4 +220,4 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 ## Not included
 
-Revision requests that reopen one member's submission, group targeting, and exports are not built.
+Revision requests that reopen one member's submission and group targeting are not built.

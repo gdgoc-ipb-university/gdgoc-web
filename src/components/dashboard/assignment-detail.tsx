@@ -7,7 +7,7 @@ import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { assignmentLimits, assignmentMaxScore, assignmentPath, scoreLabel } from "@/lib/assignment";
+import { assignmentLimits, assignmentMaxScore, assignmentPath, matchesRubric, scoreLabel, type RubricCriterion, type RubricScore } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
@@ -55,6 +55,8 @@ export function AssignmentDetail({ id }: { id: string }) {
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
+      {assignment.rubric && assignment.rubric.length > 0 && <div className="dash-rubric" aria-labelledby="rubric-title"><p className="eyebrow" id="rubric-title">RUBRIK PENILAIAN · {assignmentMaxScore(assignment)} POIN</p>
+        <ol className="dash-rubric-list">{assignment.rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{criterion.max} poin</b></li>)}</ol></div>}
     </article>
     {data.canManage ? <><StaffControls assignment={assignment} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</> : <MemberSubmission data={data} now={now} />}
   </>;
@@ -85,14 +87,16 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
   return <>{result}<SubmissionForm key={assignment._id} submission={submission} files={files} dueAt={assignment.dueAt} now={now} actions={actions} /></>;
 }
 
-type Reviewed = { score: number | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean };
+type Reviewed = { score: number | null; breakdown: RubricScore[] | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean };
 
-/** What the member sees once a reviewer has scored or commented. */
+/** What the member sees once a reviewer has scored or commented. A rubric score shows the criteria as they were when scored. */
 function ReviewResult({ submission, maxScore }: { submission: Reviewed; maxScore: number }) {
+  const breakdown = submission.breakdown?.length ? submission.breakdown : null;
   return <section className="app-panel dash-result" aria-labelledby="result-title">
     <p className="eyebrow">HASIL PENILAIAN</p>
     <h2 id="result-title">{submission.score === null ? "Ada umpan balik untukmu." : "Kirimanmu sudah dinilai."}</h2>
-    {submission.score !== null && <p className="dash-score">{submission.score}<small>dari {maxScore}</small></p>}
+    {submission.score !== null && <p className="dash-score">{submission.score}<small>dari {breakdown ? breakdown.reduce((sum, entry) => sum + entry.max, 0) : maxScore}</small></p>}
+    {breakdown && <ol className="dash-rubric-list dash-rubric-result">{breakdown.map((entry, index) => <li key={index}><span>{entry.name}</span><b>{scoreLabel(entry.points, entry.max)}</b></li>)}</ol>}
     {submission.feedback && <p className="dash-feedback">{submission.feedback}</p>}
     <p className="app-small">Dinilai {submission.reviewedAt ? dateLabel(submission.reviewedAt) : ""}{submission.reviewerName ? ` oleh ${submission.reviewerName}` : ""}.</p>
     {submission.stale && <p className="app-notice">Kamu memperbarui kiriman setelah penilaian ini. Nilai di atas berlaku untuk versi sebelumnya sampai ditinjau lagi.</p>}
@@ -140,7 +144,7 @@ function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; n
         <p className="app-small">Dikirim {dateLabel(item.submittedAt)}</p>
         {item.answer && <RichTextView className="dash-answer" json={item.answerDoc} text={item.answer} />}
         {item.files.length > 0 && <ul className="dash-file-list" aria-label={`Lampiran dari ${item.name}`}>{item.files.map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul>}
-        <ReviewForm key={`${item._id}:${item.revision}`} item={item} maxScore={maxScore} />
+        <ReviewForm key={`${item._id}:${item.revision}`} item={item} maxScore={maxScore} rubric={assignment.rubric ?? null} />
       </li>)}</ul>}
     {list.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => list.loadMore(20)}>Muat kiriman lainnya</button>}
     {list.status === "LoadingMore" && <p role="status">Memuat kiriman…</p>}
@@ -170,28 +174,47 @@ function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
 }
 
 /** Score and feedback for one submission. Keyed by revision upstream, so a resubmission resets the form to the new version. */
-function ReviewForm({ item, maxScore }: { item: SubmissionRow; maxScore: number }) {
+function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore: number; rubric: RubricCriterion[] | null }) {
   const review = useMutation(api.assignments.review);
+  const criteria = rubric?.length ? rubric : null;
   const [score, setScore] = useState(item.score === null ? "" : String(item.score));
+  // Previous points only prefill when they were given against the rubric as it is now.
+  const [entered, setEntered] = useState<string[]>(() => criteria && item.breakdown && matchesRubric(item.breakdown, criteria) ? item.breakdown.map((entry) => String(entry.points)) : []);
+  // One value per current criterion, so an edit to the rubric while this form is open keeps the inputs aligned.
+  const points = criteria ? criteria.map((_, index) => entered[index] ?? "") : [];
   const [feedback, setFeedback] = useState(item.feedback ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
   const id = `review-${item._id}`;
+  const filled = points.filter((value) => value.trim() !== "");
+  const total = criteria && filled.length === criteria.length && points.every((value) => /^\d+$/.test(value.trim())) ? points.reduce((sum, value) => sum + Number(value), 0) : null;
   async function save(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const trimmed = score.trim();
-    if (trimmed && !/^\d+$/.test(trimmed)) { setError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`); return; }
+    let args: { score?: number; points?: number[] } = {};
+    if (criteria) {
+      if (filled.length && filled.length !== criteria.length) { setError("Isi poin untuk semua kriteria, atau kosongkan semuanya untuk umpan balik saja."); return; }
+      if (filled.some((value) => !/^\d+$/.test(value.trim()))) { setError("Poin harus bilangan bulat."); return; }
+      if (filled.length) args = { points: points.map((value) => Number(value.trim())) };
+    } else {
+      const trimmed = score.trim();
+      if (trimmed && !/^\d+$/.test(trimmed)) { setError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`); return; }
+      if (trimmed) args = { score: Number(trimmed) };
+    }
     setBusy(true); setError(""); setSaved(false);
-    try { await review({ submissionId: item._id, submissionRevision: item.revision, score: trimmed ? Number(trimmed) : undefined, feedback }); setSaved(true); }
+    try { await review({ submissionId: item._id, submissionRevision: item.revision, ...args, feedback }); setSaved(true); }
     catch (cause) { setError(readableError(cause)); }
     finally { setBusy(false); }
   }
   return <form className="dash-review-form" onSubmit={save} aria-label={`Penilaian untuk ${item.name}`}>
     <fieldset disabled={busy}><legend className="sr-only">Penilaian</legend>
       {item.stale && <p className="app-notice">Member memperbarui kiriman setelah dinilai. Periksa versi terbaru, lalu simpan penilaian lagi.</p>}
-      <div className="dash-review-fields">
-        <div className="app-field"><label htmlFor={`${id}-score`}>Nilai (0–{maxScore})</label><input id={`${id}-score`} type="number" inputMode="numeric" min={0} max={maxScore} step={1} value={score} onChange={(event) => setScore(event.target.value)} placeholder="—" /></div>
+      {criteria && <div className="dash-rubric-points" role="group" aria-label="Poin per kriteria">
+        {criteria.map((criterion, index) => <div className="app-field" key={index}><label htmlFor={`${id}-point-${index}`}>{criterion.name} <span className="app-small">(0–{criterion.max})</span></label><input id={`${id}-point-${index}`} type="number" inputMode="numeric" min={0} max={criterion.max} step={1} value={points[index]} onChange={(event) => setEntered(points.map((value, i) => i === index ? event.target.value : value))} placeholder="—" /></div>)}
+        <p className="app-small dash-rubric-total">Total {total === null ? "—" : total} dari {maxScore}</p>
+      </div>}
+      <div className="dash-review-fields" data-rubric={Boolean(criteria)}>
+        {!criteria && <div className="app-field"><label htmlFor={`${id}-score`}>Nilai (0–{maxScore})</label><input id={`${id}-score`} type="number" inputMode="numeric" min={0} max={maxScore} step={1} value={score} onChange={(event) => setScore(event.target.value)} placeholder="—" /></div>}
         <div className="app-field"><label htmlFor={`${id}-feedback`}>Umpan balik untuk member</label><textarea data-lenis-prevent id={`${id}-feedback`} rows={3} maxLength={assignmentLimits.feedback} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Apa yang sudah baik, apa yang perlu diperbaiki." /></div>
       </div>
       <div className="app-inline-actions"><button className="button button-blue" type="submit">{busy ? "Menyimpan…" : item.reviewedAt === null ? "Simpan penilaian" : "Perbarui penilaian"}</button>

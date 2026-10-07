@@ -209,6 +209,28 @@ export const submissions = query({
   },
 });
 
+/** One page of the CSV export: what the staff list shows, without answers or file URLs. Emails are included for owners only, since the file leaves the dashboard. */
+export const exportPage = query({
+  args: { id: v.id("assignments"), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { id, paginationOpts }) => {
+    const { role } = await requireStaff(ctx);
+    const assignment = await ctx.db.get(id);
+    if (!assignment) notFound();
+    const includesEmail = role === "owner";
+    const result = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_submitted", (q) => q.eq("assignmentId", id)).paginate(paginationOpts);
+    return {
+      ...result, includesEmail,
+      page: await Promise.all(result.page.map(async (submission) => {
+        const [who, files, review] = await Promise.all([nameOf(ctx, submission.ownerId), attachedFiles(ctx, submission._id), reviewView(ctx, submission)]);
+        return {
+          name: who.name, email: includesEmail ? who.email : "", campus: who.campus,
+          submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt), ...review, fileNames: files.map((file) => file.name),
+        };
+      })),
+    };
+  },
+});
+
 /** Active, onboarded members without a submission. Staff are not expected to submit, so owners and admins are left out of both counts. */
 export const missing = query({
   args: { id: v.id("assignments") },

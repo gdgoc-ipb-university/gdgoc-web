@@ -29,6 +29,10 @@ Node 24 and pnpm 11.22.0 are used; `.node-version` pins the major for fnm, nvm, 
 
 The first authenticated visit opens a five-screen `/onboarding`: name, campus and study program, Member or Core Team (with a division), optional WhatsApp invitation, and optional GDG Community invitation. Progress is saved per account after each forward action, and completed users do not repeat the flow. Searchable education comboboxes accept unlisted values and support keyboard navigation, mobile input hints, and accessible labels/errors. The resulting profile prefills new appreciation drafts. See `docs/ONBOARDING.md` for persistence, accessibility, and suggestion-source details.
 
+## Tech League
+
+`/tech-league` is the public page for Tech League 2026/27: the three categories, the schedule (registration 2 November 2026 – 8 February 2027, submissions due 15 February, judging 19 February – 16 March, finals 25–27 March 2027), and a short FAQ. Registration, payment and submissions run on Program & Development's forms, not on this site (#33). The page shows the registration state for the current date (WIB) and is revalidated hourly. The form and guidebook links are `registrationUrl` and `guidebookUrl` in `src/lib/tech-league.ts`; until they are set, the page says the links will be published there and on Instagram. The landing's Tech League card opens this page.
+
 ## Dashboard
 
 `/dashboard` is the signed-in workspace, with a sidebar (a drawer on phones) using Pixelarticons. Members work on assignments, write a rich-text answer (Tiptap, with a pixel-icon toolbar), drag and drop up to five files (10 MB each) with upload progress, and resubmit until an assignment is closed; work after the deadline is accepted and marked late. Apresiasi and the profile page (community role and division) live here too. Owners, the verified emails in `APPRECIATION_ADMIN_EMAILS`, promote members to admin and review Apresiasi. Owners and admins review Apresiasi, create assignments with editable slugs (`/dashboard/tugas/<slug>`, old slugs keep redirecting), review every submission, and manage members. `/dashboard/papan-skor` shows the Bogor Run top 100 for the week and all time. Staff can hide a player from every board and restore them from a separate hidden list. Hiding follows the member-management hierarchy: admins act only on members, and only an owner can undo an owner's hide. Deactivated members are hidden automatically until they are reactivated, and per-run records are deleted after 30 days. See `docs/DASHBOARD.md`.
@@ -70,6 +74,7 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `src/app/rai/` and `src/components/rai/`: an unlinked, noindex easter egg with the Tier Gemini Rising Star badge redrawn as SVG. It unlocks the blue dino skin for Bogor Run (`src/lib/bogor-run/skin.ts`); the landing page's browser console hints at it.
 - `convex/bogorRun.ts`: signed run tokens, replay-verified score submission, the public and dashboard leaderboards, moderation, and the 30-day pruning of run records.
 - `src/lib/community.ts`: verified official membership and Instagram destinations.
+- `src/lib/tech-league.ts` and `src/app/tech-league/page.tsx`: Tech League categories, schedule, registration state, and the public page.
 - `src/lib/site.ts`: the canonical origin, shared Open Graph fields, and the per-page canonical helper.
 - `docs/DESIGN.md`: Figma evidence, direction choices and implementation rationale.
 - `docs/VERIFICATION.md`: checks and evidence boundaries.

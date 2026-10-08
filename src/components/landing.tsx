@@ -23,8 +23,9 @@ const paths = [
     title: "Tech League",
     label: "UJI KARYA DI KOMPETISI",
     text: "Kompetisi nasional untuk mengadu karya di tiga kategori: Software Development, UI/UX Design, dan Business Plan. Siapkan karya terbaik bersama timmu",
-    cta: "Pantau info Tech League",
+    cta: "Lihat jadwal Tech League",
     icon: "trophy" as PixelIconName,
+    href: "/tech-league",
   },
   {
     n: "03",
@@ -110,16 +111,15 @@ export function Landing() {
                 <Reveal key={path.n}>
                   <a
                     className={`path-card path-${path.color}`}
-                    href={communityLinks.instagram}
-                    target="_blank"
-                    rel="noreferrer"
+                    href={path.href ?? communityLinks.instagram}
+                    {...(path.href ? {} : { target: "_blank", rel: "noreferrer" })}
                   >
                     <div className="path-top">
                       <span>{path.n}</span>
                       <span className="path-glyph" aria-hidden="true">
                         <PixelIcon name={path.icon} size={48} />
                       </span>
-                      <Arrow external />
+                      {path.href ? <Arrow /> : <Arrow external />}
                     </div>
                     <p className="eyebrow">{path.label}</p>
                     <h3>{path.title}</h3>

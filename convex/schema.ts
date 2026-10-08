@@ -108,4 +108,12 @@ export default defineSchema({
   // Player and run counts per period, kept as counters so the board never scans every run.
   gameStats: defineTable({ period: v.string(), players: v.number(), runs: v.number() })
     .index("by_period", ["period"]),
+  // One row per deleted account: who deleted it, when, and how many rows of each kind went. No personal data.
+  accountDeletions: defineTable({
+    deletedAt: v.number(), deletedBy: v.string(),
+    counts: v.object({
+      appreciations: v.number(), appreciationReviews: v.number(), submissions: v.number(), submissionReviews: v.number(),
+      files: v.number(), gameRuns: v.number(), gameBests: v.number(), reviewerGrants: v.number(), sessions: v.number(), accounts: v.number(),
+    }),
+  }).index("by_deleted", ["deletedAt"]),
 });

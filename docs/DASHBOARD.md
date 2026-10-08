@@ -14,7 +14,7 @@
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
 | `/dashboard/apresiasi/tinjau` | — (unless granted review) | Apresiasi review queue: owners, admins, and anyone an owner made a reviewer |
 | `/dashboard/anggota` | — | Search, filter (admin, reviewer, core team, BoD, deactivated), promote/demote admins, grant/revoke Apresiasi review, set community tags (including BoD), deactivate/reactivate members |
-| `/dashboard/anggota/<id>` | — | One member for staff: the member row with its actions, assignment submissions with status and score, sent Apresiasi with status and post link (drafts are only counted), assignments they review, joined date, and who last changed their access (`dashboard.member`). Names in the members list link here |
+| `/dashboard/anggota/<id>` | — | One member for staff: the member row with its actions, assignment submissions with status and score, sent Apresiasi with status and post link (drafts are only counted), assignments they review, joined date, and who last changed their access (`dashboard.member`). Names in the members list link here. Owners also get **Hapus akun** for deletion requests: typing the member's name confirms it, and `dashboard.deleteAccount` removes the profile, Apresiasi with their review rows, submissions with their files and review rows, pending uploads, Bogor Run rows, reviewer grants, and the Better Auth user, accounts and sessions. Other people's rows keep the bare account ID. Owner accounts cannot be deleted this way |
 | `/dashboard/papan-skor` | Bogor Run top 100 this week and all time, with your own rank | Same, plus hide controls and a separate "Disembunyikan" list to restore from |
 | `/dashboard/profil` | Profile facts and community role | Same |
 
@@ -210,12 +210,13 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 - `gameBests`: each player's best per period, `"all"` or a week key, with the public short name and a `hidden` flag, set while staff hide the player or the account is deactivated (`by_owner_period`, `by_period_hidden_score`).
 - `gamePlayers`: staff moderation per player, which also applies to later bests: `hiddenAt` while hidden, `hiddenBy` and `hiddenByRole` of the last hide, and `restoredAt` and `restoredBy` of the last restore (`by_owner`).
 - `gameStats`: player and run counters per period, so the board never scans every run (`by_period`).
+- `accountDeletions`: one row per deleted account with `deletedAt`, `deletedBy` and how many rows of each kind went, without the member's name or email (`by_deleted`).
 
 All schema changes are additive, so the previous frontend keeps working during a backend-first deploy.
 
 ## Tests
 
-- `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, and BoD tagging with an optional division. `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
+- `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, BoD tagging with an optional division, the member detail, and account deletion (owner only, typed-name check, every owned row and the auth user gone, other assignments' reviewer lists cleaned). `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
 - `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, the review history, rubric scoring, assignment reviewers (scoped access, hidden emails, no management), revision requests (reopening one member's form after closing, clearing on resubmission, withdrawal), and the export (staff only, paged, emails for owners only).
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, and slugify. convex-test does not record upload content types, so type mismatches are tested here.

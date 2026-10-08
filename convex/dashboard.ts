@@ -7,6 +7,7 @@ import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
 import { validateStaffRole } from "../src/lib/onboarding";
+import { assignmentMaxScore, isLate, isStaleReview } from "../src/lib/assignment";
 
 export const viewer = query({
   args: {},
@@ -56,6 +57,44 @@ export const members = query({
       return onboarded;
     }).paginate(paginationOpts);
     return { ...result, page: await Promise.all(result.page.map((profile) => memberRow(ctx, profile))) };
+  },
+});
+
+/** Everything staff need about one member: the profile, their assignment submissions and Apresiasi submissions (not drafts), the assignments they review, and who last changed their access. */
+export const member = query({
+  args: { ownerId: v.string() },
+  handler: async (ctx, { ownerId }) => {
+    await requireStaff(ctx);
+    const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
+    if (!profile?.completedAt) return null;
+    const [row, submissions, appreciations, recent] = await Promise.all([
+      memberRow(ctx, profile),
+      ctx.db.query("assignmentSubmissions").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect(),
+      ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).order("desc").collect(),
+      ctx.db.query("assignments").withIndex("by_updated").order("desc").take(200),
+    ]);
+    const tasks = await Promise.all(submissions.map(async (submission) => {
+      const assignment = await ctx.db.get(submission.assignmentId);
+      if (!assignment) return null;
+      return {
+        _id: submission._id, assignmentId: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status,
+        submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt),
+        score: submission.score ?? null, maxScore: assignmentMaxScore(assignment), reviewedAt: submission.reviewedAt ?? null,
+        stale: isStaleReview(submission), revisionRequestedAt: submission.revisionRequestedAt ?? null,
+      };
+    }));
+    const updater = profile.accessUpdatedBy ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", profile.accessUpdatedBy!)).unique() : null;
+    const updaterAccount = profile.accessUpdatedBy && !updater ? await authComponent.getAnyUserById(ctx, profile.accessUpdatedBy) : null;
+    return {
+      ...row,
+      accessUpdatedBy: profile.accessUpdatedBy ? updater?.fullName || updaterAccount?.name || "Pengurus" : null,
+      submissions: tasks.filter((task) => task !== null).sort((a, b) => b.submittedAt - a.submittedAt),
+      appreciations: appreciations.filter((doc) => doc.status !== "draft").map((doc) => ({
+        _id: doc._id, achievement: doc.values.achievement, level: doc.values.level, status: doc.status, submittedAt: doc.submittedAt ?? doc.updatedAt, postUrl: doc.postUrl ?? null,
+      })),
+      drafts: appreciations.filter((doc) => doc.status === "draft").length,
+      reviewing: recent.filter((assignment) => assignment.reviewers?.includes(ownerId)).map((assignment) => ({ _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status })),
+    };
   },
 });
 

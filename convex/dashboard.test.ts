@@ -66,6 +66,40 @@ describe("dashboard roles and member management", () => {
     expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, reviewers: 0, core: 0, bod: 0, deactivated: 0 });
   });
 
+  it("shows staff one member's profile, submissions, sent Apresiasi, reviews and last access change", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const member = await account(t, "member@example.com", { name: "Anggota Satu" });
+    const fresh = await account(t, "fresh@example.com", { onboarded: false });
+    const due = new Date(Date.now() + 48 * 3600000 + 7 * 3600000).toISOString().slice(0, 16);
+    const task = { title: "Landing page", description: "Buat landing page.", dueAt: due };
+    const id = await owner.mutation(api.assignments.create, { values: task, publish: true });
+    const reviewed = await owner.mutation(api.assignments.create, { values: { ...task, title: "Tugas mentor" }, publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Jawaban", fileIds: [] });
+    const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 90, feedback: "" });
+    await owner.mutation(api.assignments.setReviewer, { id: reviewed, ownerId: member.id, reviewer: true });
+    const values = { fullName: "Anggota Satu", memberType: "Member", campus: "IPB University", studyProgram: "", instagram: "anggota", achievement: "Juara 1 UI/UX", eventName: "Lomba", organizer: "Panitia", level: "Nasional", participation: "Individu", teamName: "", teamMembers: "", eventDate: "2026-08-10", story: "Cerita", documentationLinks: "https://example.com", publicationConsent: true };
+    await t.run(async (ctx) => {
+      await ctx.db.insert("appreciations", { ownerId: member.id, ownerName: "Anggota Satu", ownerEmail: "member@example.com", clientId: "a", values, status: "submitted", revision: 2, updatedAt: Date.now(), submittedAt: Date.now() });
+      await ctx.db.insert("appreciations", { ownerId: member.id, ownerName: "Anggota Satu", ownerEmail: "member@example.com", clientId: "b", values: { ...values, achievement: "Draft rahasia" }, status: "draft", revision: 0, updatedAt: Date.now() });
+    });
+    await owner.mutation(api.dashboard.setActive, { ownerId: member.id, active: false });
+
+    await expect(member.query(api.dashboard.member, { ownerId: member.id })).rejects.toThrow();
+    expect(await owner.query(api.dashboard.member, { ownerId: fresh.id })).toBeNull();
+    expect(await owner.query(api.dashboard.member, { ownerId: "missing" })).toBeNull();
+    const detail = await owner.query(api.dashboard.member, { ownerId: member.id });
+    expect(detail).toMatchObject({
+      fullName: "Anggota Satu", email: "member@example.com", studyProgram: "Ilmu Komputer", role: "member", active: false, accessUpdatedBy: "Pemilik",
+      submissions: [{ title: "Landing page", score: 90, maxScore: 100, late: false, stale: false, revisionRequestedAt: null }],
+      appreciations: [{ achievement: "Juara 1 UI/UX", status: "submitted", level: "Nasional" }],
+      drafts: 1,
+      reviewing: [{ _id: reviewed, title: "Tugas mentor" }],
+    });
+    expect(JSON.stringify(detail)).not.toContain("Draft rahasia");
+  });
+
   it("lets admins review Apresiasi by role, and owners grant it to members, suspended while deactivated", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com");

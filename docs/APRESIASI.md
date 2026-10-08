@@ -53,7 +53,7 @@ The React provider uses `ConvexProviderWithAuth` and a small session-aware token
 - Submitted records are locked while being reviewed. A reviewer can request a revision with a note, then the owner can edit and resubmit.
 - Publication is manual. A reviewer records an existing Instagram `/p/` or `/reel/` URL; no code publishes to Instagram.
 
-`/dashboard/apresiasi/tinjau` (redirected from `/apresiasi/admin`) is open to owners, the verified Google emails in the Convex `APPRECIATION_ADMIN_EMAILS` comma-separated allowlist, and to active accounts an owner has made an Apresiasi reviewer from `/dashboard/anggota` (`memberProfiles.appreciationReviewer`; see `DASHBOARD.md`, Roles). The allowlist defaults to no owners, so until it is set nobody can review or grant review. UI navigation is not the security boundary: every queue read and review mutation independently runs the same `isReviewer` check. Drafts never appear in the review queue, and review changes are recorded in `appreciationReviews`.
+`/dashboard/apresiasi/tinjau` (redirected from `/apresiasi/admin`) is open to owners, the verified Google emails in the Convex `APPRECIATION_ADMIN_EMAILS` comma-separated allowlist, to active dashboard admins, and to active accounts an owner has made an Apresiasi reviewer from `/dashboard/anggota` (`memberProfiles.appreciationReviewer`; see `DASHBOARD.md`, Roles). The allowlist defaults to no owners, so until it is set nobody can review or grant review. UI navigation is not the security boundary: every queue read and review mutation independently runs the same `isReviewer` check. Drafts never appear in the review queue, and review changes are recorded in `appreciationReviews`.
 
 ## Release
 

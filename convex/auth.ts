@@ -15,12 +15,13 @@ export function isOwner(email: string, verified: boolean) {
   return verified && allowed.includes(email.toLowerCase());
 }
 
-type ReviewerProfile = { appreciationReviewer?: boolean; deactivatedAt?: number } | null | undefined;
+type ReviewerProfile = { role?: string; appreciationReviewer?: boolean; deactivatedAt?: number } | null | undefined;
 
-/** Apresiasi review: owners, plus active accounts an owner granted `appreciationReviewer`. The one check every review path uses. */
+/** Apresiasi review: owners, active admins, and active accounts an owner granted `appreciationReviewer`. The one check every review path uses. */
 export function isReviewer(email: string, verified: boolean, profile: ReviewerProfile) {
   if (isOwner(email, verified)) return true;
-  return Boolean(verified && profile?.appreciationReviewer && !profile.deactivatedAt);
+  if (!verified || !profile || profile.deactivatedAt) return false;
+  return profile.role === "admin" || Boolean(profile.appreciationReviewer);
 }
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => betterAuth({

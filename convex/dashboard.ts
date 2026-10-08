@@ -30,7 +30,7 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
     email: user?.email ?? "", role, active: isActive(role, profile), joinedAt: profile.completedAt ?? profile._creationTime,
     memberType: profile.memberType ?? null, division: profile.division ?? null,
-    // The granted permission only; owners review by role and are not flagged here.
+    // The granted permission only; owners and admins review by role and are not flagged here.
     reviewer: Boolean(profile.appreciationReviewer),
   };
 }
@@ -94,7 +94,7 @@ export const setRole = mutation({
   },
 });
 
-/** Owners grant or revoke Apresiasi review for an active admin or member. Owners themselves review by role. */
+/** Owners grant or revoke Apresiasi review for an active member. Owners and admins review by role. */
 export const setReviewer = mutation({
   args: { ownerId: v.string(), reviewer: v.boolean() },
   handler: async (ctx, args) => {
@@ -102,6 +102,7 @@ export const setReviewer = mutation({
     if (actor.role !== "owner") throw new ConvexError({ code: "FORBIDDEN", message: "Hanya pemilik yang bisa mengatur peninjau apresiasi." });
     const { profile, row } = await target(ctx, args.ownerId);
     if (row.role === "owner") throw new ConvexError("Pemilik sudah menjadi peninjau lewat konfigurasi server.");
+    if (args.reviewer && row.role === "admin") throw new ConvexError("Admin sudah bisa meninjau apresiasi.");
     if (row.reviewer === args.reviewer) return;
     if (args.reviewer && !row.active) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya peninjau.");
     await ctx.db.patch(profile._id, { appreciationReviewer: args.reviewer ? true : undefined, accessUpdatedBy: actor.user._id });

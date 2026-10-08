@@ -66,17 +66,19 @@ describe("dashboard roles and member management", () => {
     expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, reviewers: 0, core: 0, bod: 0, deactivated: 0 });
   });
 
-  it("lets owners grant Apresiasi review to members and admins, suspended while deactivated", async () => {
+  it("lets admins review Apresiasi by role, and owners grant it to members, suspended while deactivated", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com");
     const admin = await account(t, "admin@example.com");
     const member = await account(t, "member@example.com");
     const queue = { status: "submitted" as const, paginationOpts: page };
     await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
-    // Admins do not review by default, and cannot grant it.
-    expect(await admin.query(api.dashboard.viewer)).toMatchObject({ role: "admin", reviewer: false });
-    await expect(admin.query(api.appreciations.queue, queue)).rejects.toThrow("tim peninjau");
+    // Admins review by role, but cannot grant review to others.
+    expect(await admin.query(api.dashboard.viewer)).toMatchObject({ role: "admin", reviewer: true });
+    expect(await admin.query(api.auth.viewer)).toMatchObject({ isAdmin: true });
+    expect((await admin.query(api.appreciations.queue, queue)).page).toEqual([]);
     await expect(admin.mutation(api.dashboard.setReviewer, { ownerId: member.id, reviewer: true })).rejects.toThrow("Hanya pemilik");
+    await expect(owner.mutation(api.dashboard.setReviewer, { ownerId: admin.id, reviewer: true })).rejects.toThrow("Admin sudah bisa");
     await expect(owner.mutation(api.dashboard.setReviewer, { ownerId: owner.id, reviewer: true })).rejects.toThrow("konfigurasi server");
 
     await owner.mutation(api.dashboard.setReviewer, { ownerId: member.id, reviewer: true });
@@ -100,11 +102,10 @@ describe("dashboard roles and member management", () => {
     await expect(member.query(api.appreciations.queue, queue)).rejects.toThrow("tim peninjau");
     const profile = await t.run((ctx) => ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", member.id)).unique());
     expect(profile).not.toHaveProperty("appreciationReviewer");
-    // An admin can hold the permission too; it is independent of the role.
-    await owner.mutation(api.dashboard.setReviewer, { ownerId: admin.id, reviewer: true });
-    expect((await admin.query(api.appreciations.queue, queue)).page).toEqual([]);
+    // Demoting an admin ends review that came from the role.
     await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "member" });
-    expect(await admin.query(api.dashboard.viewer)).toMatchObject({ role: "member", reviewer: true });
+    expect(await admin.query(api.dashboard.viewer)).toMatchObject({ role: "member", reviewer: false });
+    await expect(admin.query(api.appreciations.queue, queue)).rejects.toThrow("tim peninjau");
   });
 
   it("deactivates members, blocks their dashboard access, and protects admins and owners", async () => {

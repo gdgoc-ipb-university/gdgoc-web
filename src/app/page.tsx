@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Landing } from "@/components/landing";
 import { communityLinks } from "@/lib/community";
-import { directions } from "@/lib/directions";
 import { canonical, siteDescription, siteName, siteUrl } from "@/lib/site";
 
 // `?motion=` and `?webgl=` are previews of this same page.
@@ -39,7 +38,7 @@ export default function Home() {
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
-      <Landing direction={directions[0]} />
+      <Landing />
     </>
   );
 }

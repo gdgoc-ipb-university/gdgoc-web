@@ -10,9 +10,9 @@ pnpm exec convex dev # configure the development backend first
 pnpm dev
 ```
 
-Open [the landing](http://127.0.0.1:3104), [the full scene](http://127.0.0.1:3104/environment), or [four visual directions](http://127.0.0.1:3104/directions).
+Open [the landing](http://127.0.0.1:3104) or [the full scene](http://127.0.0.1:3104/environment). `/environment` stays in production (`noindex`) because the still-capture scripts in `design/` use it.
 
-The [CTA + footer concept gallery](http://127.0.0.1:3104/footer-directions) contains four new light concepts: Taman kampus, Meja kolaborasi, Gerbang komunitas, and Mosaik karya. Original PNGs and WebPs are in `public/footer-directions/`; the complete prompts and reference are recorded in `design/footer-directions/prompts.json`. These are generated design options, not four implemented footer components.
+The four visual directions and the four CTA + footer concepts (Taman kampus, Meja kolaborasi, Gerbang komunitas, Mosaik karya) are generated design records, not pages: their PNGs and WebPs are in `design/environments/` and `design/footer-directions/`, with prompts in `design/prompts.json` and `design/footer-directions/prompts.json`. The `/directions` and `/footer-directions` galleries were removed (#29) and redirect to the landing.
 
 ```sh
 pnpm test # backend permissions, onboarding, dashboard, accessibility, autosave, forms, and the Bogor Run engine and score replay
@@ -35,7 +35,7 @@ The first authenticated visit opens a five-screen `/onboarding`: name, campus an
 
 ## Selected direction
 
-**Hello, Campus!** was selected after reviewing four generated directions. The original AHN illustration was corrected using the user's front and aerial photographs, then rendered in a cel-shaded style. All five original PNGs and optimized WebPs are in `public/environments/`. The current reference is `01-hello-campus-ahn-cel-v2.png`. `01-hello-campus-3d.webp` in the same folder is not concept art: it is a still of the finished Three.js scene, shown when the scene cannot render.
+**Hello, Campus!** was selected after reviewing four generated directions. The original AHN illustration was corrected using the user's front and aerial photographs, then rendered in a cel-shaded style. All five original PNGs and optimized WebPs are in `design/environments/`. The current reference is `01-hello-campus-ahn-cel-v2.png`. `public/environments/01-hello-campus-3d.webp` is not concept art: it is a still of the finished Three.js scene, shown when the scene cannot render.
 
 The landing uses actual 3D geometry, without projecting the concept image onto it. The model includes AHN's stepped massing, long white canopies, window bands, large red pyramidal roof, dormers, faceted entrance core, narrow vertical window and stylized circular emblems. It also contains voxel trees, palms, planters and flowers, a pond, paving, lights, Google-color seats, clouds, and an extruded Chrome Dino. It is an illustrated reconstruction from photographs, not a surveyed architectural model.
 
@@ -60,7 +60,7 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `src/lib/campus/hills.ts`: a stepped Gunung Salak silhouette on the left and two low foothill layers with valley fog.
 - `src/lib/campus/foreground.ts`: near garden geometry and an isolated, half-resolution blur pass.
 - `src/lib/campus/runtime.ts`: renderer, directional shadow pass, responsive camera, motion, visibility and cleanup.
-- `src/components/landing.tsx`: the landing page, shared by `/` and the world previews under `/directions/[world]`.
+- `src/components/landing.tsx`: the landing page.
 - `src/components/campus-environment.tsx`: progressive enhancement and accessible image fallback. The scene's code starts downloading while the page hydrates, because the preloader waits for it.
 - `src/components/scene-preloader.tsx`: first-frame loading gate with native modal focus handling and reduced-motion support.
 - `src/components/experience-provider.tsx`: system reduced motion and desktop Lenis scrolling.
@@ -70,13 +70,12 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `src/app/rai/` and `src/components/rai/`: an unlinked, noindex easter egg with the Tier Gemini Rising Star badge redrawn as SVG. It unlocks the blue dino skin for Bogor Run (`src/lib/bogor-run/skin.ts`); the landing page's browser console hints at it.
 - `convex/bogorRun.ts`: signed run tokens, replay-verified score submission, the public and dashboard leaderboards, moderation, and the 30-day pruning of run records.
 - `src/lib/community.ts`: verified official membership and Instagram destinations.
-- `src/lib/directions.ts`: visual directions and art asset paths.
 - `src/lib/site.ts`: the canonical origin, shared Open Graph fields, and the per-page canonical helper.
 - `docs/DESIGN.md`: Figma evidence, direction choices and implementation rationale.
 - `docs/VERIFICATION.md`: checks and evidence boundaries.
 - `docs/DASHBOARD.md`: dashboard roles, assignments, submissions, and member management.
 
-`?motion=off` is a deterministic still mode. `?webgl=off` exercises the image fallback. `/directions/cloud-club`, `/directions/dino-playground`, and `/directions/after-hours` preview alternate artwork in the landing layout; the old `/?world=` links redirect to them. They are separate routes so that the landing reads no query string on the server and is prerendered.
+`?motion=off` is a deterministic still mode. `?webgl=off` exercises the image fallback. The landing reads no query string on the server, so it is prerendered.
 
 ## Typography and content
 

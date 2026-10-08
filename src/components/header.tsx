@@ -62,15 +62,14 @@ function useNavViewer() {
   return viewer;
 }
 
-/** `landing` marks a page laid out like the landing (the world previews), so section links and scrollspy stay on it. */
-export function Header({ review = false, landing = false }: { review?: boolean; landing?: boolean }) {
+export function Header() {
   const pathname = usePathname();
-  const home = landing || pathname === "/";
+  const home = pathname === "/";
   const inDashboard = pathname.startsWith("/dashboard");
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const bar = useRef<HTMLElement>(null);
-  const { active, accent } = useScrollSpy(home && !review, bar);
+  const { active, accent } = useScrollSpy(home, bar);
   const viewer = useNavViewer();
   useEffect(() => {
     if (!open) return;
@@ -96,45 +95,39 @@ export function Header({ review = false, landing = false }: { review?: boolean; 
       <Link href="/" className="brand" aria-label="GDGoC IPB — beranda">
         <BrandLogo preload />
       </Link>
-      {review ? (
-        <Link href="/" className="back-link">
-          Kembali ke landing <Arrow />
-        </Link>
-      ) : (
-        <>
-          {/* On phones a signed-in member reaches the dashboard in one tap, without opening the menu. */}
-          {viewer && <Link href="/dashboard" className="nav-quick" aria-label={cta.label} aria-current={inDashboard ? "page" : undefined}><span className="nav-avatar" aria-hidden="true">{viewer.initial}</span></Link>}
-          <button
-            ref={trigger}
-            className="menu-toggle"
-            type="button"
-            aria-label={open ? "Tutup menu" : "Buka menu"}
-            aria-expanded={open}
-            aria-controls="site-nav"
-            onClick={() => setOpen(!open)}
-          >
-            <PixelIcon name={open ? "close" : "menu"} size={24} />
-          </button>
-          <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open} data-accent={accent}>
-            {SECTIONS.map(({ id, label }) => (
-              <Link key={id} href={home ? `#${id}` : `/#${id}`} aria-current={active === id ? "location" : undefined} onClick={() => setOpen(false)}>
-                {label}
-              </Link>
-            ))}
-            <Link
-              href="/dashboard"
-              className="nav-cta"
-              data-viewer={viewer ? "member" : viewer === null ? "guest" : "unknown"}
-              aria-label={cta.label}
-              aria-current={inDashboard ? "page" : undefined}
-              onClick={() => setOpen(false)}
-            >
-              {cta.body}
+      <>
+        {/* On phones a signed-in member reaches the dashboard in one tap, without opening the menu. */}
+        {viewer && <Link href="/dashboard" className="nav-quick" aria-label={cta.label} aria-current={inDashboard ? "page" : undefined}><span className="nav-avatar" aria-hidden="true">{viewer.initial}</span></Link>}
+        <button
+          ref={trigger}
+          className="menu-toggle"
+          type="button"
+          aria-label={open ? "Tutup menu" : "Buka menu"}
+          aria-expanded={open}
+          aria-controls="site-nav"
+          onClick={() => setOpen(!open)}
+        >
+          <PixelIcon name={open ? "close" : "menu"} size={24} />
+        </button>
+        <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open} data-accent={accent}>
+          {SECTIONS.map(({ id, label }) => (
+            <Link key={id} href={home ? `#${id}` : `/#${id}`} aria-current={active === id ? "location" : undefined} onClick={() => setOpen(false)}>
+              {label}
             </Link>
-          </nav>
-        </>
-      )}
-      {home && !review && <ScrollProgress />}
+          ))}
+          <Link
+            href="/dashboard"
+            className="nav-cta"
+            data-viewer={viewer ? "member" : viewer === null ? "guest" : "unknown"}
+            aria-label={cta.label}
+            aria-current={inDashboard ? "page" : undefined}
+            onClick={() => setOpen(false)}
+          >
+            {cta.body}
+          </Link>
+        </nav>
+      </>
+      {home && <ScrollProgress />}
     </header>
   );
 }

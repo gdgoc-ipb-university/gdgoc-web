@@ -1,36 +1,23 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { Arrow } from "./icons";
-import type { Direction } from "@/lib/directions";
 import { CampusEnvironment, type SceneStatus } from "./campus-environment";
 import { ScenePreloader } from "./scene-preloader";
 import { communityLinks } from "@/lib/community";
 
-export function Hero({ direction }: { direction: Direction }) {
+export function Hero() {
   const [sceneStatus, setSceneStatus] = useState<SceneStatus>("loading");
   return (
     <>
-      {direction.id === "hello-campus" && <ScenePreloader status={sceneStatus} />}
+      <ScenePreloader status={sceneStatus} />
       <section
-        className={`hero ${direction.dark ? "hero-night" : ""}`}
+        className="hero"
         aria-labelledby="hero-heading"
         data-campus-interactive
       >
         <div className="hero-art">
-          {direction.id === "hello-campus" ? (
-            <CampusEnvironment onStatusChange={setSceneStatus} />
-          ) : (
-            <Image
-              src={direction.image}
-              alt={direction.alt}
-              fill
-              preload
-              sizes="100vw"
-              quality={90}
-            />
-          )}
+          <CampusEnvironment onStatusChange={setSceneStatus} />
         </div>
         <div className="hero-wash" />
         <div className="hero-copy">

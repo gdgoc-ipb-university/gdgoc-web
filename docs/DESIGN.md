@@ -19,11 +19,11 @@ Reference screenshots and the two user-supplied AHN photos live in `design/refer
 | Direction | Subject and atmosphere | Current implementation |
 | --- | --- | --- |
 | Hello, Campus! | Recognizable IPB campus, AHN, Chrome Dino, tropical voxel garden | Selected, revised from photographs, reconstructed in live Three.js |
-| Dino Playground | Grass terraces, code blocks, playful giant Dino | Generated artwork and landing preview |
-| Cloud Club | Retro terminal workshop on cubic clouds | Generated artwork and landing preview |
-| After Hours | Warm nighttime developer clubhouse | Generated artwork and landing preview |
+| Dino Playground | Grass terraces, code blocks, playful giant Dino | Generated artwork only |
+| Cloud Club | Retro terminal workshop on cubic clouds | Generated artwork only |
+| After Hours | Warm nighttime developer clubhouse | Generated artwork only |
 
-Original prompts are in `design/prompts.json`. The selected-direction correction prompt is in `design/ahn-revision-prompt.txt`. Originals are preserved alongside the revised asset.
+The artwork is in `design/environments/`. The `/directions` gallery and its landing previews were removed in October 2026 (#29) and redirect to the landing. Original prompts are in `design/prompts.json`. The selected-direction correction prompt is in `design/ahn-revision-prompt.txt`. Originals are preserved alongside the revised asset.
 
 ## Architectural correction
 
@@ -59,7 +59,7 @@ The copy treats the site as a community profile. It names coding, UI/UX, AI, Stu
 
 The primary action is “Gabung member.” Its destination is the [official GDGoC IPB chapter page](https://gdg.community.dev/gdg-on-campus-ipb-university-bogor-indonesia/), inspected live with the “Join us” button present. This is community-platform membership; it does not imply automatic admission to a program or core team.
 
-The closing invitation and footer share the same warm paper background as the landing. A small pixel garden, blue membership button, chapter identity, and navigation form one continuous composition. The dark footer variation was discarded at the user's direction. Internal art-direction review links are omitted from the public profile footer; `/directions` remains available directly.
+The closing invitation and footer share the same warm paper background as the landing. A small pixel garden, blue membership button, chapter identity, and navigation form one continuous composition. The dark footer variation was discarded at the user's direction. Internal art-direction review links are omitted from the public profile footer.
 
 ## Motion and rendering
 
@@ -87,7 +87,7 @@ Four CTA + footer images were generated with the built-in imagegen tool, using t
 3. **Gerbang komunitas** — Google-color entrance pillars frame a centered invitation and a path into the community.
 4. **Mosaik karya** — sculptural colored modules and a large pixel wordmark form a more graphic ending.
 
-PNG originals and WebP review assets live in `public/footer-directions/`, with full prompts in `design/footer-directions/prompts.json`. `/footer-directions` compares them at full image aspect ratio with PNG download links. They are review concepts; no concept has been selected or substituted for the current light footer.
+PNG originals and WebP review assets live in `design/footer-directions/`, with full prompts in `design/footer-directions/prompts.json`. They are review concepts; no concept has been selected or substituted for the current light footer. The `/footer-directions` gallery was removed (#29) and redirects to the landing.
 
 ## Technical references
 

@@ -25,6 +25,12 @@ export type InputCode = 1 | 2 | 3;
 export type Phase = "idle" | "running" | "paused" | "over";
 /** A run that survives `maxTicks` (1 hour) ends there as finished: phase "over", `finished` true, no hit. */
 export const LIMITS = { maxTicks: 432_000 /* 1 hour */, maxInputNumbers: 20_000 } as const;
+/**
+ * Bump with every change to physics or generation. A run replays only on the engine it was played on, so the server
+ * turns away tickets and scores from another version (OUTDATED) rather than failing their replay as INVALID. The
+ * "pins this engine version" test in engine.test.ts holds the current version's fingerprint and fails until it is bumped.
+ */
+export const ENGINE_VERSION = 1;
 export const PHYSICS = { jump: 500, gravity: 1200, dropGravity: 3600 } as const;
 /** Speed rises for the whole run but only approaches `max`: start + (max - start) * t / (t + ramp), t in seconds. */
 export const SPEED = { start: 174, max: 400, ramp: 75 } as const;

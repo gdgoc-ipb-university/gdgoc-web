@@ -14,7 +14,7 @@ import styles from "./bogor-run.module.css";
 type Online = typeof import("@/lib/bogor-run/online");
 type Save =
   | { kind: "idle" | "saving" }
-  | { kind: "unranked"; reason: "ticket" | "log" }
+  | { kind: "unranked"; reason: "ticket" | "log" | "outdated" }
   | { kind: "saved"; result: Saved }
   | { kind: "guest"; run: FinishedRun; endedAt: number; error?: string; leaving?: boolean }
   | { kind: "error"; message: string; retry?: { run: FinishedRun; endedAt: number } };
@@ -45,6 +45,7 @@ const OFFLINE = "Server skor belum bisa dihubungi. Periksa koneksi, lalu coba la
 const UNRANKED = {
   ticket: "Putaran ini tidak masuk papan skor: tiket skornya belum sampai dari server saat kamu mulai. Main lagi untuk ikut peringkat.",
   log: "Putaran ini tidak masuk papan skor: tombolnya ditekan lebih dari 10.000 kali, lebih dari yang bisa diperiksa server. Main lagi untuk ikut peringkat.",
+  outdated: "Putaran ini tidak masuk papan skor karena game sudah diperbarui. Muat ulang halaman untuk ikut peringkat.",
 } as const;
 
 // Convex and Better Auth stay out of the landing bundle: this chunk loads only once the game is on screen.
@@ -118,7 +119,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
   async function submit(run: FinishedRun, endedAt: number) {
     const mine = ++saveId.current;
     const current = () => mine === saveId.current;
-    if (!run.token) { setSave({ kind: "unranked", reason: run.unranked ?? "ticket" }); return; }
+    if (!run.token) { setSave({ kind: "unranked", reason: run.unranked === "log" ? "log" : online?.isOutdated() ? "outdated" : "ticket" }); return; }
     setSave({ kind: "idle" });
     const api = await loadOnline();
     if (!current()) return;

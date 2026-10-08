@@ -13,7 +13,7 @@ const game = vi.hoisted(() => ({
 }));
 const online = vi.hoisted(() => ({
   prefetchTicket: vi.fn(), takeTicket: vi.fn(), ticketPending: vi.fn(), keepTicketFresh: vi.fn(), signedIn: vi.fn(), submitRun: vi.fn(), leaderboard: vi.fn(),
-  signInToSave: vi.fn(), takePendingRun: vi.fn(),
+  signInToSave: vi.fn(), takePendingRun: vi.fn(), isOutdated: vi.fn(),
 }));
 const stopTickets = vi.hoisted(() => vi.fn());
 vi.mock("@/lib/bogor-run/runtime", () => ({ mountRunner: game.mount }));
@@ -337,6 +337,10 @@ describe("leaderboard panel", () => {
     act(() => { hooks.finish?.({ ...finished, token: null, unranked: "log" }); publish(over); });
     expect(await screen.findAllByText(/ditekan lebih dari 10\.000 kali/)).toHaveLength(2);
     expect(screen.queryByText(/server skor belum tersambung/)).toBeNull();
+    online.isOutdated.mockReturnValue(true); // the server runs a newer engine: no ticket until this tab reloads
+    act(() => publish(running));
+    act(() => { hooks.finish?.({ ...finished, token: null, unranked: "ticket" }); publish(over); });
+    expect(await screen.findAllByText(/game sudah diperbarui\. Muat ulang halaman/)).toHaveLength(2);
   });
 
   it("celebrates a run that lasted the full hour and saves it like any other", async () => {

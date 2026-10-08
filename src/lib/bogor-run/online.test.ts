@@ -101,6 +101,24 @@ describe("tickets", () => {
     expect(online.ticketPending()).toBe(false);
     expect(online.takeTicket()).toBeNull();
   });
+
+  it("asks for tickets for its engine version, and stops asking once the server runs another", async () => {
+    const { ENGINE_VERSION } = await import("./engine");
+    await online.prefetchTicket();
+    expect(convex.mutation).toHaveBeenLastCalledWith(expect.anything(), { engine: ENGINE_VERSION });
+    expect(online.isOutdated()).toBe(false);
+    online.takeTicket(); // starts fetching the next one
+    convex.mutation.mockResolvedValue({ outdated: true });
+    await vi.advanceTimersByTimeAsync(online.TICKET_TTL);
+    expect(await online.prefetchTicket()).toBeNull();
+    expect(online.isOutdated()).toBe(true);
+    const calls = convex.mutation.mock.calls.length;
+    const stop = online.keepTicketFresh();
+    await vi.advanceTimersByTimeAsync(10 * MINUTE);
+    stop();
+    expect(convex.mutation).toHaveBeenCalledTimes(calls);
+    expect(online.takeTicket()).toBeNull();
+  });
 });
 
 describe("sign-in state", () => {

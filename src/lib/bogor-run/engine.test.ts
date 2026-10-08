@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
-  applyInput, autopilot, BIRD, collides, createRun, DINO, FIELD, HITBOX, INPUT, LATE, LIMITS, OBSTACLES, poseOf, pressureAt, readBest,
+  applyInput, autopilot, BIRD, collides, createRun, DINO, ENGINE_VERSION, FIELD, HITBOX, INPUT, LATE, LIMITS, OBSTACLES, poseOf, pressureAt, readBest,
   replayRun, scoreOf, speedAt, speedOf, SPEED, startRun, step, TICK_RATE, type BirdLane, type InputCode, type Obstacle, type ObstacleKind,
   type Run,
 } from "./engine";
@@ -100,6 +100,25 @@ function fingerprint() {
   };
   const hash = (text: string) => createHash("sha256").update(text).digest("hex").slice(0, 16);
   return { generation: hash(all.map(generation).join("\n")), piloted: hash(all.map(piloted).join("\n")) };
+}
+
+/**
+ * Whole-hour fingerprint for the engine-version pin: autopilot runs from the start to the finish line (crashes ignored, so
+ * the course keeps coming), logging every spawned obstacle, every effective input, and the final state.
+ */
+function hourFingerprint(count: number) {
+  const course = (seed: number) => {
+    const run = startRun(seed), parts: string[] = [], seen = new Set<number>();
+    while (run.tick < LIMITS.maxTicks) {
+      for (const code of autopilot(run)) if (applyInput(run, code)) parts.push(`${run.tick}>${code}`);
+      step(run);
+      if (run.phase === "over") { parts.push(`${run.tick}x${run.hit}`); run.phase = "running"; run.hit = null; }
+      for (const o of run.obstacles) if (!seen.has(o.id)) { seen.add(o.id); parts.push(`${run.tick}:${o.kind}:${o.lane ?? ""}:${o.altitude}:${o.x}:${o.lead ?? ""}`); }
+    }
+    parts.push(`${run.rng}|${run.distance}|${run.lift}|${run.velocity}|${scoreOf(run)}`);
+    return parts.join(";");
+  };
+  return createHash("sha256").update(seeds(count, 77).map(course).join("\n")).digest("hex").slice(0, 16);
 }
 
 /**
@@ -358,6 +377,12 @@ describe("Bogor Run engine", () => {
       // (crashes ignored), the generator state at LATE.start, and 60 five-minute autopilot runs.
       expect(fingerprint()).toEqual({ generation: "a00d263b44a4b068", piloted: "ec1b6aad9b70b894" });
     }, 30_000);
+
+    it("pins this engine version to its physics and generation", () => {
+      // A run replays only on the engine it was played on. If this fails because physics or generation changed, bump
+      // ENGINE_VERSION in engine.ts and record the new fingerprint here, so the server turns stale tabs away as OUTDATED.
+      expect({ engine: ENGINE_VERSION, fingerprint: hourFingerprint(6) }).toEqual({ engine: 1, fingerprint: "20f641809548dde8" });
+    }, 60_000);
 
     it("is plain data that clones and resumes identically", () => {
       const run = hourRun(99); pilot(run, 40 * TICK_RATE);

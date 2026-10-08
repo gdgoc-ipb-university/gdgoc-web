@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, components, internal } from "./_generated/api";
 import schema from "./schema";
 import { fromBase64Url, signToken, toBase64Url, verifyToken } from "./bogorRunToken";
-import { LIMITS, TICK_RATE, applyInput, autopilot, scoreOf, startRun, step } from "../src/lib/bogor-run/engine";
+import { ENGINE_VERSION, LIMITS, TICK_RATE, applyInput, autopilot, scoreOf, startRun, step } from "../src/lib/bogor-run/engine";
 import { BOARD_SIZE, LEADERBOARD_SIZE, RANK_CAP, packInputs, weekKey } from "../src/lib/bogor-run/leaderboard";
 import { RUN_RETENTION } from "./bogorRun";
 
@@ -43,7 +43,12 @@ function play(seed: number, autoSeconds = 0): Played {
   return { inputs, endTick: run.tick, score: scoreOf(run) };
 }
 const simMs = (played: Played) => played.endTick / TICK_RATE * 1000;
-async function issue(t: Test, at = Date.now()) { vi.setSystemTime(at); return (await t.mutation(api.bogorRun.issueRun, {}))!; }
+async function issue(t: Test, at = Date.now()) {
+  vi.setSystemTime(at);
+  const ticket = await t.mutation(api.bogorRun.issueRun, { engine: ENGINE_VERSION });
+  if (!ticket || "outdated" in ticket) throw new Error("no ticket");
+  return ticket;
+}
 async function promote(t: Test, ownerId: string) {
   await t.run(async (ctx) => {
     const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
@@ -52,7 +57,7 @@ async function promote(t: Test, ownerId: string) {
 }
 const players = (t: Test) => t.run((ctx) => ctx.db.query("gamePlayers").collect());
 async function tokenFor(seed: number, issuedAt = Date.now()) {
-  return { token: (await signToken({ v: 1, seed, issuedAt, nonce: crypto.randomUUID().replaceAll("-", "") }, SECRET))!, seed, issuedAt };
+  return { token: (await signToken({ v: 2, engine: ENGINE_VERSION, seed, issuedAt, nonce: crypto.randomUUID().replaceAll("-", "") }, SECRET))!, seed, issuedAt };
 }
 /** Submits after exactly the real time the run needed, plus `lag`. */
 async function submit(user: Pick<Test, "mutation">, issued: Issued, played: Played, { lag = 2000, ...override }: { lag?: number; inputs?: number[] | string; endTick?: number; score?: number } = {}) {
@@ -75,10 +80,21 @@ describe("Bogor Run tokens", () => {
     expect(first).toMatchObject({ issuedAt: T0, seed: expect.any(Number) });
     expect(Number.isInteger(first.seed) && first.seed >= 0 && first.seed <= 0xffffffff).toBe(true);
     expect(first.token).not.toBe(second.token);
-    expect(await verifyToken(first.token)).toEqual({ v: 1, seed: first.seed, issuedAt: T0, nonce: expect.stringMatching(/^[\w-]{22}$/) });
+    expect(await verifyToken(first.token)).toEqual({ v: 2, engine: ENGINE_VERSION, seed: first.seed, issuedAt: T0, nonce: expect.stringMatching(/^[\w-]{22}$/) });
     expect(await t.run(async (ctx) => (await ctx.db.query("gameRuns").collect()).length)).toBe(0);
     vi.stubEnv("BETTER_AUTH_SECRET", "");
-    expect(await t.mutation(api.bogorRun.issueRun, {})).toBeNull();
+    expect(await t.mutation(api.bogorRun.issueRun, { engine: ENGINE_VERSION })).toBeNull();
+  });
+
+  it("issues tickets only for this engine version", async () => {
+    const t = setup();
+    expect(await t.mutation(api.bogorRun.issueRun, { engine: ENGINE_VERSION + 1 })).toEqual({ outdated: true });
+    expect(await t.mutation(api.bogorRun.issueRun, { engine: ENGINE_VERSION - 1 })).toEqual({ outdated: true });
+    // Clients from before the engine version send none: they ran engine 1, which this still is.
+    // Past engine 1 they get null and keep playing unranked, as they would without a secret.
+    const legacy = await t.mutation(api.bogorRun.issueRun, {});
+    const token = legacy && "token" in legacy ? legacy.token : undefined;
+    expect(token ? (await verifyToken(token))?.engine : null).toBe(ENGINE_VERSION === 1 ? 1 : null);
   });
 
   it("signs with HMAC-SHA256 under a key derived from the auth secret", async () => {
@@ -135,7 +151,12 @@ describe("Bogor Run score submission", () => {
       `${encode({ ...claim, seed: claim.seed ^ 1 })}.${sig}`, // Another seed under the original signature.
       `${body}.${sig.slice(0, -2)}${sig.at(-2) === "A" ? "B" : "A"}${sig.at(-1)}`,
       (await signToken(claim, "rahasia-lain"))!,
-      (await signToken({ ...claim, v: 2 } as never, SECRET))!,
+      (await signToken({ ...claim, v: 3 } as never, SECRET))!,
+      (await signToken({ ...claim, v: 1 } as never, SECRET))!, // v1 tokens carry no engine
+      (await signToken({ v: 2, seed: claim.seed, issuedAt: claim.issuedAt, nonce: claim.nonce, extra: 1 } as never, SECRET))!,
+      (await signToken({ ...claim, engine: 0 }, SECRET))!,
+      (await signToken({ ...claim, engine: 1.5 }, SECRET))!,
+      (await signToken({ ...claim, engine: "1" } as never, SECRET))!,
       (await signToken({ ...claim, admin: true } as never, SECRET))!,
       (await signToken({ ...claim, seed: -1 }, SECRET))!,
       (await signToken({ ...claim, seed: 1.5 }, SECRET))!,
@@ -145,6 +166,18 @@ describe("Bogor Run score submission", () => {
     ];
     for (const token of forged) expect(await submit(rania, { ...issued, token }, played), token).toMatchObject({ ok: false, code: "INVALID" });
     expect(await submit(rania, issued, played)).toMatchObject({ ok: true });
+  });
+
+  it("accepts tokens issued before engine versions as engine 1, and turns other engines away as OUTDATED", async () => {
+    const t = setup(); const rania = await account(t, "rania@example.com");
+    const nonce = () => crypto.randomUUID().replaceAll("-", "");
+    const legacy = { token: (await signToken({ v: 1, seed: 11, issuedAt: Date.now(), nonce: nonce() } as never, SECRET))!, seed: 11, issuedAt: Date.now() };
+    const played = play(11, 10);
+    expect(await submit(rania, legacy, played)).toMatchObject(ENGINE_VERSION === 1 ? { ok: true, score: played.score } : { ok: false, code: "OUTDATED" });
+    const other = { token: (await signToken({ v: 2, engine: ENGINE_VERSION + 1, seed: 12, issuedAt: Date.now(), nonce: nonce() }, SECRET))!, seed: 12, issuedAt: Date.now() };
+    const stale = play(12, 10);
+    expect(await submit(rania, other, stale)).toEqual({ ok: false, code: "OUTDATED", message: expect.stringContaining("Muat ulang") });
+    expect(await t.run(async (ctx) => (await ctx.db.query("gameRuns").collect()).length)).toBe(ENGINE_VERSION === 1 ? 1 : 0);
   });
 
   it("rejects edited inputs, scores, and end ticks without burning the run", async () => {

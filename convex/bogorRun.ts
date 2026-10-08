@@ -5,7 +5,7 @@ import type { Doc } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { isActive, requireMember, requireStaff, roleOf, type DashboardRole } from "./access";
 import { newNonce, signToken, verifyToken } from "./bogorRunToken";
-import { LIMITS, TICK_RATE, replayRun } from "../src/lib/bogor-run/engine";
+import { ENGINE_VERSION, LIMITS, TICK_RATE, replayRun } from "../src/lib/bogor-run/engine";
 import { BOARD_SIZE, LEADERBOARD_SIZE, RANK_CAP, isWeekKey, shortName, unpackInputs, weekKey } from "../src/lib/bogor-run/leaderboard";
 
 const HOUR = 3_600_000;
@@ -27,6 +27,7 @@ const failures = {
   TOO_EARLY: "Skor ini terkirim lebih cepat dari lama permainannya, jadi tidak disimpan.",
   EXPIRED: "Permainan ini sudah terlalu lama untuk disimpan. Main lagi, yuk!",
   USED: "Skor dari permainan ini sudah disimpan akun lain.",
+  OUTDATED: "Game sudah diperbarui sejak permainan ini dimulai, jadi skornya tidak bisa diperiksa. Muat ulang halaman, lalu main lagi.",
 } as const;
 export type SubmitFailure = keyof typeof failures;
 function fail(code: SubmitFailure) { return { ok: false as const, code, message: failures[code] }; }
@@ -130,12 +131,17 @@ async function standing(ctx: MutationCtx, run: Pick<Doc<"gameRuns">, "ownerId" |
   return { ok: true as const, score: run.score, week: { key: run.week, ...await placeIn(run.week) }, all: await placeIn("all") };
 }
 
-/** A signed seed for one run. A mutation, not a query, so every call rolls a fresh seed; it writes nothing. */
+/**
+ * A signed seed for one run. A mutation, not a query, so every call rolls a fresh seed; it writes nothing.
+ * `engine` is the client's ENGINE_VERSION; clients from before it existed send none and run engine 1. A client on
+ * another version gets `{ outdated: true }` (it reloads for ranked play); one that sends none gets null and plays unranked.
+ */
 export const issueRun = mutation({
-  args: {},
-  handler: async () => {
+  args: { engine: v.optional(v.number()) },
+  handler: async (_ctx, { engine }) => {
+    if ((engine ?? 1) !== ENGINE_VERSION) return engine === undefined ? null : { outdated: true as const };
     const seed = Math.floor(Math.random() * 4294967296) >>> 0, issuedAt = Date.now();
-    const token = await signToken({ v: 1, seed, issuedAt, nonce: newNonce() });
+    const token = await signToken({ v: 2, engine: ENGINE_VERSION, seed, issuedAt, nonce: newNonce() });
     return token ? { token, seed, issuedAt } : null;
   },
 });
@@ -157,6 +163,8 @@ export const submitRun = mutation({
     if (!claim) return fail("INVALID");
     const used = await ctx.db.query("gameRuns").withIndex("by_nonce", (q) => q.eq("nonce", claim.nonce)).first();
     if (used) return used.ownerId === user._id ? standing(ctx, used) : fail("USED");
+    // A run saved before an engine bump still reports its standing above; a new one from another engine cannot be replayed.
+    if (claim.engine !== ENGINE_VERSION) return fail("OUTDATED");
 
     const { endTick, score } = args;
     if (!Number.isInteger(endTick) || endTick < 1 || endTick > LIMITS.maxTicks || !Number.isSafeInteger(score) || score < 0) return fail("INVALID");

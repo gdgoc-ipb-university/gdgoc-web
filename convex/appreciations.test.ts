@@ -119,6 +119,38 @@ describe("private appreciation workflow", () => {
     expect(await t.run((ctx) => ctx.db.query("appreciationReviews").collect())).toHaveLength(2);
   });
 
+  it("filters the queue, shows who is handling a submission, and lists its review history", async () => {
+    vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "editor@example.com");
+    const t = setup(); const first = await user(t); const second = await user(t, "dua@example.com"); const admin = await user(t, "editor@example.com");
+    const submitted = async (member: typeof first, values: typeof complete) => {
+      const id = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
+      await member.mutation(api.appreciations.save, { id, revision: 0, values });
+      await member.mutation(api.appreciations.submit, { id, revision: 1 });
+      return id;
+    };
+    const national = await submitted(first, complete);
+    await submitted(second, { ...complete, fullName: "Dua Pengujian", achievement: "Finalis Hackathon Kota", level: "Regional", campus: "Universitas Pakuan" });
+    const find = (filter: Partial<{ search: string; level: string; campus: string }>, status: "submitted" | "reviewing" = "submitted") =>
+      admin.query(api.appreciations.search, { status, search: "", level: "", campus: "", ...filter });
+
+    await expect(first.query(api.appreciations.search, { status: "submitted", search: "", level: "", campus: "" })).rejects.toThrow("tim peninjau");
+    await expect(first.query(api.appreciations.history, { id: national })).rejects.toThrow("tim peninjau");
+    expect((await find({ search: "hackathon" })).results.map((row) => row.values.fullName)).toEqual(["Dua Pengujian"]);
+    expect((await find({ search: "  dua   PENGUJIAN " })).results).toHaveLength(1);
+    expect((await find({ level: "Nasional" })).results.map((row) => row._id)).toEqual([national]);
+    expect((await find({ campus: "pakuan" })).results.map((row) => row.values.level)).toEqual(["Regional"]);
+    expect(await find({ search: "tidak ada" })).toEqual({ results: [], truncated: false });
+
+    await admin.mutation(api.appreciations.review, { id: national, revision: 2, status: "reviewing", note: "", postUrl: "" });
+    expect((await admin.query(api.appreciations.queue, { status: "reviewing", paginationOpts: page })).page[0]).toMatchObject({ _id: national, handlerName: "Member Pengujian" });
+    expect((await find({ level: "Nasional" }, "reviewing")).results[0]).toMatchObject({ handlerName: "Member Pengujian" });
+    expect((await admin.query(api.appreciations.queue, { status: "submitted", paginationOpts: page })).page[0]).toMatchObject({ handlerName: null });
+    await admin.mutation(api.appreciations.review, { id: national, revision: 3, status: "revision", note: "Tambahkan foto tim.", postUrl: "" });
+    expect((await admin.query(api.appreciations.history, { id: national })).map((row) => [row.status, row.note, row.reviewerName])).toEqual([
+      ["reviewing", "", "Member Pengujian"], ["revision", "Tambahkan foto tim.", "Member Pengujian"],
+    ]);
+  });
+
   it("rejects oversized draft payloads and limits unfinished drafts per member", async () => {
     const member = await user(setup());
     const id = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });

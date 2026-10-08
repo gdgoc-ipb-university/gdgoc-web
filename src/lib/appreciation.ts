@@ -89,6 +89,25 @@ export function validateAppreciation(values: AppreciationValues, now = new Date(
   return errors;
 }
 
+/** Review-queue filters. `search` matches the achievement or the sender (the submitted name or the account name); `campus` is a substring; empty fields match everything. */
+export type QueueFilter = { search: string; level: string; campus: string };
+export const queueSearchLimits = { scanned: 500, results: 50 } as const;
+
+const folded = (value: string) => value.toLocaleLowerCase("id").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+
+export function isQueueFilterActive(filter: QueueFilter) {
+  return Boolean(folded(filter.search) || filter.level || folded(filter.campus));
+}
+
+export function matchesQueueFilter(record: { ownerName: string; values: { achievement: string; fullName: string; level: string; campus: string } }, filter: QueueFilter) {
+  const search = folded(filter.search);
+  const campus = folded(filter.campus);
+  if (filter.level && record.values.level !== filter.level) return false;
+  if (campus && !folded(record.values.campus).includes(campus)) return false;
+  if (search && ![record.values.achievement, record.values.fullName, record.ownerName].some((value) => folded(value).includes(search))) return false;
+  return true;
+}
+
 export const statusLabels = {
   draft: "Draft", submitted: "Terkirim", reviewing: "Sedang ditinjau",
   revision: "Perlu dilengkapi", published: "Sudah dipost",

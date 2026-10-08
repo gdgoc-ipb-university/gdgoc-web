@@ -55,6 +55,8 @@ The React provider uses `ConvexProviderWithAuth` and a small session-aware token
 
 `/dashboard/apresiasi/tinjau` (redirected from `/apresiasi/admin`) is open to owners, the verified Google emails in the Convex `APPRECIATION_ADMIN_EMAILS` comma-separated allowlist, to active dashboard admins, and to active accounts an owner has made an Apresiasi reviewer from `/dashboard/anggota` (`memberProfiles.appreciationReviewer`; see `DASHBOARD.md`, Roles). The allowlist defaults to no owners, so until it is set nobody can review or grant review. UI navigation is not the security boundary: every queue read and review mutation independently runs the same `isReviewer` check. Drafts never appear in the review queue, and review changes are recorded in `appreciationReviews`.
 
+The queue has status tabs and, above the cards, a search by achievement or sender (the submitted name or the account name), a level filter, and a campus filter. Matching ignores case, accents and extra spaces. Without a filter the queue pages through `appreciations.queue`; with one, `appreciations.search` checks the 500 most recently updated submissions of the selected status and shows up to 50 matches, and says so when it stopped there. A submission under review shows "Ditangani oleh" with the reviewer who last moved it to *Sedang ditinjau*, so two reviewers do not pick up the same one. "Riwayat tinjauan" on each card loads every past action from `appreciationReviews` (`appreciations.history`), oldest first, with the reviewer's name, note, and post link. The filter matching is `matchesQueueFilter` in `src/lib/appreciation.ts`.
+
 ## Release
 
 ```sh

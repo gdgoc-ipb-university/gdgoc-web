@@ -1,10 +1,10 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { query, mutation, type QueryCtx, type MutationCtx } from "./_generated/server";
-import type { Id } from "./_generated/dataModel";
+import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent, isReviewer } from "./auth";
 import { appreciationValues } from "./schema";
-import { emptyAppreciation, fieldLimits, isInstagramPostUrl, normalizeAppreciation, validateAppreciation } from "../src/lib/appreciation";
+import { emptyAppreciation, fieldLimits, isInstagramPostUrl, matchesQueueFilter, normalizeAppreciation, queueSearchLimits, validateAppreciation } from "../src/lib/appreciation";
 import { memberTypeLabels } from "../src/lib/onboarding";
 
 async function requireUser(ctx: QueryCtx | MutationCtx) {
@@ -25,6 +25,22 @@ async function owned(ctx: QueryCtx | MutationCtx, id: Id<"appreciations">, owner
   if (!doc || doc.ownerId !== ownerId) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
   return doc;
 }
+
+/** A reviewer's display name: the onboarding name, else the Google name. */
+async function reviewerName(ctx: QueryCtx, ownerId: string) {
+  const [profile, account] = await Promise.all([
+    ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique(),
+    authComponent.getAnyUserById(ctx, ownerId),
+  ]);
+  return profile?.fullName || account?.name || "Peninjau";
+}
+
+/** A queue row: the record plus who is handling it (the reviewer who last moved it to "Sedang ditinjau"). */
+async function queueRow(ctx: QueryCtx, doc: Doc<"appreciations">) {
+  return { ...doc, handlerName: doc.status === "reviewing" && doc.reviewedBy ? await reviewerName(ctx, doc.reviewedBy) : null };
+}
+
+const queueStatus = v.union(v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
 
 function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Draft ini berubah di tab atau perangkat lain. Muat versi terbaru sebelum melanjutkan." });
@@ -114,10 +130,37 @@ export const removeDraft = mutation({
 });
 
 export const queue = query({
-  args: { status: v.union(v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published")), paginationOpts: paginationOptsValidator },
+  args: { status: queueStatus, paginationOpts: paginationOptsValidator },
   handler: async (ctx, args) => {
     await requireAdmin(ctx);
-    return ctx.db.query("appreciations").withIndex("by_status_updated", (q) => q.eq("status", args.status)).order("desc").paginate(args.paginationOpts);
+    const result = await ctx.db.query("appreciations").withIndex("by_status_updated", (q) => q.eq("status", args.status)).order("desc").paginate(args.paginationOpts);
+    return { ...result, page: await Promise.all(result.page.map((doc) => queueRow(ctx, doc))) };
+  },
+});
+
+/** The queue filtered by search, level and campus. Scans the latest submissions of one status, so `truncated` says when older ones were not checked. */
+export const search = query({
+  args: { status: queueStatus, search: v.string(), level: v.string(), campus: v.string() },
+  handler: async (ctx, args) => {
+    await requireAdmin(ctx);
+    const filter = { search: args.search.slice(0, 160), level: args.level, campus: args.campus.slice(0, 150) };
+    const scanned = await ctx.db.query("appreciations").withIndex("by_status_updated", (q) => q.eq("status", args.status)).order("desc").take(queueSearchLimits.scanned);
+    const matches = scanned.filter((doc) => matchesQueueFilter(doc, filter));
+    return {
+      results: await Promise.all(matches.slice(0, queueSearchLimits.results).map((doc) => queueRow(ctx, doc))),
+      truncated: scanned.length === queueSearchLimits.scanned || matches.length > queueSearchLimits.results,
+    };
+  },
+});
+
+/** Every review action on one submission, oldest first, with the reviewer's name. */
+export const history = query({
+  args: { id: v.id("appreciations") },
+  handler: async (ctx, { id }) => {
+    await requireAdmin(ctx);
+    const rows = await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", id)).collect();
+    rows.sort((a, b) => a.createdAt - b.createdAt);
+    return Promise.all(rows.map(async (row) => ({ _id: row._id, status: row.status, note: row.note, postUrl: row.postUrl, createdAt: row.createdAt, reviewerName: await reviewerName(ctx, row.reviewerId) })));
   },
 });
 

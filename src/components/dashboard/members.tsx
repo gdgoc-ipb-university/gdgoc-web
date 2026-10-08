@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
@@ -48,7 +49,8 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
 
 type Action = { key: string; label: string; confirm: string; danger?: boolean; run: () => Promise<unknown> };
 
-function MemberRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
+/** One member with the actions the viewer may take. `linked` links the name to the member's detail page. */
+export function MemberRow({ row, viewer, linked = true }: { row: Pick<Row, keyof Row>; viewer: DashboardViewer; linked?: boolean }) {
   const setRole = useMutation(api.dashboard.setRole);
   const setReviewer = useMutation(api.dashboard.setReviewer);
   const setActive = useMutation(api.dashboard.setActive);
@@ -74,7 +76,7 @@ function MemberRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
   }
   return <li className="dash-member" data-active={row.active}>
     <span className="account-avatar" aria-hidden="true">{row.fullName.trim().slice(0, 1).toUpperCase()}</span>
-    <div className="dash-member-identity"><strong>{row.fullName}{self && <span className="app-small"> (kamu)</span>}</strong><span>{row.email}</span><span>{[row.campus, row.studyProgram].filter(Boolean).join(" · ")}</span></div>
+    <div className="dash-member-identity"><strong>{linked ? <Link href={`/dashboard/anggota/${encodeURIComponent(row.ownerId)}`}>{row.fullName}</Link> : row.fullName}{self && <span className="app-small"> (kamu)</span>}</strong><span>{row.email}</span><span>{[row.campus, row.studyProgram].filter(Boolean).join(" · ")}</span></div>
     <div className="dash-member-meta"><span className="dash-role" data-role={row.role}>{roleLabels[row.role]}</span>{row.reviewer && row.role === "member" && <span className="dash-role" data-role="reviewer">Peninjau Apresiasi</span>}{row.memberType &&<span className="dash-role" data-role={row.memberType}>{row.memberType === "core" ? `Core · ${row.division ?? "—"}` : memberTagLabel(row.memberType, row.division)}</span>}{!row.active && <span className="app-status dash-status" data-status="missing">Nonaktif</span>}<span className="app-small">Bergabung {dateLabel(row.joinedAt)}</span></div>
     <div className="dash-member-actions">
       {editing ? <CommunityRoleEditor row={row} onDone={() => setEditing(false)} /> : pending ? <div className="dash-confirm" role="group" aria-label={pending.label}><p>{pending.confirm}</p><button className={`text-button ${pending.danger ? "text-danger" : ""}`} disabled={busy} onClick={() => void confirm()}>{busy ? "Menyimpan…" : `Ya, ${pending.label.toLowerCase()}`}</button><button className="text-button" disabled={busy} onClick={() => { setPending(null); setError(""); }}>Batal</button></div>

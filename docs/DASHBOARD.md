@@ -14,6 +14,7 @@
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
 | `/dashboard/apresiasi/tinjau` | — (unless granted review) | Apresiasi review queue: owners, admins, and anyone an owner made a reviewer |
 | `/dashboard/anggota` | — | Search, filter (admin, reviewer, core team, BoD, deactivated), promote/demote admins, grant/revoke Apresiasi review, set community tags (including BoD), deactivate/reactivate members |
+| `/dashboard/anggota/<id>` | — | One member for staff: the member row with its actions, assignment submissions with status and score, sent Apresiasi with status and post link (drafts are only counted), assignments they review, joined date, and who last changed their access (`dashboard.member`). Names in the members list link here |
 | `/dashboard/papan-skor` | Bogor Run top 100 this week and all time, with your own rank | Same, plus hide controls and a separate "Disembunyikan" list to restore from |
 | `/dashboard/profil` | Profile facts and community role | Same |
 

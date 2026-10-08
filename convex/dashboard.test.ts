@@ -66,6 +66,21 @@ describe("dashboard roles and member management", () => {
     expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, reviewers: 0, core: 0, bod: 0, deactivated: 0 });
   });
 
+  it("lets only owners export members, with every onboarded member and their review access", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const admin = await account(t, "admin@example.com", { name: "Admin" });
+    const member = await account(t, "member@example.com", { name: "Anggota" });
+    await account(t, "fresh@example.com", { onboarded: false });
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    await expect(admin.query(api.dashboard.exportMembers, { paginationOpts: page })).rejects.toThrow("Hanya pemilik");
+    await expect(member.query(api.dashboard.exportMembers, { paginationOpts: page })).rejects.toThrow("Hanya pemilik");
+    const first = await owner.query(api.dashboard.exportMembers, { paginationOpts: { numItems: 2, cursor: null } });
+    const rest = await owner.query(api.dashboard.exportMembers, { paginationOpts: { numItems: 2, cursor: first.continueCursor } });
+    const rows = [...first.page, ...rest.page].map((row) => [row.email, row.role, row.reviewer]).sort();
+    expect(rows).toEqual([["admin@example.com", "admin", true], ["member@example.com", "member", false], ["owner@example.com", "owner", true]]);
+  });
+
   it("shows staff one member's profile, submissions, sent Apresiasi, reviews and last access change", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com", { name: "Pemilik" });

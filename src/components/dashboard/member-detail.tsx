@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { assignmentPath } from "@/lib/assignment";
+import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, StatusBadge, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
@@ -46,5 +49,33 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
     {member.reviewing.length > 0 && <section aria-labelledby="member-reviewing"><div className="app-section-heading"><div><p className="eyebrow">PENILAI</p><h2 id="member-reviewing">Tugas yang ia nilai</h2></div></div>
       <ul className="dash-member-activity">{member.reviewing.map((assignment) => <li key={assignment._id}><div><Link href={assignmentPath(assignment)}>{assignment.title}</Link></div><AssignmentStatusBadge status={assignment.status} /></li>)}</ul>
     </section>}
+
+    {viewer.role === "owner" && member.role !== "owner" && member.ownerId !== viewer.id && <DeleteAccount ownerId={member.ownerId} fullName={member.fullName} />}
   </>;
+}
+
+/** Owners delete an account on the member's request (/privasi). Typing the name is the confirmation; the server checks it too. */
+function DeleteAccount({ ownerId, fullName }: { ownerId: string; fullName: string }) {
+  const router = useRouter();
+  const deleteAccount = useMutation(api.dashboard.deleteAccount);
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const matches = name.trim() === fullName.trim();
+  async function confirm() {
+    setBusy(true); setError("");
+    try { await deleteAccount({ ownerId, confirmName: name }); router.push("/dashboard/anggota"); }
+    catch (cause) { setError(readableError(cause)); setBusy(false); }
+  }
+  return <section className="dash-delete-account" aria-labelledby="delete-account-title">
+    <div className="app-section-heading"><div><p className="eyebrow">PEMILIK</p><h2 id="delete-account-title">Hapus akun</h2></div></div>
+    <p className="app-small">Untuk permintaan penghapusan data dari anggota. Profil, kiriman apresiasi beserta riwayat tinjauannya, kiriman tugas beserta file dan nilainya, skor Bogor Run, tugas yang ia nilai, serta akun login dan sesinya dihapus permanen. Catatan orang lain yang menyebut akun ini, misalnya siapa yang menilai, tetap ada tanpa nama. Tindakan ini tidak bisa dibatalkan.</p>
+    {!open ? <button type="button" className="text-button text-danger" onClick={() => setOpen(true)}>Hapus akun {fullName}</button>
+      : <form onSubmit={(event) => { event.preventDefault(); if (matches && !busy) void confirm(); }}>
+        <div className="app-field"><label htmlFor="delete-account-name">Ketik <strong>{fullName}</strong> untuk konfirmasi</label><input id="delete-account-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" spellCheck={false} disabled={busy} /></div>
+        <div className="dash-confirm"><button type="submit" className="text-button text-danger" disabled={!matches || busy}>{busy ? "Menghapus…" : "Hapus permanen"}</button><button type="button" className="text-button" disabled={busy} onClick={() => { setOpen(false); setName(""); setError(""); }}>Batal</button></div>
+      </form>}
+    {error && <p className="field-error" role="alert">{error}</p>}
+  </section>;
 }

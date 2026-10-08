@@ -1,6 +1,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { components } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { authComponent, isReviewer } from "./auth";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
@@ -95,6 +96,66 @@ export const member = query({
       drafts: appreciations.filter((doc) => doc.status === "draft").length,
       reviewing: recent.filter((assignment) => assignment.reviewers?.includes(ownerId)).map((assignment) => ({ _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status })),
     };
+  },
+});
+
+/** Deletes every auth-component row of one model that belongs to a user, page by page. */
+async function deleteAuthRows(ctx: MutationCtx, model: "session" | "account", userId: string) {
+  let count = 0;
+  let cursor: string | null = null;
+  for (;;) {
+    const result: { count?: number; isDone: boolean; continueCursor: string } = await ctx.runMutation(components.betterAuth.adapter.deleteMany, {
+      input: { model, where: [{ field: "userId", operator: "eq", value: userId }] },
+      paginationOpts: { numItems: 200, cursor },
+    });
+    count += result.count ?? 0;
+    if (result.isDone) return count;
+    cursor = result.continueCursor;
+  }
+}
+
+/**
+ * Owners delete a member's account on request (`/privasi`): profile, Apresiasi, assignment submissions with their files
+ * and review rows, pending uploads, Bogor Run rows, reviewer grants, and the sign-in account and sessions. Other people's
+ * records keep the bare account ID they referenced (who reviewed, who changed access), which then resolves to no name.
+ * `confirmName` must match the profile name, so a stray call cannot delete anyone. One accountDeletions row records the counts.
+ */
+export const deleteAccount = mutation({
+  args: { ownerId: v.string(), confirmName: v.string() },
+  handler: async (ctx, { ownerId, confirmName }) => {
+    const actor = await requireMember(ctx);
+    if (actor.role !== "owner") throw new ConvexError({ code: "FORBIDDEN", message: "Hanya pemilik yang bisa menghapus akun." });
+    if (ownerId === actor.user._id) throw new ConvexError("Kamu tidak bisa menghapus akunmu sendiri dari sini.");
+    const { profile, row } = await target(ctx, ownerId);
+    if (row.role === "owner") throw new ConvexError("Akun pemilik diatur lewat konfigurasi server dan tidak bisa dihapus dari sini.");
+    if (confirmName.trim() !== profile.fullName.trim()) throw new ConvexError({ code: "VALIDATION", message: "Ketik nama anggota persis seperti tertulis untuk konfirmasi." });
+
+    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0 };
+    for (const doc of await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).collect()) {
+      for (const review of await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", doc._id)).collect()) { await ctx.db.delete(review._id); counts.appreciationReviews++; }
+      await ctx.db.delete(doc._id); counts.appreciations++;
+    }
+    for (const submission of await ctx.db.query("assignmentSubmissions").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) {
+      for (const review of await ctx.db.query("submissionReviews").withIndex("by_submission", (q) => q.eq("submissionId", submission._id)).collect()) { await ctx.db.delete(review._id); counts.submissionReviews++; }
+      await ctx.db.delete(submission._id); counts.submissions++;
+    }
+    // Attached and pending uploads alike are indexed by owner.
+    for (const file of await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", ownerId)).collect()) {
+      await ctx.storage.delete(file.storageId); await ctx.db.delete(file._id); counts.files++;
+    }
+    for (const run of await ctx.db.query("gameRuns").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(run._id); counts.gameRuns++; }
+    for (const best of await ctx.db.query("gameBests").withIndex("by_owner_period", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(best._id); counts.gameBests++; }
+    for (const player of await ctx.db.query("gamePlayers").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) await ctx.db.delete(player._id);
+    for (const assignment of await ctx.db.query("assignments").collect()) {
+      if (!assignment.reviewers?.includes(ownerId)) continue;
+      await ctx.db.patch(assignment._id, { reviewers: assignment.reviewers.filter((id) => id !== ownerId) }); counts.reviewerGrants++;
+    }
+    await ctx.db.delete(profile._id);
+    counts.sessions = await deleteAuthRows(ctx, "session", ownerId);
+    counts.accounts = await deleteAuthRows(ctx, "account", ownerId);
+    await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "user", where: [{ field: "_id", operator: "eq", value: ownerId }] } });
+    await ctx.db.insert("accountDeletions", { deletedAt: Date.now(), deletedBy: actor.user._id, counts });
+    return counts;
   },
 });
 

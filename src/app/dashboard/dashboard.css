@@ -437,3 +437,11 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-reviewer-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; max-width: 560px; }
 .dash-reviewer-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: white; border: 1px solid #dfe5dc; }
 .dash-members-export { align-items: flex-start; margin-bottom: 12px; }
+
+/* Member detail */
+.dash-member-identity strong a { color: inherit; text-decoration: underline; text-decoration-color: #b9c7b0; text-underline-offset: 3px; }
+.dash-member-identity strong a:hover { text-decoration-color: currentColor; }
+.dash-member-activity { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
+.dash-member-activity li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 12px 14px; background: white; border: 1px solid #dfe5dc; }
+.dash-member-activity li > div { display: grid; gap: 2px; min-width: 0; }
+.dash-member-activity a { overflow-wrap: anywhere; }

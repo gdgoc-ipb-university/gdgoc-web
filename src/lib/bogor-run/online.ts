@@ -6,6 +6,7 @@ import { ConvexHttpClient } from "convex/browser";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
+import { ENGINE_VERSION } from "./engine";
 import { packInputs, weekKey, weekStart } from "./leaderboard";
 import type { FinishedRun, Ticket } from "./runtime";
 
@@ -54,9 +55,14 @@ export function signedIn(fresh = false) {
   return signedIn;
 }
 
+let outdated = false;
+/** True once the server has said it runs another engine version: this tab plays unranked until it is reloaded. */
+export const isOutdated = () => outdated;
+
 /** A signed seed for the next run, or null when the server cannot rank runs (then the game plays unranked). */
 export async function issueRun(): Promise<FreshTicket | null> {
-  const ticket = await convex().mutation(api.bogorRun.issueRun, {});
+  const ticket = await convex().mutation(api.bogorRun.issueRun, { engine: ENGINE_VERSION });
+  if (ticket && "outdated" in ticket) { outdated = true; return null; }
   return ticket && { ...ticket, fetchedAt: Date.now() };
 }
 
@@ -72,6 +78,7 @@ const fresh = (ticket: FreshTicket | null, now = Date.now()) => ticket && now < 
 
 /** Makes sure a fresh ticket is ready (or on its way). Resolves to it, or null offline or when ranking is off. */
 export function prefetchTicket(): Promise<FreshTicket | null> {
+  if (outdated) return Promise.resolve(null); // another ticket would be refused the same way
   if (ready && Date.now() < renewAt(ready)) return Promise.resolve(ready);
   fetching ??= issueRun()
     .then((ticket) => (ready = ticket))

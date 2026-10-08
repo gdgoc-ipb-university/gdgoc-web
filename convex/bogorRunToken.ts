@@ -1,8 +1,9 @@
 /**
- * Stateless Bogor Run tokens: base64url(JSON { v: 1, seed, issuedAt, nonce }) + "." + base64url(HMAC-SHA256).
- * The key is HMAC(BETTER_AUTH_SECRET, CONTEXT), so no new secret is needed and it never signs anything else.
+ * Stateless Bogor Run tokens: base64url(JSON { v: 2, engine, seed, issuedAt, nonce }) + "." + base64url(HMAC-SHA256).
+ * `engine` is the ENGINE_VERSION the client played on. Tokens from before it existed are `v: 1` without it, and verify as
+ * engine 1. The key is HMAC(BETTER_AUTH_SECRET, CONTEXT), so no new secret is needed and it never signs anything else.
  */
-export type RunClaim = { v: 1; seed: number; issuedAt: number; nonce: string };
+export type RunClaim = { v: 2; engine: number; seed: number; issuedAt: number; nonce: string };
 
 const CONTEXT = "gdgoc:bogor-run:token:v1";
 const MAX_TOKEN = 256;
@@ -63,9 +64,12 @@ export async function verifyToken(token: string, secret = process.env.BETTER_AUT
   const bytes = fromBase64Url(body);
   let claim: unknown;
   try { claim = bytes && JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes)); } catch { return null; }
-  if (!claim || typeof claim !== "object" || Object.keys(claim).length !== 4) return null;
-  const { v, seed, issuedAt, nonce } = claim as Record<string, unknown>;
-  const valid = v === 1 && Number.isInteger(seed) && (seed as number) >= 0 && (seed as number) <= 0xffffffff
+  if (!claim || typeof claim !== "object") return null;
+  const { v, seed, issuedAt, nonce } = claim as Record<string, unknown>, keys = Object.keys(claim);
+  const engine = v === 1 ? 1 : (claim as Record<string, unknown>).engine;
+  const valid = ((v === 1 && keys.length === 4 && !keys.includes("engine")) || (v === 2 && keys.length === 5 && keys.includes("engine")))
+    && Number.isInteger(engine) && (engine as number) >= 1 && (engine as number) <= 1000
+    && Number.isInteger(seed) && (seed as number) >= 0 && (seed as number) <= 0xffffffff
     && Number.isSafeInteger(issuedAt) && (issuedAt as number) > 0 && typeof nonce === "string" && /^[A-Za-z0-9_-]{16,64}$/.test(nonce);
-  return valid ? { v: 1, seed: seed as number, issuedAt: issuedAt as number, nonce: nonce as string } : null;
+  return valid ? { v: 2, engine: engine as number, seed: seed as number, issuedAt: issuedAt as number, nonce: nonce as string } : null;
 }

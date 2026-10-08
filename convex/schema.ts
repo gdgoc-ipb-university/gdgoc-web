@@ -46,6 +46,8 @@ export default defineSchema({
     // Scores run from 0 to this; older assignments without it are graded out of 100 (assignmentMaxScore).
     // With a rubric, maxScore is the sum of the criteria maxes and reviews carry one point value per criterion.
     maxScore: v.optional(v.number()), rubric: v.optional(v.array(v.object({ name: v.string(), max: v.number() }))),
+    // Members staff chose to review this assignment's submissions (account IDs), e.g. a Catalyst role's mentors. Staff review every assignment.
+    reviewers: v.optional(v.array(v.string())),
   })
     .index("by_status_due", ["status", "dueAt"])
     .index("by_updated", ["updatedAt"]),

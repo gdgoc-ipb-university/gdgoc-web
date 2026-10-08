@@ -19,6 +19,19 @@ export function AssignmentsPage() {
   return isStaff(viewer) ? <StaffAssignments /> : <MemberAssignments />;
 }
 
+/** Assignments a member was asked to review, above their own tasks. */
+function ReviewingAssignments() {
+  const reviewing = useQuery(api.assignments.reviewing);
+  if (!reviewing?.length) return null;
+  return <section aria-labelledby="reviewing-title"><div className="app-section-heading"><div><p className="eyebrow">PENILAI</p><h2 id="reviewing-title">Tugas yang kamu nilai</h2></div></div>
+    <div className="dash-card-grid">{reviewing.map((item) => <article className="app-record" key={item._id}>
+      <div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.waiting ? ` · ${item.waiting} menunggu dinilai` : ""}</span></div>
+      <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3>
+      <div className="app-record-bottom"><Link className="text-button" href={assignmentPath(item)}>Nilai kiriman <Arrow /></Link></div>
+    </article>)}</div>
+  </section>;
+}
+
 function MemberAssignments() {
   const assignments = useQuery(api.assignments.list);
   const now = useNow();
@@ -28,6 +41,7 @@ function MemberAssignments() {
   ] as const;
   return <>
     <div className="dash-intro"><p className="eyebrow">TUGAS MEMBER</p><h1>Tugas.</h1><p>Buka tugas untuk membaca instruksi, menulis jawaban, dan melampirkan file hasil kerjamu.</p></div>
+    <ReviewingAssignments />
     {!assignments ? <LoadingPanel label="Memuat tugas…" /> : groups.map((group) => {
       const items = assignments.filter((item) => item.status === group.key);
       if (!items.length && !group.empty) return null;

@@ -272,6 +272,54 @@ describe("assignment submission", () => {
     expect(history.map((entry) => [entry.score ?? null, entry.feedback, entry.revisionRequested ?? false])).toEqual([[70, "", false], [70, "Tambahkan pengujian.", true], [70, "Satu lagi.", true]]);
   });
 
+  it("lets members staff add as reviewers score one assignment, without emails and without managing it", async () => {
+    const { t, owner, member, other } = await world();
+    const mentor = await account(t, "mentor@example.com");
+    const admin = await account(t, "admin@example.com");
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    const elsewhere = await owner.mutation(api.assignments.create, { values: { ...values(), title: "Tugas lain" }, publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Jawaban", fileIds: [] });
+    await member.mutation(api.assignments.submit, { assignmentId: elsewhere, revision: 0, answer: "Jawaban lain", fileIds: [] });
+
+    // Before the grant the mentor is an ordinary member.
+    await expect(mentor.query(api.assignments.submissions, { id, paginationOpts: page })).rejects.toThrow("penilai tugas ini");
+    await expect(mentor.mutation(api.assignments.setReviewer, { id, ownerId: mentor.id, reviewer: true })).rejects.toThrow("hanya untuk admin");
+    await expect(owner.mutation(api.assignments.setReviewer, { id, ownerId: admin.id, reviewer: true })).rejects.toThrow("sudah bisa menilai");
+    await expect(owner.mutation(api.assignments.setReviewer, { id, ownerId: "missing", reviewer: true })).rejects.toThrow("tidak ditemukan");
+    await owner.mutation(api.assignments.setReviewer, { id, ownerId: mentor.id, reviewer: true });
+    await owner.mutation(api.assignments.setReviewer, { id, ownerId: mentor.id, reviewer: true }); // already a reviewer: no-op
+    expect((await owner.query(api.assignments.get, { id }))?.reviewers).toEqual([{ ownerId: mentor.id, name: "Nama mentor" }]);
+
+    const detail = await mentor.query(api.assignments.get, { id });
+    expect(detail).toMatchObject({ canManage: false, canReview: true, reviewers: [] });
+    const [row] = (await mentor.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    expect(row).toMatchObject({ name: "Nama member", email: "", answer: "Jawaban" });
+    expect((await mentor.query(api.assignments.exportPage, { id, paginationOpts: page })).includesEmail).toBe(false);
+    const missing = await mentor.query(api.assignments.missing, { id });
+    expect(missing.missing.map((entry) => [entry.name, entry.email])).toEqual([["Nama other", ""]]);
+    expect(missing.active).toBe(2); // member and other; the mentor reviews instead of submitting
+    expect(await mentor.query(api.assignments.reviewing)).toMatchObject([{ _id: id, submissionCount: 1, waiting: 1 }]);
+
+    await mentor.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 80, feedback: "Rapi." });
+    await mentor.mutation(api.assignments.requestRevision, { submissionId: row._id, submissionRevision: 1, note: "Tambahkan contoh." });
+    await mentor.mutation(api.assignments.cancelRevision, { submissionId: row._id });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 80, reviewerName: "Nama mentor", revisionRequestedAt: null });
+
+    // Nothing beyond this assignment's reviews.
+    const [other_] = (await owner.query(api.assignments.submissions, { id: elsewhere, paginationOpts: page })).page;
+    await expect(mentor.mutation(api.assignments.review, { submissionId: other_._id, submissionRevision: 1, score: 10, feedback: "" })).rejects.toThrow("penilai tugas ini");
+    await expect(mentor.mutation(api.assignments.setStatus, { id, revision: 0, status: "closed" })).rejects.toThrow("hanya untuk admin");
+    await expect(mentor.mutation(api.assignments.update, { id, revision: 0, values: values() })).rejects.toThrow("hanya untuk admin");
+
+    // Removing the grant ends access; deactivated members cannot be added.
+    await owner.mutation(api.assignments.setReviewer, { id, ownerId: mentor.id, reviewer: false });
+    await expect(mentor.query(api.assignments.submissions, { id, paginationOpts: page })).rejects.toThrow("penilai tugas ini");
+    expect(await mentor.query(api.assignments.reviewing)).toEqual([]);
+    await owner.mutation(api.dashboard.setActive, { ownerId: other.id, active: false });
+    await expect(owner.mutation(api.assignments.setReviewer, { id, ownerId: other.id, reviewer: true })).rejects.toThrow("Aktifkan kembali");
+  });
+
   // convex-test does not record upload content types; see src/lib/assignment.test.ts for type checks.
   it("validates uploads on the server and deletes rejected files", async () => {
     const { t, owner, member, other } = await world();

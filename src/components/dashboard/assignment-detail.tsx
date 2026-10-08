@@ -52,7 +52,7 @@ export function AssignmentDetail({ id }: { id: string }) {
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canManage ? "Kelola tugas" : "Semua tugas"}</Link>
     <article className="dash-assignment" aria-labelledby="assignment-title">
-      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canManage && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canManage && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} />}</div>
+      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canManage && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canManage && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
@@ -79,27 +79,28 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
     submit: (args) => submit({ assignmentId: assignment._id, ...args }),
   };
   const result = submission?.reviewedAt ? <ReviewResult submission={submission} maxScore={assignmentMaxScore(assignment)} /> : null;
-  if (assignment.status === "closed") {
+  const revising = submission?.revisionRequestedAt != null;
+  if (assignment.status === "closed" && !revising) {
     return <>{result}<section className="app-form-section dash-closed" aria-labelledby="closed-title"><h2 id="closed-title">Pengumpulan sudah ditutup.</h2>
       {submission ? <><p>Kamu mengirim pada {dateLabel(submission.submittedAt)}{submission.late ? " (terlambat)" : ""}.</p>{submission.answer && <RichTextView className="dash-answer" json={submission.answerDoc} text={submission.answer} />}<ul className="dash-file-list">{files.filter((file) => file.attached).map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul></>
         : <p>Kamu belum mengirim tugas ini sebelum pengumpulan ditutup.</p>}
     </section></>;
   }
-  return <>{result}<SubmissionForm key={assignment._id} submission={submission} files={files} dueAt={assignment.dueAt} now={now} actions={actions} /></>;
+  return <>{result}{revising && <p className="app-notice">{assignment.status === "closed" ? "Pengumpulan sudah ditutup, tetapi formulir ini dibuka kembali untukmu." : "Perbaiki kirimanmu sesuai umpan balik di atas."} Setelah kamu mengirim ulang, peninjau akan menilainya lagi.</p>}<SubmissionForm key={assignment._id} submission={submission} files={files} dueAt={assignment.dueAt} now={now} actions={actions} /></>;
 }
 
-type Reviewed = { score: number | null; breakdown: RubricScore[] | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean };
+type Reviewed = { score: number | null; breakdown: RubricScore[] | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean; revisionRequestedAt: number | null };
 
 /** What the member sees once a reviewer has scored or commented. A rubric score shows the criteria as they were when scored. */
 function ReviewResult({ submission, maxScore }: { submission: Reviewed; maxScore: number }) {
   const breakdown = submission.breakdown?.length ? submission.breakdown : null;
   return <section className="app-panel dash-result" aria-labelledby="result-title">
     <p className="eyebrow">HASIL PENILAIAN</p>
-    <h2 id="result-title">{submission.score === null ? "Ada umpan balik untukmu." : "Kirimanmu sudah dinilai."}</h2>
+    <h2 id="result-title">{submission.revisionRequestedAt !== null ? "Peninjau meminta revisi." : submission.score === null ? "Ada umpan balik untukmu." : "Kirimanmu sudah dinilai."}</h2>
     {submission.score !== null && <p className="dash-score">{submission.score}<small>dari {breakdown ? breakdown.reduce((sum, entry) => sum + entry.max, 0) : maxScore}</small></p>}
     {breakdown && <ol className="dash-rubric-list dash-rubric-result">{breakdown.map((entry, index) => <li key={index}><span>{entry.name}</span><b>{scoreLabel(entry.points, entry.max)}</b></li>)}</ol>}
     {submission.feedback && <p className="dash-feedback">{submission.feedback}</p>}
-    <p className="app-small">Dinilai {submission.reviewedAt ? dateLabel(submission.reviewedAt) : ""}{submission.reviewerName ? ` oleh ${submission.reviewerName}` : ""}.</p>
+    <p className="app-small">{submission.revisionRequestedAt !== null ? "Revisi diminta" : "Dinilai"} {submission.reviewedAt ? dateLabel(submission.reviewedAt) : ""}{submission.reviewerName ? ` oleh ${submission.reviewerName}` : ""}.</p>
     {submission.stale && <p className="app-notice">Kamu memperbarui kiriman setelah penilaian ini. Nilai di atas berlaku untuk versi sebelumnya sampai ditinjau lagi.</p>}
   </section>;
 }
@@ -137,11 +138,12 @@ type SubmissionRow = FunctionReturnType<typeof api.assignments.submissions>["pag
 function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; now: number }) {
   const list = usePaginatedQuery(api.assignments.submissions, { id: assignment._id }, { initialNumItems: 20 });
   const maxScore = assignmentMaxScore(assignment);
-  const reviewed = list.results.filter((item) => item.reviewedAt !== null && !item.stale).length;
-  return <section aria-labelledby="submissions-title"><div className="app-section-heading"><div><p className="eyebrow">KIRIMAN MEMBER</p><h2 id="submissions-title">Kiriman</h2></div>{list.status !== "LoadingFirstPage" && <div className="dash-submissions-summary"><span className="app-small">{list.results.length}{list.status === "CanLoadMore" ? "+" : ""} kiriman · {list.results.filter((item) => item.late).length} terlambat · {reviewed} dinilai</span>{list.results.length > 0 && <ExportButton assignment={assignment} />}</div>}</div>
+  const reviewed = list.results.filter((item) => item.reviewedAt !== null && !item.stale && item.revisionRequestedAt === null).length;
+  const revising = list.results.filter((item) => item.revisionRequestedAt !== null).length;
+  return <section aria-labelledby="submissions-title"><div className="app-section-heading"><div><p className="eyebrow">KIRIMAN MEMBER</p><h2 id="submissions-title">Kiriman</h2></div>{list.status !== "LoadingFirstPage" && <div className="dash-submissions-summary"><span className="app-small">{list.results.length}{list.status === "CanLoadMore" ? "+" : ""} kiriman · {list.results.filter((item) => item.late).length} terlambat · {reviewed} dinilai{revising ? ` · ${revising} revisi diminta` : ""}</span>{list.results.length > 0 && <ExportButton assignment={assignment} />}</div>}</div>
     {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat kiriman…" /> : !list.results.length ? <div className="app-empty"><h3>Belum ada kiriman.</h3><p>{assignment.status === "draft" ? "Buka tugas ini agar member bisa mulai mengumpulkan." : assignment.dueAt > now ? "Kiriman member akan muncul di sini secara otomatis." : "Tenggat sudah lewat dan belum ada member yang mengirim."}</p></div>
       : <ul className="dash-submissions">{list.results.map((item) => <li key={item._id} className="app-panel">
-        <div className="app-record-top"><div><strong>{item.name}</strong><span className="app-small">{[item.email, item.campus].filter(Boolean).join(" · ")}</span></div><span className="app-inline-badges"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={maxScore} reviewedAt={item.reviewedAt} stale={item.stale} /></span></div>
+        <div className="app-record-top"><div><strong>{item.name}</strong><span className="app-small">{[item.email, item.campus].filter(Boolean).join(" · ")}</span></div><span className="app-inline-badges"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={maxScore} reviewedAt={item.reviewedAt} stale={item.stale} revisionRequestedAt={item.revisionRequestedAt} /></span></div>
         <p className="app-small">Dikirim {dateLabel(item.submittedAt)}</p>
         {item.answer && <RichTextView className="dash-answer" json={item.answerDoc} text={item.answer} />}
         {item.files.length > 0 && <ul className="dash-file-list" aria-label={`Lampiran dari ${item.name}`}>{item.files.map((file) => <li key={file._id}><FileLink file={file} /></li>)}</ul>}
@@ -209,6 +211,8 @@ function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
 /** Score and feedback for one submission. Keyed by revision upstream, so a resubmission resets the form to the new version. */
 function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore: number; rubric: RubricCriterion[] | null }) {
   const review = useMutation(api.assignments.review);
+  const requestRevision = useMutation(api.assignments.requestRevision);
+  const cancelRevision = useMutation(api.assignments.cancelRevision);
   const criteria = rubric?.length ? rubric : null;
   const [score, setScore] = useState(item.score === null ? "" : String(item.score));
   // Previous points only prefill when they were given against the rubric as it is now.
@@ -218,7 +222,7 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
   const [feedback, setFeedback] = useState(item.feedback ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState<false | "review" | "revision" | "cancelled">(false);
   const id = `review-${item._id}`;
   const filled = points.filter((value) => value.trim() !== "");
   const total = criteria && filled.length === criteria.length && points.every((value) => /^\d+$/.test(value.trim())) ? points.reduce((sum, value) => sum + Number(value), 0) : null;
@@ -235,13 +239,24 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
       if (trimmed) args = { score: Number(trimmed) };
     }
     setBusy(true); setError(""); setSaved(false);
-    try { await review({ submissionId: item._id, submissionRevision: item.revision, ...args, feedback }); setSaved(true); }
+    try { await review({ submissionId: item._id, submissionRevision: item.revision, ...args, feedback }); setSaved("review"); }
     catch (cause) { setError(readableError(cause)); }
     finally { setBusy(false); }
+  }
+  async function run(action: () => Promise<unknown>, done: "revision" | "cancelled") {
+    setBusy(true); setError(""); setSaved(false);
+    try { await action(); setSaved(done); }
+    catch (cause) { setError(readableError(cause)); }
+    finally { setBusy(false); }
+  }
+  function askRevision() {
+    if (!feedback.trim()) { setError("Tulis apa yang perlu direvisi di kolom umpan balik."); return; }
+    void run(() => requestRevision({ submissionId: item._id, submissionRevision: item.revision, note: feedback }), "revision");
   }
   return <form className="dash-review-form" onSubmit={save} aria-label={`Penilaian untuk ${item.name}`}>
     <fieldset disabled={busy}><legend className="sr-only">Penilaian</legend>
       {item.stale && <p className="app-notice">Member memperbarui kiriman setelah dinilai. Periksa versi terbaru, lalu simpan penilaian lagi.</p>}
+      {item.revisionRequestedAt !== null && <p className="app-notice">Revisi diminta {dateLabel(item.revisionRequestedAt)}. Formulir member dibuka kembali sampai ia mengirim ulang, juga setelah pengumpulan ditutup. <button type="button" className="text-button" onClick={() => void run(() => cancelRevision({ submissionId: item._id }), "cancelled")}>Batalkan permintaan revisi</button></p>}
       {criteria && <div className="dash-rubric-points" role="group" aria-label="Poin per kriteria">
         {criteria.map((criterion, index) => <div className="app-field" key={index}><label htmlFor={`${id}-point-${index}`}>{criterion.name} <span className="app-small">(0–{criterion.max})</span></label><input id={`${id}-point-${index}`} type="number" inputMode="numeric" min={0} max={criterion.max} step={1} value={points[index]} onChange={(event) => setEntered(points.map((value, i) => i === index ? event.target.value : value))} placeholder="—" /></div>)}
         <p className="app-small dash-rubric-total">Total {total === null ? "—" : total} dari {maxScore}</p>
@@ -251,8 +266,9 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
         <div className="app-field"><label htmlFor={`${id}-feedback`}>Umpan balik untuk member</label><textarea data-lenis-prevent id={`${id}-feedback`} rows={3} maxLength={assignmentLimits.feedback} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Apa yang sudah baik, apa yang perlu diperbaiki." /></div>
       </div>
       <div className="app-inline-actions"><button className="button button-blue" type="submit">{busy ? "Menyimpan…" : item.reviewedAt === null ? "Simpan penilaian" : "Perbarui penilaian"}</button>
+        {item.revisionRequestedAt === null && <button type="button" className="text-button" onClick={askRevision}>Minta revisi</button>}
         {item.reviewedAt !== null && !saved && <span className="app-small">Dinilai {dateLabel(item.reviewedAt)}{item.reviewerName ? ` oleh ${item.reviewerName}` : ""}{item.score !== null ? ` · ${scoreLabel(item.score, maxScore)}` : ""}</span>}
-        {saved && <span className="app-small" role="status">Penilaian tersimpan. Member bisa melihatnya sekarang.</span>}</div>
+        {saved && <span className="app-small" role="status">{{ review: "Penilaian tersimpan. Member bisa melihatnya sekarang.", revision: "Revisi diminta. Member melihat catatanmu dan bisa mengirim ulang.", cancelled: "Permintaan revisi dibatalkan." }[saved]}</span>}</div>
       {error && <p className="field-error" role="alert">{error}</p>}
     </fieldset>
   </form>;

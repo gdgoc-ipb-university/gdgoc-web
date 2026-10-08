@@ -235,6 +235,43 @@ describe("assignment submission", () => {
     expect(forAdmin.page.map((row) => row.email)).toEqual(["", ""]);
   });
 
+  it("reopens one member's submission on a revision request, even after closing, until they resubmit", async () => {
+    const { t, owner, member, other } = await world();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Versi pertama", fileIds: [] });
+    await other.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Versi lain", fileIds: [] });
+    const rows = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    const mine = rows.find((row) => row.email === "member@example.com")!;
+    await owner.mutation(api.assignments.review, { submissionId: mine._id, submissionRevision: 1, score: 70, feedback: "" });
+
+    await expect(member.mutation(api.assignments.requestRevision, { submissionId: mine._id, submissionRevision: 1, note: "Revisi" })).rejects.toThrow("hanya untuk admin");
+    await expect(owner.mutation(api.assignments.requestRevision, { submissionId: mine._id, submissionRevision: 1, note: "  " })).rejects.toThrow("perlu direvisi");
+    await expect(owner.mutation(api.assignments.requestRevision, { submissionId: mine._id, submissionRevision: 0, note: "Revisi" })).rejects.toThrow("Muat ulang");
+    await owner.mutation(api.assignments.requestRevision, { submissionId: mine._id, submissionRevision: 1, note: "Tambahkan pengujian." });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 70, feedback: "Tambahkan pengujian.", revisionRequestedAt: expect.any(Number), stale: false });
+    expect((await member.query(api.assignments.list))[0]).toMatchObject({ revisionRequestedAt: expect.any(Number) });
+    expect((await owner.query(api.assignments.adminList, { paginationOpts: page })).page[0]).toMatchObject({ submissionCount: 2, reviewedCount: 0 });
+
+    // Closing stops everyone except the member asked to revise.
+    await owner.mutation(api.assignments.setStatus, { id, revision: 0, status: "closed" });
+    await expect(other.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "Terlambat", fileIds: [] })).rejects.toThrow("ditutup");
+    await expect(other.mutation(api.assignments.generateUploadUrl, { assignmentId: id })).rejects.toThrow("ditutup");
+    await member.mutation(api.assignments.generateUploadUrl, { assignmentId: id });
+    await attach(member, t, id, "revisi.pdf");
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "Versi kedua", fileIds: [] });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ revision: 2, score: 70, revisionRequestedAt: null, stale: true });
+    await expect(member.mutation(api.assignments.submit, { assignmentId: id, revision: 2, answer: "Versi ketiga", fileIds: [] })).rejects.toThrow("ditutup");
+
+    // A request can be withdrawn before the member answers it.
+    await owner.mutation(api.assignments.requestRevision, { submissionId: mine._id, submissionRevision: 2, note: "Satu lagi." });
+    await owner.mutation(api.assignments.cancelRevision, { submissionId: mine._id });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ revisionRequestedAt: null });
+    await expect(member.mutation(api.assignments.submit, { assignmentId: id, revision: 2, answer: "Versi ketiga", fileIds: [] })).rejects.toThrow("ditutup");
+
+    const history = await t.run((ctx) => ctx.db.query("submissionReviews").withIndex("by_submission", (q) => q.eq("submissionId", mine._id)).collect());
+    expect(history.map((entry) => [entry.score ?? null, entry.feedback, entry.revisionRequested ?? false])).toEqual([[70, "", false], [70, "Tambahkan pengujian.", true], [70, "Satu lagi.", true]]);
+  });
+
   // convex-test does not record upload content types; see src/lib/assignment.test.ts for type checks.
   it("validates uploads on the server and deletes rejected files", async () => {
     const { t, owner, member, other } = await world();

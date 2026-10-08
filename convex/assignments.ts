@@ -42,7 +42,7 @@ async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignme
   return {
     score: submission.score ?? null, breakdown: submission.breakdown ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
     reviewerName: submission.reviewedBy ? (await nameOf(ctx, submission.reviewedBy)).name : null,
-    stale: isStaleReview(submission),
+    stale: isStaleReview(submission), revisionRequestedAt: submission.revisionRequestedAt ?? null,
   };
 }
 
@@ -105,7 +105,7 @@ export const adminList = query({
         const submissions = await submissionsOf(ctx, assignment._id);
         return {
           ...assignment, submissionCount: submissions.length, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
-          reviewedCount: submissions.filter((item) => item.reviewedAt !== undefined && !isStaleReview(item)).length,
+          reviewedCount: submissions.filter((item) => item.reviewedAt !== undefined && !isStaleReview(item) && !item.revisionRequestedAt).length,
         };
       })),
     };
@@ -296,6 +296,36 @@ export const review = mutation({
   },
 });
 
+/** Asks one member to revise their submission, with a note. Their form reopens, even after the assignment is closed, until they resubmit. */
+export const requestRevision = mutation({
+  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), note: v.string() },
+  handler: async (ctx, args) => {
+    const { user } = await requireStaff(ctx);
+    const submission = await ctx.db.get(args.submissionId);
+    if (!submission) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
+    if (!(await ctx.db.get(submission.assignmentId))) notFound();
+    if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk melihat versi terbaru." });
+    const note = args.note.trim();
+    if (!note) throw new ConvexError({ code: "VALIDATION", message: "Tulis apa yang perlu direvisi di kolom umpan balik." });
+    if (note.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
+    const now = Date.now();
+    // The score, if any, stays until the revision is reviewed.
+    await ctx.db.patch(submission._id, { feedback: note, reviewedAt: now, reviewedBy: user._id, revisionRequestedAt: now });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: submission.assignmentId, reviewerId: user._id, score: submission.score, breakdown: submission.breakdown, feedback: note, revisionRequested: true, createdAt: now });
+  },
+});
+
+/** Withdraws a revision request that the member has not answered yet. */
+export const cancelRevision = mutation({
+  args: { submissionId: v.id("assignmentSubmissions") },
+  handler: async (ctx, { submissionId }) => {
+    await requireStaff(ctx);
+    const submission = await ctx.db.get(submissionId);
+    if (!submission) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
+    if (submission.revisionRequestedAt) await ctx.db.patch(submission._id, { revisionRequestedAt: undefined });
+  },
+});
+
 // ——— Members ———
 
 export const list = query({
@@ -312,6 +342,7 @@ export const list = query({
         _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
         submittedAt: mine?.submittedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
         maxScore: assignmentMaxScore(assignment), score: mine?.score ?? null, reviewedAt: mine?.reviewedAt ?? null, stale: mine ? isStaleReview(mine) : false,
+        revisionRequestedAt: mine?.revisionRequestedAt ?? null,
       };
     }));
   },
@@ -334,18 +365,26 @@ export const get = query({
   },
 });
 
-async function openAssignment(ctx: MutationCtx, id: Id<"assignments">) {
+/** Whether this member may still submit: the assignment is open, or a reviewer asked them for a revision. */
+async function acceptsFrom(ctx: MutationCtx, assignment: Doc<"assignments">, ownerId: string) {
+  if (assignment.status === "published") return true;
+  if (assignment.status !== "closed") return false;
+  const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", ownerId)).unique();
+  return Boolean(mine?.revisionRequestedAt);
+}
+
+async function openAssignment(ctx: MutationCtx, id: Id<"assignments">, ownerId: string) {
   const assignment = await ctx.db.get(id);
   if (!assignment || assignment.status === "draft") notFound();
-  if (assignment.status === "closed") closed();
+  if (!(await acceptsFrom(ctx, assignment, ownerId))) closed();
   return assignment;
 }
 
 export const generateUploadUrl = mutation({
   args: { assignmentId: v.id("assignments") },
   handler: async (ctx, { assignmentId }) => {
-    await requireMember(ctx);
-    await openAssignment(ctx, assignmentId);
+    const { user } = await requireMember(ctx);
+    await openAssignment(ctx, assignmentId, user._id);
     return ctx.storage.generateUploadUrl();
   },
 });
@@ -365,7 +404,7 @@ export const attachFile = mutation({
     const reject = async (error: string) => { await ctx.storage.delete(args.storageId); return { error }; };
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment || assignment.status === "draft") return reject("Tugas tidak ditemukan.");
-    if (assignment.status === "closed") return reject("Pengumpulan tugas ini sudah ditutup.");
+    if (!(await acceptsFrom(ctx, assignment, user._id))) return reject("Pengumpulan tugas ini sudah ditutup.");
     const name = cleanFileName(args.name);
     const problem = fileProblem(name, metadata.contentType, metadata.size);
     if (problem) return reject(problem);
@@ -395,7 +434,7 @@ export const submit = mutation({
   args: { assignmentId: v.id("assignments"), revision: v.number(), answer: v.string(), answerDoc: v.optional(v.string()), fileIds: v.array(v.id("submissionFiles")) },
   handler: async (ctx, args) => {
     const { user } = await requireMember(ctx);
-    const assignment = await openAssignment(ctx, args.assignmentId);
+    const assignment = await openAssignment(ctx, args.assignmentId, user._id);
     let answer = args.answer.trim();
     let answerDoc: string | undefined;
     if (args.answerDoc !== undefined) {
@@ -424,7 +463,8 @@ export const submit = mutation({
     }
     const submittedAt = Date.now();
     const submissionId = existing?._id ?? await ctx.db.insert("assignmentSubmissions", { assignmentId: assignment._id, ownerId: user._id, answer, answerDoc, revision: 1, submittedAt });
-    if (existing) await ctx.db.patch(existing._id, { answer, answerDoc, revision: existing.revision + 1, submittedAt });
+    // Resubmitting answers a revision request; the review then shows as stale until it is looked at again.
+    if (existing) await ctx.db.patch(existing._id, { answer, answerDoc, revision: existing.revision + 1, submittedAt, revisionRequestedAt: undefined });
     for (const file of files) if (!file!.submissionId) await ctx.db.patch(file!._id, { submissionId });
     await removeFiles(ctx, previous.filter((file) => !fileIds.includes(file._id)));
     return submissionId;

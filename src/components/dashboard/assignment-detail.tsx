@@ -50,16 +50,18 @@ export function AssignmentDetail({ id }: { id: string }) {
   if (!data) return <MissingAssignment />;
   const { assignment } = data;
   return <>
-    <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canManage ? "Kelola tugas" : "Semua tugas"}</Link>
+    <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canReview ? "Kelola tugas" : "Semua tugas"}</Link>
     <article className="dash-assignment" aria-labelledby="assignment-title">
-      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canManage && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canManage && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
+      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canReview && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
       {assignment.rubric && assignment.rubric.length > 0 && <div className="dash-rubric" aria-labelledby="rubric-title"><p className="eyebrow" id="rubric-title">RUBRIK PENILAIAN · {assignmentMaxScore(assignment)} POIN</p>
         <ol className="dash-rubric-list">{assignment.rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{criterion.max} poin</b></li>)}</ol></div>}
     </article>
-    {data.canManage ? <><StaffControls assignment={assignment} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</> : <MemberSubmission data={data} now={now} />}
+    {data.canManage ? <><StaffControls assignment={assignment} /><AssignmentReviewers assignment={assignment} reviewers={data.reviewers} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
+      : data.canReview ? <><p className="app-notice">Kamu ditunjuk sebagai penilai tugas ini. Kamu bisa menilai kiriman dan meminta revisi, tetapi tidak bisa mengubah atau menutup tugas. Email member tidak ditampilkan.</p><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
+      : <MemberSubmission data={data} now={now} />}
   </>;
 }
 
@@ -102,6 +104,32 @@ function ReviewResult({ submission, maxScore }: { submission: Reviewed; maxScore
     {submission.feedback && <p className="dash-feedback">{submission.feedback}</p>}
     <p className="app-small">{submission.revisionRequestedAt !== null ? "Revisi diminta" : "Dinilai"} {submission.reviewedAt ? dateLabel(submission.reviewedAt) : ""}{submission.reviewerName ? ` oleh ${submission.reviewerName}` : ""}.</p>
     {submission.stale && <p className="app-notice">Kamu memperbarui kiriman setelah penilaian ini. Nilai di atas berlaku untuk versi sebelumnya sampai ditinjau lagi.</p>}
+  </section>;
+}
+
+/** Staff choose members who may review this assignment, e.g. a Catalyst role's mentors. */
+function AssignmentReviewers({ assignment, reviewers }: { assignment: Doc<"assignments">; reviewers: Detail["reviewers"] }) {
+  const setReviewer = useMutation(api.assignments.setReviewer);
+  const [search, setSearch] = useState("");
+  const term = search.trim();
+  const found = useQuery(api.dashboard.members, term.length >= 2 ? { search: term, filter: "all", paginationOpts: { numItems: 6, cursor: null } } : "skip");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function change(ownerId: string, reviewer: boolean) {
+    setBusy(true); setError("");
+    try { await setReviewer({ id: assignment._id, ownerId, reviewer }); if (reviewer) setSearch(""); }
+    catch (cause) { setError(readableError(cause)); }
+    finally { setBusy(false); }
+  }
+  const candidates = (found?.page ?? []).filter((row) => row.role === "member" && row.active && !reviewers.some((reviewer) => reviewer.ownerId === row.ownerId));
+  return <section className="dash-reviewers" aria-labelledby="reviewers-title">
+    <div className="app-section-heading"><div><p className="eyebrow">PENILAI</p><h2 id="reviewers-title">Penilai tugas ini</h2></div><span className="app-small">Admin dan pemilik selalu bisa menilai.</span></div>
+    <p className="app-small">Penilai bisa melihat kiriman, memberi nilai, dan meminta revisi untuk tugas ini saja, tanpa email member dan tanpa akses admin.</p>
+    {reviewers.length > 0 && <ul className="dash-reviewer-list">{reviewers.map((reviewer) => <li key={reviewer.ownerId}><span>{reviewer.name}</span><button type="button" className="text-button text-danger" disabled={busy} onClick={() => void change(reviewer.ownerId, false)} aria-label={`Hapus ${reviewer.name} dari penilai`}>Hapus</button></li>)}</ul>}
+    <div className="app-field"><label htmlFor="reviewer-search">Tambah penilai</label><input id="reviewer-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama member" /></div>
+    {term.length >= 2 && (found === undefined ? <p className="app-small" role="status">Mencari…</p> : !candidates.length ? <p className="app-small">Tidak ada member aktif yang cocok.</p>
+      : <ul className="dash-reviewer-list">{candidates.map((row) => <li key={row.ownerId}><span>{row.fullName}<small className="app-small"> · {row.campus}</small></span><button type="button" className="text-button" disabled={busy} onClick={() => void change(row.ownerId, true)}>Tambahkan</button></li>)}</ul>)}
+    {error && <p className="field-error" role="alert">{error}</p>}
   </section>;
 }
 
@@ -192,7 +220,7 @@ function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   async function copy() {
     if (!data) return;
-    const text = data.missing.map((row) => `${row.name} — ${row.email}`).join("\n");
+    const text = data.missing.map((row) => row.email ? `${row.name} — ${row.email}` : row.name).join("\n");
     try { await navigator.clipboard.writeText(text); setCopied("copied"); } catch { setCopied("failed"); }
     setTimeout(() => setCopied("idle"), 2500);
   }
@@ -201,7 +229,7 @@ function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
       {data && <span className="app-small">{data.missing.length} dari {data.active} member aktif belum mengirim</span>}</div>
     {!data ? <LoadingPanel label="Memeriksa member…" /> : !data.missing.length ? <p className="app-small">{data.active ? "Semua member aktif sudah mengirim tugas ini." : "Belum ada member aktif yang terdaftar."}</p>
       : <><ul className="dash-missing-list">{data.missing.map((row) => <li key={row.ownerId}><strong>{row.name}</strong><span className="app-small">{[row.email, row.campus].filter(Boolean).join(" · ")}</span></li>)}</ul>
-        <div className="app-inline-actions"><button type="button" className="text-button" onClick={() => void copy()}><PixelIcon name={copied === "copied" ? "check" : "copy"} size={16} />{copied === "copied" ? "Daftar tersalin" : "Salin daftar nama dan email"}</button>
+        <div className="app-inline-actions"><button type="button" className="text-button" onClick={() => void copy()}><PixelIcon name={copied === "copied" ? "check" : "copy"} size={16} />{copied === "copied" ? "Daftar tersalin" : data.missing.some((row) => row.email) ? "Salin daftar nama dan email" : "Salin daftar nama"}</button>
           <span className="sr-only" role="status">{copied === "copied" ? "Daftar member yang belum mengumpulkan tersalin." : ""}</span>
           {copied === "failed" && <small role="alert">Tidak bisa menyalin otomatis. Pilih dan salin daftar di atas.</small>}</div>
         <p className="app-small">Admin dan pemilik tidak dihitung. Member nonaktif tidak ditampilkan.</p></>}

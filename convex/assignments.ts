@@ -46,6 +46,26 @@ async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignme
   };
 }
 
+export const maxReviewers = 10;
+
+/** Staff, or an active, onboarded member staff added as a reviewer of this assignment. `staff` decides what reviewers do not get (emails, managing the assignment). */
+async function requireReviewer(ctx: QueryCtx | MutationCtx, id: Id<"assignments">) {
+  const access = await requireMember(ctx);
+  const assignment = await ctx.db.get(id);
+  if (!assignment) notFound();
+  const staff = access.role !== "member";
+  if (!staff && !(assignment.reviewers ?? []).includes(access.user._id)) {
+    throw new ConvexError({ code: "FORBIDDEN", message: "Akses ini hanya untuk admin GDGoC IPB dan penilai tugas ini." });
+  }
+  return { ...access, assignment, staff };
+}
+
+async function submissionFor(ctx: QueryCtx | MutationCtx, id: Id<"assignmentSubmissions">) {
+  const submission = await ctx.db.get(id);
+  if (!submission) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
+  return submission;
+}
+
 async function slugOwner(ctx: QueryCtx | MutationCtx, slug: string) {
   return ctx.db.query("assignmentSlugs").withIndex("by_slug", (q) => q.eq("slug", slug)).unique();
 }
@@ -191,9 +211,7 @@ export const remove = mutation({
 export const submissions = query({
   args: { id: v.id("assignments"), paginationOpts: paginationOptsValidator },
   handler: async (ctx, { id, paginationOpts }) => {
-    await requireStaff(ctx);
-    const assignment = await ctx.db.get(id);
-    if (!assignment) notFound();
+    const { assignment, staff } = await requireReviewer(ctx, id);
     const result = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_submitted", (q) => q.eq("assignmentId", id)).order("desc").paginate(paginationOpts);
     return {
       ...result,
@@ -201,7 +219,7 @@ export const submissions = query({
         const [who, files, review] = await Promise.all([nameOf(ctx, submission.ownerId), attachedFiles(ctx, submission._id), reviewView(ctx, submission)]);
         return {
           _id: submission._id, revision: submission.revision, answer: submission.answer, answerDoc: submission.answerDoc ?? null, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt),
-          ...who, ...review,
+          ...who, email: staff ? who.email : "", ...review,
           files: await Promise.all(files.map((file) => fileView(ctx, file))),
         };
       })),
@@ -213,9 +231,7 @@ export const submissions = query({
 export const exportPage = query({
   args: { id: v.id("assignments"), paginationOpts: paginationOptsValidator },
   handler: async (ctx, { id, paginationOpts }) => {
-    const { role } = await requireStaff(ctx);
-    const assignment = await ctx.db.get(id);
-    if (!assignment) notFound();
+    const { role, assignment } = await requireReviewer(ctx, id);
     const includesEmail = role === "owner";
     const result = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_submitted", (q) => q.eq("assignmentId", id)).paginate(paginationOpts);
     return {
@@ -231,23 +247,23 @@ export const exportPage = query({
   },
 });
 
-/** Active, onboarded members without a submission. Staff are not expected to submit, so owners and admins are left out of both counts. */
+/** Active, onboarded members without a submission. Staff and this assignment's reviewers are not expected to submit, so they are left out of both counts. */
 export const missing = query({
   args: { id: v.id("assignments") },
   handler: async (ctx, { id }) => {
-    await requireStaff(ctx);
-    const assignment = await ctx.db.get(id);
-    if (!assignment) notFound();
+    const { staff, assignment } = await requireReviewer(ctx, id);
+    // This assignment's reviewers judge it rather than submit to it.
+    const reviewers = new Set(assignment.reviewers ?? []);
     const submitted = new Set((await submissionsOf(ctx, id)).map((item) => item.ownerId));
     const profiles = await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
     const missing: { ownerId: string; name: string; email: string; campus: string }[] = [];
     let active = 0;
     for (const profile of profiles) {
-      if (profile.deactivatedAt || profile.role === "admin") continue;
+      if (profile.deactivatedAt || profile.role === "admin" || reviewers.has(profile.ownerId)) continue;
       const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
       if (isOwner(user?.email ?? "", Boolean(user?.emailVerified))) continue;
       active++;
-      if (!submitted.has(profile.ownerId)) missing.push({ ownerId: profile.ownerId, name: profile.fullName, email: user?.email ?? "", campus: profile.campus });
+      if (!submitted.has(profile.ownerId)) missing.push({ ownerId: profile.ownerId, name: profile.fullName, email: staff ? user?.email ?? "" : "", campus: profile.campus });
     }
     missing.sort((a, b) => a.name.localeCompare(b.name, "id"));
     return { active, submitted: active - missing.length, missing };
@@ -259,11 +275,8 @@ export const review = mutation({
   // With a rubric, `points` (one per criterion, in order) is the way to score: they are stored with their criteria as `breakdown` and `score` becomes their sum. Without one, `score` is given directly.
   args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string() },
   handler: async (ctx, args) => {
-    const { user } = await requireStaff(ctx);
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
-    const assignment = await ctx.db.get(submission.assignmentId);
-    if (!assignment) notFound();
+    const submission = await submissionFor(ctx, args.submissionId);
+    const { user, assignment } = await requireReviewer(ctx, submission.assignmentId);
     // The reviewer graded what they saw; a resubmission since then needs a fresh look, not a silent overwrite.
     if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk menilai versi terbaru." });
     const feedback = args.feedback.trim();
@@ -300,10 +313,8 @@ export const review = mutation({
 export const requestRevision = mutation({
   args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), note: v.string() },
   handler: async (ctx, args) => {
-    const { user } = await requireStaff(ctx);
-    const submission = await ctx.db.get(args.submissionId);
-    if (!submission) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
-    if (!(await ctx.db.get(submission.assignmentId))) notFound();
+    const submission = await submissionFor(ctx, args.submissionId);
+    const { user } = await requireReviewer(ctx, submission.assignmentId);
     if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk melihat versi terbaru." });
     const note = args.note.trim();
     if (!note) throw new ConvexError({ code: "VALIDATION", message: "Tulis apa yang perlu direvisi di kolom umpan balik." });
@@ -319,10 +330,48 @@ export const requestRevision = mutation({
 export const cancelRevision = mutation({
   args: { submissionId: v.id("assignmentSubmissions") },
   handler: async (ctx, { submissionId }) => {
-    await requireStaff(ctx);
-    const submission = await ctx.db.get(submissionId);
-    if (!submission) throw new ConvexError({ code: "NOT_FOUND", message: "Kiriman tidak ditemukan." });
+    const submission = await submissionFor(ctx, submissionId);
+    await requireReviewer(ctx, submission.assignmentId);
     if (submission.revisionRequestedAt) await ctx.db.patch(submission._id, { revisionRequestedAt: undefined });
+  },
+});
+
+/** Staff add or remove a reviewer of one assignment: an active, onboarded member. Staff already review every assignment. */
+export const setReviewer = mutation({
+  args: { id: v.id("assignments"), ownerId: v.string(), reviewer: v.boolean() },
+  handler: async (ctx, args) => {
+    await requireStaff(ctx);
+    const assignment = await ctx.db.get(args.id);
+    if (!assignment) notFound();
+    const current = assignment.reviewers ?? [];
+    if (!args.reviewer) {
+      if (current.includes(args.ownerId)) await ctx.db.patch(assignment._id, { reviewers: current.filter((id) => id !== args.ownerId), updatedAt: Date.now() });
+      return;
+    }
+    if (current.includes(args.ownerId)) return;
+    const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId)).unique();
+    if (!profile?.completedAt) throw new ConvexError({ code: "NOT_FOUND", message: "Member tidak ditemukan." });
+    if (profile.deactivatedAt) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya penilai.");
+    const account = await authComponent.getAnyUserById(ctx, args.ownerId);
+    if (profile.role === "admin" || isOwner(account?.email ?? "", Boolean(account?.emailVerified))) throw new ConvexError("Admin dan pemilik sudah bisa menilai semua tugas.");
+    if (current.length >= maxReviewers) throw new ConvexError(`Maksimal ${maxReviewers} penilai per tugas.`);
+    await ctx.db.patch(assignment._id, { reviewers: [...current, args.ownerId], updatedAt: Date.now() });
+  },
+});
+
+/** Assignments the signed-in member reviews, newest first, with how many submissions wait for a review. */
+export const reviewing = query({
+  args: {},
+  handler: async (ctx) => {
+    const { user, role } = await requireMember(ctx);
+    if (role !== "member") return [];
+    const recent = await ctx.db.query("assignments").withIndex("by_updated").order("desc").take(200);
+    const mine = recent.filter((assignment) => assignment.reviewers?.includes(user._id));
+    return Promise.all(mine.map(async (assignment) => {
+      const submissions = await submissionsOf(ctx, assignment._id);
+      const waiting = submissions.filter((item) => item.reviewedAt === undefined || isStaleReview(item)).length;
+      return { _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status, dueAt: assignment.dueAt, submissionCount: submissions.length, waiting };
+    }));
   },
 });
 
@@ -354,11 +403,15 @@ export const get = query({
   handler: async (ctx, args) => {
     const { user, role } = await requireMember(ctx);
     const assignment = await findAssignment(ctx, args.id);
-    if (!assignment || (role === "member" && assignment.status === "draft")) return null;
+    const canManage = role !== "member";
+    const canReview = canManage || Boolean(assignment?.reviewers?.includes(user._id));
+    if (!assignment || (!canReview && assignment.status === "draft")) return null;
     const submission = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
     const files = await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", user._id).eq("assignmentId", assignment._id)).collect();
     return {
-      assignment, canManage: role !== "member",
+      assignment, canManage, canReview,
+      // Staff see who reviews this assignment; reviewers do not need the list.
+      reviewers: canManage ? await Promise.all((assignment.reviewers ?? []).map(async (ownerId) => ({ ownerId, name: (await nameOf(ctx, ownerId)).name }))) : [],
       submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt), ...(await reviewView(ctx, submission)) },
       files: await Promise.all(files.map((file) => fileView(ctx, file))),
     };

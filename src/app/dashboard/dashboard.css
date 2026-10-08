@@ -430,3 +430,9 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-export { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }
 .dash-export small { color: #b0372a; max-width: 320px; text-align: right; }
 @media (max-width: 640px) { .dash-submissions-summary { justify-content: flex-start; } .dash-export { align-items: flex-start; } .dash-export small { text-align: left; } }
+
+/* Assignment reviewers */
+.dash-reviewers { margin-top: 28px; }
+.dash-reviewers > p { margin-bottom: 14px; }
+.dash-reviewer-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; max-width: 560px; }
+.dash-reviewer-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: white; border: 1px solid #dfe5dc; }

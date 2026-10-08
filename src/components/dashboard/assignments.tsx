@@ -33,9 +33,9 @@ function MemberAssignments() {
       if (!items.length && !group.empty) return null;
       return <section key={group.key} aria-labelledby={`group-${group.key}`}><div className="app-section-heading"><h2 id={`group-${group.key}`}>{group.title}</h2></div>
         {items.length ? <div className="dash-card-grid">{items.map((item) => <article className="app-record" key={item._id}>
-          <div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={item.maxScore} reviewedAt={item.reviewedAt} stale={item.stale} />{item.status === "closed" && <AssignmentStatusBadge status="closed" />}</div>
+          <div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={item.maxScore} reviewedAt={item.reviewedAt} stale={item.stale} revisionRequestedAt={item.revisionRequestedAt} />{item.status === "closed" && <AssignmentStatusBadge status="closed" />}</div>
           <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><p className="dash-summary">{item.summary}</p>
-          <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><Link className="text-button" href={assignmentPath(item)}>{item.status === "published" ? (item.submittedAt ? "Lihat & perbarui" : "Kerjakan") : "Lihat kiriman"}<Arrow /></Link></div>
+          <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><Link className="text-button" href={assignmentPath(item)}>{item.revisionRequestedAt !== null ? "Revisi kiriman" : item.status === "published" ? (item.submittedAt ? "Lihat & perbarui" : "Kerjakan") : "Lihat kiriman"}<Arrow /></Link></div>
         </article>)}</div> : <div className="app-empty"><PixelSpark /><h3>Belum ada tugas.</h3><p>{group.empty}</p></div>}
       </section>;
     })}

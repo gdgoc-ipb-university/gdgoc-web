@@ -42,9 +42,10 @@ export function SubmissionBadge({ submittedAt, late }: { submittedAt: number | n
   return <span className="app-status dash-status" data-status={late ? "late" : "done"}>{late ? "Terkumpul · terlambat" : "Terkumpul"}</span>;
 }
 
-/** The review state of a submission: nothing until reviewed; the score, or "ada umpan balik"; or that it was edited after review. */
-export function ScoreBadge({ score, maxScore, reviewedAt, stale }: { score: number | null; maxScore: number; reviewedAt: number | null; stale: boolean }) {
+/** The review state of a submission: nothing until reviewed; a pending revision request; that it was edited after review; or the score, or "ada umpan balik". */
+export function ScoreBadge({ score, maxScore, reviewedAt, stale, revisionRequestedAt }: { score: number | null; maxScore: number; reviewedAt: number | null; stale: boolean; revisionRequestedAt: number | null }) {
   if (reviewedAt === null) return null;
+  if (revisionRequestedAt !== null) return <span className="app-status dash-status" data-status="revision">Revisi diminta</span>;
   if (stale) return <span className="app-status dash-status" data-status="stale">Diperbarui setelah dinilai</span>;
   return <span className="app-status dash-status" data-status="scored">{score === null ? "Ada umpan balik" : `Dinilai ${scoreLabel(score, maxScore)}`}</span>;
 }

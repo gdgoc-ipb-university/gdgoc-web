@@ -61,6 +61,8 @@ export default defineSchema({
     score: v.optional(v.number()), feedback: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
     // With a rubric: the criteria as they were when scored, each with its points, so later rubric edits do not relabel a past review.
     breakdown: v.optional(rubricBreakdown),
+    // Set while a reviewer has asked for a revision (the note is `feedback`); the member can resubmit even after closing. Resubmitting clears it.
+    revisionRequestedAt: v.optional(v.number()),
   })
     .index("by_assignment_owner", ["assignmentId", "ownerId"])
     .index("by_assignment_submitted", ["assignmentId", "submittedAt"])
@@ -69,6 +71,7 @@ export default defineSchema({
   submissionReviews: defineTable({
     submissionId: v.id("assignmentSubmissions"), assignmentId: v.id("assignments"), reviewerId: v.string(),
     score: v.optional(v.number()), breakdown: v.optional(rubricBreakdown), feedback: v.string(), createdAt: v.number(),
+    revisionRequested: v.optional(v.boolean()), // a revision request rather than a score; `feedback` is its note
   }).index("by_submission", ["submissionId", "createdAt"]),
   // Uploads start pending and are attached by a submission; unclaimed ones are removed by a cron.
   submissionFiles: defineTable({

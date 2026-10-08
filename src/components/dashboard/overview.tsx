@@ -27,12 +27,14 @@ function MemberOverview() {
   const pending = open.filter((item) => !item.submittedAt);
   const next = pending.filter((item) => item.dueAt >= now).slice(0, 3);
   const overdue = pending.filter((item) => item.dueAt < now);
+  const revisions = assignments.filter((item) => item.revisionRequestedAt !== null);
   return <>
     <dl className="dash-stats">
       <div><dt>Tugas dibuka</dt><dd>{open.length}</dd></div>
       <div><dt>Belum dikumpulkan</dt><dd>{pending.length}</dd></div>
       <div><dt>Sudah dikumpulkan</dt><dd>{assignments.filter((item) => item.submittedAt).length}</dd></div>
     </dl>
+    {revisions.length > 0 && <p className="app-notice">Revisi diminta untuk {revisions.map((item, index) => <span key={item._id}>{index ? ", " : ""}<Link href={assignmentPath(item)}>{item.title}</Link></span>)}. Perbaiki kirimanmu, lalu kirim lagi.</p>}
     {overdue.length > 0 && <p className="app-notice">{overdue.length} tugas sudah lewat tenggat tetapi masih dibuka. Kiriman tetap diterima dan akan ditandai terlambat.</p>}
     <section aria-labelledby="next-title"><div className="app-section-heading"><div><p className="eyebrow">BERIKUTNYA</p><h2 id="next-title">Tenggat terdekat</h2></div><Link className="text-button" href="/dashboard/tugas">Semua tugas <Arrow /></Link></div>
       {next.length ? <div className="dash-card-grid">{next.map((item) => <article className="app-record" key={item._id}><div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /></div><h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open /></article>)}</div>

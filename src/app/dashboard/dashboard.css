@@ -434,6 +434,9 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* Assignment reviewers */
 .dash-reviewers { margin-top: 28px; }
 .dash-reviewers > p { margin-bottom: 14px; }
+.dash-delete-account { margin-top: 40px; }
+.dash-delete-account > p { margin-bottom: 14px; }
+.dash-delete-account .app-field { margin-bottom: 10px; }
 .dash-reviewer-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; max-width: 560px; }
 .dash-reviewer-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: white; border: 1px solid #dfe5dc; }
 .dash-members-export { align-items: flex-start; margin-bottom: 12px; }

@@ -115,6 +115,64 @@ describe("dashboard roles and member management", () => {
     expect(JSON.stringify(detail)).not.toContain("Draft rahasia");
   });
 
+  it("lets owners delete a member's account and everything tied to it, keeping only a count", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const admin = await account(t, "admin@example.com", { name: "Admin" });
+    const member = await account(t, "member@example.com", { name: "Anggota Hapus" });
+    const keeper = await account(t, "keeper@example.com", { name: "Anggota Lain" });
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    const due = new Date(Date.now() + 55 * 3600000).toISOString().slice(0, 16);
+    const id = await owner.mutation(api.assignments.create, { values: { title: "Tugas", description: "Kerjakan.", dueAt: due }, publish: true });
+    const other = await owner.mutation(api.assignments.create, { values: { title: "Tugas mentor", description: "Nilai.", dueAt: due }, publish: true });
+    const storageId = await t.run((ctx) => ctx.storage.store(new Blob([new Uint8Array(1024)], { type: "application/pdf" })));
+    const attached = await member.mutation(api.assignments.attachFile, { assignmentId: id, storageId, name: "laporan.pdf" });
+    if ("error" in attached) throw new Error(attached.error);
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Jawaban", fileIds: [attached.fileId] });
+    await keeper.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Tetap", fileIds: [] });
+    const pending = await t.run((ctx) => ctx.storage.store(new Blob([new Uint8Array(10)], { type: "application/pdf" })));
+    await member.mutation(api.assignments.attachFile, { assignmentId: id, storageId: pending, name: "draft.pdf" });
+    const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page.filter((entry) => entry.email === "member@example.com");
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 70, feedback: "" });
+    await owner.mutation(api.assignments.setReviewer, { id: other, ownerId: member.id, reviewer: true });
+    await t.run(async (ctx) => {
+      const values = { fullName: "Anggota Hapus", memberType: "Member", campus: "IPB", studyProgram: "", instagram: "hapus", achievement: "Juara", eventName: "Lomba", organizer: "Panitia", level: "Nasional", participation: "Individu", teamName: "", teamMembers: "", eventDate: "2026-08-10", story: "Cerita", documentationLinks: "https://example.com", publicationConsent: true };
+      const appreciation = await ctx.db.insert("appreciations", { ownerId: member.id, ownerName: "Anggota Hapus", ownerEmail: "member@example.com", clientId: "a", values, status: "submitted", revision: 2, updatedAt: Date.now(), submittedAt: Date.now() });
+      await ctx.db.insert("appreciationReviews", { appreciationId: appreciation, reviewerId: owner.id, status: "reviewing", note: "", postUrl: "", createdAt: Date.now() });
+      await ctx.db.insert("gameRuns", { ownerId: member.id, nonce: "n", seed: 1, issuedAt: 1, endTick: 1, score: 10, week: "2026-W41", submittedAt: Date.now() });
+      await ctx.db.insert("gameBests", { ownerId: member.id, period: "all", score: 10, name: "Anggota", achievedAt: Date.now(), hidden: false });
+      await ctx.db.insert("gamePlayers", { ownerId: member.id });
+    });
+
+    await expect(admin.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "Anggota Hapus" })).rejects.toThrow("Hanya pemilik");
+    await expect(owner.mutation(api.dashboard.deleteAccount, { ownerId: owner.id, confirmName: "Pemilik" })).rejects.toThrow("akunmu sendiri");
+    await expect(owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "anggota" })).rejects.toThrow("Ketik nama");
+    expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: " Anggota Hapus " })).toEqual({
+      appreciations: 1, appreciationReviews: 1, submissions: 1, submissionReviews: 1, files: 2, gameRuns: 1, gameBests: 1, reviewerGrants: 1, sessions: 1, accounts: 0,
+    });
+
+    const left = await t.run(async (ctx) => {
+      const owned = async (table: "appreciations" | "assignmentSubmissions" | "submissionFiles" | "gameRuns" | "gameBests" | "gamePlayers" | "memberProfiles") =>
+        (await ctx.db.query(table).collect()).filter((doc) => doc.ownerId === member.id).length;
+      return {
+        profiles: await owned("memberProfiles"), appreciations: await owned("appreciations"), submissions: await owned("assignmentSubmissions"), files: await owned("submissionFiles"),
+        runs: await owned("gameRuns"), bests: await owned("gameBests"), players: await owned("gamePlayers"),
+        reviews: (await ctx.db.query("submissionReviews").collect()).length, appreciationReviews: (await ctx.db.query("appreciationReviews").collect()).length,
+        storage: await Promise.all([storageId, pending].map((idx) => ctx.storage.getUrl(idx))),
+        reviewers: (await ctx.db.get(other))?.reviewers, deletions: await ctx.db.query("accountDeletions").collect(),
+      };
+    });
+    expect(left).toMatchObject({ profiles: 0, appreciations: 0, submissions: 0, files: 0, runs: 0, bests: 0, players: 0, reviews: 0, appreciationReviews: 0, storage: [null, null], reviewers: [] });
+    expect(left.deletions).toHaveLength(1);
+    expect(left.deletions[0]).toMatchObject({ deletedBy: owner.id });
+    expect(JSON.stringify(left.deletions)).not.toContain("member@example.com");
+    expect(await t.query(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "_id", operator: "eq", value: member.id }] })).toBeNull();
+    // The account can no longer sign in, and other members' work is untouched.
+    expect(await member.query(api.dashboard.viewer)).toBeNull();
+    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page.map((entry) => entry.email)).toEqual(["keeper@example.com"]);
+    await expect(owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "Anggota Hapus" })).rejects.toThrow("tidak ditemukan");
+  });
+
   it("lets admins review Apresiasi by role, and owners grant it to members, suspended while deactivated", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com");

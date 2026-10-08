@@ -59,6 +59,24 @@ export const members = query({
   },
 });
 
+/** One page of the members CSV. Owners only: it carries every member's email and leaves the dashboard. */
+export const exportMembers = query({
+  args: { paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { paginationOpts }) => {
+    const actor = await requireMember(ctx);
+    if (actor.role !== "owner") throw new ConvexError({ code: "FORBIDDEN", message: "Hanya pemilik yang bisa mengunduh data anggota." });
+    const result = await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).paginate(paginationOpts);
+    return {
+      ...result,
+      page: await Promise.all(result.page.map(async (profile) => {
+        const row = await memberRow(ctx, profile);
+        // Owners and admins review Apresiasi by role; others only with the grant.
+        return { ...row, reviewer: row.role !== "member" || row.reviewer };
+      })),
+    };
+  },
+});
+
 export const stats = query({
   args: {},
   handler: async (ctx) => {

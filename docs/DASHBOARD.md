@@ -13,7 +13,7 @@
 | `/dashboard/tugas/<slug>/ubah` | — | Edit title, slug, instructions, and deadline |
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
 | `/dashboard/apresiasi/tinjau` | — (unless granted review) | Apresiasi review queue: owners, admins, and anyone an owner made a reviewer |
-| `/dashboard/anggota` | — | Search, filter (admin, reviewer, core team, BoD, deactivated), promote/demote admins, grant/revoke Apresiasi review, set community tags (including BoD), deactivate/reactivate members |
+| `/dashboard/anggota` | — | Search, filter (admin, reviewer, core team, BoD, deactivated), promote/demote admins, grant/revoke Apresiasi review, set community tags (including BoD), deactivate/reactivate members; owners can download every onboarded member as CSV (name, email, campus, study program, community tag and division, access, status, Apresiasi review, joined in WIB), built in the browser from the owners-only `dashboard.exportMembers` with the submissions export's encoding (`src/lib/member-export.ts`) |
 | `/dashboard/papan-skor` | Bogor Run top 100 this week and all time, with your own rank | Same, plus hide controls and a separate "Disembunyikan" list to restore from |
 | `/dashboard/profil` | Profile facts and community role | Same |
 

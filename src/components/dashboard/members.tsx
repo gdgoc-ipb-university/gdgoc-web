@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
+import { useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { roleLabels } from "@/lib/assignment";
 import { divisions, memberTagLabel, memberTypeLabels, type MemberType } from "@/lib/onboarding";
 import { readableError } from "@/lib/draft-session";
+import { membersCsv, membersFileName, type MemberExportRow } from "@/lib/member-export";
+import { Arrow } from "../icons";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { StaffOnly } from "./assignments";
 import { isStaff, useDashboardViewer, type DashboardViewer } from "./viewer";
@@ -35,6 +37,7 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
     <div className="dash-intro"><p className="eyebrow">ADMIN · ANGGOTA</p><h1>Anggota.</h1>
       <p>Member yang sudah menyelesaikan perkenalan. {viewer.role === "owner" ? "Sebagai pemilik, kamu bisa menjadikan member sebagai admin atau peninjau apresiasi." : "Pemilik dapat mengubah peran admin dan peninjau apresiasi."} Member nonaktif tidak bisa membuka tugas.</p></div>
     {stats && <p className="app-small dash-count">{stats.members} anggota · {stats.core} core team · {stats.bod} BoD · {stats.admins} admin · {stats.reviewers} peninjau apresiasi · {stats.deactivated} nonaktif. Pemilik diatur lewat konfigurasi server.</p>}
+    {viewer.role === "owner" && <ExportMembersButton />}
     <div className="dash-toolbar">
       <div className="app-field dash-search"><label htmlFor="member-search">Cari nama</label><input id="member-search" type="search" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Nama member" autoComplete="off" /></div>
       <div className="review-filters" role="group" aria-label="Saring anggota">{filters.map((item) => <button key={item.value} aria-pressed={filter === item.value} onClick={() => setFilter(item.value)}>{item.label}</button>)}</div>
@@ -44,6 +47,36 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
     {list.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => list.loadMore(25)}>Muat anggota lainnya</button>}
     {list.status === "LoadingMore" && <p role="status">Memuat anggota…</p>}
   </>;
+}
+
+/** Owners download every onboarded member as CSV, read page by page. Personal data, so admins do not get it. */
+function ExportMembersButton() {
+  const convex = useConvex();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function download() {
+    setBusy(true); setError("");
+    try {
+      const rows: MemberExportRow[] = [];
+      let cursor: string | null = null;
+      for (;;) {
+        const page: FunctionReturnType<typeof api.dashboard.exportMembers> = await convex.query(api.dashboard.exportMembers, { paginationOpts: { numItems: 100, cursor } });
+        rows.push(...page.page);
+        if (page.isDone) break;
+        cursor = page.continueCursor;
+      }
+      const url = URL.createObjectURL(new Blob([membersCsv(rows)], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url; link.download = membersFileName(Date.now());
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (cause) { setError(readableError(cause)); }
+    finally { setBusy(false); }
+  }
+  return <div className="dash-export dash-members-export">
+    <button type="button" className="text-button" disabled={busy} onClick={() => void download()}><Arrow download size={16} />{busy ? "Menyiapkan CSV…" : "Unduh data anggota (CSV)"}</button>
+    {error && <small role="alert">{error}</small>}
+  </div>;
 }
 
 type Action = { key: string; label: string; confirm: string; danger?: boolean; run: () => Promise<unknown> };

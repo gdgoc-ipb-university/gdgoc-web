@@ -1,0 +1,188 @@
+name: Project board
+
+# Reads or updates https://github.com/orgs/gdgoc-ipb-university/projects/1 on request.
+# Claude Code cloud sessions cannot reach org-level or GraphQL GitHub APIs, so they
+# start this workflow through the repository's Actions API instead. See docs/PROJECT_BOARD.md.
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "inspect lists the board's fields and cards; set updates one card"
+        type: choice
+        options: [inspect, set]
+        default: inspect
+      item:
+        description: "Issue or PR number in this repository (set only)"
+        required: false
+      fields:
+        description: 'Field values separated by ";", e.g. "Status=In progress; Priority=High". An empty value clears the field.'
+        required: false
+
+concurrency:
+  group: project-board
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  PROJECT_NUMBER: 1
+
+jobs:
+  board:
+    name: Project board (${{ inputs.action }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          # Fine-grained token, resource owner gdgoc-ipb-university: Projects read and write;
+          # Issues and Pull requests read-only on this repository.
+          github-token: ${{ secrets.PROJECTS_TOKEN }}
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const number = Number(process.env.PROJECT_NUMBER);
+            // Inputs are read from the event payload, never interpolated into this script.
+            const { action = "inspect", item = "", fields: spec = "" } = context.payload.inputs ?? {};
+
+            const fieldName = `field { ... on ProjectV2FieldCommon { name } }`;
+            const valuesQuery = `fieldValues(first: 30) { nodes {
+              ... on ProjectV2ItemFieldSingleSelectValue { name ${fieldName} }
+              ... on ProjectV2ItemFieldDateValue { date ${fieldName} }
+              ... on ProjectV2ItemFieldTextValue { text ${fieldName} }
+              ... on ProjectV2ItemFieldNumberValue { number ${fieldName} }
+              ... on ProjectV2ItemFieldIterationValue { title ${fieldName} }
+            } }`;
+            const valuesOf = (node) => Object.fromEntries(node.fieldValues.nodes
+              .filter((value) => value.field && value.field.name !== "Title")
+              .map((value) => [value.field.name, value.name ?? value.date ?? value.text ?? value.number ?? value.title]));
+
+            const { organization } = await github.graphql(`query($owner: String!, $number: Int!) {
+              organization(login: $owner) { projectV2(number: $number) { id title url
+                fields(first: 50) { nodes {
+                  ... on ProjectV2FieldCommon { id name dataType }
+                  ... on ProjectV2SingleSelectField { options { id name } }
+                  ... on ProjectV2IterationField { configuration { iterations { id title startDate } } }
+                } }
+              } }
+            }`, { owner, number });
+            const project = organization?.projectV2;
+            if (!project) throw new Error(`Project ${number} not found for ${owner}, or the token cannot see it.`);
+            const fields = project.fields.nodes.filter((field) => field.id);
+
+            if (action === "inspect") {
+              const items = [];
+              let cursor = null;
+              do {
+                const { node } = await github.graphql(`query($id: ID!, $cursor: String) {
+                  node(id: $id) { ... on ProjectV2 { items(first: 100, after: $cursor) {
+                    pageInfo { hasNextPage endCursor }
+                    nodes { id isArchived
+                      content { __typename
+                        ... on Issue { number title state repository { nameWithOwner } }
+                        ... on PullRequest { number title state repository { nameWithOwner } }
+                        ... on DraftIssue { title }
+                      }
+                      ${valuesQuery}
+                    }
+                  } } }
+                }`, { id: project.id, cursor });
+                items.push(...node.items.nodes);
+                cursor = node.items.pageInfo.hasNextPage ? node.items.pageInfo.endCursor : null;
+              } while (cursor);
+
+              const report = {
+                project: { title: project.title, url: project.url },
+                fields: fields.map((field) => ({
+                  name: field.name, type: field.dataType,
+                  ...(field.options ? { options: field.options.map((option) => option.name) } : {}),
+                  ...(field.configuration ? { iterations: field.configuration.iterations.map((iteration) => `${iteration.title} (${iteration.startDate})`) } : {}),
+                })),
+                items: items.filter((entry) => !entry.isArchived).map((entry) => ({
+                  type: entry.content?.__typename ?? "Unknown",
+                  repo: entry.content?.repository?.nameWithOwner ?? null,
+                  number: entry.content?.number ?? null,
+                  title: entry.content?.title ?? "(no access)",
+                  state: entry.content?.state ?? null,
+                  values: valuesOf(entry),
+                })),
+              };
+              console.log(JSON.stringify(report, null, 2));
+              await core.summary.addHeading(`${project.title}: ${report.items.length} cards`, 3)
+                .addCodeBlock(JSON.stringify(report, null, 2), "json").write();
+              return;
+            }
+
+            if (action !== "set") throw new Error(`Unknown action "${action}".`);
+            const issueNumber = Number(item);
+            if (!Number.isInteger(issueNumber) || issueNumber < 1) throw new Error("Give the issue or PR number in `item`.");
+            const pairs = spec.split(/[;\n]/).map((part) => part.trim()).filter(Boolean).map((part) => {
+              const at = part.indexOf("=");
+              if (at < 1) throw new Error(`"${part}" is not Field=Value.`);
+              return [part.slice(0, at).trim(), part.slice(at + 1).trim()];
+            });
+            if (!pairs.length) throw new Error("Give at least one Field=Value in `fields`.");
+
+            // Resolve every value before changing anything, so a typo changes nothing.
+            const changes = pairs.map(([name, raw]) => {
+              const field = fields.find((candidate) => candidate.name.toLowerCase() === name.toLowerCase());
+              if (!field) throw new Error(`No field "${name}". Fields: ${fields.map((candidate) => candidate.name).join(", ")}.`);
+              if (raw === "") return { field, value: null };
+              switch (field.dataType) {
+                case "SINGLE_SELECT": {
+                  const option = field.options.find((candidate) => candidate.name.toLowerCase() === raw.toLowerCase());
+                  if (!option) throw new Error(`"${raw}" is not an option of ${field.name}: ${field.options.map((candidate) => candidate.name).join(", ")}.`);
+                  return { field, value: { singleSelectOptionId: option.id } };
+                }
+                case "DATE":
+                  if (!/^\d{4}-\d{2}-\d{2}$/.test(raw)) throw new Error(`${field.name} needs a YYYY-MM-DD date.`);
+                  return { field, value: { date: raw } };
+                case "NUMBER":
+                  if (!Number.isFinite(Number(raw))) throw new Error(`${field.name} needs a number.`);
+                  return { field, value: { number: Number(raw) } };
+                case "TEXT":
+                  return { field, value: { text: raw } };
+                case "ITERATION": {
+                  const iteration = field.configuration.iterations.find((candidate) => candidate.title.toLowerCase() === raw.toLowerCase());
+                  if (!iteration) throw new Error(`"${raw}" is not an iteration of ${field.name}.`);
+                  return { field, value: { iterationId: iteration.id } };
+                }
+                default:
+                  throw new Error(`${field.name} (${field.dataType}) cannot be set by this workflow.`);
+              }
+            });
+
+            const { repository } = await github.graphql(`query($owner: String!, $repo: String!, $number: Int!) {
+              repository(owner: $owner, name: $repo) { issueOrPullRequest(number: $number) {
+                ... on Issue { id projectItems(first: 20) { nodes { id project { id } } } }
+                ... on PullRequest { id projectItems(first: 20) { nodes { id project { id } } } }
+              } }
+            }`, { owner, repo, number: issueNumber });
+            const content = repository?.issueOrPullRequest;
+            if (!content) throw new Error(`#${issueNumber} not found in ${owner}/${repo}.`);
+            let itemId = content.projectItems.nodes.find((entry) => entry.project.id === project.id)?.id;
+            if (!itemId) {
+              const added = await github.graphql(`mutation($project: ID!, $content: ID!) {
+                addProjectV2ItemById(input: { projectId: $project, contentId: $content }) { item { id } }
+              }`, { project: project.id, content: content.id });
+              itemId = added.addProjectV2ItemById.item.id;
+              console.log(`Added #${issueNumber} to ${project.title}.`);
+            }
+
+            for (const { field, value } of changes) {
+              if (value === null) {
+                await github.graphql(`mutation($project: ID!, $item: ID!, $field: ID!) {
+                  clearProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field }) { projectV2Item { id } }
+                }`, { project: project.id, item: itemId, field: field.id });
+              } else {
+                await github.graphql(`mutation($project: ID!, $item: ID!, $field: ID!, $value: ProjectV2FieldValue!) {
+                  updateProjectV2ItemFieldValue(input: { projectId: $project, itemId: $item, fieldId: $field, value: $value }) { projectV2Item { id } }
+                }`, { project: project.id, item: itemId, field: field.id, value });
+              }
+            }
+
+            const { node } = await github.graphql(`query($id: ID!) { node(id: $id) { ... on ProjectV2Item { ${valuesQuery} } } }`, { id: itemId });
+            const result = { item: issueNumber, values: valuesOf(node) };
+            console.log(JSON.stringify(result, null, 2));
+            await core.summary.addHeading(`#${issueNumber} on ${project.title}`, 3).addCodeBlock(JSON.stringify(result, null, 2), "json").write();

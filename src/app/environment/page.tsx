@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CampusEnvironment } from "@/components/campus-environment";
 import { PixelIcon } from "@/components/pixel-icons";
 
-// A text-free study of the hero scene, reviewed alongside /directions.
+// A text-free study of the hero scene; design/campus-fallback.mjs and design/og-image.mjs capture their stills from it.
 export const metadata: Metadata = {
   title: "Hello, Campus! scene",
   robots: { index: false, follow: false },

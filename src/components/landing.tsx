@@ -6,7 +6,6 @@ import { Reveal } from "@/components/reveal";
 import { Arrow, PixelSpark } from "@/components/icons";
 import { JoinFooter } from "@/components/join-footer";
 import { communityLinks } from "@/lib/community";
-import type { Direction } from "@/lib/directions";
 
 const paths = [
   {
@@ -38,16 +37,16 @@ const paths = [
   },
 ];
 
-/** The landing page; `direction` picks the hero world, so /directions/[world] can preview the alternates. */
-export function Landing({ direction }: { direction: Direction }) {
+/** The landing page. */
+export function Landing() {
   return (
     <>
       <a className="skip-link" href="#community">
         Lewati ke konten
       </a>
-      <Header landing />
+      <Header />
       <main>
-        <Hero key={direction.id} direction={direction} />
+        <Hero />
         <div className="community-strip" aria-label="Nilai komunitas">
           <span>CODING</span>
           <PixelSpark />

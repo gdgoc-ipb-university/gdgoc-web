@@ -3,15 +3,17 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent, isOwner } from "./auth";
-import { requireMember, requireStaff } from "./access";
+import { requireMember, requireStaff, type DashboardRole } from "./access";
+import { memberType } from "./schema";
 import { logAccess } from "./accessLog";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
-import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
+import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 
-// `slug`, `maxScore` and `rubric` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100) or empty.
+// `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
+// An update without `audience` keeps the current one.
 const assignmentInput = v.object({
   title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()),
-  rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))),
+  rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))), audience: v.optional(v.array(memberType)),
 });
 
 function notFound(): never { throw new ConvexError({ code: "NOT_FOUND", message: "Tugas tidak ditemukan." }); }
@@ -20,13 +22,18 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[] }) {
+function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"] }) {
   const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "", rubric: values.rubric ?? [] };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
   const clean = normalizeAssignment(input);
   const rubric = clean.rubric!.length ? parseRubric(clean.rubric!) : undefined;
-  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric };
+  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! };
+}
+
+/** Whether this account may see and submit to the assignment: staff see every assignment, members only those given to their community tag. */
+function reaches(assignment: Doc<"assignments">, access: { role: DashboardRole; profile: Doc<"memberProfiles"> | null }) {
+  return access.role !== "member" || inAudience(assignment, access.profile?.memberType);
 }
 
 /** Display name for an account: the onboarding name, else the Google name. */
@@ -167,10 +174,11 @@ export const update = mutation({
     const clean = cleanAssignment(args.values);
     // Keep the current slug unless a different one was requested.
     const slug = args.values.slug === undefined && doc.slug ? doc.slug : await availableSlug(ctx, clean.slug, doc._id);
-    const values = { ...clean, slug };
+    // A tab from before audiences sends none; it must not move the assignment to the default.
+    const values = { ...clean, slug, audience: args.values.audience === undefined ? assignmentAudience(doc) : clean.audience };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null)) return doc.slug;
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)) return doc.slug;
       conflict();
     }
     await ctx.db.patch(doc._id, { ...values, revision: doc.revision + 1, updatedAt: Date.now() });
@@ -248,7 +256,7 @@ export const exportPage = query({
   },
 });
 
-/** Active, onboarded members without a submission. Staff and this assignment's reviewers are not expected to submit, so they are left out of both counts. */
+/** Active, onboarded members of the assignment's audience without a submission. Staff and this assignment's reviewers are not expected to submit, so they are left out of both counts. */
 export const missing = query({
   args: { id: v.id("assignments") },
   handler: async (ctx, { id }) => {
@@ -260,7 +268,7 @@ export const missing = query({
     const missing: { ownerId: string; name: string; email: string; campus: string }[] = [];
     let active = 0;
     for (const profile of profiles) {
-      if (profile.deactivatedAt || profile.role === "admin" || reviewers.has(profile.ownerId)) continue;
+      if (profile.deactivatedAt || profile.role === "admin" || reviewers.has(profile.ownerId) || !inAudience(assignment, profile.memberType)) continue;
       const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
       if (isOwner(user?.email ?? "", Boolean(user?.emailVerified))) continue;
       active++;
@@ -385,12 +393,13 @@ export const reviewing = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const { user } = await requireMember(ctx);
+    const access = await requireMember(ctx);
+    const { user } = access;
     const [open, ended] = await Promise.all([
       ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "published")).order("asc").take(100),
       ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "closed")).order("desc").take(50),
     ]);
-    return Promise.all([...open, ...ended].map(async (assignment) => {
+    return Promise.all([...open, ...ended].filter((assignment) => reaches(assignment, access)).map(async (assignment) => {
       const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
       return {
         _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
@@ -406,11 +415,13 @@ export const get = query({
   // A slug (current or previous) or, for older links, the assignment ID.
   args: { id: v.string() },
   handler: async (ctx, args) => {
-    const { user, role } = await requireMember(ctx);
+    const access = await requireMember(ctx);
+    const { user, role } = access;
     const assignment = await findAssignment(ctx, args.id);
     const canManage = role !== "member";
     const canReview = canManage || Boolean(assignment?.reviewers?.includes(user._id));
-    if (!assignment || (!canReview && assignment.status === "draft")) return null;
+    // Outside the audience the assignment does not exist for this member, even if they submitted before it was narrowed.
+    if (!assignment || (!canReview && (assignment.status === "draft" || !reaches(assignment, access)))) return null;
     const submission = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
     const files = await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", user._id).eq("assignmentId", assignment._id)).collect();
     return {
@@ -431,18 +442,17 @@ async function acceptsFrom(ctx: MutationCtx, assignment: Doc<"assignments">, own
   return Boolean(mine?.revisionRequestedAt);
 }
 
-async function openAssignment(ctx: MutationCtx, id: Id<"assignments">, ownerId: string) {
+async function openAssignment(ctx: MutationCtx, id: Id<"assignments">, access: Awaited<ReturnType<typeof requireMember>>) {
   const assignment = await ctx.db.get(id);
-  if (!assignment || assignment.status === "draft") notFound();
-  if (!(await acceptsFrom(ctx, assignment, ownerId))) closed();
+  if (!assignment || assignment.status === "draft" || !reaches(assignment, access)) notFound();
+  if (!(await acceptsFrom(ctx, assignment, access.user._id))) closed();
   return assignment;
 }
 
 export const generateUploadUrl = mutation({
   args: { assignmentId: v.id("assignments") },
   handler: async (ctx, { assignmentId }) => {
-    const { user } = await requireMember(ctx);
-    await openAssignment(ctx, assignmentId, user._id);
+    await openAssignment(ctx, assignmentId, await requireMember(ctx));
     return ctx.storage.generateUploadUrl();
   },
 });
@@ -451,7 +461,8 @@ export const generateUploadUrl = mutation({
 export const attachFile = mutation({
   args: { assignmentId: v.id("assignments"), storageId: v.id("_storage"), name: v.string() },
   handler: async (ctx, args): Promise<{ fileId: Id<"submissionFiles"> } | { error: string }> => {
-    const { user } = await requireMember(ctx);
+    const access = await requireMember(ctx);
+    const { user } = access;
     const claimed = await ctx.db.query("submissionFiles").withIndex("by_storage", (q) => q.eq("storageId", args.storageId)).unique();
     if (claimed) {
       if (claimed.ownerId === user._id && claimed.assignmentId === args.assignmentId) return { fileId: claimed._id };
@@ -461,7 +472,7 @@ export const attachFile = mutation({
     if (!metadata) throw new ConvexError("File tidak ditemukan. Unggah ulang file tersebut.");
     const reject = async (error: string) => { await ctx.storage.delete(args.storageId); return { error }; };
     const assignment = await ctx.db.get(args.assignmentId);
-    if (!assignment || assignment.status === "draft") return reject("Tugas tidak ditemukan.");
+    if (!assignment || assignment.status === "draft" || !reaches(assignment, access)) return reject("Tugas tidak ditemukan.");
     if (!(await acceptsFrom(ctx, assignment, user._id))) return reject("Pengumpulan tugas ini sudah ditutup.");
     const name = cleanFileName(args.name);
     const problem = fileProblem(name, metadata.contentType, metadata.size);
@@ -491,8 +502,9 @@ export const submit = mutation({
   // `answerDoc` is the rich-text JSON; older clients send only the plain `answer`.
   args: { assignmentId: v.id("assignments"), revision: v.number(), answer: v.string(), answerDoc: v.optional(v.string()), fileIds: v.array(v.id("submissionFiles")) },
   handler: async (ctx, args) => {
-    const { user } = await requireMember(ctx);
-    const assignment = await openAssignment(ctx, args.assignmentId, user._id);
+    const access = await requireMember(ctx);
+    const { user } = access;
+    const assignment = await openAssignment(ctx, args.assignmentId, access);
     let answer = args.answer.trim();
     let answerDoc: string | undefined;
     if (args.answerDoc !== undefined) {

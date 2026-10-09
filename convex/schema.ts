@@ -51,6 +51,8 @@ export default defineSchema({
     maxScore: v.optional(v.number()), rubric: v.optional(v.array(v.object({ name: v.string(), max: v.number() }))),
     // Members staff chose to review this assignment's submissions (account IDs), e.g. a Catalyst role's mentors. Staff review every assignment.
     reviewers: v.optional(v.array(v.string())),
+    // The community tags given this assignment (assignmentAudience); staff see every assignment. Rows without it predate audiences and are Core Team only.
+    audience: v.optional(v.array(memberType)),
   })
     .index("by_status_due", ["status", "dueAt"])
     .index("by_updated", ["updatedAt"]),

@@ -417,6 +417,12 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-rubric-result { margin: 6px 0 12px; max-width: 520px; }
 .dash-rubric-editor { border: 1px dashed var(--line); padding: 16px 18px; margin: 0; display: grid; gap: 12px; }
 .dash-rubric-editor legend { font-weight: 600; padding: 0 6px; }
+.dash-audience-editor { border: 1px dashed var(--line); padding: 16px 18px; margin: 0; display: grid; gap: 12px; }
+.dash-audience-editor legend { font-weight: 600; padding: 0 6px; }
+.dash-audience-options { display: flex; flex-wrap: wrap; gap: 12px 24px; }
+.dash-audience-option { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; cursor: pointer; }
+.dash-audience-option input { appearance: auto; width: 18px; height: 18px; accent-color: var(--blue); margin: 0; }
+.dash-audience-option input:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
 .dash-rubric-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .dash-rubric-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 10px; align-items: end; }
 .dash-rubric-remove { padding-bottom: 10px; }

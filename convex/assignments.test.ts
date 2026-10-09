@@ -22,7 +22,7 @@ async function account(t: ReturnType<typeof setup>, email: string) {
   });
   await t.run((ctx) => ctx.db.insert("memberProfiles", {
     ownerId: user._id, fullName: `Nama ${email.split("@")[0]}`, campus: "IPB University", studyProgram: "Ilmu Komputer",
-    nextStep: 4, revision: 4, updatedAt: Date.now(), completedAt: Date.now(),
+    nextStep: 4, revision: 4, updatedAt: Date.now(), completedAt: Date.now(), memberType: "member",
   }));
   return Object.assign(t.withIdentity({ subject: user._id, sessionId: session._id, email }), { id: user._id as string });
 }
@@ -73,6 +73,90 @@ describe("assignment management", () => {
     const pending = await attach(member, t, empty);
     await owner.mutation(api.assignments.remove, { id: empty, revision: 0 });
     expect(await t.run((ctx) => ctx.db.get(pending))).toBeNull();
+  });
+});
+
+describe("assignment audience", () => {
+  async function tag(t: ReturnType<typeof setup>, account: { id: string }, memberType: "member" | "core" | "bod") {
+    await t.run(async (ctx) => {
+      const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", account.id)).unique();
+      await ctx.db.patch(profile!._id, { memberType });
+    });
+  }
+  async function groups() {
+    const { t, owner, member, other } = await world();
+    const core = await account(t, "core@example.com");
+    await tag(t, core, "core");
+    await tag(t, other, "bod");
+    return { t, owner, member, core, bod: other };
+  }
+
+  it("gives new assignments to Members by default and refuses an empty audience", async () => {
+    const { t, owner, member, core } = await groups();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    expect((await t.run((ctx) => ctx.db.get(id)))?.audience).toEqual(["member"]);
+    expect(await member.query(api.assignments.list)).toHaveLength(1);
+    expect(await core.query(api.assignments.list)).toEqual([]);
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), audience: [] }, publish: true })).rejects.toThrow("Lengkapi");
+  });
+
+  it("shows and accepts a Core Team assignment for the core team only", async () => {
+    const { t, owner, member, core, bod } = await groups();
+    const id = await owner.mutation(api.assignments.create, { values: { ...values(), audience: ["core"] }, publish: true });
+    for (const outsider of [member, bod]) {
+      expect(await outsider.query(api.assignments.list)).toEqual([]);
+      expect(await outsider.query(api.assignments.get, { id })).toBeNull();
+      await expect(outsider.mutation(api.assignments.generateUploadUrl, { assignmentId: id })).rejects.toThrow("tidak ditemukan");
+      await expect(outsider.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Coba", fileIds: [] })).rejects.toThrow("tidak ditemukan");
+      const storageId = await upload(t);
+      expect(await outsider.mutation(api.assignments.attachFile, { assignmentId: id, storageId, name: "a.pdf" })).toEqual({ error: "Tugas tidak ditemukan." });
+      expect(await t.run((ctx) => ctx.db.system.get("_storage", storageId))).toBeNull();
+    }
+    expect(await core.query(api.assignments.list)).toHaveLength(1);
+    expect((await core.query(api.assignments.get, { id }))?.assignment._id).toBe(id);
+    await attach(core, t, id);
+    await core.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Selesai", fileIds: [] });
+    // Staff see every assignment whatever its audience.
+    expect((await owner.query(api.assignments.get, { id }))?.canManage).toBe(true);
+    expect(await owner.query(api.assignments.missing, { id })).toMatchObject({ active: 1, submitted: 1, missing: [] });
+  });
+
+  it("treats BoD as its own group and all three groups as everyone", async () => {
+    const { owner, member, core, bod } = await groups();
+    const coreOnly = await owner.mutation(api.assignments.create, { values: { ...values(), audience: ["core"] }, publish: true });
+    const board = await owner.mutation(api.assignments.create, { values: { ...values(), title: "Rapat BoD", audience: ["bod"] }, publish: true });
+    const everyone = await owner.mutation(api.assignments.create, { values: { ...values(), title: "Semua", audience: ["bod", "member", "core"] }, publish: true });
+    expect((await bod.query(api.assignments.list)).map((item) => item._id).sort()).toEqual([board, everyone].sort());
+    expect((await core.query(api.assignments.list)).map((item) => item._id).sort()).toEqual([coreOnly, everyone].sort());
+    expect((await member.query(api.assignments.list)).map((item) => item._id)).toEqual([everyone]);
+    const all = await owner.query(api.assignments.missing, { id: everyone });
+    expect(all.active).toBe(3);
+    expect((await owner.query(api.assignments.get, { id: everyone }))?.assignment.audience).toEqual(["member", "core", "bod"]);
+  });
+
+  it("reads assignments from before audiences as Core Team only, and old tabs keep that on edit", async () => {
+    const { t, owner, member, core } = await groups();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    await t.run((ctx) => ctx.db.patch(id, { audience: undefined }));
+    expect(await member.query(api.assignments.get, { id })).toBeNull();
+    expect(await core.query(api.assignments.list)).toHaveLength(1);
+    expect(await owner.query(api.assignments.missing, { id })).toMatchObject({ active: 1, missing: [{ name: "Nama core" }] });
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: values() });
+    expect((await t.run((ctx) => ctx.db.get(id)))?.audience).toEqual(["core"]);
+    expect(await member.query(api.assignments.list)).toEqual([]);
+  });
+
+  it("hides an assignment from members dropped from its audience and keeps their submission for staff", async () => {
+    const { owner, member, core } = await groups();
+    const id = await owner.mutation(api.assignments.create, { values: { ...values(), audience: ["member", "core"] }, publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Sudah", fileIds: [] });
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: { ...values(), audience: ["core"] } });
+    expect(await member.query(api.assignments.list)).toEqual([]);
+    expect(await member.query(api.assignments.get, { id })).toBeNull();
+    await expect(member.mutation(api.assignments.submit, { assignmentId: id, revision: 1, answer: "Lagi", fileIds: [] })).rejects.toThrow("tidak ditemukan");
+    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page.map((row) => row.answer)).toEqual(["Sudah"]);
+    expect(await owner.query(api.assignments.missing, { id })).toMatchObject({ active: 1, submitted: 0, missing: [{ name: "Nama core" }] });
+    expect(await core.query(api.assignments.list)).toHaveLength(1);
   });
 });
 

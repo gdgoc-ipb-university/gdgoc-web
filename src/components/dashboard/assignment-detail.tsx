@@ -7,13 +7,13 @@ import { useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/reac
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { assignmentLimits, assignmentMaxScore, assignmentPath, matchesRubric, scoreLabel, type RubricCriterion, type RubricScore } from "@/lib/assignment";
+import { assignmentAudience, assignmentLimits, assignmentMaxScore, assignmentPath, matchesRubric, scoreLabel, type RubricCriterion, type RubricScore } from "@/lib/assignment";
 import { exportFileName, submissionsCsv, type ExportRow } from "@/lib/assignment-export";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { MissingAssignment } from "./assignments";
-import { AssignmentStatusBadge, CopyLinkButton, DueLabel, FileLink, ScoreBadge, SubmissionBadge, useNow } from "./shared";
+import { AssignmentStatusBadge, AudienceBadge, CopyLinkButton, DueLabel, FileLink, ScoreBadge, SubmissionBadge, useNow } from "./shared";
 import { RichTextView } from "../rich-text-view";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
 import { PixelIcon } from "../pixel-icons";
@@ -52,7 +52,7 @@ export function AssignmentDetail({ id }: { id: string }) {
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canReview ? "Kelola tugas" : "Semua tugas"}</Link>
     <article className="dash-assignment" aria-labelledby="assignment-title">
-      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{!data.canReview && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
+      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{data.canReview && <AudienceBadge audience={assignmentAudience(assignment)} />}{!data.canReview && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
@@ -145,7 +145,7 @@ function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
     try { await action(); } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
   const change = (status: Doc<"assignments">["status"]) => run(() => setStatus({ id: assignment._id, revision: assignment.revision, status }));
-  const hint = { draft: "Draft hanya terlihat oleh admin.", published: "Member aktif bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
+  const hint = { draft: "Draft hanya terlihat oleh admin.", published: "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
   return <section className="dash-controls" aria-label="Kelola tugas">
     <p className="app-small">{hint}</p>
     <div className="app-inline-actions">
@@ -226,8 +226,8 @@ function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
   }
   return <section className="dash-missing" aria-labelledby="missing-title">
     <div className="app-section-heading"><div><p className="eyebrow">BELUM MENGUMPULKAN</p><h2 id="missing-title">Siapa yang belum</h2></div>
-      {data && <span className="app-small">{data.missing.length} dari {data.active} member aktif belum mengirim</span>}</div>
-    {!data ? <LoadingPanel label="Memeriksa member…" /> : !data.missing.length ? <p className="app-small">{data.active ? "Semua member aktif sudah mengirim tugas ini." : "Belum ada member aktif yang terdaftar."}</p>
+      {data && <span className="app-small">{data.missing.length} dari {data.active} member sasaran belum mengirim</span>}</div>
+    {!data ? <LoadingPanel label="Memeriksa member…" /> : !data.missing.length ? <p className="app-small">{data.active ? "Semua member sasaran sudah mengirim tugas ini." : "Belum ada member aktif di kelompok sasaran tugas ini."}</p>
       : <><ul className="dash-missing-list">{data.missing.map((row) => <li key={row.ownerId}><strong>{row.name}</strong><span className="app-small">{[row.email, row.campus].filter(Boolean).join(" · ")}</span></li>)}</ul>
         <div className="app-inline-actions"><button type="button" className="text-button" onClick={() => void copy()}><PixelIcon name={copied === "copied" ? "check" : "copy"} size={16} />{copied === "copied" ? "Daftar tersalin" : data.missing.some((row) => row.email) ? "Salin daftar nama dan email" : "Salin daftar nama"}</button>
           <span className="sr-only" role="status">{copied === "copied" ? "Daftar member yang belum mengumpulkan tersalin." : ""}</span>

@@ -7,10 +7,10 @@
 | Route | Member | Owner / admin |
 | --- | --- | --- |
 | `/dashboard` | Open, pending, and submitted counts; nearest deadlines | Member counts, recent assignments, shortcuts |
-| `/dashboard/tugas` | Open and closed assignments with their own submission status | All assignments, including drafts, with submission and late counts |
+| `/dashboard/tugas` | Open and closed assignments for their community tag, with their own submission status | All assignments, including drafts, with audience, submission and late counts |
 | `/dashboard/tugas/baru` | — | Create as draft or open immediately |
 | `/dashboard/tugas/<slug>` | Instructions and submission form | Instructions, status controls, every submission with files and its review, and who has not submitted |
-| `/dashboard/tugas/<slug>/ubah` | — | Edit title, slug, instructions, and deadline |
+| `/dashboard/tugas/<slug>/ubah` | — | Edit title, slug, instructions, audience, and deadline |
 | `/dashboard/apresiasi` | Appreciation drafts and submissions | Same |
 | `/dashboard/apresiasi/tinjau` | — (unless granted review) | Apresiasi review queue: owners, admins, and anyone an owner made a reviewer |
 | `/dashboard/anggota` | — | Search, filter (admin, reviewer, core team, BoD, deactivated), promote/demote admins, grant/revoke Apresiasi review, set community tags (including BoD), deactivate/reactivate members; owners can download every onboarded member as CSV (name, email, campus, study program, community tag and division, access, status, Apresiasi review, joined in WIB), built in the browser from the owners-only `dashboard.exportMembers` with the submissions export's encoding (`src/lib/member-export.ts`) |
@@ -36,7 +36,7 @@ Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into
 
 **Apresiasi reviewer** is a permission, not a role: `memberProfiles.appreciationReviewer`, granted and revoked by owners from the members page for active members, typically the Media & Creative people who prepare the posts. Owners and admins review by role, so the grant is not offered for them. `isReviewer` in `convex/auth.ts` is the single check (owner, or an active admin, or granted and not deactivated), used by `appreciations.queue`/`search`/`history`/`review`, `auth.viewer`, and `dashboard.viewer`. Deactivation suspends the permission without clearing it; revoking removes the field. A reviewer who is not staff sees only "Tinjau apresiasi" under Kelola.
 
-These access roles are separate from the **community tag**. Members choose Member or Core Team (with a division) themselves during onboarding and on their profile. **BoD** (Board of Directors) is a third tag that only owners and admins assign, from the members page, with an optional division. A BoD member sees their tag read-only on the profile and cannot change it themselves. Community tags are labels only and grant no permissions. New Apresiasi drafts prefill the tag (Member, Core Team, or BoD), and the server accepts "BoD" as a submission's role only from a member tagged BoD.
+These access roles are separate from the **community tag**. Members choose Member or Core Team (with a division) themselves during onboarding and on their profile. **BoD** (Board of Directors) is a third tag that only owners and admins assign, from the members page, with an optional division. A BoD member sees their tag read-only on the profile and cannot change it themselves. Community tags grant no permissions; they only decide which assignments a member is given (see [Audience](#audience)). New Apresiasi drafts prefill the tag (Member, Core Team, or BoD), and the server accepts "BoD" as a submission's role only from a member tagged BoD.
 
 Deactivation sets `memberProfiles.deactivatedAt`. A deactivated account can still sign in but sees only a notice; every assignment query and mutation rejects it. Its submissions are kept. It also disappears from every Bogor Run board, and reactivation brings it back unless staff hid the player separately (see [Moderation](#names-and-moderation)). An admin must be demoted before deactivation, and a deactivated member must be reactivated before promotion. Nobody can change their own status. `accessUpdatedBy` records the last account that changed a role or status, and the access log (`/dashboard/anggota/riwayat`) keeps every change.
 
@@ -50,7 +50,7 @@ All rules are enforced in Convex (`convex/access.ts`, `convex/dashboard.ts`, `co
 | Staff (owner, admin) | `dashboard.members`, `member`, `stats`, `setActive`, `setMemberType`; `assignments.adminList`, `slugPreview`, `create`, `update`, `setStatus`, `remove`, `setReviewer`; `bogorRun.setHidden` |
 | Staff and that assignment's reviewers | `assignments.submissions`, `exportPage`, `missing`, `review`, `requestRevision`, `cancelRevision` |
 | Staff and granted Apresiasi reviewers | `appreciations.queue`, `search`, `history`, `review` |
-| Active, onboarded members | `assignments.list`, `get`, `reviewing`, the member's own uploads and `submit`; `bogorRun.board` |
+| Active, onboarded members | `assignments.list`, `get`, `reviewing`, the member's own uploads and `submit` (for assignments in their audience, see [Audience](#audience)); `bogorRun.board` |
 | Own data, or anyone | `members.*` and the Apresiasi draft functions (own), `auth.configuration`, `auth.viewer`, `dashboard.viewer`, `bogorRun.issueRun`, `submitRun`, `leaderboard` |
 
 `convex/access.test.ts` checks this table against eight kinds of account: a guest, a signed-in account without onboarding, a deactivated member, a member, a granted Apresiasi reviewer, an assignment reviewer, an admin and an owner. Every query must answer only its row. Every mutation must turn away the other accounts for access, not for its arguments, and then accept the narrowest allowed account with the same arguments. The test also reads every public function from `convex/*.ts` and fails when one is missing from the matrix or the open list, so a new function has to be placed before it ships.
@@ -65,11 +65,21 @@ Owners come from the `APPRECIATION_ADMIN_EMAILS` environment variable on the Con
 
 ## Assignments
 
-An assignment has a title, a slug, plain-text instructions (line breaks preserved), a deadline, a maximum score (default 100), and a status:
+An assignment has a title, a slug, plain-text instructions (line breaks preserved), an audience, a deadline, a maximum score (default 100), and a status:
 
 - `draft`: visible only to owners and admins. It can be deleted while it has no submissions.
-- `published`: visible to active members, who can submit and resubmit.
+- `published`: visible to active members in its audience, who can submit and resubmit.
 - `closed`: visible read-only. No new or updated submissions.
+
+### Audience
+
+Each assignment is given to one or more community tags, ticked on the create and edit forms under "Untuk siapa": **Member**, **Core Team**, and **BoD** (#79). Ticking all three gives it to every member. BoD is its own group: a Core Team assignment does not reach BoD unless BoD is ticked too. At least one tag is required, and new assignments start with Member only.
+
+`assignments.audience` stores the tags. Assignments created before the field existed have none and are read as Core Team only (`assignmentAudience`, `legacyAudience` in `src/lib/assignment.ts`); every assignment in production on 9 October 2026 was for the core team. Editing one from a tab loaded before this change keeps its audience instead of applying the default.
+
+A member outside the audience gets nothing: the assignment is missing from their list and overview, its link shows "Tugas tidak ditemukan", and `generateUploadUrl`, `attachFile`, and `submit` refuse it (`reaches` in `convex/assignments.ts`). Owners and admins are never in an audience, but they see and manage every assignment. An assignment's reviewers keep the reviewer view whatever its audience. Staff can change the audience at any time. A member dropped from it keeps their submission and review, which staff still see and score, but the assignment no longer appears for them, an open revision request included.
+
+Staff see the audience as an "Untuk …" badge on the assignment list and page.
 
 ### Slugs
 
@@ -113,7 +123,7 @@ File URLs come from `ctx.storage.getUrl`. They are unguessable, but not authenti
 
 ### Who has not submitted
 
-Below the submissions, a published or closed assignment lists the active, onboarded members without a submission (`assignments.missing`), alphabetically, with a "Salin daftar nama dan email" button that copies one `Nama — email` line per member for a reminder. Owners and admins are not expected to submit and are left out of both the list and the "x dari y member aktif" count; deactivated accounts are hidden. Once assignments can target a group (E4), the list follows the target instead of every active member.
+Below the submissions, a published or closed assignment lists the active, onboarded members without a submission (`assignments.missing`), alphabetically, with a "Salin daftar nama dan email" button that copies one `Nama — email` line per member for a reminder. Only members in the assignment's audience are counted ("x dari y member sasaran"). Owners and admins are not expected to submit and are left out of both the list and the count; deactivated accounts are hidden.
 
 ### Scores and feedback
 
@@ -223,7 +233,7 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 ## Data model
 
 - `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`/`bod`), and `division`, a `by_completed` index, and a `search_name` full-text index on `fullName`.
-- `assignments`: optional `slug`, `maxScore`, `rubric` (name and max per criterion) and `reviewers` (account IDs), plus `by_status_due` and `by_updated` indexes.
+- `assignments`: optional `slug`, `maxScore`, `rubric` (name and max per criterion), `reviewers` (account IDs) and `audience` (community tags; missing means Core Team), plus `by_status_due` and `by_updated` indexes.
 - `assignmentSlugs`: every slug an assignment has used (`by_slug`, `by_assignment`).
 - `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`), with the latest review in optional `score`, `breakdown`, `feedback`, `reviewedAt`, `reviewedBy`, and `revisionRequestedAt` while a revision is requested.
 - `submissionReviews`: one row per review action, with `score`, `breakdown`, and `revisionRequested` for revision requests (`by_submission`).
@@ -242,8 +252,8 @@ All schema changes are additive, so the previous frontend keeps working during a
 - `convex/access.test.ts`: the access matrix, for every guarded function and eight kinds of account, plus a check that every public function is placed in it or on the open list.
 - `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, BoD tagging with an optional division, the member detail, and account deletion (owner only, typed-name check, every owned row and the auth user gone, other assignments' reviewer lists cleaned), and the access log (each change with its before and after values, no-ops skipped, owners only, per member and paged, deleted accounts and assignments without names). `src/lib/access-log.test.ts` covers the log's sentences. `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
-- `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, the review history, rubric scoring, assignment reviewers (scoped access, hidden emails, no management), revision requests (reopening one member's form after closing, clearing on resubmission, withdrawal), and the export (staff only, paged, emails for owners only).
-- `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, and slugify. convex-test does not record upload content types, so type mismatches are tested here.
+- `convex/assignments.test.ts`: audiences (the Member default, Core Team only for list, link, uploads and submissions, BoD as its own group, all three as everyone, assignments without an audience as Core Team, old tabs keeping it on edit, and narrowing after a submission), rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, the review history, rubric scoring, assignment reviewers (scoped access, hidden emails, no management), revision requests (reopening one member's form after closing, clearing on resubmission, withdrawal), and the export (staff only, paged, emails for owners only).
+- `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, slugify, and audience order, labels and the Core Team fallback. convex-test does not record upload content types, so type mismatches are tested here.
 - `src/lib/assignment-export.test.ts`: CSV quoting, formula defusing, the byte order mark, column order with and without emails or a rubric, rubric columns that fill only for the current criteria, WIB times, and the file name.
 - `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, dropzone drops and free slots, WebP compression before upload and oversized images, upload progress and cancellation, pending and attached file removal, saved rich answers, and the late warning.
 - `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, and link validation.
@@ -257,4 +267,4 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 ## Not included
 
-Group targeting is not built.
+Assignments target community tags only. Targeting a Catalyst role or team is part of E4 (#32).

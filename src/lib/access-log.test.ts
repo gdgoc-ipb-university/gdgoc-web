@@ -25,6 +25,11 @@ describe("access log sentences", () => {
     ]);
   });
 
+  it("describes tag confirmation and a member changing a confirmed tag", () => {
+    expect(accessSentence(entry("tagConfirmed", "unconfirmed", "core:Media & Creative"))).toBe("Aldio Lisafron mengonfirmasi peran komunitas Rania Putri: Core Team · Media & Creative.");
+    expect(accessSentence(entry("tagSelfChanged", "core:Media & Creative", "member", { actor: "Rania Putri" }))).toBe("Rania Putri mengubah peran komunitasnya sendiri dari Core Team · Media & Creative menjadi Member, jadi perlu dikonfirmasi lagi.");
+  });
+
   it("names deleted accounts without their name", () => {
     expect(accessSentence(entry("deleted", "member", "deleted", { target: null }))).toBe("Aldio Lisafron menghapus akun seorang member atas permintaannya.");
     expect(accessSentence(entry("deleted", "admin", "deleted", { target: null }))).toBe("Aldio Lisafron menghapus akun seorang admin atas permintaannya.");

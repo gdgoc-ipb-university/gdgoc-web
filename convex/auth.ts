@@ -15,13 +15,26 @@ export function isOwner(email: string, verified: boolean) {
   return verified && allowed.includes(email.toLowerCase());
 }
 
-type ReviewerProfile = { role?: string; appreciationReviewer?: boolean; deactivatedAt?: number } | null | undefined;
+type ReviewerProfile = {
+  role?: string; appreciationReviewer?: boolean; deactivatedAt?: number; memberType?: string; division?: string; tagConfirmedAt?: number;
+} | null | undefined;
 
-/** Apresiasi review: owners, active admins, and active accounts an owner granted `appreciationReviewer`. The one check every review path uses. */
+/** The division that prepares Apresiasi posts; its Core Team and BoD review by tag. */
+export const REVIEW_DIVISION = "Media & Creative";
+
+/** A Media & Creative Core Team or BoD tag that staff set or confirmed. Self-declared tags never count. */
+export function reviewsByTag(profile: ReviewerProfile) {
+  return Boolean(profile?.tagConfirmedAt) && (profile?.memberType === "core" || profile?.memberType === "bod") && profile?.division === REVIEW_DIVISION;
+}
+
+/**
+ * Apresiasi review: owners, active admins, active accounts an owner granted `appreciationReviewer`, and active members
+ * with a confirmed Media & Creative Core Team or BoD tag. The one check every review path uses.
+ */
 export function isReviewer(email: string, verified: boolean, profile: ReviewerProfile) {
   if (isOwner(email, verified)) return true;
   if (!verified || !profile || profile.deactivatedAt) return false;
-  return profile.role === "admin" || Boolean(profile.appreciationReviewer);
+  return profile.role === "admin" || Boolean(profile.appreciationReviewer) || reviewsByTag(profile);
 }
 
 export const createAuth = (ctx: GenericCtx<DataModel>) => betterAuth({

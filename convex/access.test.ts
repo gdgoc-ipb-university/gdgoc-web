@@ -14,7 +14,7 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 10, cursor: null };
-const ROLES = ["guest", "fresh", "inactive", "member", "apresiasi", "grader", "admin", "owner"] as const;
+const ROLES = ["guest", "fresh", "inactive", "member", "mediaSelf", "media", "apresiasi", "grader", "admin", "owner"] as const;
 type Role = typeof ROLES[number];
 /** Every message a guard throws; a refusal for any other reason would hide a broken matrix row. */
 const DENIED = /Masuk kembali|Selesaikan perkenalan|dinonaktifkan|hanya untuk|Hanya pemilik/;
@@ -22,8 +22,8 @@ const DENIED = /Masuk kembali|Selesaikan perkenalan|dinonaktifkan|hanya untuk|Ha
 const OWNER: Role[] = ["owner"];
 const STAFF: Role[] = ["admin", "owner"];
 const GRADERS: Role[] = ["grader", "admin", "owner"];
-const APRESIASI: Role[] = ["apresiasi", "admin", "owner"];
-const MEMBERS: Role[] = ["member", "apresiasi", "grader", "admin", "owner"];
+const APRESIASI: Role[] = ["apresiasi", "media", "admin", "owner"];
+const MEMBERS: Role[] = ["member", "mediaSelf", "media", "apresiasi", "grader", "admin", "owner"];
 
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 type Test = ReturnType<typeof setup>;
@@ -52,9 +52,17 @@ async function fixture() {
   const grader = await account(t, "grader@example.com", "Mentor");
   const inactive = await account(t, "inactive@example.com", "Nonaktif");
   const fresh = await account(t, "fresh@example.com", "Baru", false);
+  // Media & Creative Core Team: one self-declared, one confirmed by staff (which grants Apresiasi review).
+  const mediaSelf = await account(t, "mediaself@example.com", "Media Sendiri");
+  const media = await account(t, "media@example.com", "Media Terkonfirmasi");
+  await t.run(async (ctx) => {
+    const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", mediaSelf.id)).unique();
+    await ctx.db.patch(profile!._id, { memberType: "core", division: "Media & Creative" });
+  });
   await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
   await owner.mutation(api.dashboard.setReviewer, { ownerId: apresiasi.id, reviewer: true });
   await owner.mutation(api.dashboard.setActive, { ownerId: inactive.id, active: false });
+  await owner.mutation(api.dashboard.setMemberType, { ownerId: media.id, memberType: "core", division: "Media & Creative" });
   const due = new Date(Date.now() + 55 * 3600000).toISOString().slice(0, 16);
   const assignment = await owner.mutation(api.assignments.create, { values: { title: "Tugas", description: "Kerjakan.", dueAt: due }, publish: true });
   const draft = await owner.mutation(api.assignments.create, { values: { title: "Draft", description: "Belum.", dueAt: due }, publish: false });
@@ -73,7 +81,7 @@ async function fixture() {
     const entry = await ctx.db.insert("gameBests", { ownerId: member.id, period: "all", score: 100, name: "Rania P.", achievedAt: Date.now(), hidden: false });
     return { submission, appreciation, entry, draftRevision: (await ctx.db.get(draft))!.revision };
   });
-  const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, apresiasi, grader, admin, owner };
+  const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, admin, owner };
   return { t, callers, ids: { member: member.id, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;

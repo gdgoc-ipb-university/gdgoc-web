@@ -2,6 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { authComponent } from "./auth";
 import { mutation, query } from "./_generated/server";
 import { memberType } from "./schema";
+import { logAccess, tagValue } from "./accessLog";
 import { finalStep, normalizeOnboarding, roleStep, validateOnboarding, validateRole, type OnboardingStep } from "../src/lib/onboarding";
 
 export const profile = query({
@@ -62,6 +63,10 @@ export const saveRole = mutation({
     const division = args.memberType === "core" ? args.division.trim() : "";
     const errors = validateRole({ memberType: args.memberType, division });
     if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
-    await ctx.db.patch(existing._id, { memberType: args.memberType, division: division || undefined, updatedAt: Date.now() });
+    const from = tagValue(existing.memberType, existing.division), to = tagValue(args.memberType, division || undefined);
+    // A tag the member changes is self-declared again, so a confirmed one loses its confirmation (and any review it gave).
+    const unconfirm = from !== to && existing.tagConfirmedAt ? { tagConfirmedAt: undefined, tagConfirmedBy: undefined } : {};
+    await ctx.db.patch(existing._id, { memberType: args.memberType, division: division || undefined, updatedAt: Date.now(), ...unconfirm });
+    if (from !== to && existing.tagConfirmedAt) await logAccess(ctx, { actorId: user._id, targetId: user._id, change: "tagSelfChanged", from, to });
   },
 });

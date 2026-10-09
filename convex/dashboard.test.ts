@@ -115,6 +115,58 @@ describe("dashboard roles and member management", () => {
     expect(JSON.stringify(detail)).not.toContain("Draft rahasia");
   });
 
+  it("lets Media & Creative Core Team and BoD review Apresiasi once staff confirm their tag", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const admin = await account(t, "admin@example.com", { name: "Admin" });
+    const media = await account(t, "media@example.com", { name: "Mira Media" });
+    const tech = await account(t, "tech@example.com", { name: "Teguh Teknis" });
+    const board = await account(t, "board@example.com", { name: "Bima BoD" });
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    // Self-declared during onboarding: no review yet.
+    await t.run(async (ctx) => {
+      for (const [id, division] of [[media.id, "Media & Creative"], [tech.id, "Technical"]]) {
+        const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", id)).unique();
+        await ctx.db.patch(profile!._id, { memberType: "core", division });
+      }
+    });
+    const queue = { status: "submitted" as const, paginationOpts: page };
+    expect(await media.query(api.dashboard.viewer)).toMatchObject({ reviewer: false });
+    await expect(media.query(api.appreciations.queue, queue)).rejects.toThrow("tim peninjau");
+
+    // Staff confirm the tag unchanged: Media & Creative reviews, Technical does not.
+    await admin.mutation(api.dashboard.setMemberType, { ownerId: media.id, memberType: "core", division: "Media & Creative" });
+    await admin.mutation(api.dashboard.setMemberType, { ownerId: tech.id, memberType: "core", division: "Technical" });
+    expect(await media.query(api.dashboard.viewer)).toMatchObject({ reviewer: true });
+    await expect(media.query(api.appreciations.queue, queue)).resolves.toMatchObject({ page: [] });
+    expect(await tech.query(api.dashboard.viewer)).toMatchObject({ reviewer: false });
+    // BoD set by staff is confirmed from the start.
+    await admin.mutation(api.dashboard.setMemberType, { ownerId: board.id, memberType: "bod", division: "Media & Creative" });
+    expect(await board.query(api.dashboard.viewer)).toMatchObject({ reviewer: true });
+    const reviewers = await admin.query(api.dashboard.members, { ...everyone, filter: "reviewer" });
+    expect(reviewers.page.map((row) => [row.fullName, row.reviewer, row.reviewsByTag, row.tagConfirmed]).sort()).toEqual([["Bima BoD", false, true, true], ["Mira Media", false, true, true]]);
+    expect(await admin.query(api.dashboard.stats)).toMatchObject({ reviewers: 2 });
+    expect((await owner.query(api.dashboard.exportMembers, { paginationOpts: page })).page.find((row) => row.fullName === "Mira Media")).toMatchObject({ reviewer: true });
+
+    // Deactivation suspends it; reactivation brings it back.
+    await admin.mutation(api.dashboard.setActive, { ownerId: media.id, active: false });
+    expect(await media.query(api.dashboard.viewer)).toMatchObject({ reviewer: false });
+    await admin.mutation(api.dashboard.setActive, { ownerId: media.id, active: true });
+    expect(await media.query(api.dashboard.viewer)).toMatchObject({ reviewer: true });
+
+    // A member changing their own tag makes it self-declared again, even when they change it back.
+    await media.mutation(api.members.saveRole, { memberType: "core", division: "Technical" });
+    await media.mutation(api.members.saveRole, { memberType: "core", division: "Media & Creative" });
+    expect(await media.query(api.dashboard.viewer)).toMatchObject({ reviewer: false });
+    const log = await owner.query(api.dashboard.accessLog, { ownerId: media.id, paginationOpts: page });
+    expect(log.page.map(({ change, from, to, actor }) => [change, from, to, actor])).toEqual([
+      ["tagSelfChanged", "core:Media & Creative", "core:Technical", "Mira Media"],
+      ["active", "deactivated", "active", "Admin"],
+      ["active", "active", "deactivated", "Admin"],
+      ["tagConfirmed", "unconfirmed", "core:Media & Creative", "Admin"],
+    ]);
+  });
+
   it("logs every access change for owners, with the value before and after, and skips no-ops", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com", { name: "Pemilik" });

@@ -30,8 +30,27 @@ export type RubricScore = RubricCriterion & { points: number };
 /** A criterion as typed in the form. */
 export type RubricInput = { name: string; max: string };
 // `maxScore` and the rubric maxes are the form's text; they become numbers on the server. With a rubric, maxScore is the sum of its maxes.
-export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[] };
+export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[] };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
+
+/** The community tags an assignment can be given to, in display order. Ticking all three gives it to everyone. Staff are never in an audience. */
+export const audienceGroups = ["member", "core", "bod"] as const;
+export type AudienceGroup = (typeof audienceGroups)[number];
+export const audienceLabels: Record<AudienceGroup, string> = { member: "Member", core: "Core Team", bod: "BoD" };
+export const defaultAudience: AudienceGroup[] = ["member"];
+/** Assignments from before audiences existed (all of production on 9 Oct 2026) were for the core team. */
+export const legacyAudience: AudienceGroup[] = ["core"];
+
+export function assignmentAudience(assignment: { audience?: AudienceGroup[] }) { return assignment.audience ?? legacyAudience; }
+
+/** Whether a member with this community tag is given the assignment. A profile without a tag is in no audience. */
+export function inAudience(assignment: { audience?: AudienceGroup[] }, memberType: string | undefined) {
+  return assignmentAudience(assignment).some((group) => group === memberType);
+}
+
+export function audienceLabel(audience: readonly AudienceGroup[]) {
+  return audienceGroups.every((group) => audience.includes(group)) ? "Semua member" : audienceGroups.filter((group) => audience.includes(group)).map((group) => audienceLabels[group]).join(" · ");
+}
 
 const wholeNumber = (value: string) => /^\d+$/.test(value);
 
@@ -107,6 +126,7 @@ export function normalizeAssignment(values: AssignmentValues): AssignmentValues 
   return {
     title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(),
     maxScore: total !== null ? String(total) : (values.maxScore ?? "").trim() || String(defaultMaxScore), rubric,
+    audience: audienceGroups.filter((group) => (values.audience ?? defaultAudience).includes(group)),
   };
 }
 
@@ -125,6 +145,7 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   else if (rubric.some((criterion) => criterion.name.length > assignmentLimits.rubricName)) errors.rubric = `Nama kriteria maksimal ${assignmentLimits.rubricName} karakter.`;
   else if (rubric.length && rubricTotal(rubric) === null) errors.rubric = "Poin maksimal tiap kriteria harus bilangan bulat, minimal 1.";
   else if (rubric.length && rubricTotal(rubric)! > assignmentLimits.maxScore) errors.rubric = `Jumlah poin seluruh kriteria maksimal ${assignmentLimits.maxScore}.`;
+  if (!v.audience!.length) errors.audience = "Pilih setidaknya satu kelompok.";
   if (errors.rubric && rubric.length) delete errors.maxScore; // the total is derived, so the rubric message is the one to fix
   return errors;
 }

@@ -38,7 +38,7 @@ async function account(t: Test, email: string, name: string, onboarded = true) {
   });
   await t.run((ctx) => ctx.db.insert("memberProfiles", {
     ownerId: user._id, fullName: name, campus: "IPB University", studyProgram: "Ilmu Komputer",
-    nextStep: 4, revision: 4, updatedAt: Date.now(), ...(onboarded ? { completedAt: Date.now() } : {}),
+    nextStep: 4, revision: 4, updatedAt: Date.now(), memberType: "member", ...(onboarded ? { completedAt: Date.now() } : {}),
   }));
   return Object.assign(t.withIdentity({ subject: user._id, sessionId: session._id, email }), { id: user._id as string });
 }

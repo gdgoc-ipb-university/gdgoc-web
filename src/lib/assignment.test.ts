@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanFileName, fileProblem, fromJakartaInput, matchesRubric, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
+import { assignmentAudience, audienceLabel, cleanFileName, fileProblem, inAudience, fromJakartaInput, matchesRubric, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
 
 describe("assignment rules", () => {
   it("reads and writes deadlines in WIB regardless of the runtime time zone", () => {
@@ -55,6 +55,16 @@ describe("assignment rules", () => {
     expect(matchesRubric(breakdown, [{ name: "Ide", max: 50 }, { name: "Eksekusi", max: 50 }])).toBe(false);
     expect(matchesRubric(breakdown, [{ name: "Eksekusi", max: 60 }, { name: "Ide", max: 40 }])).toBe(false);
     expect(matchesRubric(breakdown, [{ name: "Ide", max: 40 }])).toBe(false);
+  });
+
+  it("orders and labels audiences, reads old assignments as Core Team, and refuses an empty one", () => {
+    const base = { title: "Tugas", slug: "", description: "Isi.", dueAt: "2026-10-01T23:59", maxScore: "100" };
+    expect(normalizeAssignment(base).audience).toEqual(["member"]);
+    expect(normalizeAssignment({ ...base, audience: ["bod", "member", "bod"] }).audience).toEqual(["member", "bod"]);
+    expect(validateAssignment({ ...base, audience: [] }).audience).toBe("Pilih setidaknya satu kelompok.");
+    expect(assignmentAudience({})).toEqual(["core"]);
+    expect([inAudience({}, "core"), inAudience({}, "member"), inAudience({}, "bod"), inAudience({ audience: ["member"] }, undefined)]).toEqual([true, false, false, false]);
+    expect([audienceLabel(["core"]), audienceLabel(["member", "bod"]), audienceLabel(["bod", "core", "member"])]).toEqual(["Core Team", "Member · BoD", "Semua member"]);
   });
 
   it("derives readable slugs from titles and cleans custom ones", () => {

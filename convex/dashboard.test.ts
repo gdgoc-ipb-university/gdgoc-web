@@ -115,6 +115,51 @@ describe("dashboard roles and member management", () => {
     expect(JSON.stringify(detail)).not.toContain("Draft rahasia");
   });
 
+  it("logs every access change for owners, with the value before and after, and skips no-ops", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const admin = await account(t, "admin@example.com", { name: "Admin Satu" });
+    const member = await account(t, "member@example.com", { name: "Rania Putri" });
+    const leaver = await account(t, "leaver@example.com", { name: "Akan Pergi" });
+    const due = new Date(Date.now() + 55 * 3600000).toISOString().slice(0, 16);
+    const assignment = await owner.mutation(api.assignments.create, { values: { title: "Tugas mentor", description: "Nilai.", dueAt: due }, publish: true });
+
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" }); // already admin: not logged
+    await owner.mutation(api.dashboard.setReviewer, { ownerId: member.id, reviewer: true });
+    await admin.mutation(api.dashboard.setActive, { ownerId: member.id, active: false });
+    await admin.mutation(api.dashboard.setActive, { ownerId: member.id, active: true });
+    await admin.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "Technical" });
+    await admin.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "Technical" }); // unchanged
+    await admin.mutation(api.assignments.setReviewer, { id: assignment, ownerId: member.id, reviewer: true });
+    await admin.mutation(api.assignments.setReviewer, { id: assignment, ownerId: member.id, reviewer: false });
+    await admin.mutation(api.assignments.setReviewer, { id: assignment, ownerId: member.id, reviewer: false }); // not a reviewer: not logged
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "member" });
+    await owner.mutation(api.dashboard.deleteAccount, { ownerId: leaver.id, confirmName: "Akan Pergi" });
+
+    await expect(admin.query(api.dashboard.accessLog, { paginationOpts: page })).rejects.toThrow("Hanya pemilik");
+    await expect(member.query(api.dashboard.accessLog, { ownerId: member.id, paginationOpts: page })).rejects.toThrow("Hanya pemilik");
+    const all = await owner.query(api.dashboard.accessLog, { paginationOpts: page });
+    expect(all.page.map(({ change, from, to, actor, target }) => [change, from, to, actor, target])).toEqual([
+      ["deleted", "member", "deleted", "Pemilik", null],
+      ["role", "admin", "member", "Pemilik", "Admin Satu"],
+      ["assignmentReviewer", "on", "off", "Admin Satu", "Rania Putri"],
+      ["assignmentReviewer", "off", "on", "Admin Satu", "Rania Putri"],
+      ["memberType", "member", "core:Technical", "Admin Satu", "Rania Putri"],
+      ["active", "deactivated", "active", "Admin Satu", "Rania Putri"],
+      ["active", "active", "deactivated", "Admin Satu", "Rania Putri"],
+      ["reviewer", "off", "on", "Pemilik", "Rania Putri"],
+      ["role", "member", "admin", "Pemilik", "Admin Satu"],
+    ]);
+    expect(all.page[2].assignment).toEqual({ _id: assignment, slug: "tugas-mentor", title: "Tugas mentor" });
+    const mine = await owner.query(api.dashboard.accessLog, { ownerId: member.id, paginationOpts: { numItems: 3, cursor: null } });
+    expect(mine.page.map((entry) => entry.change)).toEqual(["assignmentReviewer", "assignmentReviewer", "memberType"]);
+    expect(mine.isDone).toBe(false);
+    // An assignment deleted later keeps its log rows, without a title.
+    await t.run((ctx) => ctx.db.delete(assignment));
+    expect((await owner.query(api.dashboard.accessLog, { ownerId: member.id, paginationOpts: page })).page[0].assignment).toEqual({ _id: assignment, slug: undefined, title: null });
+  });
+
   it("lets owners delete a member's account and everything tied to it, keeping only a count", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com", { name: "Pemilik" });

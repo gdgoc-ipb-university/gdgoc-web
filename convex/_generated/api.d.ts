@@ -9,6 +9,7 @@
  */
 
 import type * as access from "../access.js";
+import type * as accessLog from "../accessLog.js";
 import type * as appreciations from "../appreciations.js";
 import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
@@ -27,6 +28,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   access: typeof access;
+  accessLog: typeof accessLog;
   appreciations: typeof appreciations;
   assignments: typeof assignments;
   auth: typeof auth;

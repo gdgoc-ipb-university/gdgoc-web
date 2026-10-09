@@ -11,6 +11,7 @@ import { LoadingPanel, StatusBadge, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
 import { StaffOnly } from "./assignments";
+import { AccessLogList } from "./access-log";
 import { MemberRow } from "./members";
 import { AssignmentStatusBadge, ScoreBadge, SubmissionBadge } from "./shared";
 import { isStaff, useDashboardViewer } from "./viewer";
@@ -48,6 +49,10 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
 
     {member.reviewing.length > 0 && <section aria-labelledby="member-reviewing"><div className="app-section-heading"><div><p className="eyebrow">PENILAI</p><h2 id="member-reviewing">Tugas yang ia nilai</h2></div></div>
       <ul className="dash-member-activity">{member.reviewing.map((assignment) => <li key={assignment._id}><div><Link href={assignmentPath(assignment)}>{assignment.title}</Link></div><AssignmentStatusBadge status={assignment.status} /></li>)}</ul>
+    </section>}
+
+    {viewer.role === "owner" && <section aria-labelledby="member-access-log"><div className="app-section-heading"><div><p className="eyebrow">PEMILIK</p><h2 id="member-access-log">Riwayat akses</h2></div><Link className="text-button" href="/dashboard/anggota/riwayat">Semua riwayat</Link></div>
+      <AccessLogList ownerId={member.ownerId} pageSize={10} />
     </section>}
 
     {viewer.role === "owner" && member.role !== "owner" && member.ownerId !== viewer.id && <DeleteAccount ownerId={member.ownerId} fullName={member.fullName} />}

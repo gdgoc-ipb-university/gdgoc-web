@@ -337,6 +337,13 @@ Evidence:
 - Tests: with the `@` alias made to work in this checkout (its path contains a space) and on Node 26, 293 of 320 tests pass. The same 27 fail on the previous commit; all of them call `localStorage`, which is undefined under Node 26, and the project pins Node 24. The scroll-progress tests were rewritten for the new implementation, with one added for an already-scrolled page.
 - Not checked: the deployed site, PageSpeed Insights or any field data, a physical phone, and the Lenis smooth-scroll path with the new scroll bar beyond the headless run above.
 
+## Phone lookahead in Bogor Run — 9 October
+
+- **Cause.** From `getView`, the distance from the dino's nose to the right edge was 451 world units at 1440 × 640, 317 at 1280 × 577 and 768 × 700, 214 at 390 × 520 and 168 at 320 × 440. A 0.3 s reaction plus half a jump's 0.42 s air time needs 254 units at minute 5 and 283 at the hour, so a 390 px phone fell short from about minute 3, which matches the review bot's 7.6-minute median there.
+- **Change.** Play views reach at least 320 units ahead (`MIN_AHEAD`). Now 390 px shows 320 at scale 0.99 (dino 43 px wide), 320 px shows 320 at scale 0.81 (36 px), 1280 × 577 goes from scale 3.05 to 3.02, and 1440 px and wider are unchanged. `view.test.ts` checks the minimum at every tested size and that wide screens keep their old scale.
+- **Screens.** Headless Chromium against the dev server, mid-run at 390 × 844 and 320 × 568 at 2× pixel density: the dino, an angkot and a talas stayed crisp and fully in view above the controls.
+- Not measured: the review bot's new median at 390 px, since that bot is not in the repository.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

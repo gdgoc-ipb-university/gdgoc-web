@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { BIRD, DINO, FIELD, OBSTACLES, PHYSICS } from "./engine";
-import { getView, isShort, MAX_AHEAD, SHORT } from "./view";
+import { getView, isShort, MAX_AHEAD, MIN_AHEAD, SHORT } from "./view";
 
 const apexOf = () => PHYSICS.jump * PHYSICS.jump / (2 * PHYSICS.gravity);
 
@@ -16,6 +16,21 @@ describe("responsive game projection", () => {
     // Obstacles enter off-screen: the play view never reaches the engine's spawn line.
     expect((width - view.x) / view.scale).toBeLessThanOrEqual(MAX_AHEAD + 1e-9);
     expect(view.x + (FIELD.spawn - DINO.x) * view.scale).toBeGreaterThan(width);
+    // Every width warns as early: at least MIN_AHEAD from the dino's nose to the right edge.
+    expect((width - view.x) / view.scale - DINO.width).toBeGreaterThanOrEqual(MIN_AHEAD - 1e-9);
+  });
+
+  it("zooms phones out to the same warning and leaves wide screens as they were", () => {
+    const ahead = (width: number, height: number) => { const view = getView(width, height, false); return (width - view.x) / view.scale - DINO.width; };
+    expect(ahead(390, 680)).toBeCloseTo(MIN_AHEAD, 6);
+    expect(ahead(320, 540)).toBeCloseTo(MIN_AHEAD, 6);
+    expect(getView(390, 680, false)).toMatchObject({ x: 390 * 0.08, scale: expect.closeTo(0.986, 3) });
+    for (const [width, height] of [[1440, 640], [1920, 720], [3840, 720]]) {
+      // The projection from before MIN_AHEAD: wide screens already show more than it.
+      expect(getView(width, height, false).scale).toBe(Math.min(3.3, Math.max(1.3, width / 420), (height * 0.875 - 175) / 154));
+    }
+    // The idle demo keeps its own projection.
+    expect(getView(390, 680, true).scale).toBe(2.4);
   });
 
   // Playing arenas fit the screen under the header: landscape phones and low laptop windows get short ones.
@@ -31,6 +46,7 @@ describe("responsive game projection", () => {
     expect(view.x).toBeGreaterThan(0);
     expect((width - view.x) / view.scale).toBeLessThanOrEqual(MAX_AHEAD + 1e-9);
     expect(view.x + (FIELD.spawn - DINO.x) * view.scale).toBeGreaterThan(width);
+    expect((width - view.x) / view.scale - DINO.width).toBeGreaterThanOrEqual(MIN_AHEAD - 1e-9);
   });
 
   it("switches to the compact layout at the container-query limits", () => {

@@ -38,9 +38,30 @@ Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into
 
 These access roles are separate from the **community tag**. Members choose Member or Core Team (with a division) themselves during onboarding and on their profile. **BoD** (Board of Directors) is a third tag that only owners and admins assign, from the members page, with an optional division. A BoD member sees their tag read-only on the profile and cannot change it themselves. Community tags are labels only and grant no permissions. New Apresiasi drafts prefill the tag (Member, Core Team, or BoD), and the server accepts "BoD" as a submission's role only from a member tagged BoD.
 
-Deactivation sets `memberProfiles.deactivatedAt`. A deactivated account can still sign in but sees only a notice; every assignment query and mutation rejects it. Its submissions are kept. It also disappears from every Bogor Run board, and reactivation brings it back unless staff hid the player separately (see [Moderation](#names-and-moderation)). An admin must be demoted before deactivation, and a deactivated member must be reactivated before promotion. Nobody can change their own status. `accessUpdatedBy` records the last account that changed a role or status.
+Deactivation sets `memberProfiles.deactivatedAt`. A deactivated account can still sign in but sees only a notice; every assignment query and mutation rejects it. Its submissions are kept. It also disappears from every Bogor Run board, and reactivation brings it back unless staff hid the player separately (see [Moderation](#names-and-moderation)). An admin must be demoted before deactivation, and a deactivated member must be reactivated before promotion. Nobody can change their own status. `accessUpdatedBy` records the last account that changed a role or status, and the access log (`/dashboard/anggota/riwayat`) keeps every change.
 
 All rules are enforced in Convex (`convex/access.ts`, `convex/dashboard.ts`, `convex/assignments.ts`, `convex/bogorRun.ts`); the UI only hides actions the server would refuse.
+
+### Access matrix
+
+| Who | Can use |
+| --- | --- |
+| Owner only | `dashboard.exportMembers`, `accessLog`, `setRole`, `setReviewer`, `deleteAccount` |
+| Staff (owner, admin) | `dashboard.members`, `member`, `stats`, `setActive`, `setMemberType`; `assignments.adminList`, `slugPreview`, `create`, `update`, `setStatus`, `remove`, `setReviewer`; `bogorRun.setHidden` |
+| Staff and that assignment's reviewers | `assignments.submissions`, `exportPage`, `missing`, `review`, `requestRevision`, `cancelRevision` |
+| Staff and granted Apresiasi reviewers | `appreciations.queue`, `search`, `history`, `review` |
+| Active, onboarded members | `assignments.list`, `get`, `reviewing`, the member's own uploads and `submit`; `bogorRun.board` |
+| Own data, or anyone | `members.*` and the Apresiasi draft functions (own), `auth.configuration`, `auth.viewer`, `dashboard.viewer`, `bogorRun.issueRun`, `submitRun`, `leaderboard` |
+
+`convex/access.test.ts` checks this table against eight kinds of account: a guest, a signed-in account without onboarding, a deactivated member, a member, a granted Apresiasi reviewer, an assignment reviewer, an admin and an owner. Every query must answer only its row. Every mutation must turn away the other accounts for access, not for its arguments, and then accept the narrowest allowed account with the same arguments. The test also reads every public function from `convex/*.ts` and fails when one is missing from the matrix or the open list, so a new function has to be placed before it ships.
+
+### Decision: owners stay in configuration
+
+Owners come from the `APPRECIATION_ADMIN_EMAILS` environment variable on the Convex deployment, not from the database, and the dashboard cannot add, remove or demote them. Decided for E7 (#35), 9 October 2026.
+
+- **Why:** the chapter has one or two owners a year, and they change at the handover. A database owner role would need its own guard against the last owner removing themselves, and a stolen admin session could not promote itself to owner. The allowlist needs neither.
+- **Cost:** changing owners needs someone with Convex dashboard or CLI access to edit the variable. The handover checklist should include it.
+- **How to change:** set `APPRECIATION_ADMIN_EMAILS` on the production deployment to the comma-separated Google emails (see `docs/APRESIASI.md`). The change applies on the next request; no deploy is needed. An owner who is removed becomes a member, or an admin if `memberProfiles.role` is still set.
 
 ## Assignments
 
@@ -218,6 +239,7 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 ## Tests
 
+- `convex/access.test.ts`: the access matrix, for every guarded function and eight kinds of account, plus a check that every public function is placed in it or on the open list.
 - `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, BoD tagging with an optional division, the member detail, and account deletion (owner only, typed-name check, every owned row and the auth user gone, other assignments' reviewer lists cleaned), and the access log (each change with its before and after values, no-ops skipped, owners only, per member and paged, deleted accounts and assignments without names). `src/lib/access-log.test.ts` covers the log's sentences. `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
 - `convex/assignments.test.ts`: rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, the review history, rubric scoring, assignment reviewers (scoped access, hidden emails, no management), revision requests (reopening one member's form after closing, clearing on resubmission, withdrawal), and the export (staff only, paged, emails for owners only).

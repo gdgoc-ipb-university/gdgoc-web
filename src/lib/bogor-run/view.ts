@@ -8,6 +8,12 @@ export const MAX_AHEAD = 1120;
  * and back link on one row under the ground. bogor-run.module.css switches with container queries on the same limits.
  */
 export const SHORT = { any: 440, wide: 600 } as const;
+/**
+ * The least a play view shows ahead of the dino's nose, in world units: a 0.3 s reaction plus half a jump at top speed
+ * needs about 283, and a cluster's jump aims at its middle. Narrow screens zoom out to reach it rather than give phone
+ * players less warning on the same board (#73).
+ */
+export const MIN_AHEAD = 320;
 
 export const isShort = (width: number, height: number) => height < SHORT.any || (width > 760 && height < SHORT.wide);
 
@@ -18,10 +24,12 @@ export function getView(width: number, height: number, demo: boolean) {
   const ground = mobile || short ? height - 50 : height * 0.875;
   // The jump (the dino plus its apex, 153 units) must clear the title band, or on short arenas just the top edge:
   // there the score sits top right, above the highest elang.
+  // Phones put the dino nearer the left edge, so less of the zoom-out goes on the space behind it.
+  const lead = width * (mobile ? 0.08 : 0.14);
   const scale = demo
     ? Math.min(3.8, Math.max(mobile ? 2.4 : 3.2, width / 420))
-    : Math.min(3.3, Math.max(1.3, width / 420), (ground - (short ? 8 : 175)) / 154);
+    : Math.min(3.3, Math.max(1.3, width / 420), (ground - (short ? 8 : 175)) / 154, (width - lead) / (DINO.width + MIN_AHEAD));
   // Ultra-wide play views move the dino inwards instead of revealing the spawn line.
-  const x = demo ? width * (mobile ? 0.64 : 0.73) - DINO.width * scale / 2 : Math.max(width * 0.14, width - MAX_AHEAD * scale);
+  const x = demo ? width * (mobile ? 0.64 : 0.73) - DINO.width * scale / 2 : Math.max(lead, width - MAX_AHEAD * scale);
   return { scale, x, ground, short };
 }

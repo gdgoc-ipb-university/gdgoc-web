@@ -1,7 +1,7 @@
 import { memberTagLabel, type MemberType } from "./onboarding";
 
 export type AccessEntry = {
-  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted";
+  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged";
   from: string; to: string; actor: string | null; target: string | null; assignment: { title: string | null } | null;
 };
 
@@ -22,6 +22,8 @@ export function accessSentence(entry: AccessEntry) {
     case "active": return entry.to === "deactivated" ? `${actor} menonaktifkan akun ${target}.` : `${actor} mengaktifkan kembali akun ${target}.`;
     case "memberType": return `${actor} mengubah peran komunitas ${target} dari ${tagLabel(entry.from)} menjadi ${tagLabel(entry.to)}.`;
     case "assignmentReviewer": return entry.to === "on" ? `${actor} menunjuk ${target} sebagai penilai ${task}.` : `${actor} mencabut ${target} dari penilai ${task}.`;
+    case "tagConfirmed": return `${actor} mengonfirmasi peran komunitas ${target}: ${tagLabel(entry.to)}.`;
+    case "tagSelfChanged": return `${target} mengubah peran komunitasnya sendiri dari ${tagLabel(entry.from)} menjadi ${tagLabel(entry.to)}, jadi perlu dikonfirmasi lagi.`;
     case "deleted": return `${actor} menghapus akun ${entry.from === "admin" ? "seorang admin" : "seorang member"} atas permintaannya.`;
   }
 }

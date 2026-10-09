@@ -12,6 +12,7 @@ export const assignmentStatus = v.union(v.literal("draft"), v.literal("published
 export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
 export const accessChange = v.union(
   v.literal("role"), v.literal("reviewer"), v.literal("active"), v.literal("memberType"), v.literal("assignmentReviewer"), v.literal("deleted"),
+  v.literal("tagConfirmed"), v.literal("tagSelfChanged"),
 );
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
 
@@ -26,6 +27,9 @@ export default defineSchema({
     role: v.optional(v.literal("admin")), deactivatedAt: v.optional(v.number()), accessUpdatedBy: v.optional(v.string()),
     // Apresiasi review granted by an owner; separate from `role`, and suspended while deactivated.
     appreciationReviewer: v.optional(v.boolean()),
+    // Set when staff set or confirm the community tag; cleared when the member changes it themselves. A confirmed
+    // Media & Creative Core Team or BoD tag also grants Apresiasi review (auth.reviewsByTag).
+    tagConfirmedAt: v.optional(v.number()), tagConfirmedBy: v.optional(v.string()),
   }).index("by_owner", ["ownerId"])
     .index("by_completed", ["completedAt"])
     .searchIndex("search_name", { searchField: "fullName" }),

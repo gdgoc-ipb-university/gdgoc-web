@@ -3,7 +3,7 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { components } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { authComponent, isReviewer } from "./auth";
+import { authComponent, isReviewer, REVIEW_DIVISION, reviewsByTag } from "./auth";
 import { logAccess, tagValue } from "./accessLog";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
@@ -35,6 +35,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     memberType: profile.memberType ?? null, division: profile.division ?? null,
     // The granted permission only; owners and admins review by role and are not flagged here.
     reviewer: Boolean(profile.appreciationReviewer),
+    // Staff set or confirmed the community tag; a confirmed Media & Creative Core Team or BoD tag reviews Apresiasi too.
+    tagConfirmed: Boolean(profile.tagConfirmedAt), reviewsByTag: !isActive(role, profile) ? false : reviewsByTag(profile),
   };
 }
 
@@ -53,7 +55,10 @@ export const members = query({
     const result = await source.filter((q) => {
       const onboarded = q.neq(q.field("completedAt"), undefined);
       if (filter === "admin") return q.and(onboarded, q.eq(q.field("role"), "admin"));
-      if (filter === "reviewer") return q.and(onboarded, q.eq(q.field("appreciationReviewer"), true));
+      if (filter === "reviewer") {
+        const byTag = q.and(q.gt(q.field("tagConfirmedAt"), 0), q.eq(q.field("division"), REVIEW_DIVISION), q.or(q.eq(q.field("memberType"), "core"), q.eq(q.field("memberType"), "bod")));
+        return q.and(onboarded, q.or(q.eq(q.field("appreciationReviewer"), true), byTag));
+      }
       if (filter === "core" || filter === "bod") return q.and(onboarded, q.eq(q.field("memberType"), filter));
       if (filter === "deactivated") return q.and(onboarded, q.neq(q.field("deactivatedAt"), undefined));
       return onboarded;
@@ -74,7 +79,7 @@ export const exportMembers = query({
       page: await Promise.all(result.page.map(async (profile) => {
         const row = await memberRow(ctx, profile);
         // Owners and admins review Apresiasi by role; others only with the grant.
-        return { ...row, reviewer: row.role !== "member" || row.reviewer };
+        return { ...row, reviewer: row.role !== "member" || row.reviewer || row.reviewsByTag };
       })),
     };
   },
@@ -222,7 +227,7 @@ export const stats = query({
     return {
       members: profiles.length,
       admins: profiles.filter((profile) => profile.role === "admin").length,
-      reviewers: profiles.filter((profile) => profile.appreciationReviewer).length,
+      reviewers: profiles.filter((profile) => profile.appreciationReviewer || reviewsByTag(profile)).length,
       core: profiles.filter((profile) => profile.memberType === "core").length,
       bod: profiles.filter((profile) => profile.memberType === "bod").length,
       deactivated: profiles.filter((profile) => profile.deactivatedAt).length,
@@ -292,7 +297,9 @@ export const setMemberType = mutation({
     const errors = validateStaffRole({ memberType: args.memberType, division });
     if (Object.keys(errors).length) throw new ConvexError(Object.values(errors)[0]!);
     const from = tagValue(profile.memberType, profile.division), to = tagValue(args.memberType, division || undefined);
-    await ctx.db.patch(profile._id, { memberType: args.memberType, division: division || undefined });
+    // Saving from the dashboard also confirms the tag, so saving it unchanged is how staff confirm a self-declared one.
+    await ctx.db.patch(profile._id, { memberType: args.memberType, division: division || undefined, tagConfirmedAt: Date.now(), tagConfirmedBy: actor.user._id });
     if (from !== to) await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "memberType", from, to });
+    else if (!profile.tagConfirmedAt) await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "tagConfirmed", from: "unconfirmed", to });
   },
 });

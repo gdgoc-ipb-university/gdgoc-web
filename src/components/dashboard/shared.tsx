@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { assignmentStatusLabels, fileSizeLabel, scoreLabel } from "@/lib/assignment";
+import { assignmentStatusLabels, audienceLabel, fileSizeLabel, scoreLabel, type AudienceGroup } from "@/lib/assignment";
 import { dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
@@ -35,6 +35,10 @@ export function DueLabel({ dueAt, now, open }: { dueAt: number; now: number; ope
 
 export function AssignmentStatusBadge({ status }: { status: keyof typeof assignmentStatusLabels }) {
   return <span className="app-status dash-status" data-status={status}>{assignmentStatusLabels[status]}</span>;
+}
+
+export function AudienceBadge({ audience }: { audience: readonly AudienceGroup[] }) {
+  return <span className="app-status dash-audience">Untuk {audienceLabel(audience)}</span>;
 }
 
 export function SubmissionBadge({ submittedAt, late }: { submittedAt: number | null; late: boolean }) {

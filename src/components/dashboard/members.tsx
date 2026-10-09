@@ -76,6 +76,7 @@ function ExportMembersButton() {
   }
   return <div className="dash-export dash-members-export">
     <button type="button" className="text-button" disabled={busy} onClick={() => void download()}><Arrow download size={16} />{busy ? "Menyiapkan CSV…" : "Unduh data anggota (CSV)"}</button>
+    <Link className="text-button" href="/dashboard/anggota/riwayat">Riwayat akses</Link>
     {error && <small role="alert">{error}</small>}
   </div>;
 }

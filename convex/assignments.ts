@@ -4,6 +4,7 @@ import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } fr
 import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent, isOwner } from "./auth";
 import { requireMember, requireStaff } from "./access";
+import { logAccess } from "./accessLog";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 
@@ -340,12 +341,15 @@ export const cancelRevision = mutation({
 export const setReviewer = mutation({
   args: { id: v.id("assignments"), ownerId: v.string(), reviewer: v.boolean() },
   handler: async (ctx, args) => {
-    await requireStaff(ctx);
+    const actor = await requireStaff(ctx);
     const assignment = await ctx.db.get(args.id);
     if (!assignment) notFound();
     const current = assignment.reviewers ?? [];
+    const log = (from: string, to: string) => logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "assignmentReviewer", from, to, assignmentId: assignment._id });
     if (!args.reviewer) {
-      if (current.includes(args.ownerId)) await ctx.db.patch(assignment._id, { reviewers: current.filter((id) => id !== args.ownerId), updatedAt: Date.now() });
+      if (!current.includes(args.ownerId)) return;
+      await ctx.db.patch(assignment._id, { reviewers: current.filter((id) => id !== args.ownerId), updatedAt: Date.now() });
+      await log("on", "off");
       return;
     }
     if (current.includes(args.ownerId)) return;
@@ -356,6 +360,7 @@ export const setReviewer = mutation({
     if (profile.role === "admin" || isOwner(account?.email ?? "", Boolean(account?.emailVerified))) throw new ConvexError("Admin dan pemilik sudah bisa menilai semua tugas.");
     if (current.length >= maxReviewers) throw new ConvexError(`Maksimal ${maxReviewers} penilai per tugas.`);
     await ctx.db.patch(assignment._id, { reviewers: [...current, args.ownerId], updatedAt: Date.now() });
+    await log("off", "on");
   },
 });
 

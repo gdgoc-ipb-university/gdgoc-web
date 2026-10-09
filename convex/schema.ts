@@ -10,6 +10,9 @@ export const appreciationValues = v.object({
 export const memberType = v.union(v.literal("member"), v.literal("core"), v.literal("bod"));
 export const assignmentStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("closed"));
 export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitted"), v.literal("reviewing"), v.literal("revision"), v.literal("published"));
+export const accessChange = v.union(
+  v.literal("role"), v.literal("reviewer"), v.literal("active"), v.literal("memberType"), v.literal("assignmentReviewer"), v.literal("deleted"),
+);
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
 
 export default defineSchema({
@@ -108,6 +111,14 @@ export default defineSchema({
   // Player and run counts per period, kept as counters so the board never scans every run.
   gameStats: defineTable({ period: v.string(), players: v.number(), runs: v.number() })
     .index("by_period", ["period"]),
+  // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
+  accessLog: defineTable({
+    at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
+    // The value before and after: "admin"/"member", "on"/"off", "active"/"deactivated", or a community tag as "core:Technical".
+    from: v.string(), to: v.string(), assignmentId: v.optional(v.id("assignments")),
+  })
+    .index("by_at", ["at"])
+    .index("by_target", ["targetId", "at"]),
   // One row per deleted account: who deleted it, when, and how many rows of each kind went. No personal data.
   accountDeletions: defineTable({
     deletedAt: v.number(), deletedBy: v.string(),

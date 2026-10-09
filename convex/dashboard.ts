@@ -4,6 +4,7 @@ import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/s
 import { components } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { authComponent, isReviewer } from "./auth";
+import { logAccess, tagValue } from "./accessLog";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
@@ -117,6 +118,41 @@ export const member = query({
   },
 });
 
+/**
+ * The access log for owners, newest first: everyone's, or one member's. Names come from the profile, then the sign-in
+ * account; a deleted account has neither and comes back as null.
+ */
+export const accessLog = query({
+  args: { ownerId: v.optional(v.string()), paginationOpts: paginationOptsValidator },
+  handler: async (ctx, { ownerId, paginationOpts }) => {
+    const actor = await requireMember(ctx);
+    if (actor.role !== "owner") throw new ConvexError({ code: "FORBIDDEN", message: "Hanya pemilik yang bisa melihat riwayat akses." });
+    const rows = ownerId
+      ? ctx.db.query("accessLog").withIndex("by_target", (q) => q.eq("targetId", ownerId))
+      : ctx.db.query("accessLog").withIndex("by_at");
+    const result = await rows.order("desc").paginate(paginationOpts);
+    const names = new Map<string, Promise<string | null>>();
+    const nameOf = (id: string) => {
+      if (!names.has(id)) names.set(id, (async () => {
+        const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", id)).unique();
+        return profile?.fullName || (await authComponent.getAnyUserById(ctx, id))?.name || null;
+      })());
+      return names.get(id)!;
+    };
+    return {
+      ...result,
+      page: await Promise.all(result.page.map(async (row) => {
+        const assignment = row.assignmentId ? await ctx.db.get(row.assignmentId) : null;
+        return {
+          _id: row._id, at: row.at, change: row.change, from: row.from, to: row.to, actorId: row.actorId, targetId: row.targetId,
+          actor: await nameOf(row.actorId), target: await nameOf(row.targetId),
+          assignment: row.assignmentId ? (assignment ? { _id: assignment._id, slug: assignment.slug, title: assignment.title } : { _id: row.assignmentId, slug: undefined, title: null }) : null,
+        };
+      })),
+    };
+  },
+});
+
 /** Deletes every auth-component row of one model that belongs to a user, page by page. */
 async function deleteAuthRows(ctx: MutationCtx, model: "session" | "account", userId: string) {
   let count = 0;
@@ -173,6 +209,7 @@ export const deleteAccount = mutation({
     counts.accounts = await deleteAuthRows(ctx, "account", ownerId);
     await ctx.runMutation(components.betterAuth.adapter.deleteOne, { input: { model: "user", where: [{ field: "_id", operator: "eq", value: ownerId }] } });
     await ctx.db.insert("accountDeletions", { deletedAt: Date.now(), deletedBy: actor.user._id, counts });
+    await logAccess(ctx, { actorId: actor.user._id, targetId: ownerId, change: "deleted", from: row.role, to: "deleted" });
     return counts;
   },
 });
@@ -209,6 +246,7 @@ export const setRole = mutation({
     if (row.role === args.role) return;
     if (args.role === "admin" && !row.active) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya admin.");
     await ctx.db.patch(profile._id, { role: args.role === "admin" ? "admin" : undefined, accessUpdatedBy: actor.user._id });
+    await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "role", from: row.role, to: args.role });
   },
 });
 
@@ -224,6 +262,7 @@ export const setReviewer = mutation({
     if (row.reviewer === args.reviewer) return;
     if (args.reviewer && !row.active) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya peninjau.");
     await ctx.db.patch(profile._id, { appreciationReviewer: args.reviewer ? true : undefined, accessUpdatedBy: actor.user._id });
+    await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "reviewer", from: args.reviewer ? "off" : "on", to: args.reviewer ? "on" : "off" });
   },
 });
 
@@ -237,6 +276,7 @@ export const setActive = mutation({
     if (row.role === "admin") throw new ConvexError(actor.role === "owner" ? "Turunkan peran admin terlebih dahulu." : "Hanya pemilik yang bisa mengelola akun admin.");
     if (row.active === args.active) return;
     await ctx.db.patch(profile._id, { deactivatedAt: args.active ? undefined : Date.now(), accessUpdatedBy: actor.user._id });
+    await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "active", from: args.active ? "deactivated" : "active", to: args.active ? "active" : "deactivated" });
     // Deactivation also takes the member off the Bogor Run boards; reactivation brings them back unless staff hid them.
     await syncBoardVisibility(ctx, args.ownerId, !args.active);
   },
@@ -246,11 +286,13 @@ export const setActive = mutation({
 export const setMemberType = mutation({
   args: { ownerId: v.string(), memberType, division: v.string() },
   handler: async (ctx, args) => {
-    await requireStaff(ctx);
+    const actor = await requireStaff(ctx);
     const { profile } = await target(ctx, args.ownerId);
     const division = args.memberType === "member" ? "" : args.division.trim();
     const errors = validateStaffRole({ memberType: args.memberType, division });
     if (Object.keys(errors).length) throw new ConvexError(Object.values(errors)[0]!);
+    const from = tagValue(profile.memberType, profile.division), to = tagValue(args.memberType, division || undefined);
     await ctx.db.patch(profile._id, { memberType: args.memberType, division: division || undefined });
+    if (from !== to) await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "memberType", from, to });
   },
 });

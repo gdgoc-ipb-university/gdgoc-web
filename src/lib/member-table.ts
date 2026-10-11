@@ -1,9 +1,42 @@
 // The members table: which filters and sorts exist, how a page is cut, and how the list state lives in the URL.
 // Shared by `dashboard.members` (Convex) and the members page, so both read the same values.
 
-export const memberFilters = ["all", "admin", "reviewer", "core", "bod", "deactivated"] as const;
-export type MemberFilter = (typeof memberFilters)[number];
-export const memberFilterLabels: Record<MemberFilter, string> = { all: "Semua", admin: "Admin", reviewer: "Peninjau", core: "Core Team", bod: "BoD", deactivated: "Nonaktif" };
+import { divisions } from "./onboarding";
+
+/**
+ * The members filter: AND across facets, OR within one. An empty list or "all" leaves that facet open.
+ * Access is the dashboard role; community is the self-declared or staff-set tag; tag is whether staff confirmed it.
+ */
+export type MemberFilters = {
+  access: MemberAccess[]; community: MemberCommunity[]; divisions: string[];
+  status: "all" | "active" | "deactivated"; tag: "all" | "confirmed" | "unconfirmed"; reviewer: boolean;
+};
+export const memberAccess = ["owner", "admin", "member"] as const;
+export type MemberAccess = (typeof memberAccess)[number];
+export const memberCommunity = ["member", "core", "bod"] as const;
+export type MemberCommunity = (typeof memberCommunity)[number];
+export const accessLabels: Record<MemberAccess, string> = { owner: "Pemilik", admin: "Admin", member: "Member" };
+export const communityLabels: Record<MemberCommunity, string> = { member: "Member", core: "Core Team", bod: "BoD" };
+export const statusLabels: Record<MemberFilters["status"], string> = { all: "Semua", active: "Aktif", deactivated: "Nonaktif" };
+export const tagLabels: Record<MemberFilters["tag"], string> = { all: "Semua", confirmed: "Terkonfirmasi", unconfirmed: "Belum dikonfirmasi" };
+export const noFilters: MemberFilters = { access: [], community: [], divisions: [], status: "all", tag: "all", reviewer: false };
+
+/** How many facets narrow the list, for the badge on the Filter button. */
+export function activeFilterCount(filters: MemberFilters) {
+  return [filters.access.length, filters.community.length, filters.divisions.length, filters.status !== "all", filters.tag !== "all", filters.reviewer].filter(Boolean).length;
+}
+
+type Filterable = { access: MemberAccess; memberType?: string | null; division?: string | null; active: boolean; tagConfirmed: boolean; reviewer: boolean };
+/** Whether one member passes the filter. `reviewer` is the granted or tag-based permission, not review by role. */
+export function matchesFilters(member: Filterable, filters: MemberFilters) {
+  const tagged = member.memberType === "core" || member.memberType === "bod";
+  return (!filters.access.length || filters.access.includes(member.access))
+    && (!filters.community.length || filters.community.includes((member.memberType ?? "member") as MemberCommunity))
+    && (!filters.divisions.length || filters.divisions.includes(member.division ?? ""))
+    && (filters.status === "all" || (filters.status === "active") === member.active)
+    && (filters.tag === "all" || (tagged && (filters.tag === "confirmed") === member.tagConfirmed))
+    && (!filters.reviewer || member.reviewer);
+}
 
 export const memberSorts = ["joined-desc", "joined-asc", "name-asc", "name-desc"] as const;
 export type MemberSort = (typeof memberSorts)[number];
@@ -54,17 +87,26 @@ export function pageWindow(page: number, pageCount: number): (number | "gap")[] 
   return items;
 }
 
-export type MemberListState = { search: string; filter: MemberFilter; sort: MemberSort; page: number; pageSize: number };
-export const defaultListState: MemberListState = { search: "", filter: "all", sort: DEFAULT_SORT, page: 1, pageSize: DEFAULT_PAGE_SIZE };
+export type MemberListState = { search: string; filters: MemberFilters; sort: MemberSort; page: number; pageSize: number };
+export const defaultListState: MemberListState = { search: "", filters: noFilters, sort: DEFAULT_SORT, page: 1, pageSize: DEFAULT_PAGE_SIZE };
 
-/** Reads the list state from `?q=&filter=&sort=&page=&size=`, ignoring anything unknown. */
-export function readListState(params: Pick<URLSearchParams, "get">): MemberListState {
-  const filter = params.get("filter"), sort = params.get("sort");
+const pick = <T extends string>(values: readonly string[], allowed: readonly T[]) => [...new Set(values)].filter((value): value is T => allowed.includes(value as T));
+const oneOf = <T extends string>(value: string | null, allowed: readonly T[], fallback: T) => allowed.includes(value as T) ? value as T : fallback;
+
+/** Reads the list state from `?q=&access=&community=&division=&status=&tag=&reviewer=1&sort=&page=&size=`, ignoring anything unknown. Multi-value facets repeat their key. */
+export function readListState(params: Pick<URLSearchParams, "get" | "getAll">): MemberListState {
   const page = Number(params.get("page")), size = Number(params.get("size"));
   return {
     search: (params.get("q") ?? "").slice(0, 80),
-    filter: memberFilters.includes(filter as MemberFilter) ? filter as MemberFilter : "all",
-    sort: memberSorts.includes(sort as MemberSort) ? sort as MemberSort : DEFAULT_SORT,
+    filters: {
+      access: pick(params.getAll("access"), memberAccess),
+      community: pick(params.getAll("community"), memberCommunity),
+      divisions: pick(params.getAll("division"), divisions),
+      status: oneOf(params.get("status"), ["all", "active", "deactivated"] as const, "all"),
+      tag: oneOf(params.get("tag"), ["all", "confirmed", "unconfirmed"] as const, "all"),
+      reviewer: params.get("reviewer") === "1",
+    },
+    sort: oneOf(params.get("sort"), memberSorts, DEFAULT_SORT),
     page: Number.isInteger(page) && page > 1 ? page : 1,
     pageSize: (pageSizes as readonly number[]).includes(size) ? size : DEFAULT_PAGE_SIZE,
   };
@@ -73,8 +115,14 @@ export function readListState(params: Pick<URLSearchParams, "get">): MemberListS
 /** The query string for a list state, leaving defaults out so the plain page keeps a plain URL. */
 export function listQueryString(state: MemberListState) {
   const params = new URLSearchParams();
+  const { filters } = state;
   if (state.search.trim()) params.set("q", state.search.trim());
-  if (state.filter !== "all") params.set("filter", state.filter);
+  for (const value of filters.access) params.append("access", value);
+  for (const value of filters.community) params.append("community", value);
+  for (const value of filters.divisions) params.append("division", value);
+  if (filters.status !== "all") params.set("status", filters.status);
+  if (filters.tag !== "all") params.set("tag", filters.tag);
+  if (filters.reviewer) params.set("reviewer", "1");
   if (state.sort !== DEFAULT_SORT) params.set("sort", state.sort);
   if (state.page > 1) params.set("page", String(state.page));
   if (state.pageSize !== DEFAULT_PAGE_SIZE) params.set("size", String(state.pageSize));

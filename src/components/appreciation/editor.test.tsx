@@ -35,7 +35,7 @@ describe("appreciation editor", () => {
   });
 
   it("offers BoD as a role only to members tagged as BoD", () => {
-    const options = (container: HTMLElement) => [...container.querySelectorAll<HTMLOptionElement>("#memberType option")].map((option) => option.textContent);
+    const options = (container: HTMLElement) => [...container.querySelectorAll<HTMLOptionElement>("select[name=memberType] option")].map((option) => option.textContent);
     const { container, unmount } = render(<DraftEditor record={record()} viewer={viewer} onBack={vi.fn()} actions={actions()} />);
     expect(options(container)).not.toContain("BoD");
     unmount();
@@ -57,12 +57,14 @@ describe("appreciation editor", () => {
     await person.type(container.querySelector("#fullName")!, "Member Test");
     await person.type(container.querySelector("#instagram")!, "member.test");
     fireEvent.change(container.querySelector("#eventDate")!, { target: { value: "2026-09-20" } });
-    await person.selectOptions(container.querySelector("#participation")!, "Tim");
+    await person.click(container.querySelector("#participation")!);
+    await person.click(await screen.findByRole("option", { name: "Tim" }));
     expect(container.querySelector("#teamMembers")).toBeTruthy();
     await person.type(container.querySelector("#teamName")!, "Tim Test");
     await waitFor(() => expect(gateway.save).toHaveBeenCalledWith(expect.objectContaining({ values: expect.objectContaining({ fullName: "Member Test", instagram: "member.test", eventDate: "2026-09-20", teamName: "Tim Test" }) })), { timeout: 2000 });
     expect(screen.getByRole("status").textContent).toContain("Tersimpan di akun");
-    await person.selectOptions(container.querySelector("#participation")!, "Individu");
+    await person.click(container.querySelector("#participation")!);
+    await person.click(await screen.findByRole("option", { name: "Individu" }));
     expect(container.querySelector("#teamMembers")).toBeNull();
   });
 

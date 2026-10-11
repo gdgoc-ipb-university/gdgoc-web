@@ -3,14 +3,14 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { components } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { authComponent, isReviewer, reviewsByTag } from "./auth";
+import { authComponent, isOwner, isReviewer, reviewsByTag } from "./auth";
 import { logAccess, tagValue } from "./accessLog";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
-import { validateStaffRole } from "../src/lib/onboarding";
+import { divisions, validateStaffRole } from "../src/lib/onboarding";
 import { assignmentMaxScore, isLate, isStaleReview } from "../src/lib/assignment";
-import { compareMembers, DEFAULT_SORT, pageSlice, type MemberFilter } from "../src/lib/member-table";
+import { compareMembers, DEFAULT_SORT, matchesFilters, noFilters, pageSlice } from "../src/lib/member-table";
 
 export const viewer = query({
   args: {},
@@ -41,14 +41,34 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
   };
 }
 
-/** Whether an onboarded profile belongs under a members-page filter. Reviewers mirror `stats`: the grant or a confirmed tag. */
-function inFilter(profile: Doc<"memberProfiles">, filter: MemberFilter) {
-  if (filter === "admin") return profile.role === "admin";
-  if (filter === "reviewer") return Boolean(profile.appreciationReviewer) || reviewsByTag(profile);
-  if (filter === "core" || filter === "bod") return profile.memberType === filter;
-  if (filter === "deactivated") return Boolean(profile.deactivatedAt);
-  return true;
+/**
+ * Account IDs of the owners, from the APPRECIATION_ADMIN_EMAILS allowlist (one or two addresses), so filtering by
+ * access does not look up every member's sign-in account.
+ */
+async function ownerIds(ctx: QueryCtx) {
+  // Better Auth stores emails lowercased.
+  const emails = (process.env.APPRECIATION_ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
+  const users = await Promise.all(emails.map((email) => ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", operator: "eq", value: email }] })));
+  return new Set(users.filter((user) => user && isOwner(String(user.email), Boolean(user.emailVerified))).map((user) => String(user!._id)));
 }
+
+/** The filter facts of one onboarded profile; `access` treats an owner's profile as owner whatever its stored role. */
+function filterFacts(profile: Doc<"memberProfiles">, owners: Set<string>) {
+  const access = owners.has(profile.ownerId) ? "owner" as const : profile.role === "admin" ? "admin" as const : "member" as const;
+  return {
+    access, memberType: profile.memberType, division: profile.division, active: access === "owner" || !profile.deactivatedAt,
+    tagConfirmed: Boolean(profile.tagConfirmedAt), reviewer: Boolean(profile.appreciationReviewer) || reviewsByTag(profile),
+  };
+}
+
+const filtersValidator = v.object({
+  access: v.optional(v.array(v.union(v.literal("owner"), v.literal("admin"), v.literal("member")))),
+  community: v.optional(v.array(v.union(v.literal("member"), v.literal("core"), v.literal("bod")))),
+  divisions: v.optional(v.array(v.string())),
+  status: v.optional(v.union(v.literal("all"), v.literal("active"), v.literal("deactivated"))),
+  tag: v.optional(v.union(v.literal("all"), v.literal("confirmed"), v.literal("unconfirmed"))),
+  reviewer: v.optional(v.boolean()),
+});
 
 /**
  * One numbered page of onboarded members, with the total so the page can show "1–25 dari 312". A name search uses the
@@ -57,18 +77,21 @@ function inFilter(profile: Doc<"memberProfiles">, filter: MemberFilter) {
  */
 export const members = query({
   args: {
-    search: v.string(),
-    filter: v.union(v.literal("all"), v.literal("admin"), v.literal("reviewer"), v.literal("core"), v.literal("bod"), v.literal("deactivated")),
+    search: v.string(), filters: filtersValidator,
     sort: v.optional(v.union(v.literal("joined-desc"), v.literal("joined-asc"), v.literal("name-asc"), v.literal("name-desc"))),
     page: v.number(), pageSize: v.number(),
   },
-  handler: async (ctx, { search, filter, sort, page, pageSize }) => {
+  handler: async (ctx, { search, filters: given, sort, page, pageSize }) => {
     await requireStaff(ctx);
+    const filters = { ...noFilters, ...given };
     const term = search.trim().slice(0, 80);
-    const profiles = term
-      ? await ctx.db.query("memberProfiles").withSearchIndex("search_name", (q) => q.search("fullName", term)).take(1024)
-      : await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
-    const matching = profiles.filter((profile) => profile.completedAt && inFilter(profile, filter));
+    const [profiles, owners] = await Promise.all([
+      term
+        ? ctx.db.query("memberProfiles").withSearchIndex("search_name", (q) => q.search("fullName", term)).take(1024)
+        : ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect(),
+      filters.access.length ? ownerIds(ctx) : new Set<string>(),
+    ]);
+    const matching = profiles.filter((profile) => profile.completedAt && matchesFilters(filterFacts(profile, owners), filters));
     const order = sort ?? (term ? null : DEFAULT_SORT);
     if (order) {
       const compare = compareMembers(order);
@@ -234,18 +257,24 @@ export const deleteAccount = mutation({
   },
 });
 
+/** Member counts for the overview and for every option of the members filter. */
 export const stats = query({
   args: {},
   handler: async (ctx) => {
     await requireStaff(ctx);
-    const profiles = await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
+    const [profiles, owners] = await Promise.all([ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect(), ownerIds(ctx)]);
+    const facts = profiles.map((profile) => filterFacts(profile, owners));
+    const count = (test: (fact: (typeof facts)[number]) => boolean) => facts.filter(test).length;
     return {
       members: profiles.length,
-      admins: profiles.filter((profile) => profile.role === "admin").length,
-      reviewers: profiles.filter((profile) => profile.appreciationReviewer || reviewsByTag(profile)).length,
-      core: profiles.filter((profile) => profile.memberType === "core").length,
-      bod: profiles.filter((profile) => profile.memberType === "bod").length,
-      deactivated: profiles.filter((profile) => profile.deactivatedAt).length,
+      admins: count((fact) => fact.access === "admin"),
+      reviewers: count((fact) => fact.reviewer),
+      core: count((fact) => fact.memberType === "core"),
+      bod: count((fact) => fact.memberType === "bod"),
+      deactivated: count((fact) => !fact.active),
+      owners: count((fact) => fact.access === "owner"),
+      unconfirmed: count((fact) => (fact.memberType === "core" || fact.memberType === "bod") && !fact.tagConfirmed),
+      divisions: Object.fromEntries(divisions.map((division) => [division, count((fact) => fact.division === division)])) as Record<string, number>,
     };
   },
 });

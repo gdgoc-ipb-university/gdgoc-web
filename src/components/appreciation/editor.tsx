@@ -10,6 +10,7 @@ import { DraftSession, readableError } from "@/lib/draft-session";
 import { Arrow } from "../icons";
 import { LoadingPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";
 import { PixelIcon } from "@/components/pixel-icons";
+import { Select } from "@/components/select";
 
 type Viewer = { id: string; name: string; email: string; isAdmin: boolean; memberType?: MemberType | null };
 type EditorProps = { id: Id<"appreciations">; viewer: Viewer; onBack: () => void };
@@ -100,12 +101,14 @@ export function DraftEditor({ record, viewer, onBack, actions }: { record: Doc<"
 
   function field(name: Exclude<AppreciationField, "publicationConsent">, label: string, options: { hint?: string; placeholder?: string; optional?: boolean; rows?: number; type?: string; choices?: readonly string[]; min?: string; max?: string } = {}) {
     const describedBy = [options.hint ? `${name}-hint` : "", errors[name] ? `${name}-error` : ""].filter(Boolean).join(" ") || undefined;
-    const common = { id: name, name, value: draft.values[name], required: !options.optional, "aria-invalid": Boolean(errors[name]), "aria-describedby": describedBy, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => update(name, event.target.value) };
+    const common = { id: name, name, value: draft.values[name], required: !options.optional, "aria-invalid": Boolean(errors[name]), "aria-describedby": describedBy, onChange: (event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => update(name, event.target.value) };
+    const labelText = <>{label} {options.optional ? <span className="field-optional">opsional</span> : <span aria-hidden="true" className="field-required">*</span>}</>;
+    if (options.choices) return <Select id={name} name={name} label={labelText} value={String(draft.values[name])} onChange={(value) => update(name, value)}
+      options={options.choices.map((choice) => ({ value: choice, label: choice }))} placeholder={`Pilih ${label.toLowerCase()}`} hint={options.hint} error={errors[name]} required={!options.optional} />;
     let control: ReactNode;
-    if (options.choices) control = <select {...common}><option value="">Pilih {label.toLowerCase()}</option>{options.choices.map((choice) => <option key={choice}>{choice}</option>)}</select>;
-    else if (options.rows) control = <textarea {...common} rows={options.rows} placeholder={options.placeholder} maxLength={fieldLimits[name]} data-lenis-prevent />;
+    if (options.rows) control = <textarea {...common} rows={options.rows} placeholder={options.placeholder} maxLength={fieldLimits[name]} data-lenis-prevent />;
     else control = <input {...common} type={options.type || "text"} placeholder={options.placeholder} maxLength={fieldLimits[name]} min={options.min} max={options.max} autoComplete={name === "fullName" ? "name" : "off"} />;
-    return <div className="app-field"><label htmlFor={name}>{label} {options.optional ? <span className="field-optional">opsional</span> : <span aria-hidden="true" className="field-required">*</span>}</label>{control}{options.hint && <p className="field-hint" id={`${name}-hint`}>{options.hint}</p>}{errors[name] && <p className="field-error" id={`${name}-error`}>{errors[name]}</p>}</div>;
+    return <div className="app-field"><label htmlFor={name}>{labelText}</label>{control}{options.hint && <p className="field-hint" id={`${name}-hint`}>{options.hint}</p>}{errors[name] && <p className="field-error" id={`${name}-error`}>{errors[name]}</p>}</div>;
   }
   // The picker stops at the end of the chapter year or today, whichever comes first.
   const today = todayInWib();

@@ -9,6 +9,7 @@ import { achievementLevels, isQueueFilterActive, queueSearchLimits, statusLabels
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";
 import { Arrow } from "../icons";
+import { Select } from "../select";
 
 type QueueStatus = "submitted" | "reviewing" | "revision" | "published";
 type QueueRow = FunctionReturnType<typeof api.appreciations.queue>["page"][number];
@@ -29,7 +30,7 @@ function ReviewQueue() {
   return <section aria-label="Antrean apresiasi"><div className="review-filters" aria-label="Filter status">{(["submitted", "reviewing", "revision", "published"] as const).map((value) => <button key={value} aria-pressed={status === value} onClick={() => setStatus(value)}>{statusLabels[value]}</button>)}</div>
     <div className="review-search" role="search" aria-label="Cari kiriman">
       <div className="app-field"><label htmlFor="review-search">Cari prestasi atau pengirim</label><input id="review-search" type="search" maxLength={160} value={filter.search} onChange={(event) => set("search", event.target.value)} placeholder="Contoh: Juara 1 atau nama pengirim" /></div>
-      <div className="app-field"><label htmlFor="review-level">Tingkat</label><select id="review-level" value={filter.level} onChange={(event) => set("level", event.target.value)}><option value="">Semua tingkat</option>{achievementLevels.map((level) => <option key={level} value={level}>{level}</option>)}</select></div>
+      <Select id="review-level" label="Tingkat" value={filter.level || "all"} onChange={(level) => set("level", level === "all" ? "" : level)} options={[{ value: "all", label: "Semua tingkat" }, ...achievementLevels.map((level) => ({ value: level, label: level }))]} />
       <div className="app-field"><label htmlFor="review-campus">Kampus</label><input id="review-campus" maxLength={150} value={filter.campus} onChange={(event) => set("campus", event.target.value)} placeholder="Contoh: IPB" /></div>
       {isQueueFilterActive(filter) && <button type="button" className="text-button" onClick={() => setFilter(noFilter)}>Hapus filter</button>}
     </div>
@@ -69,6 +70,10 @@ function ReviewHistory({ id }: { id: Id<"appreciations"> }) {
   </details>;
 }
 
+const reviewActions = [
+  { value: "reviewing", label: "Sedang ditinjau" }, { value: "revision", label: "Minta pengirim melengkapi" }, { value: "published", label: "Sudah dipost di Instagram" },
+] as const;
+
 function ReviewCard({ record }: { record: QueueRow }) {
   const review = useMutation(api.appreciations.review);
   const [note, setNote] = useState(record.reviewNote ?? "");
@@ -85,6 +90,6 @@ function ReviewCard({ record }: { record: QueueRow }) {
   }
   return <article className="app-panel review-card"><div className="app-record-top"><StatusBadge status={record.status} /><span className="app-small">{dateLabel(record.submittedAt ?? record.updatedAt)}</span></div><h2>{record.values.achievement}</h2><p>{record.values.fullName} · {record.values.eventName}</p><p className="app-small">Pengirim: {record.ownerName} ({record.ownerEmail}) · {record.values.level} · {record.values.campus}</p>{record.handlerName && <p className="app-small review-handler">Ditangani oleh {record.handlerName}</p>}<details><summary>Buka detail & dokumentasi</summary><RecordDetails record={record} /></details><ReviewHistory id={record._id} />
     {record.reviewNote && <p className="review-note">{record.reviewNote}</p>}{record.postUrl && <a className="text-button" href={record.postUrl} target="_blank" rel="noopener noreferrer">Lihat post Instagram <Arrow external /></a>}
-    {canReview && <form className="review-form" onSubmit={(event) => { event.preventDefault(); void update(); }}><fieldset disabled={busy}><legend>Tindak lanjut kiriman</legend><div className="app-field"><label htmlFor={`action-${record._id}`}>Ubah status</label><select id={`action-${record._id}`} value={action} onChange={(event) => setAction(event.target.value as typeof action)}><option value="reviewing">Sedang ditinjau</option><option value="revision">Minta pengirim melengkapi</option><option value="published">Sudah dipost di Instagram</option></select></div><div className="app-field"><label htmlFor={`note-${record._id}`}>Catatan untuk pengirim {action === "revision" ? "*" : "(opsional)"}</label><textarea data-lenis-prevent id={`note-${record._id}`} rows={3} maxLength={1500} required={action === "revision"} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Catatan ini bisa dilihat pengirim." /></div>{action === "published" && <div className="app-field"><label htmlFor={`post-${record._id}`}>Link postingan Instagram *</label><input id={`post-${record._id}`} type="url" required value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.instagram.com/p/…" /><p className="field-hint">Isi setelah postingan terbit. Tombol ini hanya mencatat status, bukan memposting ke Instagram.</p></div>}{error && <p role="alert" className="field-error">{error}</p>}<button className="button button-blue" type="submit">{busy ? "Menyimpan…" : "Simpan tindak lanjut"}</button></fieldset></form>}
+    {canReview && <form className="review-form" onSubmit={(event) => { event.preventDefault(); void update(); }}><fieldset disabled={busy}><legend>Tindak lanjut kiriman</legend><Select id={`action-${record._id}`} label="Ubah status" value={action} onChange={setAction} disabled={busy} options={reviewActions} /><div className="app-field"><label htmlFor={`note-${record._id}`}>Catatan untuk pengirim {action === "revision" ? "*" : "(opsional)"}</label><textarea data-lenis-prevent id={`note-${record._id}`} rows={3} maxLength={1500} required={action === "revision"} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Catatan ini bisa dilihat pengirim." /></div>{action === "published" && <div className="app-field"><label htmlFor={`post-${record._id}`}>Link postingan Instagram *</label><input id={`post-${record._id}`} type="url" required value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.instagram.com/p/…" /><p className="field-hint">Isi setelah postingan terbit. Tombol ini hanya mencatat status, bukan memposting ke Instagram.</p></div>}{error && <p role="alert" className="field-error">{error}</p>}<button className="button button-blue" type="submit">{busy ? "Menyimpan…" : "Simpan tindak lanjut"}</button></fieldset></form>}
   </article>;
 }

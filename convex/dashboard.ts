@@ -3,13 +3,14 @@ import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { components } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
-import { authComponent, isReviewer, REVIEW_DIVISION, reviewsByTag } from "./auth";
+import { authComponent, isReviewer, reviewsByTag } from "./auth";
 import { logAccess, tagValue } from "./accessLog";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
 import { validateStaffRole } from "../src/lib/onboarding";
 import { assignmentMaxScore, isLate, isStaleReview } from "../src/lib/assignment";
+import { compareMembers, DEFAULT_SORT, pageSlice, type MemberFilter } from "../src/lib/member-table";
 
 export const viewer = query({
   args: {},
@@ -40,30 +41,44 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
   };
 }
 
+/** Whether an onboarded profile belongs under a members-page filter. Reviewers mirror `stats`: the grant or a confirmed tag. */
+function inFilter(profile: Doc<"memberProfiles">, filter: MemberFilter) {
+  if (filter === "admin") return profile.role === "admin";
+  if (filter === "reviewer") return Boolean(profile.appreciationReviewer) || reviewsByTag(profile);
+  if (filter === "core" || filter === "bod") return profile.memberType === filter;
+  if (filter === "deactivated") return Boolean(profile.deactivatedAt);
+  return true;
+}
+
+/**
+ * One numbered page of onboarded members, with the total so the page can show "1–25 dari 312". A name search uses the
+ * search index (best match first unless `sort` is given); otherwise every onboarded profile is read and sorted, as
+ * `stats` already does. Only the rows on the page are joined with their sign-in account.
+ */
 export const members = query({
   args: {
     search: v.string(),
     filter: v.union(v.literal("all"), v.literal("admin"), v.literal("reviewer"), v.literal("core"), v.literal("bod"), v.literal("deactivated")),
-    paginationOpts: paginationOptsValidator,
+    sort: v.optional(v.union(v.literal("joined-desc"), v.literal("joined-asc"), v.literal("name-asc"), v.literal("name-desc"))),
+    page: v.number(), pageSize: v.number(),
   },
-  handler: async (ctx, { search, filter, paginationOpts }) => {
+  handler: async (ctx, { search, filter, sort, page, pageSize }) => {
     await requireStaff(ctx);
     const term = search.trim().slice(0, 80);
-    const source = term
-      ? ctx.db.query("memberProfiles").withSearchIndex("search_name", (q) => q.search("fullName", term))
-      : ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).order("desc");
-    const result = await source.filter((q) => {
-      const onboarded = q.neq(q.field("completedAt"), undefined);
-      if (filter === "admin") return q.and(onboarded, q.eq(q.field("role"), "admin"));
-      if (filter === "reviewer") {
-        const byTag = q.and(q.gt(q.field("tagConfirmedAt"), 0), q.eq(q.field("division"), REVIEW_DIVISION), q.or(q.eq(q.field("memberType"), "core"), q.eq(q.field("memberType"), "bod")));
-        return q.and(onboarded, q.or(q.eq(q.field("appreciationReviewer"), true), byTag));
-      }
-      if (filter === "core" || filter === "bod") return q.and(onboarded, q.eq(q.field("memberType"), filter));
-      if (filter === "deactivated") return q.and(onboarded, q.neq(q.field("deactivatedAt"), undefined));
-      return onboarded;
-    }).paginate(paginationOpts);
-    return { ...result, page: await Promise.all(result.page.map((profile) => memberRow(ctx, profile))) };
+    const profiles = term
+      ? await ctx.db.query("memberProfiles").withSearchIndex("search_name", (q) => q.search("fullName", term)).take(1024)
+      : await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
+    const matching = profiles.filter((profile) => profile.completedAt && inFilter(profile, filter));
+    const order = sort ?? (term ? null : DEFAULT_SORT);
+    if (order) {
+      const compare = compareMembers(order);
+      matching.sort((a, b) => compare({ fullName: a.fullName, joinedAt: a.completedAt! }, { fullName: b.fullName, joinedAt: b.completedAt! }));
+    }
+    const slice = pageSlice(matching.length, page, pageSize);
+    return {
+      rows: await Promise.all(matching.slice(slice.start, slice.end).map((profile) => memberRow(ctx, profile))),
+      total: matching.length, page: slice.page, pageSize: slice.pageSize, pageCount: slice.pageCount,
+    };
   },
 });
 

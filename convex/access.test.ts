@@ -92,7 +92,7 @@ type Any = FunctionReference<any, "public">;
 const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["dashboard.exportMembers", api.dashboard.exportMembers, OWNER, () => ({ paginationOpts: page })],
   ["dashboard.accessLog", api.dashboard.accessLog, OWNER, () => ({ paginationOpts: page })],
-  ["dashboard.members", api.dashboard.members, STAFF, () => ({ search: "", filter: "all", paginationOpts: page })],
+  ["dashboard.members", api.dashboard.members, STAFF, () => ({ search: "", filter: "all", page: 1, pageSize: 25 })],
   ["dashboard.member", api.dashboard.member, STAFF, (ids) => ({ ownerId: ids.member })],
   ["dashboard.stats", api.dashboard.stats, STAFF, () => ({})],
   ["assignments.adminList", api.assignments.adminList, STAFF, () => ({ paginationOpts: page })],

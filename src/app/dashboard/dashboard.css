@@ -114,22 +114,9 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-submissions strong { display: block; font-weight: 500; font-size: 16px; }
 .dash-submissions .app-small { display: block; overflow-wrap: anywhere; }
 
-.dash-count { margin-bottom: 20px; }
 .dash-toolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 28px; margin-bottom: 24px; }
 .dash-toolbar .review-filters { margin: 0; }
 .dash-search { margin: 0; flex: 1 1 280px; max-width: 420px; }
-.dash-members { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
-.dash-member { display: grid; grid-template-columns: 38px minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: center; padding: 18px 0; border-bottom: 1px solid var(--line); }
-.dash-member[data-active="false"] .dash-member-identity { opacity: .65; }
-.dash-member-identity { min-width: 0; display: grid; gap: 2px; }
-.dash-member-identity strong { font-weight: 500; font-size: 14px; }
-.dash-member-identity > span { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
-.dash-member-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.dash-member-meta .app-small { flex-basis: 100%; line-height: 1.5; }
-.dash-member-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 18px; }
-.dash-member-actions .text-button { font-size: 12px; }
-.dash-member-actions .field-error { flex-basis: 100%; text-align: right; }
-.dash-member-actions .dash-confirm { justify-content: flex-end; text-align: right; }
 
 .dash-assignment-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; }
 .dash-copy { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
@@ -151,12 +138,6 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-facts > div { display: grid; gap: 3px; padding-block: 11px; border-bottom: 1px solid #e8ece4; }
 .dash-facts dt { font-size: 11px; color: var(--muted); }
 .dash-facts dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
-.dash-role-editor { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 14px; justify-content: flex-end; }
-.dash-role-editor .app-field { margin: 0; min-width: 150px; }
-.dash-role-editor .app-field label { font-size: 11px; margin-bottom: 4px; }
-.dash-role-editor select { min-height: 40px; padding: 8px 10px; font-size: 13px; }
-.dash-role-editor-actions { display: flex; gap: 16px; padding-bottom: 8px; }
-.dash-role-editor .field-error { flex-basis: 100%; text-align: right; margin: 0; }
 
 /* Rich text, shared by the answer editor and rendered answers. */
 .rich-text { font-size: 14px; line-height: 1.75; color: var(--ink); overflow-wrap: anywhere; }
@@ -232,11 +213,6 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
   .dropzone[data-dragging="true"] .dropzone-icon, .dropzone[data-over="true"] .dropzone-icon { animation: none; }
 }
 
-@media (max-width: 1050px) {
-  .dash-member { grid-template-columns: 38px minmax(0, 1fr) minmax(0, 1fr); }
-  .dash-member-actions { grid-column: 2 / -1; justify-content: flex-start; }
-  .dash-member-actions .field-error, .dash-member-actions .dash-confirm { text-align: left; justify-content: flex-start; }
-}
 @media (max-width: 960px) {
   .dash-app { display: block; background: var(--paper); }
   .dash-topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 68px; padding: 0 20px; background: var(--paper); border-bottom: 1px solid var(--line); }
@@ -248,8 +224,6 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
   .dash-sidebar .dash-brand { display: none; }
   .dash-backdrop { display: block; position: fixed; inset: 0; z-index: 35; background: #172d4366; }
   .dash-profile-grid { grid-template-columns: 1fr; }
-  .dash-role-editor { justify-content: flex-start; }
-  .dash-role-editor .field-error { text-align: left; }
 }
 @media (max-width: 560px) {
   /* One scrollable row instead of ragged wrapping; arrow-key focus scrolls tools into view. */
@@ -270,8 +244,6 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
   .dash-stats dd { font-size: 32px; }
   .dash-instructions { padding: 20px; font-size: 14px; }
   .dash-submissions > li { padding: 22px 20px; }
-  .dash-member { grid-template-columns: 38px minmax(0, 1fr); gap: 10px 14px; }
-  .dash-member-meta, .dash-member-actions { grid-column: 2; }
   .dash-form-actions { flex-direction: column-reverse; align-items: stretch; }
   .dash-form-actions .text-button { margin: 0 auto; }
   .dash-due-field input { max-width: none; }
@@ -445,13 +417,139 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-delete-account .app-field { margin-bottom: 10px; }
 .dash-reviewer-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; max-width: 560px; }
 .dash-reviewer-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: white; border: 1px solid #dfe5dc; }
-.dash-members-export { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 20px; margin-bottom: 12px; }
-.dash-members-export small { flex-basis: 100%; text-align: left; }
 
 /* Member detail */
-.dash-member-identity strong a { color: inherit; text-decoration: underline; text-decoration-color: #b9c7b0; text-underline-offset: 3px; }
-.dash-member-identity strong a:hover { text-decoration-color: currentColor; }
 .dash-member-activity { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
 .dash-member-activity li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 12px 14px; background: white; border: 1px solid #dfe5dc; }
 .dash-member-activity li > div { display: grid; gap: 2px; min-width: 0; }
 .dash-member-activity a { overflow-wrap: anywhere; }
+.dash-member-header { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 22px; align-items: center; margin-bottom: 26px; }
+.dash-member-avatar { width: 64px; height: 64px; font-size: 38px; }
+.dash-member-heading h1 { font: 600 clamp(34px, 4.4vw, 56px)/1.06 var(--font-pixel), monospace; letter-spacing: -.04em; margin-block: 10px 12px; overflow-wrap: anywhere; }
+.dash-member-heading h1 .app-small { font: 400 14px/1 var(--font-body), sans-serif; letter-spacing: 0; }
+.dash-member-header-actions { align-self: start; padding-top: 6px; }
+.dash-member-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0 28px; margin: 0 0 8px; padding: 6px 22px; background: white; border: 1px solid #dfe5dc; }
+.dash-fact-row { display: inline-flex; align-items: center; gap: 4px; max-width: 100%; }
+.dash-fact-row a { overflow-wrap: anywhere; text-decoration: underline; text-decoration-color: #b9c7b0; text-underline-offset: 3px; }
+.dash-fact-row .icon-button { width: 34px; height: 34px; }
+@media (max-width: 640px) {
+  .dash-member-header { grid-template-columns: 48px minmax(0, 1fr); gap: 14px 16px; }
+  .dash-member-avatar { width: 48px; height: 48px; font-size: 28px; }
+  .dash-member-header-actions { grid-column: 1 / -1; padding: 0; }
+  .dash-member-facts { padding: 4px 16px; }
+}
+
+/* Data tables (members first): toolbar, sortable table, icon actions, numbered pagination, menus and dialogs. */
+.icon-button { position: relative; display: inline-grid; place-items: center; width: 40px; height: 40px; padding: 0; color: var(--ink); background: transparent; border: 1px solid transparent; cursor: pointer; flex-shrink: 0; }
+.icon-button:hover:not(:disabled), .icon-button[data-pressed], .icon-button[aria-expanded="true"] { background: #eae9dc; border-color: #c9d2c4; }
+.icon-button:disabled { color: #a3aea9; cursor: default; }
+.icon-button[data-tone="danger"] { color: #b0372a; }
+.icon-button:focus-visible, .dash-tool-button:focus-visible, .dash-sort:focus-visible, .dash-page:focus-visible, .dash-dialog-button:focus-visible, .dash-table-wrap:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
+/* The accessible name doubles as a tooltip, on hover and on keyboard focus. */
+.icon-button[data-tip]::after { content: attr(data-tip); position: absolute; z-index: 20; bottom: calc(100% + 6px); right: 0; padding: 5px 8px; font: 500 11px/1.3 var(--font-body), sans-serif; white-space: nowrap; color: white; background: var(--ink); pointer-events: none; opacity: 0; transition: opacity .12s ease .3s; }
+.icon-button[data-tip]:hover::after, .icon-button[data-tip]:focus-visible::after { opacity: 1; }
+.icon-button[aria-expanded="true"]::after, .icon-button:disabled::after { display: none; }
+.dash-tool-button { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 8px 14px; font-size: 12px; font-weight: 500; color: var(--ink); background: #fffefa; border: 1px solid #aebbb9; cursor: pointer; white-space: nowrap; }
+.dash-tool-button:hover:not(:disabled), .dash-tool-button[aria-expanded="true"] { background: #eae9dc; }
+.dash-tool-button:disabled { color: var(--muted); cursor: progress; }
+
+.dash-owner-tools { display: grid; justify-items: end; gap: 6px; flex-shrink: 0; }
+.dash-owner-buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.dash-owner-tools small { color: #b0372a; max-width: 320px; text-align: right; font-size: 12px; }
+.dash-search-control { position: relative; }
+.dash-search-control > svg { position: absolute; left: 13px; top: 50%; translate: 0 -50%; color: var(--muted); pointer-events: none; }
+.app-field .dash-search-control input { padding-left: 40px; }
+.dash-filters button { display: inline-flex; align-items: center; gap: 8px; }
+.dash-filter-count { min-width: 22px; padding: 1px 6px; font: 500 10px/1.5 var(--font-mono), monospace; font-variant-numeric: tabular-nums; text-align: center; color: var(--ink); background: #eceee6; }
+.dash-filters button[aria-pressed="true"] .dash-filter-count { color: var(--blue); background: white; }
+
+.dash-table-wrap { position: relative; overflow-x: auto; background: white; border: 1px solid #dfe5dc; overscroll-behavior-x: contain; scrollbar-width: thin; }
+.dash-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 13px; transition: opacity .15s ease; }
+.dash-table[aria-busy="true"] { opacity: .55; }
+.dash-table th, .dash-table td { padding: 12px 14px; text-align: left; vertical-align: middle; border-bottom: 1px solid #e8ece4; }
+.dash-table tbody tr:last-child > * { border-bottom: 0; }
+.dash-table thead th { padding-block: 10px; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: #f4f3ea; border-bottom-color: var(--line); white-space: nowrap; }
+.dash-table tbody tr:hover > * { background: #fbfbf6; }
+.dash-table tbody tr[data-active="false"] > :not(.dash-table-actions) { color: var(--muted); }
+/* The member column stays in view while the rest scrolls sideways on small screens. */
+.dash-table .dash-table-member, .dash-table thead th:first-child { position: sticky; left: 0; z-index: 1; background: white; }
+.dash-table thead th:first-child { background: #f4f3ea; }
+.dash-table .dash-table-member { min-width: 240px; font-weight: 400; }
+.dash-table-person { display: flex; align-items: center; gap: 12px; }
+.dash-table-person .account-avatar { width: 34px; height: 34px; font-size: 20px; }
+.dash-table-person > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.dash-table-member a { font-weight: 500; font-size: 14px; color: var(--ink); text-decoration: underline; text-decoration-color: #b9c7b0; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.dash-table-member a:hover { text-decoration-color: currentColor; }
+.dash-table-member small, .dash-table-stack small { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.dash-table-stack { display: grid; gap: 1px; min-width: 170px; max-width: 240px; }
+.dash-table-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.dash-table .dash-table-actions { width: 1%; padding-block: 6px; text-align: right; position: sticky; right: 0; z-index: 1; background: white; box-shadow: inset 1px 0 0 #e8ece4; }
+.dash-table thead .dash-table-actions { background: #f4f3ea; }
+.dash-row-actions { display: inline-flex; gap: 2px; }
+.dash-sort { display: inline-flex; align-items: center; gap: 6px; margin: -4px -6px; padding: 4px 6px; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+.dash-sort:hover { color: var(--ink); }
+th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { color: var(--blue); }
+
+.dash-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.dash-unconfirmed { font-size: 11px; color: #785511; }
+.dash-active { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }
+.dash-active::before { content: ""; width: 8px; height: 8px; background: var(--green); }
+.dash-active[data-active="false"] { color: #9b3024; }
+.dash-active[data-active="false"]::before { background: #c24032; }
+
+.dash-pagination { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; padding: 14px 0 0; font-size: 12px; }
+.dash-pagination-range { margin: 0; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dash-pagination-range strong { font-weight: 500; color: var(--ink); }
+.dash-pagination-size { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.dash-pagination-size select { min-height: 36px; padding: 4px 8px; font: inherit; color: var(--ink); background: white; border: 1px solid #abb7b2; border-radius: 0; }
+.dash-pagination nav { margin-left: auto; }
+.dash-pages { display: flex; align-items: center; gap: 4px; list-style: none; margin: 0; padding: 0; }
+.dash-page { min-width: 40px; height: 40px; padding: 0 8px; font: 500 13px/1 var(--font-mono), monospace; font-variant-numeric: tabular-nums; color: var(--ink); background: transparent; border: 1px solid transparent; cursor: pointer; }
+.dash-page:hover { background: #eae9dc; border-color: #c9d2c4; }
+.dash-page[aria-current="page"] { color: white; background: var(--blue); border-color: var(--ink); box-shadow: 2px 2px 0 var(--ink); }
+.dash-page-gap { min-width: 24px; text-align: center; color: var(--muted); }
+
+/* Menus and dialogs render in a portal at the end of <body>, outside the dashboard's own selectors. */
+.dash-menu-popover { min-width: 240px; max-width: calc(100vw - 32px); max-height: var(--available-height); overflow: auto; padding: 6px; font-family: var(--font-body), sans-serif; color: var(--ink); background: #fffefa; border: 1px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); z-index: 200; outline: none; }
+.dash-menu { outline: none; }
+.dash-menu-section + .dash-menu-section { margin-top: 4px; padding-top: 4px; border-top: 1px solid #e8ece4; }
+.dash-menu-heading { padding: 8px 10px 4px; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.dash-menu-item { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 8px 10px; font-size: 13px; cursor: pointer; outline: none; }
+.dash-menu-item svg { flex-shrink: 0; color: #5b6b64; }
+.dash-menu-item[data-focused] { background: #e7eefa; color: #1d4fb0; }
+.dash-menu-item[data-focused] svg { color: currentColor; }
+.dash-menu-item[data-tone="danger"], .dash-menu-item[data-tone="danger"] svg { color: #b0372a; }
+.dash-menu-item[data-tone="danger"][data-focused] { background: #fbe8e5; }
+.dash-menu-separator { height: 1px; margin: 4px 0; background: #e8ece4; border: 0; }
+
+.dash-modal-overlay { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px; background: #172d4366; }
+.dash-modal { width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: auto; font-family: var(--font-body), sans-serif; color: var(--ink); background: #fffefa; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
+.dash-dialog { padding: 26px 26px 22px; outline: none; }
+.dash-dialog-title { margin: 0 0 12px; font: 600 24px/1.2 var(--font-pixel), monospace; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.dash-dialog-body { margin: 0 0 18px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+.dash-dialog .field-error { margin: -6px 0 16px; }
+.dash-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
+.dash-dialog-button { min-height: 44px; padding: 10px 18px; font: 500 13px var(--font-body), sans-serif; color: var(--ink); background: var(--paper); border: 1px solid #aebbb9; cursor: pointer; }
+.dash-dialog-button:hover:not(:disabled):not([data-disabled]) { background: #eae9dc; }
+.dash-dialog-button[data-primary] { color: white; background: var(--blue); border-color: var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.dash-dialog-button[data-primary]:hover:not(:disabled):not([data-disabled]) { background: #1d57bb; }
+.dash-dialog-button[data-primary][data-tone="danger"] { background: #b0372a; }
+.dash-dialog-button[data-primary][data-tone="danger"]:hover:not(:disabled):not([data-disabled]) { background: #922a1f; }
+.dash-dialog-button:disabled, .dash-dialog-button[data-disabled] { opacity: .6; cursor: progress; }
+.dash-role-editor .app-field { margin-bottom: 16px; }
+.dash-role-editor .app-field label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 6px; }
+.dash-role-editor select { display: block; width: 100%; min-height: 44px; padding: 8px 10px; font: 14px var(--font-body), sans-serif; color: var(--ink); background: white; border: 1px solid #abb7b2; border-radius: 0; }
+.dash-role-editor select:focus { border-color: var(--blue); outline: 2px solid #4285f43d; outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .dash-owner-tools { justify-items: start; }
+  .dash-owner-tools small { text-align: left; }
+  .dash-pagination nav { margin-left: 0; width: 100%; }
+  .dash-pages { flex-wrap: wrap; }
+  .dash-dialog-actions { flex-direction: column-reverse; align-items: stretch; }
+}
+@media (prefers-reduced-motion: reduce) { .dash-table, .icon-button[data-tip]::after { transition: none; } }
+@media (forced-colors: active) {
+  .dash-page[aria-current="page"], .dash-menu-item[data-focused] { outline: 2px solid Highlight; }
+  .dash-active::before { forced-color-adjust: none; }
+}

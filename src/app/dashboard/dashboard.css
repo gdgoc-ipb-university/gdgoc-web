@@ -545,17 +545,21 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-modal-overlay { position: fixed; inset: 0; z-index: 300; display: grid; place-items: center; padding: 16px; background: #172d4366; }
 .dash-modal-overlay[data-entering] { animation: dash-fade .2s ease-out; }
 .dash-modal-overlay[data-exiting] { animation: dash-fade .16s ease-in reverse forwards; }
-.dash-modal { width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: auto; overscroll-behavior: contain; font-family: var(--font-body), sans-serif; color: var(--ink); background: #fffefa; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
+.dash-modal { display: flex; flex-direction: column; width: min(480px, 100%); max-height: calc(100dvh - 32px); overflow: hidden; font-family: var(--font-body), sans-serif; color: var(--ink); background: #fffefa; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
 .dash-modal[data-wide] { width: min(640px, 100%); }
 .dash-modal[data-entering] { animation: dash-rise .28s cubic-bezier(.16, 1, .3, 1); }
 .dash-modal[data-exiting] { animation: dash-rise .16s ease-in reverse forwards; }
-.dash-dialog { padding: 24px 26px; outline: none; }
-.dash-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 14px; }
+/* Header and footer stay put; only the content scrolls. One 24px inset on every side. */
+.dash-dialog { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; outline: none; }
+.dash-dialog-form { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.dash-dialog-header { flex: none; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 22px 24px 16px; }
+.dash-dialog-content { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 24px 24px; }
+.dash-dialog-footer { flex: none; display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding: 14px 24px; background: #fffefa; border-top: 1px solid #e1e6dd; }
 .dash-dialog-title { margin: 0; font: 600 24px/1.25 var(--font-pixel), monospace; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .dash-dialog-close { margin: -8px -10px 0 0; }
-.dash-dialog-body { margin: 0 0 20px; font-size: 14px; line-height: 1.6; color: var(--muted); }
-.dash-dialog .field-error { margin: -8px 0 16px; }
-.dash-dialog-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; }
+.dash-dialog-body { margin: 0 0 16px; font-size: 14px; line-height: 1.6; color: var(--muted); }
+.dash-dialog-content > :last-child { margin-bottom: 0; }
+.dash-dialog .field-error { margin: 0; }
 .dash-dialog-spacer { flex: 1; }
 .dash-dialog-button { display: inline-flex; align-items: center; justify-content: center; min-height: var(--control-h); padding: 0 18px; font: 500 13px var(--font-body), sans-serif; color: var(--ink); background: white; border: 1px solid var(--control-line); cursor: pointer; }
 .dash-dialog-button:hover:not(:disabled):not([data-disabled]) { background: #f0efe4; }
@@ -566,35 +570,22 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-dialog-button:disabled, .dash-dialog-button[data-disabled] { opacity: .6; cursor: progress; }
 .dash-role-editor .app-field { margin-bottom: 16px; }
 
-/* The members filter. */
-.dash-filter-form { display: grid; }
-.dash-filter-groups { display: grid; gap: 22px; padding-bottom: 22px; }
+/* The members filter: every group is a label (and hint) over the same chips, 24px apart. A check marks a choice in a
+   multi-select group; a filled square marks the one choice in a single-select group. */
+.dash-filter-groups { display: grid; gap: 24px; }
 .dash-filter-group { display: grid; gap: 10px; min-width: 0; }
 .dash-filter-label { display: grid; gap: 2px; font-size: 12px; font-weight: 500; }
-.dash-filter-label small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.dash-filter-label small { font-size: 11px; font-weight: 400; line-height: 1.6; color: var(--muted); }
 .dash-filter-options { display: flex; flex-wrap: wrap; gap: 8px; }
-.dash-filter-chip, .dash-segment { display: inline-flex; align-items: center; gap: 8px; min-height: var(--control-h-sm); padding: 0 12px; font-size: 13px; cursor: pointer; transition: background-color .12s ease, border-color .12s ease, color .12s ease; }
-.dash-filter-chip { background: white; border: 1px solid #c3ccc0; }
-.dash-filter-chip[data-hovered] { border-color: #8c9a92; }
-.dash-filter-chip[data-selected] { color: #1d4fb0; background: #e7eefa; border-color: var(--blue); }
-.dash-filter-chip svg { margin-left: -4px; }
-.dash-filter-chip[data-focus-visible], .dash-segment[data-focus-visible], .dash-filter-toggle[data-focus-visible] { outline: 3px solid #2563eb; outline-offset: 2px; }
-.dash-segmented { display: flex; flex-wrap: wrap; width: fit-content; max-width: 100%; background: white; border: 1px solid #c3ccc0; }
-.dash-segment + .dash-segment { border-left: 1px solid #e1e6dd; }
-.dash-segment[data-hovered]:not([data-selected]) { background: #f0efe4; }
-.dash-segment[data-selected] { color: white; background: var(--blue); }
-.dash-filter-count { min-width: 22px; padding: 1px 6px; font: 500 10px/1.5 var(--font-mono), monospace; font-variant-numeric: tabular-nums; text-align: center; color: var(--ink); background: #eceee6; }
-.dash-filter-chip[data-selected] .dash-filter-count { color: #1d4fb0; background: white; }
-.dash-segment[data-selected] .dash-filter-count { color: white; background: #ffffff33; }
-.dash-filter-toggle { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; background: white; border: 1px solid #c3ccc0; cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
-.dash-filter-toggle[data-hovered] { border-color: #8c9a92; }
-.dash-filter-toggle[data-selected] { background: #f3f7fe; border-color: var(--blue); }
-.dash-filter-toggle strong { display: block; font-size: 13px; font-weight: 500; }
-.dash-filter-toggle small { display: block; margin-top: 2px; font-size: 11px; line-height: 1.6; color: var(--muted); }
-.dash-filter-box { display: grid; place-items: center; width: 22px; height: 22px; flex-shrink: 0; color: white; background: white; border: 1px solid #8c9a92; }
-.dash-filter-toggle[data-selected] .dash-filter-box { background: var(--blue); border-color: var(--blue); }
-/* The footer stays in reach while the choices scroll. */
-.dash-filter-actions { position: sticky; bottom: -24px; margin: 0 -26px -24px; padding: 14px 26px 18px; background: #fffefa; border-top: 1px solid #e1e6dd; }
+.dash-option { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px 0 10px; font-size: 13px; background: white; border: 1px solid #c3ccc0; cursor: pointer; transition: background-color .12s ease, border-color .12s ease; }
+.dash-option[data-hovered] { border-color: #8c9a92; }
+.dash-option[data-selected] { background: #f3f7fe; border-color: var(--blue); }
+.dash-option[data-focus-visible] { outline: 3px solid #2563eb; outline-offset: 2px; }
+.dash-option-mark { display: grid; place-items: center; width: 18px; height: 18px; flex-shrink: 0; color: white; background: white; border: 1px solid #8c9a92; }
+.dash-option[data-selected] .dash-option-mark[data-mark="check"] { background: var(--blue); border-color: var(--blue); }
+.dash-option[data-selected] .dash-option-mark[data-mark="dot"] { border-color: var(--blue); box-shadow: inset 0 0 0 3px white; background: var(--blue); }
+.dash-filter-count { min-width: 22px; padding: 1px 6px; font: 500 10px/1.5 var(--font-mono), monospace; font-variant-numeric: tabular-nums; text-align: center; color: var(--muted); background: #eceee6; }
+.dash-option[data-selected] .dash-filter-count { color: #1d4fb0; background: #dfe8f9; }
 
 @media (max-width: 760px) {
   .dash-owner-tools { justify-items: start; }
@@ -607,7 +598,6 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
   .dash-pager li:first-child, .dash-pager li:last-child, .dash-pager .dash-pager-compact { display: grid; }
   .dash-pager li:first-child, .dash-pager li:last-child { flex: 0 0 auto; }
   .dash-pager .dash-pager-compact { flex: 1; place-items: center; font: 500 13px/1 var(--font-mono), monospace; color: var(--muted); border-right: 1px solid #e1e6dd; }
-  .dash-dialog-actions:not(.dash-filter-actions) { flex-direction: column-reverse; align-items: stretch; }
 }
 @media (max-width: 640px) {
   /* Dialogs become a sheet from the bottom edge. */
@@ -615,23 +605,20 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
   .dash-modal, .dash-modal[data-wide] { width: 100%; max-height: 90dvh; border-width: 1px 0 0; box-shadow: 0 -4px 0 #172d431a; }
   .dash-modal[data-entering] { animation: dash-sheet .32s cubic-bezier(.16, 1, .3, 1); }
   .dash-modal[data-exiting] { animation: dash-sheet .2s ease-in reverse forwards; }
-  .dash-dialog { padding: 20px 18px max(20px, env(safe-area-inset-bottom)); }
-  .dash-filter-actions { bottom: max(-20px, calc(-1 * env(safe-area-inset-bottom))); margin: 0 -18px -20px; padding: 12px 18px 16px; }
-  .dash-filter-actions .text-button { flex-basis: 100%; justify-content: center; }
-  .dash-filter-actions .dash-dialog-spacer { display: none; }
-  .dash-filter-actions .dash-dialog-button { flex: 0 0 auto; white-space: nowrap; }
-  .dash-filter-actions .dash-dialog-button[data-primary] { flex: 1; }
-  /* Segments stack in the sheet, so a long option never wraps inside the bar. */
-  .dash-segmented { display: grid; width: 100%; }
-  .dash-segment + .dash-segment { border-left: 0; border-top: 1px solid #e1e6dd; }
-  .dash-segment .dash-filter-count { margin-left: auto; }
+  .dash-dialog-header { padding: 18px 18px 14px; }
+  .dash-dialog-content { padding: 0 18px 20px; }
+  .dash-dialog-footer { padding: 12px 18px max(12px, env(safe-area-inset-bottom)); }
+  .dash-dialog-footer .text-button { flex-basis: 100%; justify-content: center; }
+  .dash-dialog-footer .dash-dialog-spacer { display: none; }
+  .dash-dialog-footer .dash-dialog-button { flex: 0 0 auto; white-space: nowrap; }
+  .dash-dialog-footer .dash-dialog-button[data-primary] { flex: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .dash-table, .icon-button[data-tip]::after, .dash-filter-chip, .dash-segment, .dash-filter-toggle { transition: none; }
+  .dash-table, .icon-button[data-tip]::after, .dash-option { transition: none; }
   .dash-chip, .dash-menu-popover[data-entering], .dash-menu-popover[data-exiting] { animation: none; }
   .dash-modal[data-entering], .dash-modal[data-exiting] { animation-name: dash-fade; }
 }
 @media (forced-colors: active) {
-  .dash-page[aria-current="page"], .dash-menu-item[data-focused], .dash-segment[data-selected], .dash-filter-chip[data-selected] { outline: 2px solid Highlight; }
+  .dash-page[aria-current="page"], .dash-menu-item[data-focused], .dash-option[data-selected] { outline: 2px solid Highlight; }
   .dash-active::before { forced-color-adjust: none; }
 }

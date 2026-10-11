@@ -43,7 +43,7 @@ export function Select<K extends string | number>({ id, label, value, onChange, 
     </Button>
     {hint && <Text slot="description" className="field-hint">{hint}</Text>}
     <FieldError className="field-error">{error}</FieldError>
-    <Popover className="select-popover" offset={6}>
+    <Popover className="select-popover" offset={6} data-lenis-prevent>
       <ListBox className="select-list">
         {options.map((option) => <ListBoxItem key={option.value} id={option.value} textValue={option.label} className="select-option">
           {({ isSelected }) => <><span>{option.label}</span>{isSelected && <PixelIcon name="check" size={18} />}</>}

@@ -76,7 +76,8 @@ export function Pagination({ label, noun, page, pageCount, pageSize, total, onPa
 
 /**
  * A modal dialog over the page: centred on wide screens, a sheet from the bottom on phones, both animated. It closes on
- * Escape, the close button, or a click outside unless `busy`; focus returns to whatever opened it.
+ * Escape, the close button, or a click outside unless `busy`; focus returns to whatever opened it. Put the content in
+ * `DialogContent` and the buttons in `DialogFooter`: the title and the footer stay put while the content scrolls.
  */
 export function DashboardDialog({ open, onClose, busy = false, title, alert = false, wide = false, children }: { open: boolean; onClose: () => void; busy?: boolean; title: string; alert?: boolean; wide?: boolean; children: ReactNode }) {
   return <ModalOverlay className="dash-modal-overlay" isOpen={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }} isDismissable={!busy} isKeyboardDismissDisabled={busy}>
@@ -92,17 +93,28 @@ export function DashboardDialog({ open, onClose, busy = false, title, alert = fa
   </ModalOverlay>;
 }
 
+/** The scrolling part of a dialog. `data-lenis-prevent` keeps the page's smooth scrolling from taking the wheel. */
+export function DialogContent({ children }: { children: ReactNode }) {
+  return <div className="dash-dialog-content" data-lenis-prevent>{children}</div>;
+}
+
+export function DialogFooter({ children }: { children: ReactNode }) {
+  return <div className="dash-dialog-footer">{children}</div>;
+}
+
 /** Asks before a change: the consequence, then cancel and confirm. A failed change keeps the dialog open with the reason. */
 export function ConfirmDialog({ open, title, message, confirmLabel, danger = false, busy, error, onConfirm, onClose }: {
   open: boolean; title: string; message: ReactNode; confirmLabel: string; danger?: boolean; busy: boolean; error: string;
   onConfirm: () => void; onClose: () => void;
 }) {
   return <DashboardDialog open={open} onClose={onClose} busy={busy} title={title} alert>
-    <p className="dash-dialog-body">{message}</p>
-    {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="dash-dialog-actions">
+    <DialogContent>
+      <p className="dash-dialog-body">{message}</p>
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </DialogContent>
+    <DialogFooter>
       <Button className="dash-dialog-button" isDisabled={busy} onPress={onClose}>Batal</Button>
       <Button className="dash-dialog-button" data-primary data-tone={danger ? "danger" : undefined} isDisabled={busy} onPress={onConfirm}>{busy ? "Menyimpan…" : confirmLabel}</Button>
-    </div>
+    </DialogFooter>
   </DashboardDialog>;
 }

@@ -17,7 +17,7 @@ import { PixelIcon, type PixelIconName } from "../pixel-icons";
 import { Select } from "../select";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { StaffOnly } from "./assignments";
-import { ConfirmDialog, DashboardDialog, IconLink, Pagination, SortHeader, useKeptResult } from "./data-table";
+import { ConfirmDialog, DashboardDialog, DialogContent, DialogFooter, IconLink, Pagination, SortHeader, useKeptResult } from "./data-table";
 import { ActiveFilters, FilterButton, MemberFilterDialog } from "./member-filters";
 import { isStaff, useDashboardViewer, type DashboardViewer } from "./viewer";
 
@@ -255,7 +255,7 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
       <Button className={labelled ? "dash-tool-button" : "icon-button"} aria-label={labelled ? undefined : menuLabel} data-tip={labelled ? undefined : "Kelola"}>
         <PixelIcon name="more-vertical" size={labelled ? 18 : 24} />{labelled && "Kelola anggota"}
       </Button>
-      <Popover className="dash-menu-popover" placement="bottom end">
+      <Popover className="dash-menu-popover" placement="bottom end" data-lenis-prevent>
         <Menu className="dash-menu" aria-label={menuLabel} onAction={(key) => choose(String(key))}>
           {section("access")}
           {section("community", item({ key: "edit-tag", icon: "label", label: "Ubah peran komunitas" }))}
@@ -288,14 +288,16 @@ function CommunityRoleEditor({ row, onDone }: { row: Pick<Row, "ownerId" | "full
     catch (cause) { setError(readableError(cause)); setBusy(false); }
   }
   const id = `role-${row.ownerId}`;
-  return <form className="dash-role-editor" onSubmit={save}>
-    <p className="dash-dialog-body">Menyimpan dari sini juga mengonfirmasi peran yang dipilih member sendiri.</p>
-    <Select id={`${id}-type`} label="Peran" value={memberType} disabled={busy} onChange={setType}
-      options={[{ value: "member", label: memberTypeLabels.member }, { value: "core", label: memberTypeLabels.core }, { value: "bod", label: `${memberTypeLabels.bod} (Board of Directors)` }]} />
-    {memberType !== "member" && <Select id={`${id}-division`} label={memberType === "bod" ? "Divisi (opsional)" : "Divisi"} value={memberType === "bod" ? division || NO_DIVISION : division} disabled={busy}
-      placeholder="Pilih divisi" onChange={(next) => setDivision(next === NO_DIVISION ? "" : next)}
-      options={[...(memberType === "bod" ? [{ value: NO_DIVISION, label: "Tanpa divisi" }] : []), ...divisions.map((item) => ({ value: item, label: item }))]} />}
-    {error && <p className="field-error" role="alert">{error}</p>}
-    <div className="dash-dialog-actions"><button className="dash-dialog-button" type="button" disabled={busy} onClick={onDone}>Batal</button><button className="dash-dialog-button" data-primary type="submit" disabled={busy}>{busy ? "Menyimpan…" : "Simpan"}</button></div>
+  return <form className="dash-role-editor dash-dialog-form" onSubmit={save}>
+    <DialogContent>
+      <p className="dash-dialog-body">Menyimpan dari sini juga mengonfirmasi peran yang dipilih member sendiri.</p>
+      <Select id={`${id}-type`} label="Peran" value={memberType} disabled={busy} onChange={setType}
+        options={[{ value: "member", label: memberTypeLabels.member }, { value: "core", label: memberTypeLabels.core }, { value: "bod", label: `${memberTypeLabels.bod} (Board of Directors)` }]} />
+      {memberType !== "member" && <Select id={`${id}-division`} label={memberType === "bod" ? "Divisi (opsional)" : "Divisi"} value={memberType === "bod" ? division || NO_DIVISION : division} disabled={busy}
+        placeholder="Pilih divisi" onChange={(next) => setDivision(next === NO_DIVISION ? "" : next)}
+        options={[...(memberType === "bod" ? [{ value: NO_DIVISION, label: "Tanpa divisi" }] : []), ...divisions.map((item) => ({ value: item, label: item }))]} />}
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </DialogContent>
+    <DialogFooter><button className="dash-dialog-button" type="button" disabled={busy} onClick={onDone}>Batal</button><button className="dash-dialog-button" data-primary type="submit" disabled={busy}>{busy ? "Menyimpan…" : "Simpan"}</button></DialogFooter>
   </form>;
 }

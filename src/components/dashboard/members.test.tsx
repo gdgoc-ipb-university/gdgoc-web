@@ -102,6 +102,9 @@ describe("members table", () => {
     show();
     await user.click(screen.getByRole("button", { name: "Filter" }));
     const dialog = await screen.findByRole("dialog", { name: "Filter anggota" });
+    // The content scrolls on its own; the page's smooth scrolling must not take the wheel.
+    expect(dialog.querySelector(".dash-dialog-content")?.hasAttribute("data-lenis-prevent")).toBe(true);
+    expect(within(dialog).getByRole("radiogroup", { name: /Peninjau apresiasi/ })).toBeTruthy();
     await user.click(within(dialog).getByRole("radio", { name: /Nonaktif/ }));
     expect(search()).toBe("");
     await user.click(within(dialog).getByRole("checkbox", { name: /^Core Team/ }));

@@ -1,4 +1,4 @@
-:root { --control-h: 46px; --control-h-sm: 38px; --control-line: #abb7b2; }
+:root { --control-h: 48px; --control-h-sm: 38px; --control-line: #abb7b2; }
 .appreciation-page { padding-block: 62px 88px; min-height: calc(100svh - 205px); }
 .appreciation-page button, .appreciation-page input, .appreciation-page textarea, .appreciation-page select { font: inherit; }
 .appreciation-page button:disabled { opacity: .55; cursor: not-allowed; }
@@ -67,7 +67,9 @@
 .app-empty > p { color: var(--muted); max-width: 510px; margin: 16px auto 20px; }
 .app-record-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
 .app-record { padding: 26px; background: #fffefa; border: 1px solid var(--line); display: flex; flex-direction: column; }
-.app-record-top { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.app-record-top { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+/* Badges group on the left; the counts, level, or date at the end of the row sit on the right. */
+.app-record-top > :is(.app-small, .eyebrow, .app-inline-badges):last-child:not(:first-child) { margin-left: auto; }
 .app-status { font-size: 10px; font-weight: 500; letter-spacing: .02em; display: inline-flex; align-items: center; padding: 4px 10px; background: #ecefe9; color: #506044; white-space: nowrap; }
 .app-status[data-status="submitted"], .app-status[data-status="reviewing"] { background: #e7eefa; color: #2457b8; }
 .app-status[data-status="revision"] { background: #fff0c5; color: #785511; }
@@ -99,7 +101,8 @@
 .app-field label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
 .field-required { color: #ad392f; padding-left: 2px; }
 .field-optional { font-size: 10px; color: var(--muted); font-weight: 400; margin-left: 4px; }
-.app-field input, .app-field select, .app-field textarea { display: block; width: 100%; border: 1px solid #abb7b2; border-radius: 0; background: white; color: var(--ink); padding: 12px 13px; min-height: 46px; font-size: 14px; line-height: 1.6; }
+.app-field input, .app-field select, .app-field textarea { display: block; width: 100%; border: 1px solid var(--control-line); border-radius: 0; background: white; color: var(--ink); padding: 11px 13px; min-height: var(--control-h); font-size: 14px; line-height: 1.6; }
+.app-field input:not([type="checkbox"], [type="radio"], [type="file"]) { height: var(--control-h); }
 .app-field input::placeholder, .app-field textarea::placeholder { color: #76847e; font-size: 12px; opacity: 1; }
 .app-field textarea { resize: vertical; min-height: 100px; }
 .app-field input:focus, .app-field select:focus, .app-field textarea:focus { border-color: var(--blue); outline: 2px solid #4285f43d; outline-offset: 2px; }
@@ -195,7 +198,8 @@
 .review-card h2 { font-size: 26px; overflow-wrap: anywhere; }
 .review-card .record-details dl > div { grid-template-columns: 1fr; gap: 4px; }
 .review-form { padding-top: 24px; border-top: 1px solid var(--line); }
-.review-form legend { font-weight: 500; font-size: 13px; margin-bottom: 18px; }
+.review-form legend { padding: 0; font-weight: 500; font-size: 13px; margin-bottom: 18px; }
+.appreciation-page .button { gap: 12px; }
 .review-form .button { margin-top: 18px; }
 @media(max-width:1050px) {
   .app-login-grid { gap: 35px; }

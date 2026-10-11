@@ -108,9 +108,8 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
             <thead><tr>
               <SortHeader label="Anggota" direction={direction("name")} onSort={() => sortBy("name")} />
               <th scope="col">Kampus</th>
-              <th scope="col">Akses</th>
+              <th scope="col">Akses &amp; status</th>
               <th scope="col">Komunitas</th>
-              <th scope="col">Status</th>
               <SortHeader label="Bergabung" direction={direction("joined")} onSort={() => sortBy("joined")} />
               <th scope="col" className="dash-table-actions"><span className="sr-only">Aksi</span></th>
             </tr></thead>
@@ -130,12 +129,11 @@ function MemberTableRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) 
   return <tr data-active={row.active}>
     <th scope="row" className="dash-table-member"><div className="dash-table-person">
       <span className="account-avatar" aria-hidden="true">{initial(row.fullName)}</span>
-      <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small>{row.email}</small></span>
+      <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small title={row.email}>{row.email}</small></span>
     </div></th>
     <td><span className="dash-table-stack">{row.campus || "—"}{row.studyProgram && <small>{row.studyProgram}</small>}</span></td>
-    <td><AccessBadges row={row} /></td>
+    <td><span className="dash-badges"><AccessBadges row={row} />{!row.active && <ActiveBadge active={false} />}</span></td>
     <td><CommunityBadge row={row} /></td>
-    <td><ActiveBadge active={row.active} /></td>
     <td className="dash-table-date"><time dateTime={new Date(row.joinedAt).toISOString()} title={dateLabel(row.joinedAt)}>{dayLabel.format(row.joinedAt)}</time></td>
     <td className="dash-table-actions"><div className="dash-row-actions">
       <IconLink icon="eye" label={`Lihat detail ${row.fullName}`} href={memberPath(row.ownerId)} />

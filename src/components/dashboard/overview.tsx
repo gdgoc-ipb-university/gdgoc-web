@@ -6,6 +6,7 @@ import { api } from "../../../convex/_generated/api";
 import { assignmentPath } from "@/lib/assignment";
 import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
+import { PixelIcon } from "../pixel-icons";
 import { AssignmentStatusBadge, DueLabel, SubmissionBadge, useNow } from "./shared";
 import { isStaff, useDashboardViewer } from "./viewer";
 
@@ -53,7 +54,7 @@ function StaffOverview() {
       <div><dt>Admin</dt><dd>{stats ? stats.admins : "…"}</dd></div>
       <div><dt>Nonaktif</dt><dd>{stats ? stats.deactivated : "…"}</dd></div>
     </dl>
-    <div className="dash-actions"><Link className="button button-blue" href="/dashboard/tugas/baru">Buat tugas <span aria-hidden="true">＋</span></Link><Link className="button button-quiet" href="/dashboard/anggota">Kelola anggota</Link></div>
+    <div className="dash-actions"><Link className="button button-blue" href="/dashboard/tugas/baru">Buat tugas <PixelIcon name="plus" size={18} /></Link><Link className="button button-quiet" href="/dashboard/anggota">Kelola anggota</Link></div>
     <section aria-labelledby="recent-title"><div className="app-section-heading"><div><p className="eyebrow">TERBARU</p><h2 id="recent-title">Tugas yang diperbarui</h2></div><Link className="text-button" href="/dashboard/tugas">Semua tugas <Arrow /></Link></div>
       {recent.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat tugas…" /> : recent.results.length ? <div className="dash-card-grid">{recent.results.map((item) => <article className="app-record" key={item._id}><div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}</span></div><h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /></article>)}</div>
         : <div className="app-empty"><PixelSpark /><h3>Belum ada tugas.</h3><p>Buat tugas pertama. Simpan sebagai draft dulu atau langsung buka untuk member.</p><Link className="text-button" href="/dashboard/tugas/baru">Buat tugas <Arrow /></Link></div>}

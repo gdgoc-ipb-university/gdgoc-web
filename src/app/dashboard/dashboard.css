@@ -86,8 +86,7 @@
 .dash-confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font-size: 13px; }
 .dash-confirm p { flex-basis: 100%; font-size: 12px; color: var(--ink); }
 
-.dash-form, .dash-submit { max-width: 860px; }
-.dash-due-field input { max-width: 320px; }
+.dash-form, .dash-submit, .dash-reviewers, .dash-submissions-section, .dash-missing { max-width: 860px; }
 .dash-form-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 14px 22px; padding-block: 10px 0; }
 .dash-form-actions .text-button { margin-right: auto; }
 .dash-label { display: block; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
@@ -114,9 +113,6 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-submissions strong { display: block; font-weight: 500; font-size: 16px; }
 .dash-submissions .app-small { display: block; overflow-wrap: anywhere; }
 
-.dash-toolbar { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 16px 28px; margin-bottom: 24px; }
-.dash-toolbar .review-filters { margin: 0; }
-.dash-search { margin: 0; flex: 1 1 280px; max-width: 420px; }
 
 .dash-assignment-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; }
 .dash-copy { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
@@ -372,7 +368,6 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-review-form fieldset { display: grid; gap: 12px; border: 0; padding: 0; margin: 0; min-width: 0; }
 .dash-review-fields { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; align-items: start; }
 .dash-review-fields input[type="number"] { width: 100%; }
-.dash-score-field { max-width: 240px; }
 @media (max-width: 640px) { .dash-review-fields { grid-template-columns: 1fr; } }
 
 /* Who has not submitted */
@@ -387,12 +382,12 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-rubric-list li { display: flex; justify-content: space-between; gap: 16px; }
 .dash-rubric-list li b { white-space: nowrap; font-weight: 600; }
 .dash-rubric-result { margin: 6px 0 12px; max-width: 520px; }
-.dash-rubric-editor { border: 1px dashed var(--line); padding: 16px 18px; margin: 0; display: grid; gap: 12px; }
-.dash-rubric-editor legend { font-weight: 600; padding: 0 6px; }
-.dash-audience-editor { border: 1px dashed var(--line); padding: 16px 18px; margin: 0; display: grid; gap: 12px; }
-.dash-audience-editor legend { font-weight: 600; padding: 0 6px; }
-.dash-audience-options { display: flex; flex-wrap: wrap; gap: 12px 24px; }
-.dash-audience-option { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; cursor: pointer; }
+/* Checkbox groups and the rubric read as fields: the legend is styled like a field label, on the same 22px rhythm. */
+.dash-form .dash-rubric-editor, .dash-form .dash-audience-editor, .dash-rubric-editor, .dash-audience-editor { display: grid; gap: 8px; margin: 0 0 22px; padding: 0; border: 0; min-width: 0; }
+.dash-rubric-editor legend, .dash-audience-editor legend { padding: 0; margin-bottom: 8px; font-size: 12px; font-weight: 500; }
+.dash-rubric-editor > .field-hint, .dash-audience-editor > .field-hint { margin-top: 0; }
+.dash-audience-options { display: flex; flex-wrap: wrap; gap: 4px 24px; }
+.dash-audience-option { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; cursor: pointer; }
 .dash-audience-option input { appearance: auto; width: 18px; height: 18px; accent-color: var(--blue); margin: 0; }
 .dash-audience-option input:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
 .dash-rubric-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
@@ -420,8 +415,9 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 
 /* Member detail */
 .dash-member-activity { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
-.dash-member-activity li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 12px 14px; background: white; border: 1px solid #dfe5dc; }
-.dash-member-activity li > div { display: grid; gap: 2px; min-width: 0; }
+.dash-member-activity li { display: flex; justify-content: space-between; align-items: center; gap: 8px 20px; padding: 12px 14px; background: white; border: 1px solid #dfe5dc; }
+.dash-member-activity li > div { display: grid; gap: 2px; min-width: 0; flex: 1 1 auto; }
+.dash-member-activity li > :not(div) { flex-shrink: 0; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 16px; }
 .dash-member-activity a { overflow-wrap: anywhere; }
 .dash-member-header { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 22px; align-items: center; margin-bottom: 26px; }
 .dash-member-avatar { width: 64px; height: 64px; font-size: 38px; }
@@ -477,7 +473,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-table-wrap { position: relative; overflow-x: auto; background: white; border: 1px solid #dfe5dc; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .dash-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 13px; transition: opacity .15s ease; }
 .dash-table[aria-busy="true"] { opacity: .55; }
-.dash-table th, .dash-table td { padding: 12px 14px; text-align: left; vertical-align: middle; border-bottom: 1px solid #e8ece4; }
+.dash-table th, .dash-table td { padding: 12px; text-align: left; vertical-align: middle; border-bottom: 1px solid #e8ece4; }
 .dash-table tbody tr:last-child > * { border-bottom: 0; }
 .dash-table thead th { padding-block: 10px; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); background: #f4f3ea; border-bottom-color: var(--line); white-space: nowrap; }
 .dash-table tbody tr:hover > * { background: #fbfbf6; }
@@ -488,11 +484,13 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-table .dash-table-member { min-width: 240px; font-weight: 400; }
 .dash-table-person { display: flex; align-items: center; gap: 12px; }
 .dash-table-person .account-avatar { width: 34px; height: 34px; font-size: 20px; }
-.dash-table-person > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.dash-table-person > span:last-child { display: grid; gap: 1px; min-width: 0; max-width: 230px; }
+.dash-table-person small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dash-table-member small { display: block; }
 .dash-table-member a { font-weight: 500; font-size: 14px; color: var(--ink); text-decoration: underline; text-decoration-color: #b9c7b0; text-underline-offset: 3px; overflow-wrap: anywhere; }
 .dash-table-member a:hover { text-decoration-color: currentColor; }
 .dash-table-member small, .dash-table-stack small { font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
-.dash-table-stack { display: grid; gap: 1px; min-width: 170px; max-width: 240px; }
+.dash-table-stack { display: grid; gap: 1px; min-width: 150px; max-width: 220px; }
 .dash-table-date { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .dash-table .dash-table-actions { width: 1%; padding-block: 6px; text-align: right; position: sticky; right: 0; z-index: 1; background: white; box-shadow: inset 1px 0 0 #e8ece4; }
 .dash-table thead .dash-table-actions { background: #f4f3ea; }
@@ -621,7 +619,12 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
   .dash-filter-actions { bottom: max(-20px, calc(-1 * env(safe-area-inset-bottom))); margin: 0 -18px -20px; padding: 12px 18px 16px; }
   .dash-filter-actions .text-button { flex-basis: 100%; justify-content: center; }
   .dash-filter-actions .dash-dialog-spacer { display: none; }
-  .dash-filter-actions .dash-dialog-button { flex: 1; }
+  .dash-filter-actions .dash-dialog-button { flex: 0 0 auto; white-space: nowrap; }
+  .dash-filter-actions .dash-dialog-button[data-primary] { flex: 1; }
+  /* Segments stack in the sheet, so a long option never wraps inside the bar. */
+  .dash-segmented { display: grid; width: 100%; }
+  .dash-segment + .dash-segment { border-left: 0; border-top: 1px solid #e1e6dd; }
+  .dash-segment .dash-filter-count { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) {
   .dash-table, .icon-button[data-tip]::after, .dash-filter-chip, .dash-segment, .dash-filter-toggle { transition: none; }

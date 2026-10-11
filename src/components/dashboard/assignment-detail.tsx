@@ -112,7 +112,7 @@ function AssignmentReviewers({ assignment, reviewers }: { assignment: Doc<"assig
   const setReviewer = useMutation(api.assignments.setReviewer);
   const [search, setSearch] = useState("");
   const term = search.trim();
-  const found = useQuery(api.dashboard.members, term.length >= 2 ? { search: term, filter: "all", page: 1, pageSize: 6 } : "skip");
+  const found = useQuery(api.dashboard.members, term.length >= 2 ? { search: term, filters: {}, page: 1, pageSize: 6 } : "skip");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function change(ownerId: string, reviewer: boolean) {

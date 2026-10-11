@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { compareMembers, defaultListState, listQueryString, pageSlice, pageWindow, readListState } from "./member-table";
+import { activeFilterCount, compareMembers, defaultListState, listQueryString, matchesFilters, noFilters, pageSlice, pageWindow, readListState } from "./member-table";
 
 describe("members table", () => {
   it("cuts pages and pulls an out-of-range page back into the list", () => {
@@ -35,10 +35,24 @@ describe("members table", () => {
   });
 
   it("round-trips the list state through the URL and drops unknown values", () => {
-    const state = { search: "budi", filter: "core" as const, sort: "name-asc" as const, page: 3, pageSize: 50 };
-    expect(listQueryString(state)).toBe("?q=budi&filter=core&sort=name-asc&page=3&size=50");
+    const state = {
+      search: "budi", sort: "name-asc" as const, page: 3, pageSize: 50,
+      filters: { access: ["admin" as const], community: ["core" as const, "bod" as const], divisions: ["Media & Creative"], status: "active" as const, tag: "unconfirmed" as const, reviewer: true },
+    };
+    expect(listQueryString(state)).toBe("?q=budi&access=admin&community=core&community=bod&division=Media+%26+Creative&status=active&tag=unconfirmed&reviewer=1&sort=name-asc&page=3&size=50");
     expect(readListState(new URLSearchParams(listQueryString(state)))).toEqual(state);
     expect(listQueryString(defaultListState)).toBe("");
-    expect(readListState(new URLSearchParams("filter=owner&sort=random&page=-2&size=7"))).toEqual(defaultListState);
+    expect(readListState(new URLSearchParams("access=root&division=Sales&status=gone&tag=x&reviewer=yes&sort=random&page=-2&size=7"))).toEqual(defaultListState);
+  });
+
+  it("matches AND across facets and OR within one, and counts active facets", () => {
+    const member = { access: "member" as const, memberType: "core", division: "Technical", active: true, tagConfirmed: false, reviewer: false };
+    expect(matchesFilters(member, noFilters)).toBe(true);
+    expect(matchesFilters(member, { ...noFilters, community: ["core", "bod"], divisions: ["Technical"] })).toBe(true);
+    expect(matchesFilters(member, { ...noFilters, community: ["core"], access: ["admin"] })).toBe(false);
+    expect(matchesFilters(member, { ...noFilters, tag: "unconfirmed" })).toBe(true);
+    expect(matchesFilters({ ...member, memberType: "member" }, { ...noFilters, tag: "unconfirmed" })).toBe(false);
+    expect(matchesFilters({ ...member, memberType: null }, { ...noFilters, community: ["member"] })).toBe(true);
+    expect(activeFilterCount({ ...noFilters, community: ["core", "bod"], status: "deactivated", reviewer: true })).toBe(3);
   });
 });

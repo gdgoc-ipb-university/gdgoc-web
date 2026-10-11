@@ -7,7 +7,7 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 20, cursor: null };
-const everyone = { search: "", filter: "all" as const, page: 1, pageSize: 20 };
+const everyone = { search: "", filters: {}, page: 1, pageSize: 20 };
 
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 async function account(t: ReturnType<typeof setup>, email: string, { onboarded = true, name = email.split("@")[0] } = {}) {
@@ -48,7 +48,7 @@ describe("dashboard roles and member management", () => {
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ role: "admin" });
     await expect(member.mutation(api.dashboard.setRole, { ownerId: other.id, role: "admin" })).rejects.toThrow("Hanya pemilik");
     await expect(owner.mutation(api.dashboard.setRole, { ownerId: owner.id, role: "member" })).rejects.toThrow("konfigurasi server");
-    const admins = await member.query(api.dashboard.members, { ...everyone, filter: "admin" });
+    const admins = await member.query(api.dashboard.members, { ...everyone, filters: { access: ["admin" as const] } });
     expect(admins.rows.map((row) => row.email)).toEqual(["member@example.com"]);
     await owner.mutation(api.dashboard.setRole, { ownerId: member.id, role: "member" });
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ role: "member" });
@@ -63,7 +63,7 @@ describe("dashboard roles and member management", () => {
     await account(t, "fresh@example.com", { onboarded: false });
     const rows = (await owner.query(api.dashboard.members, everyone)).rows;
     expect(rows.map((row) => [row.email, row.role]).sort()).toEqual([["member@example.com", "member"], ["owner@example.com", "owner"]]);
-    expect(await owner.query(api.dashboard.stats)).toEqual({ members: 2, admins: 0, reviewers: 0, core: 0, bod: 0, deactivated: 0 });
+    expect(await owner.query(api.dashboard.stats)).toMatchObject({ members: 2, owners: 1, admins: 0, reviewers: 0, core: 0, bod: 0, deactivated: 0, unconfirmed: 0 });
   });
 
   it("lets only owners export members, with every onboarded member and their review access", async () => {
@@ -143,7 +143,7 @@ describe("dashboard roles and member management", () => {
     // BoD set by staff is confirmed from the start.
     await admin.mutation(api.dashboard.setMemberType, { ownerId: board.id, memberType: "bod", division: "Media & Creative" });
     expect(await board.query(api.dashboard.viewer)).toMatchObject({ reviewer: true });
-    const reviewers = await admin.query(api.dashboard.members, { ...everyone, filter: "reviewer" });
+    const reviewers = await admin.query(api.dashboard.members, { ...everyone, filters: { reviewer: true } });
     expect(reviewers.rows.map((row) => [row.fullName, row.reviewer, row.reviewsByTag, row.tagConfirmed]).sort()).toEqual([["Bima BoD", false, true, true], ["Mira Media", false, true, true]]);
     expect(await admin.query(api.dashboard.stats)).toMatchObject({ reviewers: 2 });
     expect((await owner.query(api.dashboard.exportMembers, { paginationOpts: page })).page.find((row) => row.fullName === "Mira Media")).toMatchObject({ reviewer: true });
@@ -289,7 +289,7 @@ describe("dashboard roles and member management", () => {
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ role: "member", reviewer: true });
     expect(await member.query(api.auth.viewer)).toMatchObject({ isAdmin: true });
     expect((await member.query(api.appreciations.queue, queue)).page).toEqual([]);
-    expect((await owner.query(api.dashboard.members, { ...everyone, filter: "reviewer" })).rows.map((row) => [row.email, row.reviewer])).toEqual([["member@example.com", true]]);
+    expect((await owner.query(api.dashboard.members, { ...everyone, filters: { reviewer: true } })).rows.map((row) => [row.email, row.reviewer])).toEqual([["member@example.com", true]]);
     expect(await owner.query(api.dashboard.stats)).toMatchObject({ reviewers: 1, admins: 1 });
 
     // Deactivation suspends review without clearing the grant; reactivation restores it.
@@ -327,7 +327,7 @@ describe("dashboard roles and member management", () => {
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ active: false });
     await expect(member.query(api.assignments.list)).rejects.toThrow("dinonaktifkan");
     await expect(owner.mutation(api.dashboard.setRole, { ownerId: member.id, role: "admin" })).rejects.toThrow("Aktifkan kembali");
-    expect((await owner.query(api.dashboard.members, { ...everyone, filter: "deactivated" })).rows.map((row) => row.email)).toEqual(["member@example.com"]);
+    expect((await owner.query(api.dashboard.members, { ...everyone, filters: { status: "deactivated" as const } })).rows.map((row) => row.email)).toEqual(["member@example.com"]);
 
     await admin.mutation(api.dashboard.setActive, { ownerId: member.id, active: true });
     expect(await member.query(api.assignments.list)).toEqual([]);
@@ -340,6 +340,38 @@ describe("dashboard roles and member management", () => {
     await account(t, "b@example.com", { name: "Bima Sakti" });
     const found = await owner.query(api.dashboard.members, { ...everyone, search: "rania" });
     expect(found.rows.map((row) => row.fullName)).toEqual(["Rania Putri"]);
+  });
+
+  it("filters members by access, community, division, tag confirmation, status, and review, and counts each option", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const admin = await account(t, "admin@example.com", { name: "Admin" });
+    const tech = await account(t, "tech@example.com", { name: "Tekno" });
+    const media = await account(t, "media@example.com", { name: "Media" });
+    const gone = await account(t, "gone@example.com", { name: "Pergi" });
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    await owner.mutation(api.dashboard.setMemberType, { ownerId: media.id, memberType: "core", division: "Media & Creative" });
+    await owner.mutation(api.dashboard.setActive, { ownerId: gone.id, active: false });
+    // A self-declared tag: Core Team Technical, not yet confirmed by staff.
+    await t.run(async (ctx) => {
+      const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", tech.id)).unique();
+      await ctx.db.patch(profile!._id, { memberType: "core", division: "Technical" });
+    });
+    const names = async (filters: object) => (await owner.query(api.dashboard.members, { ...everyone, filters, sort: "name-asc" as const })).rows.map((row) => row.fullName);
+    expect(await names({ access: ["owner"] })).toEqual(["Pemilik"]);
+    expect(await names({ access: ["owner", "admin"] })).toEqual(["Admin", "Pemilik"]);
+    expect(await names({ access: ["member"] })).toEqual(["Media", "Pergi", "Tekno"]);
+    expect(await names({ community: ["core"] })).toEqual(["Media", "Tekno"]);
+    expect(await names({ community: ["core"], divisions: ["Technical"] })).toEqual(["Tekno"]);
+    expect(await names({ tag: "unconfirmed" })).toEqual(["Tekno"]);
+    expect(await names({ tag: "confirmed" })).toEqual(["Media"]);
+    expect(await names({ reviewer: true })).toEqual(["Media"]);
+    expect(await names({ status: "deactivated" })).toEqual(["Pergi"]);
+    expect(await names({ status: "active", access: ["member"] })).toEqual(["Media", "Tekno"]);
+    expect(await owner.query(api.dashboard.stats)).toMatchObject({
+      members: 5, owners: 1, admins: 1, core: 2, bod: 0, reviewers: 1, deactivated: 1, unconfirmed: 1,
+      divisions: expect.objectContaining({ Technical: 1, "Media & Creative": 1, "Program & Development": 0 }),
+    });
   });
 
   it("pages members by number, with a total, sorted by join date or name", async () => {
@@ -370,7 +402,7 @@ describe("dashboard roles and member management", () => {
     await expect(owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "" })).rejects.toThrow("Pilih divisimu");
     await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "Community & External" });
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "core", division: "Community & External" });
-    const core = await owner.query(api.dashboard.members, { ...everyone, filter: "core" });
+    const core = await owner.query(api.dashboard.members, { ...everyone, filters: { community: ["core" as const] } });
     expect(core.rows.map((row) => [row.email, row.division])).toEqual([["member@example.com", "Community & External"]]);
     expect((await owner.query(api.dashboard.stats)).core).toBe(1);
   });
@@ -385,9 +417,9 @@ describe("dashboard roles and member management", () => {
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "bod", division: null, role: "member" }); // a tag, not access
     await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "bod", division: " Technical " });
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "bod", division: "Technical" });
-    const bod = await owner.query(api.dashboard.members, { ...everyone, filter: "bod" });
+    const bod = await owner.query(api.dashboard.members, { ...everyone, filters: { community: ["bod" as const] } });
     expect(bod.rows.map((row) => [row.email, row.memberType, row.division])).toEqual([["member@example.com", "bod", "Technical"]]);
-    expect((await owner.query(api.dashboard.members, { ...everyone, filter: "core" })).rows).toHaveLength(0);
+    expect((await owner.query(api.dashboard.members, { ...everyone, filters: { community: ["core" as const] } })).rows).toHaveLength(0);
     expect(await owner.query(api.dashboard.stats)).toMatchObject({ bod: 1, core: 0 });
     await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "member", division: "Technical" });
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "member", division: null });

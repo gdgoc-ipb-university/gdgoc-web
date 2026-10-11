@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState, type ReactNode } from "react";
 import { Button, Dialog, Heading, Modal, ModalOverlay } from "react-aria-components/Modal";
 import { pageSizes, pageWindow } from "@/lib/member-table";
+import { Select } from "../select";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
 
 // Building blocks for staff data tables: icon buttons, sortable headers, numbered pagination, and confirm dialogs.
@@ -52,7 +53,7 @@ export function SortHeader({ label, direction, onSort, className }: { label: str
 
 const count = new Intl.NumberFormat("id-ID");
 
-/** "1–25 dari 312", the rows-per-page choice, and numbered pages with previous and next. */
+/** "1–25 dari 312", rows per page, and numbered pages joined into one control with previous and next. */
 export function Pagination({ label, noun, page, pageCount, pageSize, total, onPage, onPageSize }: {
   label: string; noun: string; page: number; pageCount: number; pageSize: number; total: number;
   onPage: (page: number) => void; onPageSize: (size: number) => void;
@@ -61,25 +62,30 @@ export function Pagination({ label, noun, page, pageCount, pageSize, total, onPa
   const last = Math.min(total, page * pageSize);
   return <div className="dash-pagination">
     <p className="dash-pagination-range" role="status">{total ? <>Menampilkan <strong>{count.format(first)}–{count.format(last)}</strong> dari <strong>{count.format(total)}</strong> {noun}</> : `Tidak ada ${noun}`}</p>
-    <div className="dash-pagination-size"><label htmlFor="page-size">Baris per halaman</label>
-      <select id="page-size" value={pageSize} onChange={(event) => onPageSize(Number(event.target.value))}>{pageSizes.map((size) => <option key={size} value={size}>{size}</option>)}</select>
-    </div>
-    {pageCount > 1 && <nav aria-label={label}><ul className="dash-pages">
-      <li><IconButton icon="chevron-left" label="Halaman sebelumnya" disabled={page <= 1} onClick={() => onPage(page - 1)} /></li>
+    <Select variant="inline" label="Baris per halaman" value={pageSize} onChange={onPageSize} options={pageSizes.map((size) => ({ value: size, label: String(size) }))} />
+    {pageCount > 1 && <nav className="dash-pager" aria-label={label}><ul>
+      <li><button type="button" className="dash-page dash-page-step" aria-label="Halaman sebelumnya" disabled={page <= 1} onClick={() => onPage(page - 1)}><PixelIcon name="chevron-left" size={18} /><span>Sebelumnya</span></button></li>
+      <li className="dash-pager-compact" aria-hidden="true">{page} / {pageCount}</li>
       {pageWindow(page, pageCount).map((item, index) => item === "gap"
         ? <li key={`gap-${index}`} className="dash-page-gap" aria-hidden="true">…</li>
         : <li key={item}><button type="button" className="dash-page" aria-current={item === page ? "page" : undefined} aria-label={`Halaman ${item}`} onClick={() => onPage(item)}>{item}</button></li>)}
-      <li><IconButton icon="chevron-right" label="Halaman berikutnya" disabled={page >= pageCount} onClick={() => onPage(page + 1)} /></li>
+      <li><button type="button" className="dash-page dash-page-step" aria-label="Halaman berikutnya" disabled={page >= pageCount} onClick={() => onPage(page + 1)}><span>Berikutnya</span><PixelIcon name="chevron-right" size={18} /></button></li>
     </ul></nav>}
   </div>;
 }
 
-/** A modal dialog over the page. It closes on Escape or a click outside unless `busy`; focus returns to whatever opened it. */
-export function DashboardDialog({ open, onClose, busy = false, title, alert = false, children }: { open: boolean; onClose: () => void; busy?: boolean; title: string; alert?: boolean; children: ReactNode }) {
+/**
+ * A modal dialog over the page: centred on wide screens, a sheet from the bottom on phones, both animated. It closes on
+ * Escape, the close button, or a click outside unless `busy`; focus returns to whatever opened it.
+ */
+export function DashboardDialog({ open, onClose, busy = false, title, alert = false, wide = false, children }: { open: boolean; onClose: () => void; busy?: boolean; title: string; alert?: boolean; wide?: boolean; children: ReactNode }) {
   return <ModalOverlay className="dash-modal-overlay" isOpen={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }} isDismissable={!busy} isKeyboardDismissDisabled={busy}>
-    <Modal className="dash-modal">
+    <Modal className="dash-modal" data-wide={wide || undefined}>
       <Dialog className="dash-dialog" role={alert ? "alertdialog" : "dialog"}>
-        <Heading slot="title" className="dash-dialog-title">{title}</Heading>
+        <div className="dash-dialog-header">
+          <Heading slot="title" className="dash-dialog-title">{title}</Heading>
+          {!alert && <Button className="icon-button dash-dialog-close" aria-label="Tutup" isDisabled={busy} onPress={onClose}><PixelIcon name="close" size={24} /></Button>}
+        </div>
         {children}
       </Dialog>
     </Modal>

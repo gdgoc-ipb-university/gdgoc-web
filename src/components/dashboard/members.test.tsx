@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { useEffect, useReducer } from "react";
 import { getFunctionName, type FunctionReference } from "convex/server";
-import { compareMembers, pageSlice, type MemberFilter, type MemberSort } from "@/lib/member-table";
+import { compareMembers, matchesFilters, noFilters, pageSlice, type MemberFilters, type MemberSort } from "@/lib/member-table";
 import { MembersPage } from "./members";
 import { ViewerContext, type DashboardViewer } from "./viewer";
 
@@ -23,7 +23,7 @@ const mutations: Record<string, ReturnType<typeof vi.fn>> = { "dashboard:setActi
 // Like Convex, the same arguments return the same object, so results can be compared by reference.
 const results = new Map<string, unknown>();
 vi.mock("convex/react", () => ({
-  useQuery: (ref: FunctionReference<"query">, args: { search: string; filter: MemberFilter; sort: MemberSort; page: number; pageSize: number }) => {
+  useQuery: (ref: FunctionReference<"query">, args: Args) => {
     const key = `${getFunctionName(ref)}${JSON.stringify(args)}`;
     if (!results.has(key)) results.set(key, list(getFunctionName(ref), args));
     return results.get(key);
@@ -31,10 +31,12 @@ vi.mock("convex/react", () => ({
   useMutation: (ref: FunctionReference<"mutation">) => mutations[getFunctionName(ref)] ?? vi.fn(async () => null),
   useConvex: () => ({ query: vi.fn() }),
 }));
-function list(name: string, args: { search: string; filter: MemberFilter; sort: MemberSort; page: number; pageSize: number }) {
-  if (name === "dashboard:stats") return { members: 30, admins: 0, reviewers: 0, core: 1, bod: 0, deactivated: 1 };
-  const matching = rows.filter((row) => (args.filter === "deactivated" ? !row.active : args.filter === "core" ? row.memberType === "core" : true) && row.fullName.toLowerCase().includes(args.search.toLowerCase()));
-  matching.sort(compareMembers(args.sort));
+type Args = { search: string; filters: Partial<MemberFilters>; sort?: MemberSort; page: number; pageSize: number };
+function list(name: string, args: Args) {
+  if (name === "dashboard:stats") return { members: 30, owners: 0, admins: 0, reviewers: 0, core: 1, bod: 0, deactivated: 1, unconfirmed: 1, divisions: { Technical: 1 } };
+  const filters = { ...noFilters, ...args.filters };
+  const matching = rows.filter((row) => matchesFilters({ ...row, access: row.role }, filters) && row.fullName.toLowerCase().includes(args.search.toLowerCase()));
+  matching.sort(compareMembers(args.sort ?? "joined-desc"));
   const slice = pageSlice(matching.length, args.page, args.pageSize);
   return { rows: matching.slice(slice.start, slice.end), total: matching.length, page: slice.page, pageSize: slice.pageSize, pageCount: slice.pageCount };
 }
@@ -89,20 +91,37 @@ describe("members table", () => {
     expect(screen.getByRole("columnheader", { name: "Anggota" }).getAttribute("aria-sort")).toBe("ascending");
     expect(within(bodyRows()[0]).getByRole("rowheader").textContent).toContain("Adi");
 
-    await user.selectOptions(screen.getByLabelText("Baris per halaman"), "10");
+    await user.click(screen.getByRole("button", { name: /Baris per halaman/ }));
+    await user.click(await screen.findByRole("option", { name: "10" }));
     expect(search()).toBe("?sort=name-asc&size=10");
     expect(screen.getByRole("button", { name: "Halaman 3" })).toBeTruthy();
+  });
 
-    await user.click(screen.getByRole("button", { name: /Nonaktif/ }));
-    expect(search()).toBe("?filter=deactivated&sort=name-asc&size=10");
+  it("filters in a dialog that previews the count, then shows removable chips", async () => {
+    const user = userEvent.setup();
+    show();
+    await user.click(screen.getByRole("button", { name: "Filter" }));
+    const dialog = await screen.findByRole("dialog", { name: "Filter anggota" });
+    await user.click(within(dialog).getByRole("radio", { name: /Nonaktif/ }));
+    expect(search()).toBe("");
+    await user.click(within(dialog).getByRole("checkbox", { name: /^Core Team/ }));
+    expect(within(dialog).getByRole("button", { name: "Tidak ada yang cocok" })).toBeTruthy();
+    await user.click(within(dialog).getByRole("checkbox", { name: /^Core Team/ }));
+    await user.click(within(dialog).getByRole("button", { name: "Tampilkan 1 anggota" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(search()).toBe("?status=deactivated");
     expect(bodyRows()).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Filter, 1 aktif" })).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Halaman anggota" })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Hapus filter Status: Nonaktif" }));
+    expect(search()).toBe("");
+    expect(bodyRows()).toHaveLength(25);
   });
 
   it("waits for typing to stop before searching, and replaces the history entry", async () => {
     const user = userEvent.setup();
     show();
-    await user.type(screen.getByLabelText("Cari nama"), "rania");
+    await user.type(screen.getByLabelText("Cari nama anggota"), "rania");
     expect(search()).toBe("");
     await waitFor(() => expect(search()).toBe("?q=rania"));
     expect(window.history.pushState).not.toHaveBeenCalled();

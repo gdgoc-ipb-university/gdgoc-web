@@ -12,16 +12,16 @@ import { roleLabels } from "@/lib/assignment";
 import { divisions, memberTagLabel, memberTypeLabels, type MemberType } from "@/lib/onboarding";
 import { readableError } from "@/lib/draft-session";
 import { membersCsv, membersFileName, type MemberExportRow } from "@/lib/member-export";
-import { listQueryString, memberFilterLabels, memberFilters, readListState, type MemberFilter, type MemberListState, type MemberSort } from "@/lib/member-table";
+import { activeFilterCount, listQueryString, noFilters, readListState, type MemberFilters, type MemberListState, type MemberSort } from "@/lib/member-table";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
+import { Select } from "../select";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { StaffOnly } from "./assignments";
 import { ConfirmDialog, DashboardDialog, IconLink, Pagination, SortHeader, useKeptResult } from "./data-table";
+import { ActiveFilters, FilterButton, MemberFilterDialog } from "./member-filters";
 import { isStaff, useDashboardViewer, type DashboardViewer } from "./viewer";
 
 type Row = FunctionReturnType<typeof api.dashboard.members>["rows"][number];
-type Stats = FunctionReturnType<typeof api.dashboard.stats>;
-const statKey: Record<MemberFilter, keyof Stats> = { all: "members", admin: "admins", reviewer: "reviewers", core: "core", bod: "bod", deactivated: "deactivated" };
 
 export const memberPath = (ownerId: string) => `/dashboard/anggota/${encodeURIComponent(ownerId)}`;
 
@@ -67,12 +67,16 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
   }, [searchUrl]);
 
   const stats = useQuery(api.dashboard.stats);
-  const { data, reloading } = useKeptResult(useQuery(api.dashboard.members, { search: state.search, filter: state.filter, sort: state.sort, page: state.page, pageSize: state.pageSize }));
+  const { data, reloading } = useKeptResult(useQuery(api.dashboard.members, { search: state.search, filters: state.filters, sort: state.sort, page: state.page, pageSize: state.pageSize }));
   // The server pulls a page past the end back to the last one (e.g. after a deactivation emptied it); the URL follows.
   const pageUrl = data && !reloading && data.page !== state.page ? `${pathname}${listQueryString({ ...state, page: data.page })}` : null;
   useEffect(() => { if (pageUrl) window.history.replaceState(null, "", pageUrl); }, [pageUrl]);
   const listQuery = listQueryString(state);
   useEffect(() => { try { sessionStorage.setItem(LIST_KEY, listQuery); } catch { /* storage blocked: the link falls back to page 1 */ } }, [listQuery]);
+
+  const [filtering, setFiltering] = useState(false);
+  const filtered = activeFilterCount(state.filters) > 0;
+  const applyFilters = (filters: MemberFilters) => go({ filters, page: 1 });
 
   const sortBy = (column: "name" | "joined") => {
     const next: MemberSort = column === "name" ? (state.sort === "name-asc" ? "name-desc" : "name-asc") : (state.sort === "joined-desc" ? "joined-asc" : "joined-desc");
@@ -86,19 +90,17 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
       {viewer.role === "owner" && <OwnerTools />}
     </div>
 
-    <div className="dash-toolbar">
-      <div className="app-field dash-search"><label htmlFor="member-search">Cari nama</label>
-        <div className="dash-search-control"><PixelIcon name="search" size={18} />
-          <input id="member-search" type="search" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Nama member" autoComplete="off" />
-        </div>
+    <div className="dash-toolbar" role="search" aria-label="Cari dan saring anggota">
+      <div className="dash-search-control"><PixelIcon name="search" size={18} />
+        <input id="member-search" type="search" aria-label="Cari nama anggota" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Cari nama anggota" autoComplete="off" />
       </div>
-      <div className="review-filters dash-filters" role="group" aria-label="Saring anggota">{memberFilters.map((filter) => <button key={filter} type="button" aria-pressed={state.filter === filter} onClick={() => go({ filter, page: 1 })}>
-        {memberFilterLabels[filter]}{stats && <span className="dash-filter-count">{stats[statKey[filter]]}</span>}
-      </button>)}</div>
+      <FilterButton active={activeFilterCount(state.filters)} onPress={() => setFiltering(true)} />
     </div>
+    <ActiveFilters filters={state.filters} onChange={applyFilters} />
+    <MemberFilterDialog open={filtering} onClose={() => setFiltering(false)} value={state.filters} search={state.search} stats={stats} onApply={applyFilters} />
 
-    {!data ? <LoadingPanel label="Memuat anggota…" /> : !data.total ? <div className="app-empty"><h2>Tidak ada anggota di sini.</h2><p>{state.search ? `Tidak ada nama yang cocok dengan “${state.search}”.` : "Anggota yang sesuai filter ini akan muncul di sini."}</p>
-      {(state.search || state.filter !== "all") && <button type="button" className="button button-quiet" onClick={() => { setInput(""); go({ search: "", filter: "all", page: 1 }); }}>Hapus pencarian dan filter</button>}</div>
+    {!data ? <LoadingPanel label="Memuat anggota…" /> : !data.total ? <div className="app-empty"><h2>Tidak ada anggota di sini.</h2><p>{state.search ? `Tidak ada nama yang cocok dengan “${state.search}”${filtered ? " dengan filter ini" : ""}.` : "Belum ada anggota yang cocok dengan filter ini."}</p>
+      {(state.search || filtered) && <button type="button" className="button button-quiet" onClick={() => { setInput(""); go({ search: "", filters: noFilters, page: 1 }); }}>Hapus pencarian dan filter</button>}</div>
       : <>
         <div ref={tableRef} className="dash-table-wrap" role="region" aria-labelledby="members-caption" tabIndex={0}>
           <table className="dash-table" aria-busy={reloading}>
@@ -272,6 +274,8 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
   </>;
 }
 
+const NO_DIVISION = "none";
+
 function CommunityRoleEditor({ row, onDone }: { row: Pick<Row, "ownerId" | "fullName" | "memberType" | "division">; onDone: () => void }) {
   const setMemberType = useMutation(api.dashboard.setMemberType);
   const [memberType, setType] = useState<MemberType>(row.memberType ?? "member");
@@ -288,8 +292,11 @@ function CommunityRoleEditor({ row, onDone }: { row: Pick<Row, "ownerId" | "full
   const id = `role-${row.ownerId}`;
   return <form className="dash-role-editor" onSubmit={save}>
     <p className="dash-dialog-body">Menyimpan dari sini juga mengonfirmasi peran yang dipilih member sendiri.</p>
-    <div className="app-field"><label htmlFor={`${id}-type`}>Peran</label><select id={`${id}-type`} value={memberType} disabled={busy} onChange={(event) => setType(event.target.value as MemberType)}><option value="member">{memberTypeLabels.member}</option><option value="core">{memberTypeLabels.core}</option><option value="bod">{memberTypeLabels.bod} (Board of Directors)</option></select></div>
-    {memberType !== "member" && <div className="app-field"><label htmlFor={`${id}-division`}>Divisi{memberType === "bod" && " (opsional)"}</label><select id={`${id}-division`} value={division} disabled={busy} onChange={(event) => setDivision(event.target.value)}><option value="">{memberType === "bod" ? "Tanpa divisi" : "Pilih divisi"}</option>{divisions.map((item) => <option key={item} value={item}>{item}</option>)}</select></div>}
+    <Select id={`${id}-type`} label="Peran" value={memberType} disabled={busy} onChange={setType}
+      options={[{ value: "member", label: memberTypeLabels.member }, { value: "core", label: memberTypeLabels.core }, { value: "bod", label: `${memberTypeLabels.bod} (Board of Directors)` }]} />
+    {memberType !== "member" && <Select id={`${id}-division`} label={memberType === "bod" ? "Divisi (opsional)" : "Divisi"} value={memberType === "bod" ? division || NO_DIVISION : division} disabled={busy}
+      placeholder="Pilih divisi" onChange={(next) => setDivision(next === NO_DIVISION ? "" : next)}
+      options={[...(memberType === "bod" ? [{ value: NO_DIVISION, label: "Tanpa divisi" }] : []), ...divisions.map((item) => ({ value: item, label: item }))]} />}
     {error && <p className="field-error" role="alert">{error}</p>}
     <div className="dash-dialog-actions"><button className="dash-dialog-button" type="button" disabled={busy} onClick={onDone}>Batal</button><button className="dash-dialog-button" data-primary type="submit" disabled={busy}>{busy ? "Menyimpan…" : "Simpan"}</button></div>
   </form>;

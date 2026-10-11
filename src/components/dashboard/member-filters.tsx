@@ -10,7 +10,7 @@ import { api } from "../../../convex/_generated/api";
 import { divisions } from "@/lib/onboarding";
 import { accessLabels, activeFilterCount, communityLabels, memberAccess, memberCommunity, noFilters, statusLabels, tagLabels, type MemberFilters } from "@/lib/member-table";
 import { PixelIcon } from "../pixel-icons";
-import { DashboardDialog } from "./data-table";
+import { DashboardDialog, DialogContent, DialogFooter } from "./data-table";
 
 type Stats = FunctionReturnType<typeof api.dashboard.stats>;
 const count = new Intl.NumberFormat("id-ID");
@@ -59,32 +59,33 @@ function FilterForm({ initial, search, stats, onCancel, onApply }: { initial: Me
   const total = preview?.total;
   const counts = stats && {
     access: { owner: stats.owners, admin: stats.admins, member: stats.members - stats.owners - stats.admins },
+    reviewer: { all: stats.members, only: stats.reviewers },
     community: { member: stats.members - stats.core - stats.bod, core: stats.core, bod: stats.bod },
     status: { all: stats.members, active: stats.members - stats.deactivated, deactivated: stats.deactivated },
     tag: { all: stats.core + stats.bod, confirmed: stats.core + stats.bod - stats.unconfirmed, unconfirmed: stats.unconfirmed },
   };
-  return <form className="dash-filter-form" onSubmit={(event) => { event.preventDefault(); onApply(draft); }}>
-    <div className="dash-filter-groups">
-      <ChipGroup label="Akses dashboard" value={draft.access} onChange={(access) => set({ access: access as MemberFilters["access"] })}
-        options={memberAccess.map((value) => ({ value, label: accessLabels[value], count: counts?.access[value] }))} />
-      <Checkbox className="dash-filter-toggle" isSelected={draft.reviewer} onChange={(reviewer) => set({ reviewer })}>
-        {({ isSelected }) => <><span className="dash-filter-box" aria-hidden="true">{isSelected && <PixelIcon name="check" size={18} />}</span>
-          <span><strong>Hanya peninjau apresiasi</strong><small>Diberi izin oleh pemilik, atau Core Team dan BoD Media & Creative yang terkonfirmasi.{stats ? ` ${count.format(stats.reviewers)} orang.` : ""}</small></span></>}
-      </Checkbox>
-      <ChipGroup label="Peran komunitas" value={draft.community} onChange={(community) => set({ community: community as MemberFilters["community"] })}
-        options={memberCommunity.map((value) => ({ value, label: communityLabels[value], count: counts?.community[value] }))} />
-      <ChipGroup label="Divisi" hint="Untuk Core Team dan BoD." value={draft.divisions} onChange={(selected) => set({ divisions: selected })}
-        options={divisions.map((value) => ({ value, label: value, count: stats?.divisions[value] }))} />
-      <Segmented label="Status akun" value={draft.status} onChange={(status) => set({ status })} options={(["all", "active", "deactivated"] as const).map((value) => ({ value, label: statusLabels[value], count: counts?.status[value] }))} />
-      <Segmented label="Konfirmasi peran komunitas" hint="Core Team dan BoD yang dipilih sendiri perlu dikonfirmasi staf." value={draft.tag} onChange={(tag) => set({ tag })}
-        options={(["all", "confirmed", "unconfirmed"] as const).map((value) => ({ value, label: tagLabels[value], count: counts?.tag[value] }))} />
-    </div>
-    <div className="dash-dialog-actions dash-filter-actions">
+  return <form className="dash-dialog-form" onSubmit={(event) => { event.preventDefault(); onApply(draft); }}>
+    <DialogContent>
+      <div className="dash-filter-groups">
+        <MultiGroup label="Akses dashboard" value={draft.access} onChange={(access) => set({ access: access as MemberFilters["access"] })}
+          options={memberAccess.map((value) => ({ value, label: accessLabels[value], count: counts?.access[value] }))} />
+        <SingleGroup label="Peninjau apresiasi" hint="Diberi izin oleh pemilik, atau Core Team dan BoD Media & Creative yang terkonfirmasi." value={draft.reviewer ? "only" : "all"}
+          onChange={(value) => set({ reviewer: value === "only" })} options={[{ value: "all", label: "Semua", count: counts?.reviewer.all }, { value: "only", label: "Hanya peninjau", count: counts?.reviewer.only }]} />
+        <MultiGroup label="Peran komunitas" value={draft.community} onChange={(community) => set({ community: community as MemberFilters["community"] })}
+          options={memberCommunity.map((value) => ({ value, label: communityLabels[value], count: counts?.community[value] }))} />
+        <MultiGroup label="Divisi" hint="Untuk Core Team dan BoD." value={draft.divisions} onChange={(selected) => set({ divisions: selected })}
+          options={divisions.map((value) => ({ value, label: value, count: stats?.divisions[value] }))} />
+        <SingleGroup label="Status akun" value={draft.status} onChange={(status) => set({ status })} options={(["all", "active", "deactivated"] as const).map((value) => ({ value, label: statusLabels[value], count: counts?.status[value] }))} />
+        <SingleGroup label="Konfirmasi peran komunitas" hint="Core Team dan BoD yang dipilih sendiri perlu dikonfirmasi staf." value={draft.tag} onChange={(tag) => set({ tag })}
+          options={(["all", "confirmed", "unconfirmed"] as const).map((value) => ({ value, label: tagLabels[value], count: counts?.tag[value] }))} />
+      </div>
+    </DialogContent>
+    <DialogFooter>
       <button type="button" className="text-button" disabled={!activeFilterCount(draft)} onClick={() => setDraft(noFilters)}>Atur ulang</button>
       <span className="dash-dialog-spacer" />
       <Button className="dash-dialog-button" onPress={onCancel}>Batal</Button>
       <Button type="submit" className="dash-dialog-button" data-primary>{total === undefined ? "Tampilkan" : total ? `Tampilkan ${count.format(total)} anggota` : "Tidak ada yang cocok"}</Button>
-    </div>
+    </DialogFooter>
   </form>;
 }
 
@@ -94,24 +95,30 @@ function GroupLabel({ label, hint }: { label: string; hint?: string }) {
   return <Label className="dash-filter-label">{label}{hint && <small>{hint}</small>}</Label>;
 }
 
-function ChipGroup({ label, hint, value, onChange, options }: { label: string; hint?: string; value: string[]; onChange: (value: string[]) => void; options: Option<string>[] }) {
+/** Several choices in one group (OR): a square that takes a check. */
+function MultiGroup({ label, hint, value, onChange, options }: { label: string; hint?: string; value: string[]; onChange: (value: string[]) => void; options: Option<string>[] }) {
   return <CheckboxGroup className="dash-filter-group" value={value} onChange={onChange}>
     <GroupLabel label={label} hint={hint} />
-    <div className="dash-filter-options">{options.map((option) => <Checkbox key={option.value} value={option.value} className="dash-filter-chip">
-      {({ isSelected }) => <OptionBody icon={isSelected} label={option.label} count={option.count} />}
+    <div className="dash-filter-options">{options.map((option) => <Checkbox key={option.value} value={option.value} className="dash-option">
+      {({ isSelected }) => <OptionBody mark="check" selected={isSelected} label={option.label} count={option.count} />}
     </Checkbox>)}</div>
   </CheckboxGroup>;
 }
 
-function Segmented<V extends string>({ label, hint, value, onChange, options }: { label: string; hint?: string; value: V; onChange: (value: V) => void; options: Option<V>[] }) {
+/** One choice in a group: the same chip, with a filled square instead of a check. */
+function SingleGroup<V extends string>({ label, hint, value, onChange, options }: { label: string; hint?: string; value: V; onChange: (value: V) => void; options: Option<V>[] }) {
   return <RadioGroup className="dash-filter-group" value={value} onChange={(next) => onChange(next as V)} orientation="horizontal">
     <GroupLabel label={label} hint={hint} />
-    <div className="dash-segmented">{options.map((option) => <Radio key={option.value} value={option.value} className="dash-segment">
-      <OptionBody label={option.label} count={option.count} />
+    <div className="dash-filter-options">{options.map((option) => <Radio key={option.value} value={option.value} className="dash-option">
+      {({ isSelected }) => <OptionBody mark="dot" selected={isSelected} label={option.label} count={option.count} />}
     </Radio>)}</div>
   </RadioGroup>;
 }
 
-function OptionBody({ icon, label, count: total }: { icon?: boolean; label: ReactNode; count?: number }) {
-  return <>{icon && <PixelIcon name="check" size={18} />}<span>{label}</span>{total !== undefined && <span className="dash-filter-count">{count.format(total)}</span>}</>;
+function OptionBody({ mark, selected, label, count: total }: { mark: "check" | "dot"; selected: boolean; label: ReactNode; count?: number }) {
+  return <>
+    <span className="dash-option-mark" data-mark={mark} aria-hidden="true">{selected && mark === "check" && <PixelIcon name="check" size={16} />}</span>
+    <span>{label}</span>
+    {total !== undefined && <span className="dash-filter-count">{count.format(total)}</span>}
+  </>;
 }

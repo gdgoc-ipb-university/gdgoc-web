@@ -112,7 +112,7 @@ function AssignmentReviewers({ assignment, reviewers }: { assignment: Doc<"assig
   const setReviewer = useMutation(api.assignments.setReviewer);
   const [search, setSearch] = useState("");
   const term = search.trim();
-  const found = useQuery(api.dashboard.members, term.length >= 2 ? { search: term, filter: "all", paginationOpts: { numItems: 6, cursor: null } } : "skip");
+  const found = useQuery(api.dashboard.members, term.length >= 2 ? { search: term, filter: "all", page: 1, pageSize: 6 } : "skip");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function change(ownerId: string, reviewer: boolean) {
@@ -121,7 +121,7 @@ function AssignmentReviewers({ assignment, reviewers }: { assignment: Doc<"assig
     catch (cause) { setError(readableError(cause)); }
     finally { setBusy(false); }
   }
-  const candidates = (found?.page ?? []).filter((row) => row.role === "member" && row.active && !reviewers.some((reviewer) => reviewer.ownerId === row.ownerId));
+  const candidates = (found?.rows ?? []).filter((row) => row.role === "member" && row.active && !reviewers.some((reviewer) => reviewer.ownerId === row.ownerId));
   return <section className="dash-reviewers" aria-labelledby="reviewers-title">
     <div className="app-section-heading"><div><p className="eyebrow">PENILAI</p><h2 id="reviewers-title">Penilai tugas ini</h2></div><span className="app-small">Admin dan pemilik selalu bisa menilai.</span></div>
     <p className="app-small">Penilai bisa melihat kiriman, memberi nilai, dan meminta revisi untuk tugas ini saja, tanpa email member dan tanpa akses admin.</p>

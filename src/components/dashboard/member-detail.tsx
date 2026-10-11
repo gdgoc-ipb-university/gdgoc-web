@@ -12,23 +12,37 @@ import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
 import { StaffOnly } from "./assignments";
 import { AccessLogList } from "./access-log";
-import { MemberRow } from "./members";
+import { AccessBadges, ActiveBadge, CommunityBadge, MemberActions, initial, useMembersListHref } from "./members";
 import { AssignmentStatusBadge, ScoreBadge, SubmissionBadge } from "./shared";
+import { CopyIconButton } from "./data-table";
 import { isStaff, useDashboardViewer } from "./viewer";
 
 /** One member's profile and activity for staff: submissions, Apresiasi, assignments they review, and the last access change. */
 export function MemberDetail({ ownerId }: { ownerId: string }) {
   const viewer = useDashboardViewer();
   const member = useQuery(api.dashboard.member, isStaff(viewer) ? { ownerId } : "skip");
+  const listHref = useMembersListHref();
   if (!isStaff(viewer)) return <StaffOnly />;
-  const back = <Link className="text-button app-back" href="/dashboard/anggota"><PixelIcon name="arrow-left" size={24} />Semua anggota</Link>;
+  const back = <Link className="text-button app-back" href={listHref}><PixelIcon name="arrow-left" size={24} />Semua anggota</Link>;
   if (member === undefined) return <>{back}<LoadingPanel label="Memuat anggota…" /></>;
   if (!member) return <>{back}<div className="app-empty"><h1>Anggota tidak ditemukan.</h1><p>Akun ini belum menyelesaikan perkenalan atau sudah dihapus.</p></div></>;
   return <>
     {back}
-    <div className="dash-intro"><p className="eyebrow">ADMIN · ANGGOTA</p><h1>{member.fullName}</h1>
-      <p>Bergabung {dateLabel(member.joinedAt)}{member.accessUpdatedBy ? ` · Akses terakhir diubah oleh ${member.accessUpdatedBy}` : ""}.</p></div>
-    <ul className="dash-members"><MemberRow row={member} viewer={viewer} linked={false} /></ul>
+    <header className="dash-member-header">
+      <span className="account-avatar dash-member-avatar" aria-hidden="true">{initial(member.fullName)}</span>
+      <div className="dash-member-heading"><p className="eyebrow">ADMIN · ANGGOTA</p><h1>{member.fullName}{member.ownerId === viewer.id && <span className="app-small"> (kamu)</span>}</h1>
+        <div className="dash-badges"><AccessBadges row={member} /><ActiveBadge active={member.active} /></div></div>
+      <div className="dash-member-header-actions"><MemberActions row={member} viewer={viewer} labelled /></div>
+    </header>
+
+    <dl className="dash-facts dash-member-facts">
+      <div><dt>Email</dt><dd><span className="dash-fact-row"><a href={`mailto:${member.email}`}>{member.email}</a><CopyIconButton text={member.email} label="Salin email" /></span></dd></div>
+      <div><dt>Peran komunitas</dt><dd><CommunityBadge row={member} /></dd></div>
+      <div><dt>Kampus</dt><dd>{member.campus || "—"}</dd></div>
+      <div><dt>Program studi</dt><dd>{member.studyProgram || "—"}</dd></div>
+      <div><dt>Bergabung</dt><dd>{dateLabel(member.joinedAt)}</dd></div>
+      <div><dt>Perubahan akses terakhir</dt><dd>{member.accessUpdatedBy ?? "Belum pernah diubah"}</dd></div>
+    </dl>
 
     <section aria-labelledby="member-tasks"><div className="app-section-heading"><div><p className="eyebrow">TUGAS</p><h2 id="member-tasks">Kiriman tugas</h2></div><span className="app-small">{member.submissions.length} kiriman</span></div>
       {!member.submissions.length ? <p className="app-small">Belum ada kiriman tugas.</p>

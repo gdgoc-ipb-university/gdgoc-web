@@ -6,6 +6,7 @@ import { Reveal } from "@/components/reveal";
 import { Arrow, PixelSpark } from "@/components/icons";
 import { JoinFooter } from "@/components/join-footer";
 import { communityLinks } from "@/lib/community";
+import { techLeague } from "@/lib/tech-league";
 
 const paths = [
   {
@@ -25,7 +26,7 @@ const paths = [
     text: "Kompetisi nasional untuk mengadu karya di tiga kategori: Software Development, UI/UX Design, dan Business Plan. Siapkan karya terbaik bersama timmu",
     cta: "Lihat jadwal Tech League",
     icon: "trophy" as PixelIconName,
-    href: "/tech-league",
+    href: techLeague.path,
   },
   {
     n: "03",

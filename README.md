@@ -31,7 +31,7 @@ The first authenticated visit opens a five-screen `/onboarding`: name, campus an
 
 ## Tech League
 
-`/tech-league` is the public page for Tech League 2026/27: the three categories, the schedule (registration 2 November 2026 – 8 February 2027, submissions due 15 February, judging 19 February – 16 March, finals 25–27 March 2027), and a short FAQ. Registration, payment and submissions run on Program & Development's forms, not on this site (#33). The page shows the registration state for the current date (WIB) and is revalidated hourly. The form and guidebook links are `registrationUrl` and `guidebookUrl` in `src/lib/tech-league.ts`; until they are set, the page says the links will be published there and on Instagram. The landing's Tech League card opens this page.
+`/program/tech-league` is the public page for Tech League 2026/27: the three categories, the schedule (registration 2 November 2026 – 8 February 2027, submissions due 15 February, judging 19 February – 16 March, finals 25–27 March 2027), and a short FAQ. Registration, payment and submissions run on Program & Development's forms, not on this site (#33). The page shows the registration state for the current date (WIB) and is revalidated hourly. The form and guidebook links are `registrationUrl` and `guidebookUrl` in `src/lib/tech-league.ts`; until they are set, the page says the links will be published there and on Instagram. The landing's Tech League card and the footer open this page. It carries `Event` JSON-LD for the competition (online, 2 November 2026 – 27 March 2027) and `FAQPage` JSON-LD built from the same FAQ items the page renders. Program pages live under `/program/<slug>`, without a year; the page moved from `/tech-league` on 13 October with no redirect, since nothing printed or posted used the old URL.
 
 ## Dashboard
 
@@ -74,7 +74,8 @@ The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop an
 - `src/app/rai/` and `src/components/rai/`: an unlinked, noindex easter egg with the Tier Gemini Rising Star badge redrawn as SVG. It unlocks the blue dino skin for Bogor Run (`src/lib/bogor-run/skin.ts`); the landing page's browser console hints at it.
 - `convex/bogorRun.ts`: signed run tokens, replay-verified score submission, the public and dashboard leaderboards, moderation, and the 30-day pruning of run records.
 - `src/lib/community.ts`: verified official membership and Instagram destinations.
-- `src/lib/tech-league.ts` and `src/app/tech-league/page.tsx`: Tech League categories, schedule, registration state, and the public page.
+- `src/lib/tech-league.ts` and `src/app/program/tech-league/page.tsx`: Tech League categories, schedule, registration state, Event JSON-LD, and the public page.
+- `src/lib/faq.ts`, `src/components/faq.tsx`, and `src/components/json-ld.tsx`: FAQ items rendered on a page and as `FAQPage` JSON-LD from one source, and the escaped JSON-LD script tag.
 - `src/lib/site.ts`: the canonical origin, shared Open Graph fields, and the per-page canonical helper.
 - `docs/DESIGN.md`: Figma evidence, direction choices and implementation rationale.
 - `docs/VERIFICATION.md`: checks and evidence boundaries.
@@ -90,7 +91,7 @@ Copy introduces a community for students across Bogor, its learning areas, and t
 
 ## Search and sharing
 
-Only the landing and `/privasi` are indexable. Both set a canonical URL, so `?motion=` and `?webgl=` previews count as the landing. The dashboard, onboarding, `/rai`, `/environment`, the two design galleries, and the world previews are `noindex`. `/robots.txt` blocks only `/api/`, so crawlers can still read those `noindex` tags, and `/sitemap.xml` lists the two indexable pages. All absolute URLs come from `NEXT_PUBLIC_SITE_URL`, falling back to `https://www.gdgocipb.com`.
+The landing, `/program/tech-league`, and `/privasi` are indexable, listed once in `indexablePaths` in `src/lib/site.ts`. Each sets a canonical URL, so `?motion=` and `?webgl=` previews count as the landing. The dashboard, onboarding, `/rai`, `/environment`, the two design galleries, and the world previews are `noindex`. `/robots.txt` blocks only `/api/`, so crawlers can still read those `noindex` tags, and `/sitemap.xml` lists every path in `indexablePaths`. A new public page adds its path there and sets `canonical()` with the same path. All absolute URLs come from `NEXT_PUBLIC_SITE_URL`, falling back to `https://www.gdgocipb.com`.
 
 Every page shares one Open Graph and Twitter card image, `public/brand/og-image.jpg` (1200 × 630). Its background is a still of the landing's Three.js campus, not the concept illustration: `node design/og-image.mjs` opens `/environment?motion=off` on a running local site in headless Chrome (through `design/campus-still.mjs`), captures the rendered scene, and adds the lockup and the hero headline. Rerun it after changing the scene, the lockup, or the headline. The landing also carries `Organization` and `WebSite` JSON-LD with the chapter's names, logo, and official GDG and Instagram pages. The landing's title leads with "GDGoC IPB University" and keeps the Komunitas Mahasiswa Bogor positioning; its description opens with the full "Google Developer Group on Campus IPB University". The JSON-LD also lists "GDG on Campus IPB University", the name on the official chapter page, and the earlier "GDSC IPB" recorded there. A page that sets its own `openGraph` must build it with `canonical()` from `src/lib/site.ts`, because Next.js replaces nested metadata instead of merging it.
 

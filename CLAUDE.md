@@ -2,7 +2,12 @@
 
 # Commits and pull requests
 
-Do not add Claude attribution: no `Co-Authored-By: Claude …` or `Claude-Session:` trailers in commit messages, and no "Generated with Claude Code" footer or session link in pull request descriptions or comments.
+Do not credit or mention AI anywhere, unless a maintainer explicitly asks for it:
+
+- Commit author and committer are the maintainer, never an AI identity. Cloud containers may set `user.name`/`user.email` to `Claude <noreply@anthropic.com>`; set them to `Aldio Lisafron <78518262+al-dioooo@users.noreply.github.com>` before the first commit and check `git log --format='%an <%ae> | %cn <%ce>'` before pushing.
+- No `Co-Authored-By: Claude …` or `Claude-Session:` trailers in commit messages.
+- No "Generated with Claude Code" footer or session link in pull request descriptions, issues, or comments. Tools may append one when posting; read the posted text back and remove it.
+- No mention of AI in code, comments, or docs.
 
 # Project board
 

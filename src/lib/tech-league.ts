@@ -1,9 +1,14 @@
+import { organizationId, siteUrl } from "./site";
+
 /**
- * Tech League 2026/27, shown at /tech-league. The categories match the landing; the dates follow the program
+ * Tech League 2026/27, shown at /program/tech-league. The categories match the landing; the dates follow the program
  * blueprint recorded in issue #33. Registration, payment and submissions run on Program & Development's forms,
  * so the links stay null until they are published: set them here and the page switches on its own.
  */
 export const techLeague = {
+  path: "/program/tech-league",
+  description:
+    "Tech League GDGoC IPB: kompetisi nasional untuk Software Development, UI/UX Design, dan Business Plan. Pendaftaran tim dibuka 2 November 2026.",
   categories: ["Software Development", "UI/UX Design", "Business Plan"],
   registration: { opensAt: "2026-11-02", closesAt: "2027-02-08" },
   timeline: [
@@ -44,4 +49,26 @@ export function registrationState(now: number, registration: { opensAt: string; 
   if (now < Date.parse(`${registration.opensAt}T00:00:00+07:00`)) return "upcoming" as const;
   if (now <= Date.parse(`${registration.closesAt}T23:59:59+07:00`)) return "open" as const;
   return "closed" as const;
+}
+
+/** The competition as one online `Event`, from registration opening to the last day of the final. */
+export function techLeagueJsonLd() {
+  const url = `${siteUrl}${techLeague.path}`;
+  const final = techLeague.timeline[techLeague.timeline.length - 1];
+  return {
+    "@context": "https://schema.org",
+    "@type": "Event",
+    "@id": `${url}#event`,
+    name: "Tech League GDGoC IPB 2026/27",
+    description: techLeague.description,
+    url,
+    image: `${siteUrl}/brand/og-image.jpg`,
+    inLanguage: "id",
+    startDate: techLeague.registration.opensAt,
+    endDate: "end" in final ? final.end : final.start,
+    eventStatus: "https://schema.org/EventScheduled",
+    eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode",
+    location: { "@type": "VirtualLocation", url },
+    organizer: { "@type": "Organization", "@id": organizationId, name: "GDGoC IPB University", url: `${siteUrl}/` },
+  };
 }

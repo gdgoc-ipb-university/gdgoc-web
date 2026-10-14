@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, rangeLabel, registrationState, techLeague } from "./tech-league";
+import { indexablePaths, siteUrl } from "./site";
+import { dayLabel, rangeLabel, registrationState, techLeague, techLeagueJsonLd } from "./tech-league";
 
 describe("Tech League schedule", () => {
   it("writes Indonesian dates without shifting the calendar day", () => {
@@ -22,5 +23,13 @@ describe("Tech League schedule", () => {
     const starts = techLeague.timeline.map((step) => step.start);
     expect([...starts].sort()).toEqual(starts);
     expect(techLeague.timeline[0]).toMatchObject({ start: techLeague.registration.opensAt, end: techLeague.registration.closesAt });
+  });
+
+  it("describes the competition as one online event, from registration to the last day of the final", () => {
+    const event = techLeagueJsonLd();
+    expect(event).toMatchObject({ "@type": "Event", startDate: "2026-11-02", endDate: "2027-03-27", url: `${siteUrl}/program/tech-league`, eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode" });
+    expect(event.location.url).toBe(event.url);
+    expect(event.organizer["@id"]).toBe(`${siteUrl}/#organization`);
+    expect(indexablePaths).toContain(techLeague.path);
   });
 });

@@ -1,12 +1,13 @@
 import type { Metadata } from "next";
+import { JsonLd } from "@/components/json-ld";
 import { Landing } from "@/components/landing";
 import { communityLinks } from "@/lib/community";
-import { canonical, siteDescription, siteName, siteUrl } from "@/lib/site";
+import { canonical, organizationId, siteDescription, siteName, siteUrl } from "@/lib/site";
 
 // `?motion=` and `?webgl=` are previews of this same page.
 export const metadata: Metadata = canonical("/");
 
-const organization = { "@id": `${siteUrl}/#organization` };
+const organization = { "@id": organizationId };
 const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
@@ -37,7 +38,7 @@ const jsonLd = {
 export default function Home() {
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c") }} />
+      <JsonLd data={jsonLd} />
       <Landing />
     </>
   );

@@ -344,6 +344,20 @@ Evidence:
 - **Screens.** Headless Chromium against the dev server, mid-run at 390 × 844 and 320 × 568 at 2× pixel density: the dino, an angkot and a talas stayed crisp and fully in view above the controls.
 - Not measured: the review bot's new median at 390 px, since that bot is not in the repository.
 
+## Program URLs and Tech League structured data — 13 October
+
+Tech League moved from `/tech-league` to `/program/tech-league`, the first page under `/program/<slug>` (#86, #87). There is no redirect: no poster or post carried the old URL. The landing card and a new footer link point at the new path, and `indexablePaths` in `src/lib/site.ts` feeds the sitemap. The page adds `Event` and `FAQPage` JSON-LD; its FAQ is rendered and serialised from the same items.
+
+Evidence:
+- `pnpm test` (39 files, 413 tests) and `pnpm check` pass; `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs prerenders `/program/tech-league` with a 1-hour revalidate.
+- Against `next start`, read with `curl`:
+  - `/program/tech-league` returns 200 with canonical and `og:url` `https://www.gdgocipb.com/program/tech-league`, one `<h1>`, and two JSON-LD scripts that parse: an `Event` from 2026-11-02 to 2027-03-27 with a `VirtualLocation` and the chapter as organizer, and a `FAQPage` with the page's three questions;
+  - the FAQ markup matches the previous page, including the Instagram link;
+  - `/tech-league` and `/program` return 404;
+  - `/sitemap.xml` lists `/`, `/program/tech-league`, and `/privasi`;
+  - the landing links only to `/program/tech-league`, from its Tech League card and the footer, and its `Organization` and `WebSite` JSON-LD is unchanged.
+- Not checked: the deployed site, Google's Rich Results Test, and screenshots (Playwright is not installed in this checkout; the page's markup and classes are unchanged).
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

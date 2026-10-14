@@ -1,16 +1,18 @@
 import type { Metadata } from "next";
+import { Faq } from "@/components/faq";
 import { Header } from "@/components/header";
+import { JsonLd } from "@/components/json-ld";
 import { Arrow } from "@/components/icons";
 import { PixelIcon, type PixelIconName } from "@/components/pixel-icons";
 import { communityLinks } from "@/lib/community";
+import { faqJsonLd, type FaqItem } from "@/lib/faq";
 import { canonical } from "@/lib/site";
-import { currentRegistrationState, dayLabel, rangeLabel, techLeague } from "@/lib/tech-league";
+import { currentRegistrationState, dayLabel, rangeLabel, techLeague, techLeagueJsonLd } from "@/lib/tech-league";
 
 export const metadata: Metadata = {
   title: "Tech League",
-  description:
-    "Tech League GDGoC IPB: kompetisi nasional untuk Software Development, UI/UX Design, dan Business Plan. Pendaftaran tim dibuka 2 November 2026.",
-  ...canonical("/tech-league"),
+  description: techLeague.description,
+  ...canonical(techLeague.path),
 };
 
 // The registration status depends on the date, so the page is rebuilt at most hourly instead of once at deploy.
@@ -21,6 +23,12 @@ const categoryIcons: Record<(typeof techLeague.categories)[number], PixelIconNam
   "UI/UX Design": "brush",
   "Business Plan": "notebook",
 };
+
+const faq: FaqItem[] = [
+  { question: "Bagaimana cara mendaftar?", answer: [`Lewat form resmi dari GDGoC IPB. Link form ditautkan di halaman ini dan diumumkan di Instagram saat pendaftaran dibuka pada ${dayLabel(techLeague.registration.opensAt)}.`] },
+  { question: "Di mana aturan lengkapnya?", answer: techLeague.guidebookUrl ? ["Di ", { text: "guidebook Tech League", href: techLeague.guidebookUrl }, "."] : ["Di guidebook Tech League, yang ditautkan di halaman ini setelah terbit."] },
+  { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
+];
 
 function RegistrationStatus() {
   const state = currentRegistrationState();
@@ -42,6 +50,8 @@ function RegistrationStatus() {
 
 export default function TechLeaguePage() {
   return <>
+    <JsonLd data={techLeagueJsonLd()} />
+    <JsonLd data={faqJsonLd(faq)} />
     <Header />
     <main id="main" className="league-page section-width">
       <p className="eyebrow">GDGOC IPB · KOMPETISI NASIONAL · 2026/27</p>
@@ -62,11 +72,7 @@ export default function TechLeaguePage() {
 
       <section aria-labelledby="league-faq">
         <h2 id="league-faq">Pertanyaan umum</h2>
-        <dl className="league-faq">
-          <div><dt>Bagaimana cara mendaftar?</dt><dd>Lewat form resmi dari GDGoC IPB. Link form ditautkan di halaman ini dan diumumkan di Instagram saat pendaftaran dibuka pada {dayLabel(techLeague.registration.opensAt)}.</dd></div>
-          <div><dt>Di mana aturan lengkapnya?</dt><dd>{techLeague.guidebookUrl ? <>Di <a href={techLeague.guidebookUrl} target="_blank" rel="noreferrer">guidebook Tech League</a>.</> : "Di guidebook Tech League, yang ditautkan di halaman ini setelah terbit."}</dd></div>
-          <div><dt>Saya punya pertanyaan lain.</dt><dd>Kirim pesan ke <a href={communityLinks.instagram} target="_blank" rel="noreferrer">Instagram @gdgoc.ipb</a>.</dd></div>
-        </dl>
+        <Faq items={faq} className="league-faq" />
       </section>
     </main>
   </>;

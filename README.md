@@ -57,7 +57,69 @@ Speed rises for the whole run but stays below a bound, and obstacle spacing is t
 
 The Canvas 2D runtime loads on intersection. Offscreen/hidden-tab states stop animation, personal games pause when focus leaves or the viewport changes width, and personal games resume only through a player action. Reduced motion disables autoplay and decorative movement, while explicit play remains available. The personal best stays in browser storage. Guests can play without signing in; a signed-in player's crashed or finished run is sent to Convex, which replays its recorded inputs on a server-signed seed before saving the score. A guest can choose **Masuk untuk simpan skor** at game over; after Google sign-in returns to the landing, that run is submitted automatically if it ended less than 30 minutes earlier. The pause and game-over panel shows the weekly (reset Monday 00:00 WIB) and all-time top 10. The original Bogor SVG scenery, obstacles, and the cream/navy Dino and Elang sprite sheets live in `public/games/bogor-run/`; their README covers the Codex provenance, controls, and scoring.
 
-## Structure
+## Repository layout
+
+A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), managed with pnpm. There is no monorepo split.
+
+```text
+.
+├── src/
+│   ├── app/            Next.js routes and layouts (pages stay thin)
+│   ├── components/     React components, grouped by feature
+│   └── lib/            Framework-free logic, shared by pages and tests
+├── convex/             Backend: schema, queries and mutations, auth, crons
+├── public/             Static assets served as-is
+├── design/             Design records and still-capture scripts (not shipped)
+├── docs/               Written documentation (not shipped)
+├── .github/            CI, project-board workflow, issue and PR templates
+└── *.config.*, package.json, .env.example, .node-version
+```
+
+### `src/app/`: routes
+
+| Path | Purpose |
+| --- | --- |
+| `page.tsx`, `layout.tsx` | The landing and the root layout |
+| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `profil` |
+| `onboarding/` | Five-screen first-visit flow |
+| `program/tech-league/`, `privasi/` | Public pages |
+| `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |
+| `rai/` | Unlinked easter egg that unlocks the blue dino skin |
+| `api/auth/[...all]/` | Better Auth route handler |
+| `robots.ts`, `sitemap.ts`, `icon.svg`, `globals.css` | Search, icon and global styles |
+
+Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` and CSS next to its pages.
+
+### `src/components/`: UI
+
+- Top level: landing sections (`landing.tsx`, `hero.tsx`, `header.tsx`, `join-footer.tsx`), the 3D scene and preloader (`campus-environment.tsx`, `scene-preloader.tsx`, `dino-playground.tsx`), the Bogor Run game (`bogor-run.tsx`), providers (`experience-provider.tsx`, `member-provider.tsx`), the FAQ and JSON-LD blocks, a shared `select.tsx`, and icon sets.
+- `dashboard/`, `appreciation/`, `onboarding/`, `rai/`: one folder per feature area.
+- Tests sit beside the component as `*.test.tsx` and run in jsdom.
+
+### `src/lib/`: logic
+
+- `campus/`: the Three.js campus model and runtime.
+- `bogor-run/`: the game engine, shared with the server replay.
+- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `tech-league.ts`, `faq.ts`, `member-table.ts`, `rich-text.ts`) and shared helpers (`site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`).
+- Tests sit beside the module as `*.test.ts` and run in the edge runtime.
+
+### `convex/`: backend
+
+- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, the access log, and account deletions.
+- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `bogorRun` and `bogorRunToken`.
+- `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
+- `_generated/` is produced by Convex; do not edit it.
+- Tests (`*.test.ts`) run against `convex-test`, with no deployment.
+
+### Other folders
+
+- `public/`: `brand/` (logo SVG, Open Graph image), `environments/` (fallback still of the 3D scene) and `games/bogor-run/` (SVG sprites and scenery, with their own README).
+- `design/`: generated direction images (`environments/`, `footer-directions/`), reference material, prompts, and the `.mjs` scripts that capture the scene still and the Open Graph image. `.vercelignore` keeps this out of CLI uploads.
+- `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow).
+- `.github/`: `ci.yml` (lint, typecheck and test), `project-board.yml`, issue forms (bug, feature, task) and the pull request template.
+- Root config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` (two projects: `backend` and `interface`), `vercel.json`, `pnpm-workspace.yaml`, `.env.example`.
+
+## Key modules
 
 - `src/lib/campus/builder.ts`: batched toon geometry, exterior-only voxel unions, and antialiased ink contours.
 - `src/lib/campus/model.ts`: complete campus model; deterministic geometry and foliage.

@@ -82,7 +82,7 @@ A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), m
 | `page.tsx`, `layout.tsx` | The landing and the root layout |
 | `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `profil` |
 | `onboarding/` | Five-screen first-visit flow |
-| `tech-league/`, `privasi/` | Public pages |
+| `program/tech-league/`, `privasi/` | Public pages |
 | `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |
 | `rai/` | Unlinked easter egg that unlocks the blue dino skin |
 | `api/auth/[...all]/` | Better Auth route handler |
@@ -92,7 +92,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 ### `src/components/`: UI
 
-- Top level: landing sections (`landing.tsx`, `hero.tsx`, `header.tsx`, `join-footer.tsx`), the 3D scene and preloader (`campus-environment.tsx`, `scene-preloader.tsx`, `dino-playground.tsx`), the Bogor Run game (`bogor-run.tsx`), providers (`experience-provider.tsx`, `member-provider.tsx`) and icon sets.
+- Top level: landing sections (`landing.tsx`, `hero.tsx`, `header.tsx`, `join-footer.tsx`), the 3D scene and preloader (`campus-environment.tsx`, `scene-preloader.tsx`, `dino-playground.tsx`), the Bogor Run game (`bogor-run.tsx`), providers (`experience-provider.tsx`, `member-provider.tsx`), the FAQ and JSON-LD blocks, a shared `select.tsx`, and icon sets.
 - `dashboard/`, `appreciation/`, `onboarding/`, `rai/`: one folder per feature area.
 - Tests sit beside the component as `*.test.tsx` and run in jsdom.
 
@@ -100,7 +100,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `campus/`: the Three.js campus model and runtime.
 - `bogor-run/`: the game engine, shared with the server replay.
-- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `tech-league.ts`, `rich-text.ts`) and shared helpers (`site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`).
+- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `tech-league.ts`, `faq.ts`, `member-table.ts`, `rich-text.ts`) and shared helpers (`site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`).
 - Tests sit beside the module as `*.test.ts` and run in the edge runtime.
 
 ### `convex/`: backend
@@ -117,7 +117,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 - `design/`: generated direction images (`environments/`, `footer-directions/`), reference material, prompts, and the `.mjs` scripts that capture the scene still and the Open Graph image. `.vercelignore` keeps this out of CLI uploads.
 - `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow).
 - `.github/`: `ci.yml` (lint, typecheck and test), `project-board.yml`, issue forms (bug, feature, task) and the pull request template.
-- Root config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` (two projects: `backend` and `interface`), `vercel.json`, `pnpm-workspace.yaml`, `.env.example`. `AGENTS.md` and `CLAUDE.md` hold instructions for coding agents.
+- Root config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` (two projects: `backend` and `interface`), `vercel.json`, `pnpm-workspace.yaml`, `.env.example`.
 
 ## Key modules
 

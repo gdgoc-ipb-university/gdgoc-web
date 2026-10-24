@@ -43,7 +43,7 @@ export function JoinFooter() {
             <nav aria-label="Jelajahi komunitas">
               <p className="eyebrow">KENALI KAMI</p>
               <a href="#community">Tentang komunitas</a>
-              <a href="#explore">Program kami</a>
+              <Link href="/program">Program kami</Link>
               <Link href={techLeague.path}>Tech League</Link>
               <Link href="/dashboard/apresiasi">Apresiasi prestasi</Link>
               <Link href="/dashboard">Dashboard member</Link>

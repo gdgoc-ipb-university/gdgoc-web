@@ -19,10 +19,10 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("public header", () => {
-  it("links the landing sections and the game, without Apresiasi", async () => {
+  it("links the landing sections, the program hub, and the game, without Apresiasi", async () => {
     const { container } = render(<Header />);
     const links = within(nav()).getAllByRole("link");
-    expect(links.map((link) => [link.textContent, link.getAttribute("href")]).slice(0, 3)).toEqual([["Tentang kami", "#community"], ["Program", "#explore"], ["Bogor Run", "#join"]]);
+    expect(links.map((link) => [link.textContent, link.getAttribute("href")]).slice(0, 3)).toEqual([["Tentang kami", "#community"], ["Program", "/program"], ["Bogor Run", "#join"]]);
     expect(within(nav()).queryByRole("link", { name: /Apresiasi/ })).toBeNull();
     expect(within(nav()).queryByRole("link", { name: /Gabung member/ })).toBeNull();
     await waitFor(() => expect(within(nav()).getByRole("link", { name: "Masuk ke dashboard dengan Google" })).toBeTruthy());
@@ -33,7 +33,15 @@ describe("public header", () => {
   it("points section links back to the landing from other pages", () => {
     route.pathname = "/privasi";
     render(<Header />);
-    expect(within(nav()).getByRole("link", { name: "Program" }).getAttribute("href")).toBe("/#explore");
+    expect(within(nav()).getByRole("link", { name: "Tentang kami" }).getAttribute("href")).toBe("/#community");
+    expect(within(nav()).getByRole("link", { name: "Program" }).getAttribute("href")).toBe("/program");
+  });
+
+  it("marks Program as the current page on the program hub", () => {
+    route.pathname = "/program";
+    render(<Header />);
+    expect(within(nav()).getByRole("link", { name: "Program" }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav()).getByRole("link", { name: "Tentang kami" }).getAttribute("aria-current")).toBeNull();
   });
 
   it("says Dashboard until it knows, then Masuk for guests", async () => {

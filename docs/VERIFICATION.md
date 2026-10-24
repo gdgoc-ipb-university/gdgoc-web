@@ -358,6 +358,20 @@ Evidence:
   - the landing links only to `/program/tech-league`, from its Tech League card and the footer, and its `Organization` and `WebSite` JSON-LD is unchanged.
 - Not checked: the deployed site, Google's Rich Results Test, and screenshots (Playwright is not installed in this checkout; the page's markup and classes are unchanged).
 
+## Program hub — 24 October
+
+`/program` lists the three flagships (Catalyst, Tech League, Tech Support) and the regular programs (Study Jam, Google programs, Friday Tech Bulletin), each with who it is for and when it runs (#88). Only Tech League has its own page so far; the rest point to Instagram. The header's "Program" and the footer's "Program kami" open `/program` instead of scrolling the landing, and a "Lihat semua program" link sits under the landing's program cards. On the landing the scrollspy still underlines "Program" while its section is being read. `src/lib/breadcrumb.ts` builds `BreadcrumbList` JSON-LD, which `/program` and `/program/tech-league` carry.
+
+Evidence:
+- `pnpm test` (40 files, 416 tests), ESLint, `next typegen` and `tsc --noEmit` pass on Node 24; `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs prerenders `/program` as static.
+- Against `next start`, read with `curl`:
+  - `/program` returns 200 with title "Program · GDGoC IPB", canonical and `og:url` `https://www.gdgocipb.com/program`, one `<h1>`, six program cards under "Program utama" and "Program rutin", and a `BreadcrumbList` of Beranda › Program;
+  - `/program/tech-league` keeps its `Event` and `FAQPage` JSON-LD and adds Beranda › Program › Tech League;
+  - the header's Program link is `/program` on every page, with `aria-current="page"` on `/program`; the landing links to `/program` from the header, the program section, and the footer, and "Temukan program yang cocok" still scrolls to `#explore`;
+  - `/sitemap.xml` lists `/`, `/program`, `/program/tech-league`, and `/privasi`.
+- Headless Chromium screenshots of `/program` at 1440 and 390 px wide: three cards per row on desktop, one column on phones, no horizontal overflow.
+- Not checked: the deployed site and Google's Rich Results Test.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

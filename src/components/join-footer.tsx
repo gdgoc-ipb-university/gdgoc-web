@@ -29,7 +29,7 @@ export function JoinFooter() {
             >
               Gabung member <Arrow external />
             </a>
-            <p className="join-note">Lewat halaman resmi Google Developer Groups</p>
+            <p className="join-note">Lewat halaman resmi Google Developer Groups · <Link href="/bergabung">Cara lain untuk bergabung</Link></p>
           </Reveal>
         }
       >
@@ -43,6 +43,7 @@ export function JoinFooter() {
             <nav aria-label="Jelajahi komunitas">
               <p className="eyebrow">KENALI KAMI</p>
               <Link href="/tentang">Tentang komunitas</Link>
+              <Link href="/bergabung">Cara bergabung</Link>
               <Link href="/program">Program kami</Link>
               <Link href={techLeague.path}>Tech League</Link>
               <Link href="/dashboard/apresiasi">Apresiasi prestasi</Link>

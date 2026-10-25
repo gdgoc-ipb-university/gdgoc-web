@@ -372,6 +372,20 @@ Evidence:
 - Headless Chromium screenshots of `/program` at 1440 and 390 px wide: three cards per row on desktop, one column on phones, no horizontal overflow.
 - Not checked: the deployed site and Google's Rich Results Test.
 
+## Catalyst page — 25 October
+
+`/program/catalyst` explains GDGoC Catalyst 2026/27 to applicants, in the shape of the Tech League page (#89): the Software Development track and its three roles, how the program runs, who can join, the schedule, and a FAQ. The oprec state follows the WIB date (upcoming until 2 November, open through 22 November, closed, then announced from 29 November); "Daftar" appears once `oprecUrl` is set in `src/lib/catalyst.ts` (#90). The landing's Catalyst card and the `/program` hub open the page instead of Instagram. The date labels and the WIB window check moved from `src/lib/tech-league.ts` to `src/lib/schedule.ts`, so both program pages share them.
+
+Evidence:
+- `pnpm test` (42 files, 423 tests) and `pnpm check` pass on Node 24; `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs prerenders `/program/catalyst` with a 1-hour revalidate.
+- Against `next start`, read with `curl` on 25 October:
+  - `/program/catalyst` returns 200 with title "GDGoC Catalyst · GDGoC IPB", canonical and `og:url` `https://www.gdgocipb.com/program/catalyst`, one `<h1>`, and four JSON-LD scripts that parse: a free online `Course` with a `CourseInstance` of nine Sunday sessions from 2026-12-06 to 2027-04-18, an online `Event` over the same dates with the chapter as organizer, a `FAQPage` with the page's six questions, and Beranda › Program › Catalyst;
+  - the status reads "Pendaftaran dibuka 2 November 2026 dan ditutup 22 November 2026. Peserta diumumkan 29 November 2026." with no "Daftar" button, since the form URL is not set;
+  - the landing's Catalyst card and the `/program` hub card link to `/program/catalyst`; `/program/tech-league` is unchanged;
+  - `/sitemap.xml` lists `/`, `/program`, `/program/catalyst`, `/program/tech-league`, and `/privasi`.
+- Headless Chromium screenshots at 1440 and 390 px wide: role cards three across on desktop and stacked on phones, no horizontal overflow.
+- Not checked: the deployed site, Google's Rich Results Test, and the open and announced states in a browser (covered by `src/lib/catalyst.test.ts`).
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

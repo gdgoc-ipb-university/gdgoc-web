@@ -5,6 +5,7 @@ import { Arrow } from "@/components/icons";
 import { JsonLd } from "@/components/json-ld";
 import { JoinFooter } from "@/components/join-footer";
 import { breadcrumbJsonLd } from "@/lib/breadcrumb";
+import { catalyst } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
 import { canonical } from "@/lib/site";
 import { rangeLabel, techLeague } from "@/lib/tech-league";
@@ -20,6 +21,7 @@ const programs = [
     title: "GDGoC Catalyst",
     audience: "Untuk siswa SMK dan mahasiswa yang ingin membangun produk dalam tim.",
     schedule: "Pendaftaran 2–22 November 2026. Sesi berjalan Desember 2026–April 2027.",
+    href: catalyst.path,
   },
   {
     title: "Tech League",

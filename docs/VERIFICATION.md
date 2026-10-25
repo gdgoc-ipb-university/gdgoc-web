@@ -370,6 +370,7 @@ Evidence:
   - the header's Program link is `/program` on every page, with `aria-current="page"` on `/program`; the landing links to `/program` from the header, the program section, and the footer, and "Temukan program yang cocok" still scrolls to `#explore`;
   - `/sitemap.xml` lists `/`, `/program`, `/program/tech-league`, and `/privasi`.
 - Headless Chromium screenshots of `/program` at 1440 and 390 px wide: three cards per row on desktop, one column on phones, no horizontal overflow.
+- Headless Chromium screenshots at 1440 and 390 px wide: mission cards three across on desktop and stacked on phones, no horizontal overflow.
 - Not checked: the deployed site and Google's Rich Results Test.
 
 ## Catalyst page — 25 October
@@ -385,6 +386,16 @@ Evidence:
   - `/sitemap.xml` lists `/`, `/program`, `/program/catalyst`, `/program/tech-league`, and `/privasi`.
 - Headless Chromium screenshots at 1440 and 390 px wide: role cards three across on desktop and stacked on phones, no horizontal overflow.
 - Not checked: the deployed site, Google's Rich Results Test, and the open and announced states in a browser (covered by `src/lib/catalyst.test.ts`).
+
+## About page — 25 October
+
+`/tentang` answers what GDGoC IPB is (#93): the vision, the three missions, who it is for, and the history from GDSC IPB to Google Developer Groups on Campus, with a link to the official chapter page. The header's "Tentang kami" and the footer's "Tentang komunitas" open it instead of scrolling the landing. It adds `AboutPage` JSON-LD (about the landing's `Organization`, part of its `WebSite`) and a Beranda › Tentang breadcrumb. It links to `/program`; the links to `/tim` and `/bergabung` come with those pages (#94, #95).
+
+Evidence:
+- `pnpm test` (43 files, 426 tests), `pnpm check`, and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs pass on Node 24; `/tentang` prerenders as static.
+- Against the dev server through https://gdgoc-ipb.yorhagarden.xyz, read with `curl`: `/tentang` returns 200 with its own canonical, one `<h1>`, `AboutPage` and `BreadcrumbList` JSON-LD that parse; the header links "Tentang kami" to `/tentang` with `aria-current="page"` there; the landing footer links "Tentang komunitas" to `/tentang`; `/sitemap.xml` lists `/tentang`.
+- Headless Chromium screenshots at 1440 and 390 px wide: mission cards three across on desktop and stacked on phones, no horizontal overflow.
+- Not checked: the deployed site and Google's Rich Results Test. The mission descriptions are drafted from the mission names and the current programs, pending the leadership's wording.
 
 ## Evidence boundaries
 

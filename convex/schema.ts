@@ -15,6 +15,8 @@ export const accessChange = v.union(
   v.literal("tagConfirmed"), v.literal("tagSelfChanged"),
 );
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
+export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
+export const cohortRole = v.object({ key: v.string(), name: v.string() });
 
 export default defineSchema({
   memberProfiles: defineTable({
@@ -57,9 +59,13 @@ export default defineSchema({
     reviewers: v.optional(v.array(v.string())),
     // The community tags given this assignment (assignmentAudience); staff see every assignment. Rows without it predate audiences and are Core Team only.
     audience: v.optional(v.array(memberType)),
+    // A cohort assignment (cohorts.ts) goes to that cohort's active participants instead of an audience, and only to these
+    // role keys; absent or empty means every role. Its role's mentors review it like assignment reviewers.
+    cohortId: v.optional(v.id("cohorts")), cohortRoles: v.optional(v.array(v.string())),
   })
     .index("by_status_due", ["status", "dueAt"])
-    .index("by_updated", ["updatedAt"]),
+    .index("by_updated", ["updatedAt"])
+    .index("by_cohort", ["cohortId"]),
   // Every slug an assignment has used, so links keep working after a rename.
   assignmentSlugs: defineTable({ slug: v.string(), assignmentId: v.id("assignments") })
     .index("by_slug", ["slug"])
@@ -117,6 +123,28 @@ export default defineSchema({
   // Player and run counts per period, kept as counters so the board never scans every run.
   gameStats: defineTable({ period: v.string(), players: v.number(), runs: v.number() })
     .index("by_period", ["period"]),
+  // One run of a program, e.g. GDGoC Catalyst 2026/27, with its roles. Role keys never change once enrolments use them; names can.
+  cohorts: defineTable({
+    slug: v.string(), name: v.string(), roles: v.array(cohortRole), status: cohortStatus,
+    attendanceTarget: v.optional(v.number()), // the share of sessions participants commit to, e.g. 0.7
+    createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(),
+  }).index("by_slug", ["slug"]),
+  // One participant of one cohort, keyed by email because accepted applicants are imported before most have an account.
+  // `ownerId` is set once an account signs in with that verified email (cohorts.claimMine); queries read by it after that.
+  enrolments: defineTable({
+    cohortId: v.id("cohorts"), email: v.string(), name: v.string(), role: v.string(),
+    ownerId: v.optional(v.string()), claimedAt: v.optional(v.number()),
+    status: v.union(v.literal("active"), v.literal("withdrawn")),
+    importedAt: v.number(), importedBy: v.string(), withdrawnAt: v.optional(v.number()), withdrawnBy: v.optional(v.string()),
+  })
+    .index("by_cohort_email", ["cohortId", "email"])
+    .index("by_email", ["email"])
+    .index("by_owner", ["ownerId"])
+    .index("by_cohort_role", ["cohortId", "role"]),
+  // A member who mentors one role of a cohort and so reviews that role's assignments without being added to each.
+  cohortMentors: defineTable({ cohortId: v.id("cohorts"), ownerId: v.string(), role: v.string(), addedBy: v.string(), addedAt: v.number() })
+    .index("by_owner_cohort", ["ownerId", "cohortId"])
+    .index("by_cohort_role", ["cohortId", "role"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
@@ -131,6 +159,8 @@ export default defineSchema({
     counts: v.object({
       appreciations: v.number(), appreciationReviews: v.number(), submissions: v.number(), submissionReviews: v.number(),
       files: v.number(), gameRuns: v.number(), gameBests: v.number(), reviewerGrants: v.number(), sessions: v.number(), accounts: v.number(),
+      // Added with cohorts; rows from before them lack these.
+      enrolments: v.optional(v.number()), mentorGrants: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

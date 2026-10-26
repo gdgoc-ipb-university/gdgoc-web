@@ -32,7 +32,8 @@ Icons are [Pixelarticons](https://pixelarticons.com) (MIT) path data copied into
 - **Owner:** a verified Google email in the Convex `APPRECIATION_ADMIN_EMAILS` allowlist. Owners are permanent: they cannot be demoted or deactivated from the dashboard, and they always review Apresiasi. Only owners can promote or demote admins and grant or revoke Apresiasi review.
 - **Admin:** a member promoted by an owner, stored as `memberProfiles.role = "admin"`. Admins manage assignments, see all submissions, review Apresiasi, and can deactivate or reactivate members (not admins or owners). Demoting an admin to member ends the review access that came with the role.
 - **Assignment reviewer:** an active member staff added to one assignment's `reviewers` (see *Assignment reviewers*). Not a role: it applies to that assignment only.
-- **Member:** any verified account that has completed onboarding. There is no approval step.
+- **Cohort mentor:** an active member staff made a mentor of one role in a cohort (see [Cohorts](#cohorts)). Not a role either: they review that role's assignments in that cohort only.
+- **Member:** any verified account that has completed onboarding. There is no approval step. A member with an active, claimed enrolment in a cohort is also that cohort's **participant**.
 
 **Apresiasi reviewer** is a permission, not a role: `memberProfiles.appreciationReviewer`, granted and revoked by owners from the members page for active members, typically the Media & Creative people who prepare the posts. Owners and admins review by role, so the grant is not offered for them. Active Core Team and BoD members tagged **Media & Creative** review too, once staff have set or confirmed that tag (`memberProfiles.tagConfirmedAt`; `reviewsByTag` in `convex/auth.ts`). Self-declared tags never count: a member who picks the tag in onboarding shows "belum dikonfirmasi" on the members page until staff choose **Konfirmasi peran komunitas** (or save the tag from "Ubah peran komunitas"), and a member who later changes their own tag loses the confirmation, even if they change it back. Both events go to the access log. `isReviewer` in `convex/auth.ts` is the single check (owner, an active admin, a granted reviewer, or a confirmed Media & Creative tag, never while deactivated), used by `appreciations.queue`/`search`/`history`/`review`, `auth.viewer`, and `dashboard.viewer`. Deactivation suspends the permission without clearing it; revoking removes the field. A reviewer who is not staff sees only "Tinjau apresiasi" under Kelola.
 
@@ -47,13 +48,13 @@ All rules are enforced in Convex (`convex/access.ts`, `convex/dashboard.ts`, `co
 | Who | Can use |
 | --- | --- |
 | Owner only | `dashboard.exportMembers`, `accessLog`, `setRole`, `setReviewer`, `deleteAccount` |
-| Staff (owner, admin) | `dashboard.members`, `member`, `stats`, `setActive`, `setMemberType`; `assignments.adminList`, `slugPreview`, `create`, `update`, `setStatus`, `remove`, `setReviewer`; `bogorRun.setHidden` |
-| Staff and that assignment's reviewers | `assignments.submissions`, `exportPage`, `missing`, `review`, `requestRevision`, `cancelRevision` |
+| Staff (owner, admin) | `dashboard.members`, `member`, `stats`, `setActive`, `setMemberType`; `assignments.adminList`, `slugPreview`, `create`, `update`, `setStatus`, `remove`, `setReviewer`; `cohorts.create`, `update`; `bogorRun.setHidden` |
+| Staff, that assignment's reviewers, and its cohort roles' mentors | `assignments.submissions`, `exportPage`, `missing`, `review`, `requestRevision`, `cancelRevision` |
 | Staff, granted Apresiasi reviewers, and confirmed Media & Creative Core Team and BoD | `appreciations.queue`, `search`, `history`, `review` |
 | Active, onboarded members | `assignments.list`, `get`, `reviewing`, the member's own uploads and `submit` (for assignments in their audience, see [Audience](#audience)); `bogorRun.board` |
-| Own data, or anyone | `members.*` and the Apresiasi draft functions (own), `auth.configuration`, `auth.viewer`, `dashboard.viewer`, `bogorRun.issueRun`, `submitRun`, `leaderboard` |
+| Own data, or anyone | `members.*` and the Apresiasi draft functions (own), `cohorts.claimMine` (enrolments for the caller's own verified email), `auth.configuration`, `auth.viewer`, `dashboard.viewer`, `bogorRun.issueRun`, `submitRun`, `leaderboard` |
 
-`convex/access.test.ts` checks this table against ten kinds of account: a guest, a signed-in account without onboarding, a deactivated member, a member, a self-declared and a confirmed Media & Creative Core Team member, a granted Apresiasi reviewer, an assignment reviewer, an admin and an owner. Every query must answer only its row. Every mutation must turn away the other accounts for access, not for its arguments, and then accept the narrowest allowed account with the same arguments. The test also reads every public function from `convex/*.ts` and fails when one is missing from the matrix or the open list, so a new function has to be placed before it ships.
+`convex/access.test.ts` checks this table against twelve kinds of account: a guest, a signed-in account without onboarding, a deactivated member, a member, a self-declared and a confirmed Media & Creative Core Team member, a granted Apresiasi reviewer, an assignment reviewer, a cohort participant, a cohort mentor, an admin and an owner. Every query must answer only its row. Every mutation must turn away the other accounts for access, not for its arguments, and then accept the narrowest allowed account with the same arguments. The test also reads every public function from `convex/*.ts` and fails when one is missing from the matrix or the open list, so a new function has to be placed before it ships.
 
 ### Decision: owners stay in configuration
 
@@ -155,6 +156,18 @@ While a request is open, that member can upload and resubmit even after the assi
 
 The file is built in the browser from `assignments.exportPage`, read 100 submissions at a time, as UTF-8 with a byte order mark and CRLF line ends so Excel opens it cleanly. Text cells that start with `=`, `+`, `-`, `@`, a tab or a carriage return get a leading apostrophe so a spreadsheet does not run them as formulas. The builder is `src/lib/assignment-export.ts`.
 
+## Cohorts
+
+A **cohort** is one run of a program with its own roles, such as GDGoC Catalyst 2026/27 with Hacker, Hipster and Hustler (E4, #32; this part is #103). It holds who takes part and in which role, who mentors each role, and which assignments are for it. The import, roster and assignment editor that use it come in #104 and #105; until then cohorts are created with `npx convex run cohorts:seedCatalyst` (idempotent) or by staff through `cohorts.create`.
+
+- **Cohorts and roles.** `cohorts.create` and `update` (staff) take a name, a slug, one to eight roles (a lowercase key and a display name) and an optional attendance target, and `update` also sets the status (`setup`, `active`, `ended`). A role still used by an enrolment, a mentor or an assignment cannot be removed; its name can change. `src/lib/cohort.ts` holds the validation and the Catalyst defaults.
+- **Enrolments.** One row per participant, keyed by email (trimmed, lowercased), because accepted applicants are imported before most of them have an account. When an account with that verified Google email loads the dashboard, `cohorts.claimMine` sets the row's `ownerId`; it is idempotent, never moves a row that is already claimed, and does nothing for an unverified email. Every check reads by `ownerId` after that. A `withdrawn` enrolment keeps its row and submissions but reaches nothing.
+- **Cohort assignments.** An assignment with `cohortId` goes to that cohort's active, claimed participants whose role is in `cohortRoles` (empty means every role), and its community-tag audience is ignored. Staff see it as always; members outside it get "Tugas tidak ditemukan" like any assignment outside their audience (`reaches` in `convex/assignments.ts`). Its "who has not submitted" list counts those participants; unclaimed ones are added in #105.
+- **Mentors.** A `cohortMentors` row makes a member a mentor of one role. They review every assignment of that cohort that includes their role, with the same view and limits as an assignment reviewer (no emails, no management), and those assignments appear under "Tugas yang kamu nilai" (`canReview` in `convex/assignments.ts`). `assignments.reviewers` still adds one-off reviewers.
+- **Deletion.** Deleting an account also deletes its claimed enrolments, any unclaimed enrolment for its email, and its mentor rows, counted as `enrolments` and `mentorGrants` in `accountDeletions`.
+
+What happens to a cohort's data after the program ends is open (#32, decision 8); `/privasi` says what is held and who sees it, not yet how long.
+
 ## Papan skor (Bogor Run leaderboard)
 
 Bogor Run is the runner game in the landing-page footer (`public/games/bogor-run/README.md`). Anyone can play. Saving a score needs a verified Google account that is not deactivated; onboarding is not required. The game's pause and game-over panel shows the weekly and all-time top 10 to everyone, guests included, and links here with "Lihat 100 besar".
@@ -233,7 +246,7 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 ## Data model
 
 - `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`/`bod`), and `division`, a `by_completed` index, and a `search_name` full-text index on `fullName`.
-- `assignments`: optional `slug`, `maxScore`, `rubric` (name and max per criterion), `reviewers` (account IDs) and `audience` (community tags; missing means Core Team), plus `by_status_due` and `by_updated` indexes.
+- `assignments`: optional `slug`, `maxScore`, `rubric` (name and max per criterion), `reviewers` (account IDs), `audience` (community tags; missing means Core Team), and `cohortId` with `cohortRoles` for cohort assignments, plus `by_status_due`, `by_updated` and `by_cohort` indexes.
 - `assignmentSlugs`: every slug an assignment has used (`by_slug`, `by_assignment`).
 - `assignmentSubmissions`: one row per member per assignment (`by_assignment_owner`), with the latest review in optional `score`, `breakdown`, `feedback`, `reviewedAt`, `reviewedBy`, and `revisionRequestedAt` while a revision is requested.
 - `submissionReviews`: one row per review action, with `score`, `breakdown`, and `revisionRequested` for revision requests (`by_submission`).
@@ -243,14 +256,18 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 - `gamePlayers`: staff moderation per player, which also applies to later bests: `hiddenAt` while hidden, `hiddenBy` and `hiddenByRole` of the last hide, and `restoredAt` and `restoredBy` of the last restore (`by_owner`).
 - `gameStats`: player and run counters per period, so the board never scans every run (`by_period`).
 - `accessLog`: one row per access change: `at`, `actorId`, `targetId`, `change` (`role`, `reviewer`, `active`, `memberType`, `assignmentReviewer`, `deleted`), `from` and `to`, and `assignmentId` for assignment reviewers (`by_at`, `by_target`). Account IDs only.
-- `accountDeletions`: one row per deleted account with `deletedAt`, `deletedBy` and how many rows of each kind went, without the member's name or email (`by_deleted`).
+- `cohorts`: `slug`, `name`, `roles` (`key`, `name`), `status`, optional `attendanceTarget`, and who created it (`by_slug`).
+- `enrolments`: `cohortId`, `email`, `name`, `role`, `status` (`active`/`withdrawn`), who imported it and when, optional `ownerId` and `claimedAt` once claimed, and who withdrew it (`by_cohort_email`, `by_email`, `by_owner`, `by_cohort_role`).
+- `cohortMentors`: `cohortId`, `ownerId`, `role`, and who added it (`by_owner_cohort`, `by_cohort_role`).
+- `accountDeletions`: one row per deleted account with `deletedAt`, `deletedBy` and how many rows of each kind went, without the member's name or email (`by_deleted`). `enrolments` and `mentorGrants` are optional, since earlier rows lack them.
 
 All schema changes are additive, so the previous frontend keeps working during a backend-first deploy.
 
 ## Tests
 
-- `convex/access.test.ts`: the access matrix, for every guarded function and ten kinds of account, plus a check that every public function is placed in it or on the open list.
+- `convex/access.test.ts`: the access matrix, for every guarded function and twelve kinds of account, plus a check that every public function is placed in it or on the open list.
 - `convex/dashboard.test.ts`: role derivation, owner-only promotion, deactivation rules, member search, staff role corrections, the core team and BoD filters, BoD tagging with an optional division, the member detail, and account deletion (owner only, typed-name check, every owned row and the auth user gone, other assignments' reviewer lists cleaned), and the access log (each change with its before and after values, no-ops skipped, owners only, per member and paged, deleted accounts and assignments without names). `src/lib/access-log.test.ts` covers the log's sentences. `convex/members.test.ts` checks that members can neither declare nor drop BoD themselves.
+- `convex/cohorts.test.ts`: cohort validation and role removal, claiming (verified email only, case-insensitive, idempotent, never moving a claimed row), cohort assignments by role for the list, link, uploads and submissions, withdrawn and unclaimed participants, mentors reviewing their role's assignments only, the "who has not submitted" list from participants, account deletion, and the Catalyst seed. `src/lib/cohort.test.ts` covers normalisation and validation.
 - `convex/members.test.ts`: the role step, division validation, and `saveRole` after onboarding.
 - `convex/assignments.test.ts`: audiences (the Member default, Core Team only for list, link, uploads and submissions, BoD as its own group, all three as everyone, assignments without an audience as Core Team, old tabs keeping it on edit, and narrowing after a submission), rich answers through the allowlist, slug derivation, collisions, reserved slugs, renamed-link lookup, draft visibility, revision conflicts, submissions with files, late flags, admin-only submission lists, server-side upload validation, resubmission file replacement, closed assignments, upload cleanup, and scoring: bounds, integer scores, staff-only review, the stale-revision refusal, the resubmission flag, member visibility, the review history, rubric scoring, assignment reviewers (scoped access, hidden emails, no management), revision requests (reopening one member's form after closing, clearing on resubmission, withdrawal), and the export (staff only, paged, emails for owners only).
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, slugify, and audience order, labels and the Core Team fallback. convex-test does not record upload content types, so type mismatches are tested here.
@@ -267,4 +284,4 @@ All schema changes are additive, so the previous frontend keeps working during a
 
 ## Not included
 
-Assignments target community tags only. Targeting a Catalyst role or team is part of E4 (#32).
+Cohorts have no screens yet: the roster and import are #104, choosing a cohort and roles in the assignment editor and managing mentors are #105, the participant's card is #106, teams are #107 and team submissions #108 (all under E4, #32).

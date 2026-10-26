@@ -15,6 +15,7 @@ import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
 import type * as bogorRun from "../bogorRun.js";
 import type * as bogorRunToken from "../bogorRunToken.js";
+import type * as cohorts from "../cohorts.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as http from "../http.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   bogorRun: typeof bogorRun;
   bogorRunToken: typeof bogorRunToken;
+  cohorts: typeof cohorts;
   crons: typeof crons;
   dashboard: typeof dashboard;
   http: typeof http;

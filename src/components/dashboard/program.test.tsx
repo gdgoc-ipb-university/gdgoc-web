@@ -21,10 +21,12 @@ const importEnrolments = vi.fn(async (args: { rows: unknown[] }) => ({ added: ar
 vi.mock("convex/react", () => ({
   useQuery: (ref: FunctionReference<"query">) => getFunctionName(ref) === "cohorts:roster" ? roster : undefined,
   useMutation: (ref: FunctionReference<"mutation">) => getFunctionName(ref) === "cohorts:importEnrolments" ? importEnrolments : vi.fn(async () => null),
+  useConvex: () => ({ query: exportBevy }),
 }));
+const exportBevy = vi.fn(async () => [{ email: "budi@gmail.com", name: "Budi Santoso" }, { email: "citra@gmail.com", name: "Citra" }]);
 
 const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "admin", active: true, onboarded: true, reviewer: true, memberType: null, division: null, campus: "", studyProgram: "" };
-const show = () => render(<ViewerContext.Provider value={viewer}><ProgramRoster slug="catalyst-2026" /></ViewerContext.Provider>);
+const show = (role: DashboardViewer["role"] = "admin") => render(<ViewerContext.Provider value={{ ...viewer, role }}><ProgramRoster slug="catalyst-2026" /></ViewerContext.Provider>);
 const bodyRows = () => within(screen.getByRole("table")).getAllByRole("row").slice(1);
 
 afterEach(() => { cleanup(); importEnrolments.mockClear(); });
@@ -72,5 +74,24 @@ describe("program roster", () => {
       { email: "citra@gmail.com", name: "Citra", role: "hustler" }, { email: "eka@gmail.com", name: "Eka Putra", role: "hacker" },
     ] });
     expect(await screen.findByText("Impor selesai: 1 peserta ditambahkan, 1 diperbarui.")).toBeTruthy();
+  });
+
+  it("offers owners, not admins, the Bevy CSV of active participants with the consent note", async () => {
+    show();
+    expect(screen.queryByRole("button", { name: "CSV untuk Bevy" })).toBeNull();
+    cleanup();
+    show("owner");
+    URL.createObjectURL = vi.fn(() => "blob:bevy");
+    URL.revokeObjectURL = vi.fn();
+    await userEvent.click(screen.getByRole("button", { name: "CSV untuk Bevy" }));
+    const dialog = screen.getByRole("dialog", { name: "CSV untuk Bevy" });
+    expect(dialog.textContent).toContain("2 peserta aktif");
+    expect(dialog.textContent).toContain("Menyetujui bergabung sebagai member GDG on Campus IPB University lewat form pendaftaran GDGoC Catalyst 2026/27.");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Unduh CSV" }));
+    await waitFor(() => expect(exportBevy).toHaveBeenCalledTimes(1));
+    const blob = (URL.createObjectURL as ReturnType<typeof vi.fn>).mock.calls[0][0] as Blob;
+    // Decoding drops the byte order mark, so it is checked in the bytes.
+    expect([...new Uint8Array(await blob.arrayBuffer()).slice(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
+    expect(await blob.text()).toBe("email,first_name,last_name\r\nbudi@gmail.com,Budi,Santoso\r\ncitra@gmail.com,Citra,\r\n");
   });
 });

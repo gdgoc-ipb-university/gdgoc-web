@@ -3,7 +3,7 @@ import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } fr
 import { components } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent } from "./auth";
-import { requireStaff } from "./access";
+import { requireMember, requireStaff } from "./access";
 import { logAccess } from "./accessLog";
 import { cohortRole, cohortStatus } from "./schema";
 import { catalystCohort, inCohortRoles, normalizeCohort, normalizeEmail, validateCohort, type CohortValues } from "../src/lib/cohort";
@@ -245,6 +245,23 @@ export const setEmail = mutation({
     await ctx.db.patch(args.id, { email, ownerId, claimedAt: ownerId ? Date.now() : undefined });
     await logAccess(ctx, { actorId: user._id, targetId: ownerId ?? enrolment.ownerId ?? "", change: "enrolmentEmail", from: "email", to: "email", cohortId: cohort._id, enrolmentId: args.id });
     return { linked: Boolean(ownerId) };
+  },
+});
+
+/**
+ * A cohort's active participants as name and email, for the chapter's member import on gdg.community.dev (Bevy). Owners
+ * only, like the members CSV: it is personal data leaving the site. The profile name wins once a participant signed in.
+ */
+export const exportBevy = query({
+  args: { cohortId: v.id("cohorts") },
+  handler: async (ctx, { cohortId }) => {
+    const actor = await requireMember(ctx);
+    if (actor.role !== "owner") throw new ConvexError({ code: "FORBIDDEN", message: "Hanya pemilik yang bisa mengunduh data peserta untuk Bevy." });
+    const rows = await ctx.db.query("enrolments").withIndex("by_cohort_email", (q) => q.eq("cohortId", cohortId)).collect();
+    return Promise.all(rows.filter((row) => row.status === "active").map(async (row) => {
+      const profile = row.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", row.ownerId!)).unique() : null;
+      return { email: row.email, name: profile?.fullName || row.name };
+    }));
   },
 });
 

@@ -5,6 +5,7 @@ import { usePaginatedQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { accessSentence } from "@/lib/access-log";
 import { assignmentPath } from "@/lib/assignment";
+import { programPath } from "@/lib/cohort";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { PixelIcon } from "../pixel-icons";
 import { useDashboardViewer } from "./viewer";
@@ -19,7 +20,8 @@ export function AccessLogList({ ownerId, pageSize = 25 }: { ownerId?: string; pa
       <div><span>{accessSentence(entry)}</span><span className="app-small">{dateLabel(entry.at)}</span></div>
       <span className="app-inline-badges">
         {entry.assignment?.title && <Link className="text-button" href={assignmentPath({ _id: entry.assignment._id, slug: entry.assignment.slug })}>Tugas</Link>}
-        {!ownerId && entry.target && entry.change !== "deleted" && <Link className="text-button" href={`/dashboard/anggota/${encodeURIComponent(entry.targetId)}`}>Anggota</Link>}
+        {entry.cohort?.slug && <Link className="text-button" href={programPath(entry.cohort.slug)}>Program</Link>}
+        {!ownerId && entry.targetId && entry.target && entry.change !== "deleted" && <Link className="text-button" href={`/dashboard/anggota/${encodeURIComponent(entry.targetId)}`}>Anggota</Link>}
       </span>
     </li>)}</ul>
     {log.status === "CanLoadMore" && <button className="button button-quiet app-load-more" onClick={() => log.loadMore(pageSize)}>Muat riwayat lainnya</button>}
@@ -34,7 +36,7 @@ export function AccessLogPage() {
   return <>
     {back}
     <div className="dash-intro"><p className="eyebrow">PEMILIK · ANGGOTA</p><h1>Riwayat akses.</h1>
-      <p>Setiap perubahan peran admin, peninjau apresiasi, status akun, peran komunitas, penilai tugas, dan penghapusan akun di dashboard, beserta siapa yang mengubahnya. Akun yang sudah dihapus tidak lagi bernama.</p></div>
+      <p>Setiap perubahan peran admin, peninjau apresiasi, status akun, peran komunitas, penilai tugas, peserta program, dan penghapusan akun di dashboard, beserta siapa yang mengubahnya. Akun yang sudah dihapus tidak lagi bernama.</p></div>
     <AccessLogList />
   </>;
 }

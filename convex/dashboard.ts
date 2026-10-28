@@ -187,9 +187,13 @@ export const accessLog = query({
       ...result,
       page: await Promise.all(result.page.map(async (row) => {
         const assignment = row.assignmentId ? await ctx.db.get(row.assignmentId) : null;
+        const cohort = row.cohortId ? await ctx.db.get(row.cohortId) : null;
+        // An enrolment change for someone who has not signed in yet has no account: the oprec name stands in while the row exists.
+        const enrolment = !row.targetId && row.enrolmentId ? await ctx.db.get(row.enrolmentId) : null;
         return {
           _id: row._id, at: row.at, change: row.change, from: row.from, to: row.to, actorId: row.actorId, targetId: row.targetId,
-          actor: await nameOf(row.actorId), target: await nameOf(row.targetId),
+          actor: await nameOf(row.actorId), target: row.targetId ? await nameOf(row.targetId) : enrolment?.name ?? null,
+          cohort: row.cohortId ? { name: cohort?.name ?? null, slug: cohort?.slug ?? null, roles: cohort?.roles ?? [] } : null,
           assignment: row.assignmentId ? (assignment ? { _id: assignment._id, slug: assignment.slug, title: assignment.title } : { _id: row.assignmentId, slug: undefined, title: null }) : null,
         };
       })),

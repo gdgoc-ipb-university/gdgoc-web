@@ -39,4 +39,19 @@ describe("access log sentences", () => {
   it("reads stored community tags", () => {
     expect([tagLabel("member"), tagLabel("core:Media & Creative"), tagLabel("bod"), tagLabel("unknown")]).toEqual(["Member", "Core Team · Media & Creative", "BoD", "Member"]);
   });
+
+  it("describes participant changes in a program, by oprec name before they sign in", () => {
+    const cohort = { name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker" }, { key: "hipster", name: "Hipster" }] };
+    expect([
+      entry("enrolmentRole", "hacker", "hipster", { cohort }), entry("enrolmentStatus", "active", "withdrawn", { cohort, target: "Citra Dewi" }),
+      entry("enrolmentStatus", "withdrawn", "active", { cohort }), entry("enrolmentEmail", "email", "email", { cohort, target: null }),
+      entry("enrolmentRole", "hacker", "hustler", { cohort: { name: null, roles: [] } }),
+    ].map(accessSentence)).toEqual([
+      "Aldio Lisafron mengubah peran Rania Putri di GDGoC Catalyst 2026/27 dari Hacker menjadi Hipster.",
+      "Aldio Lisafron mencatat Citra Dewi mengundurkan diri dari GDGoC Catalyst 2026/27.",
+      "Aldio Lisafron mengaktifkan kembali Rania Putri sebagai peserta GDGoC Catalyst 2026/27.",
+      "Aldio Lisafron memperbaiki email pendaftaran peserta yang datanya sudah dihapus di GDGoC Catalyst 2026/27.",
+      "Aldio Lisafron mengubah peran Rania Putri di program yang sudah dihapus dari hacker menjadi hustler.",
+    ]);
+  });
 });

@@ -7,7 +7,7 @@ import { JoinFooter } from "@/components/join-footer";
 import { breadcrumbJsonLd } from "@/lib/breadcrumb";
 import { communityLinks } from "@/lib/community";
 import { canonical } from "@/lib/site";
-import { techLeague } from "@/lib/tech-league";
+import { rangeLabel, techLeague } from "@/lib/tech-league";
 
 export const metadata: Metadata = {
   title: "Program",
@@ -24,12 +24,12 @@ const programs = [
   {
     title: "Tech League",
     audience: "Untuk tim yang ingin menguji karya di kompetisi nasional.",
-    schedule: "Pendaftaran 2 November 2026–8 Februari 2027.",
+    schedule: `Pendaftaran ${rangeLabel(techLeague.registration.opensAt, techLeague.registration.closesAt)}.`,
     href: techLeague.path,
   },
   {
     title: "Tech Support",
-    audience: "Untuk member yang membutuhkan mentor untuk lomba atau proyek.",
+    audience: "Untuk member yang membutuhkan mentor untuk lomba.",
     schedule: "Untuk sementara, minta mentoring lewat Instagram @gdgoc.ipb.",
   },
   {

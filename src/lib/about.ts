@@ -1,6 +1,6 @@
 import { organizationId, siteUrl, websiteId } from "./site";
 
-/** The chapter's vision and missions for 2026/27, shown at /tentang (#93). */
+/** The chapter's vision and missions for 2026/27 from the grand design, shown at /tentang (#93). */
 export const about = {
   path: "/tentang",
   description:
@@ -8,9 +8,9 @@ export const about = {
   vision:
     "Menjadi ekosistem pertumbuhan teknologi yang inklusif, tempat mahasiswa dari IPB dan seluruh Bogor belajar, berkarya, berkompetisi, berkolaborasi, dan memimpin.",
   missions: [
-    { name: "Structured Learning", text: "Belajar teknologi secara terarah, dari Study Jam sampai bootcamp GDGoC Catalyst." },
-    { name: "Applied Growth", text: "Menerapkan ilmu lewat proyek tim, kompetisi seperti Tech League, dan pendampingan mentor." },
-    { name: "Connected Ecosystem", text: "Menghubungkan mahasiswa lintas kampus di Bogor dengan sesama member, mentor, dan jaringan Google Developer Groups." },
+    { name: "Structured Learning", text: "Jalur belajar yang jelas di software development, data & AI, dan UI/UX, didukung mentor, alumni, praktisi, dan komunitas." },
+    { name: "Applied Growth", text: "Mengubah pembelajaran menjadi proyek nyata dan hasil kompetisi." },
+    { name: "Connected Ecosystem", text: "Memperluas kolaborasi lintas kampus di Bogor, serta membangun mentorship dan pengembangan member yang berkelanjutan." },
   ],
 } as const;
 

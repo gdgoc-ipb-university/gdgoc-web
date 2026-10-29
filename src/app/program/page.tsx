@@ -7,8 +7,9 @@ import { JoinFooter } from "@/components/join-footer";
 import { breadcrumbJsonLd } from "@/lib/breadcrumb";
 import { catalyst } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
+import { rangeLabel } from "@/lib/schedule";
 import { canonical } from "@/lib/site";
-import { rangeLabel, techLeague } from "@/lib/tech-league";
+import { techLeague } from "@/lib/tech-league";
 
 export const metadata: Metadata = {
   title: "Program",
@@ -20,7 +21,7 @@ const programs = [
   {
     title: "GDGoC Catalyst",
     audience: "Untuk siswa SMK dan mahasiswa yang ingin membangun produk dalam tim.",
-    schedule: "Pendaftaran 2–22 November 2026. Sesi berjalan Desember 2026–April 2027.",
+    schedule: `Pendaftaran ${rangeLabel(catalyst.oprec.opensAt, catalyst.oprec.closesAt)}. Sesi berjalan ${rangeLabel(catalyst.sessions.start, catalyst.sessions.end)}.`,
     href: catalyst.path,
   },
   {

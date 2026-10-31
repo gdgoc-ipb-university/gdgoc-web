@@ -36,6 +36,17 @@ describe("accessible member onboarding", () => {
     expect(audit.violations.map(({ id, nodes }) => ({ id, elements: nodes.map((node) => node.html) }))).toEqual([]);
   });
 
+  it("greets an accepted program participant and asks for a school or a campus", () => {
+    const invitation = { cohort: "GDGoC Catalyst 2026/27", role: "Hustler" };
+    const { unmount } = render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 1 }} save={gateway()} invitation={invitation} onComplete={vi.fn()} />);
+    expect(screen.getByText(/Kamu terdaftar sebagai peserta GDGoC Catalyst 2026\/27, peran Hustler\./)).toBeTruthy();
+    unmount();
+    render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 2 }} save={gateway()} invitation={invitation} onComplete={vi.fn()} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Dari sekolah atau\nkampus mana?");
+    expect(screen.getByRole("combobox", { name: /Sekolah atau kampus/ })).toBeTruthy();
+    expect(screen.getByRole("combobox", { name: /Jurusan atau program studi/ })).toBeTruthy();
+  });
+
   it("keeps blank-name errors tied to the input and retains edits after a failed save", async () => {
     const save = gateway(); save.mockRejectedValueOnce(new Error("Koneksi terputus"));
     render(<OnboardingFlow viewer={viewer} profile={null} save={save} onComplete={vi.fn()} />);

@@ -8,13 +8,13 @@ import betterAuthTest from "@convex-dev/better-auth/test";
 import type { FunctionReference } from "convex/server";
 import { readdirSync, readFileSync } from "node:fs";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { api, components } from "./_generated/api";
+import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 10, cursor: null };
-const ROLES = ["guest", "fresh", "inactive", "member", "mediaSelf", "media", "apresiasi", "grader", "admin", "owner"] as const;
+const ROLES = ["guest", "fresh", "inactive", "member", "mediaSelf", "media", "apresiasi", "grader", "participant", "mentor", "admin", "owner"] as const;
 type Role = typeof ROLES[number];
 /** Every message a guard throws; a refusal for any other reason would hide a broken matrix row. */
 const DENIED = /Masuk kembali|Selesaikan perkenalan|dinonaktifkan|hanya untuk|Hanya pemilik/;
@@ -23,7 +23,7 @@ const OWNER: Role[] = ["owner"];
 const STAFF: Role[] = ["admin", "owner"];
 const GRADERS: Role[] = ["grader", "admin", "owner"];
 const APRESIASI: Role[] = ["apresiasi", "media", "admin", "owner"];
-const MEMBERS: Role[] = ["member", "mediaSelf", "media", "apresiasi", "grader", "admin", "owner"];
+const MEMBERS: Role[] = ["member", "mediaSelf", "media", "apresiasi", "grader", "participant", "mentor", "admin", "owner"];
 
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 type Test = ReturnType<typeof setup>;
@@ -55,6 +55,16 @@ async function fixture() {
   // Media & Creative Core Team: one self-declared, one confirmed by staff (which grants Apresiasi review).
   const mediaSelf = await account(t, "mediaself@example.com", "Media Sendiri");
   const media = await account(t, "media@example.com", "Media Terkonfirmasi");
+  // A Catalyst participant (enrolled and claimed) and a mentor of the Hacker role. Neither reviews the community assignment below.
+  const participant = await account(t, "participant@example.com", "Peserta");
+  const mentor = await account(t, "mentorrole@example.com", "Mentor Peran");
+  const cohort = await t.mutation(internal.cohorts.seedCatalyst, {});
+  const enrolment = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("enrolments", { cohortId: cohort, email: "participant@example.com", name: "Peserta", role: "hacker", status: "active", importedAt: Date.now(), importedBy: "test" });
+    await ctx.db.insert("cohortMentors", { cohortId: cohort, ownerId: mentor.id, role: "hacker", addedBy: "test", addedAt: Date.now() });
+    return id;
+  });
+  await participant.mutation(api.cohorts.claimMine, {});
   await t.run(async (ctx) => {
     const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", mediaSelf.id)).unique();
     await ctx.db.patch(profile!._id, { memberType: "core", division: "Media & Creative" });
@@ -81,8 +91,8 @@ async function fixture() {
     const entry = await ctx.db.insert("gameBests", { ownerId: member.id, period: "all", score: 100, name: "Rania P.", achievedAt: Date.now(), hidden: false });
     return { submission, appreciation, entry, draftRevision: (await ctx.db.get(draft))!.revision };
   });
-  const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, admin, owner };
-  return { t, callers, ids: { member: member.id, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
+  const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, participant, mentor, admin, owner };
+  return { t, callers, ids: { member: member.id, cohort, enrolment, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 type Ids = Fixture["ids"];
@@ -92,10 +102,13 @@ type Any = FunctionReference<any, "public">;
 const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["dashboard.exportMembers", api.dashboard.exportMembers, OWNER, () => ({ paginationOpts: page })],
   ["dashboard.accessLog", api.dashboard.accessLog, OWNER, () => ({ paginationOpts: page })],
+  ["cohorts.exportBevy", api.cohorts.exportBevy, OWNER, (ids) => ({ cohortId: ids.cohort })],
   ["dashboard.members", api.dashboard.members, STAFF, () => ({ search: "", filters: {}, page: 1, pageSize: 25 })],
   ["dashboard.member", api.dashboard.member, STAFF, (ids) => ({ ownerId: ids.member })],
   ["dashboard.stats", api.dashboard.stats, STAFF, () => ({})],
   ["assignments.adminList", api.assignments.adminList, STAFF, () => ({ paginationOpts: page })],
+  ["cohorts.list", api.cohorts.list, STAFF, () => ({})],
+  ["cohorts.roster", api.cohorts.roster, STAFF, () => ({ slug: "catalyst-2026" })],
   ["assignments.slugPreview", api.assignments.slugPreview, STAFF, () => ({ slug: "tugas-baru" })],
   ["assignments.submissions", api.assignments.submissions, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
   ["assignments.exportPage", api.assignments.exportPage, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
@@ -121,6 +134,12 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.remove", api.assignments.remove, STAFF, (ids) => ({ id: ids.draft, revision: ids.draftRevision })],
   ["assignments.setReviewer", api.assignments.setReviewer, STAFF, (ids) => ({ id: ids.assignment, ownerId: ids.member, reviewer: true })],
   ["bogorRun.setHidden", api.bogorRun.setHidden, STAFF, (ids) => ({ entryId: ids.entry, hidden: true })],
+  ["cohorts.create", api.cohorts.create, STAFF, () => ({ values: { slug: "intake-2027", name: "Intake 2027", roles: [{ key: "member", name: "Member" }] } })],
+  ["cohorts.importEnrolments", api.cohorts.importEnrolments, STAFF, (ids) => ({ cohortId: ids.cohort, rows: [{ email: "baru@example.com", name: "Peserta Baru", role: "hustler" }] })],
+  ["cohorts.setRole", api.cohorts.setRole, STAFF, (ids) => ({ id: ids.enrolment, role: "hipster" })],
+  ["cohorts.setStatus", api.cohorts.setStatus, STAFF, (ids) => ({ id: ids.enrolment, status: "withdrawn" })],
+  ["cohorts.setEmail", api.cohorts.setEmail, STAFF, (ids) => ({ id: ids.enrolment, email: "peserta.baru@example.com" })],
+  ["cohorts.update", api.cohorts.update, STAFF, (ids) => ({ id: ids.cohort, values: { slug: "catalyst-2026", name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker" }, { key: "hipster", name: "Hipster" }, { key: "hustler", name: "Hustler" }] }, status: "active" })],
   ["assignments.review", api.assignments.review, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, score: 80, feedback: "Bagus." })],
   ["assignments.requestRevision", api.assignments.requestRevision, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, note: "Perbaiki bagian dua." })],
   ["assignments.cancelRevision", api.assignments.cancelRevision, GRADERS, (ids) => ({ submissionId: ids.submission })],
@@ -139,6 +158,8 @@ const OPEN: Record<string, string> = {
   "assignments.removeFile": "own submission, active members", "assignments.submit": "own submission, active members",
   "bogorRun.issueRun": "public: an unsigned-in player gets a ticket too", "bogorRun.submitRun": "own run; refusals are returned as codes",
   "bogorRun.leaderboard": "public board",
+  "cohorts.claimMine": "own: enrolments for the caller's verified email",
+  "cohorts.myInvitation": "own: the caller's active enrolment by verified email",
 };
 
 beforeEach(() => vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com"));

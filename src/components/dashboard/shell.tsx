@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useConvexAuth, useQuery } from "convex/react";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { authClient } from "@/lib/auth-client";
 import { forgetNavViewer } from "@/lib/nav-viewer";
@@ -25,6 +25,10 @@ function Standalone({ children }: { children: ReactNode }) {
 export function DashboardShell({ children }: { children: ReactNode }) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.dashboard.viewer, isAuthenticated ? {} : "skip");
+  // Links cohort enrolments imported for this email (e.g. Catalyst participants) to the account; a no-op once claimed.
+  const claimEnrolments = useMutation(api.cohorts.claimMine);
+  const viewerId = viewer?.id;
+  useEffect(() => { if (viewerId) claimEnrolments().catch(() => { /* retried on the next load */ }); }, [viewerId, claimEnrolments]);
   const router = useRouter();
   const pathname = usePathname();
   const onboarding = pathname.startsWith("/dashboard/apresiasi/tinjau") ? "/onboarding?next=review" : "/onboarding";
@@ -66,6 +70,7 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
     ...(isStaff(viewer) || isReviewer(viewer) ? [{ title: "Kelola", items: [
       ...(isReviewer(viewer) ? [{ href: "/dashboard/apresiasi/tinjau", label: "Tinjau apresiasi", icon: "shield" as const, current: at("/dashboard/apresiasi/tinjau") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") }] : []),
+      ...(isStaff(viewer) ? [{ href: "/dashboard/program", label: "Program", icon: "teach" as const, current: at("/dashboard/program") }] : []),
     ] }] : []),
     { title: "Akun", items: [{ href: "/dashboard/profil", label: "Profil", icon: "user", current: at("/dashboard/profil") }] },
   ];

@@ -6,7 +6,7 @@ import type { accessChange } from "./schema";
 export type AccessChange = Infer<typeof accessChange>;
 
 /** Records one access change for the owners' log. Callers log only real changes, after their checks pass. */
-export async function logAccess(ctx: MutationCtx, entry: { actorId: string; targetId: string; change: AccessChange; from: string; to: string; assignmentId?: Id<"assignments"> }) {
+export async function logAccess(ctx: MutationCtx, entry: { actorId: string; targetId: string; change: AccessChange; from: string; to: string; assignmentId?: Id<"assignments">; cohortId?: Id<"cohorts">; enrolmentId?: Id<"enrolments"> }) {
   await ctx.db.insert("accessLog", { at: Date.now(), ...entry });
 }
 

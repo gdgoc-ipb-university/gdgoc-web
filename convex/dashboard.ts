@@ -9,6 +9,7 @@ import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
 import { divisions, validateStaffRole } from "../src/lib/onboarding";
+import { normalizeEmail } from "../src/lib/cohort";
 import { assignmentMaxScore, isLate, isStaleReview } from "../src/lib/assignment";
 import { compareMembers, DEFAULT_SORT, matchesFilters, noFilters, pageSlice } from "../src/lib/member-table";
 
@@ -186,9 +187,13 @@ export const accessLog = query({
       ...result,
       page: await Promise.all(result.page.map(async (row) => {
         const assignment = row.assignmentId ? await ctx.db.get(row.assignmentId) : null;
+        const cohort = row.cohortId ? await ctx.db.get(row.cohortId) : null;
+        // An enrolment change for someone who has not signed in yet has no account: the oprec name stands in while the row exists.
+        const enrolment = !row.targetId && row.enrolmentId ? await ctx.db.get(row.enrolmentId) : null;
         return {
           _id: row._id, at: row.at, change: row.change, from: row.from, to: row.to, actorId: row.actorId, targetId: row.targetId,
-          actor: await nameOf(row.actorId), target: await nameOf(row.targetId),
+          actor: await nameOf(row.actorId), target: row.targetId ? await nameOf(row.targetId) : enrolment?.name ?? null,
+          cohort: row.cohortId ? { name: cohort?.name ?? null, slug: cohort?.slug ?? null, roles: cohort?.roles ?? [] } : null,
           assignment: row.assignmentId ? (assignment ? { _id: assignment._id, slug: assignment.slug, title: assignment.title } : { _id: row.assignmentId, slug: undefined, title: null }) : null,
         };
       })),
@@ -227,7 +232,7 @@ export const deleteAccount = mutation({
     if (row.role === "owner") throw new ConvexError("Akun pemilik diatur lewat konfigurasi server dan tidak bisa dihapus dari sini.");
     if (confirmName.trim() !== profile.fullName.trim()) throw new ConvexError({ code: "VALIDATION", message: "Ketik nama anggota persis seperti tertulis untuk konfirmasi." });
 
-    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0 };
+    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0 };
     for (const doc of await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).collect()) {
       for (const review of await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", doc._id)).collect()) { await ctx.db.delete(review._id); counts.appreciationReviews++; }
       await ctx.db.delete(doc._id); counts.appreciations++;
@@ -247,6 +252,13 @@ export const deleteAccount = mutation({
       if (!assignment.reviewers?.includes(ownerId)) continue;
       await ctx.db.patch(assignment._id, { reviewers: assignment.reviewers.filter((id) => id !== ownerId) }); counts.reviewerGrants++;
     }
+    // Cohort enrolments: claimed ones by account, and any still unclaimed for the account's email, which would otherwise wait for it.
+    const enrolments = new Map((await ctx.db.query("enrolments").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()).map((row) => [row._id, row]));
+    if (row.email) for (const enrolment of await ctx.db.query("enrolments").withIndex("by_email", (q) => q.eq("email", normalizeEmail(row.email))).collect()) {
+      if (enrolment.ownerId === undefined) enrolments.set(enrolment._id, enrolment);
+    }
+    for (const id of enrolments.keys()) { await ctx.db.delete(id); counts.enrolments++; }
+    for (const grant of await ctx.db.query("cohortMentors").withIndex("by_owner_cohort", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(grant._id); counts.mentorGrants++; }
     await ctx.db.delete(profile._id);
     counts.sessions = await deleteAuthRows(ctx, "session", ownerId);
     counts.accounts = await deleteAuthRows(ctx, "account", ownerId);

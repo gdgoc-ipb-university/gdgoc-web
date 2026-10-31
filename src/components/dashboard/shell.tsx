@@ -70,6 +70,7 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
     ...(isStaff(viewer) || isReviewer(viewer) ? [{ title: "Kelola", items: [
       ...(isReviewer(viewer) ? [{ href: "/dashboard/apresiasi/tinjau", label: "Tinjau apresiasi", icon: "shield" as const, current: at("/dashboard/apresiasi/tinjau") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") }] : []),
+      ...(isStaff(viewer) ? [{ href: "/dashboard/program", label: "Program", icon: "teach" as const, current: at("/dashboard/program") }] : []),
     ] }] : []),
     { title: "Akun", items: [{ href: "/dashboard/profil", label: "Profil", icon: "user", current: at("/dashboard/profil") }] },
   ];

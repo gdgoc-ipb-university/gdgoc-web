@@ -59,9 +59,10 @@ async function fixture() {
   const participant = await account(t, "participant@example.com", "Peserta");
   const mentor = await account(t, "mentorrole@example.com", "Mentor Peran");
   const cohort = await t.mutation(internal.cohorts.seedCatalyst, {});
-  await t.run(async (ctx) => {
-    await ctx.db.insert("enrolments", { cohortId: cohort, email: "participant@example.com", name: "Peserta", role: "hacker", status: "active", importedAt: Date.now(), importedBy: "test" });
+  const enrolment = await t.run(async (ctx) => {
+    const id = await ctx.db.insert("enrolments", { cohortId: cohort, email: "participant@example.com", name: "Peserta", role: "hacker", status: "active", importedAt: Date.now(), importedBy: "test" });
     await ctx.db.insert("cohortMentors", { cohortId: cohort, ownerId: mentor.id, role: "hacker", addedBy: "test", addedAt: Date.now() });
+    return id;
   });
   await participant.mutation(api.cohorts.claimMine, {});
   await t.run(async (ctx) => {
@@ -91,7 +92,7 @@ async function fixture() {
     return { submission, appreciation, entry, draftRevision: (await ctx.db.get(draft))!.revision };
   });
   const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, participant, mentor, admin, owner };
-  return { t, callers, ids: { member: member.id, cohort, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
+  return { t, callers, ids: { member: member.id, cohort, enrolment, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 type Ids = Fixture["ids"];
@@ -105,6 +106,8 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["dashboard.member", api.dashboard.member, STAFF, (ids) => ({ ownerId: ids.member })],
   ["dashboard.stats", api.dashboard.stats, STAFF, () => ({})],
   ["assignments.adminList", api.assignments.adminList, STAFF, () => ({ paginationOpts: page })],
+  ["cohorts.list", api.cohorts.list, STAFF, () => ({})],
+  ["cohorts.roster", api.cohorts.roster, STAFF, () => ({ slug: "catalyst-2026" })],
   ["assignments.slugPreview", api.assignments.slugPreview, STAFF, () => ({ slug: "tugas-baru" })],
   ["assignments.submissions", api.assignments.submissions, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
   ["assignments.exportPage", api.assignments.exportPage, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
@@ -131,6 +134,10 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.setReviewer", api.assignments.setReviewer, STAFF, (ids) => ({ id: ids.assignment, ownerId: ids.member, reviewer: true })],
   ["bogorRun.setHidden", api.bogorRun.setHidden, STAFF, (ids) => ({ entryId: ids.entry, hidden: true })],
   ["cohorts.create", api.cohorts.create, STAFF, () => ({ values: { slug: "intake-2027", name: "Intake 2027", roles: [{ key: "member", name: "Member" }] } })],
+  ["cohorts.importEnrolments", api.cohorts.importEnrolments, STAFF, (ids) => ({ cohortId: ids.cohort, rows: [{ email: "baru@example.com", name: "Peserta Baru", role: "hustler" }] })],
+  ["cohorts.setRole", api.cohorts.setRole, STAFF, (ids) => ({ id: ids.enrolment, role: "hipster" })],
+  ["cohorts.setStatus", api.cohorts.setStatus, STAFF, (ids) => ({ id: ids.enrolment, status: "withdrawn" })],
+  ["cohorts.setEmail", api.cohorts.setEmail, STAFF, (ids) => ({ id: ids.enrolment, email: "peserta.baru@example.com" })],
   ["cohorts.update", api.cohorts.update, STAFF, (ids) => ({ id: ids.cohort, values: { slug: "catalyst-2026", name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker" }, { key: "hipster", name: "Hipster" }, { key: "hustler", name: "Hustler" }] }, status: "active" })],
   ["assignments.review", api.assignments.review, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, score: 80, feedback: "Bagus." })],
   ["assignments.requestRevision", api.assignments.requestRevision, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, note: "Perbaiki bagian dua." })],
@@ -151,6 +158,7 @@ const OPEN: Record<string, string> = {
   "bogorRun.issueRun": "public: an unsigned-in player gets a ticket too", "bogorRun.submitRun": "own run; refusals are returned as codes",
   "bogorRun.leaderboard": "public board",
   "cohorts.claimMine": "own: enrolments for the caller's verified email",
+  "cohorts.myInvitation": "own: the caller's active enrolment by verified email",
 };
 
 beforeEach(() => vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com"));

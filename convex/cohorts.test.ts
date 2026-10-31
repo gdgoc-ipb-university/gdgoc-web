@@ -176,3 +176,105 @@ describe("cohorts", () => {
     expect(left).toEqual({ byEmail: [], mentors: [] });
   });
 });
+
+describe("roster and import (#104)", () => {
+  async function staffWithCohort() {
+    const t = setup();
+    const owner = await account(t, "owner@example.com");
+    const cohort = await t.mutation(internal.cohorts.seedCatalyst, {});
+    return { t, owner, cohort };
+  }
+  const log = (t: Test) => t.run((ctx) => ctx.db.query("accessLog").collect());
+
+  it("adds new participants, links existing accounts at once, updates known emails, and keeps withdrawn ones withdrawn", async () => {
+    const { t, owner, cohort } = await staffWithCohort();
+    const member = await account(t, "rania@example.com");
+    expect(await owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [
+      { email: " Rania@Example.com", name: "Rania  Putri", role: "hipster" }, { email: "budi@example.com", name: "Budi", role: "hacker" },
+    ] })).toEqual({ added: 2, updated: 0, unchanged: 0, linked: 1 });
+    const roster = await owner.query(api.cohorts.roster, { slug: "catalyst-2026" });
+    expect(roster?.rows.map((row) => [row.email, row.name, row.role, row.ownerId === member.id, row.fullName]).sort()).toEqual([
+      ["budi@example.com", "Budi", "hacker", false, null], ["rania@example.com", "Rania Putri", "hipster", true, "Nama rania"],
+    ]);
+
+    const budi = roster!.rows.find((row) => row.email === "budi@example.com")!;
+    await owner.mutation(api.cohorts.setStatus, { id: budi._id, status: "withdrawn" });
+    expect(await owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [
+      { email: "rania@example.com", name: "Rania Putri", role: "hipster" }, { email: "budi@example.com", name: "Budi Santoso", role: "hustler" },
+    ] })).toEqual({ added: 0, updated: 1, unchanged: 1, linked: 0 });
+    expect(await t.run((ctx) => ctx.db.get(budi._id))).toMatchObject({ name: "Budi Santoso", role: "hustler", status: "withdrawn" });
+    expect((await log(t)).map((row) => [row.change, row.from, row.to, row.targetId])).toEqual([
+      ["enrolmentStatus", "active", "withdrawn", ""], ["enrolmentRole", "hacker", "hustler", ""],
+    ]);
+    expect(await owner.query(api.cohorts.list, {})).toMatchObject([{ slug: "catalyst-2026", active: 1, claimed: 1, withdrawn: 1 }]);
+  });
+
+  it("refuses bad rows, repeated emails, roles outside the cohort, and oversized batches", async () => {
+    const { owner, cohort } = await staffWithCohort();
+    const row = { email: "a@example.com", name: "A", role: "hacker" };
+    await expect(owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [{ ...row, email: "a@example" }] })).rejects.toThrow("tidak valid");
+    await expect(owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [row, { ...row, email: "A@example.com" }] })).rejects.toThrow("lebih dari sekali");
+    await expect(owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [{ ...row, name: " " }] })).rejects.toThrow("Nama");
+    await expect(owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [{ ...row, role: "mentor" }] })).rejects.toThrow("tidak ada");
+    const many = Array.from({ length: 201 }, (_, i) => ({ email: `p${i}@example.com`, name: `P${i}`, role: "hacker" }));
+    await expect(owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: many })).rejects.toThrow("Maksimal 200");
+  });
+
+  it("changes a role, withdraws and restores, and corrects an email by relinking, each in the access log", async () => {
+    const { t, owner, cohort } = await staffWithCohort();
+    const wrong = await account(t, "rania.lain@example.com");
+    const right = await account(t, "rania@example.com");
+    await owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [{ email: "rania.lain@example.com", name: "Rania", role: "hacker" }, { email: "budi@example.com", name: "Budi", role: "hacker" }] });
+    const id = (await t.run((ctx) => ctx.db.query("enrolments").withIndex("by_email", (q) => q.eq("email", "rania.lain@example.com")).unique()))!._id;
+    expect(await t.run((ctx) => ctx.db.get(id))).toMatchObject({ ownerId: wrong.id });
+
+    await owner.mutation(api.cohorts.setRole, { id, role: "hustler" });
+    await owner.mutation(api.cohorts.setRole, { id, role: "hustler" }); // no change, no log row
+    await expect(owner.mutation(api.cohorts.setRole, { id, role: "mentor" })).rejects.toThrow("tidak ada");
+    await owner.mutation(api.cohorts.setStatus, { id, status: "withdrawn" });
+    await owner.mutation(api.cohorts.setStatus, { id, status: "active" });
+    const restored = await t.run((ctx) => ctx.db.get(id));
+    expect(restored?.status).toBe("active");
+    expect(restored?.withdrawnAt).toBeUndefined();
+    await expect(owner.mutation(api.cohorts.setEmail, { id, email: "budi@example.com" })).rejects.toThrow("sudah terdaftar");
+    expect(await owner.mutation(api.cohorts.setEmail, { id, email: "Rania@Example.com" })).toEqual({ linked: true });
+    expect(await t.run((ctx) => ctx.db.get(id))).toMatchObject({ email: "rania@example.com", ownerId: right.id });
+    // An address without an account yet unlinks the row until someone signs in with it.
+    expect(await owner.mutation(api.cohorts.setEmail, { id, email: "baru@example.com" })).toEqual({ linked: false });
+    expect((await t.run((ctx) => ctx.db.get(id)))?.ownerId).toBeUndefined();
+
+    const entries = (await owner.query(api.dashboard.accessLog, { paginationOpts: page })).page.reverse();
+    expect(entries.map((row) => [row.change, row.from, row.to])).toEqual([
+      ["enrolmentRole", "hacker", "hustler"], ["enrolmentStatus", "active", "withdrawn"], ["enrolmentStatus", "withdrawn", "active"],
+      ["enrolmentEmail", "email", "email"], ["enrolmentEmail", "email", "email"],
+    ]);
+    expect(entries[0]).toMatchObject({ target: "Nama rania.lain", cohort: { name: "GDGoC Catalyst 2026/27", slug: "catalyst-2026" } });
+    expect(entries[4]).toMatchObject({ targetId: right.id, target: "Nama rania" });
+  });
+
+  it("names an unclaimed participant in the log by their oprec name", async () => {
+    const { t, owner, cohort } = await staffWithCohort();
+    await owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [{ email: "citra@example.com", name: "Citra Dewi", role: "hacker" }] });
+    const id = (await t.run((ctx) => ctx.db.query("enrolments").first()))!._id;
+    await owner.mutation(api.cohorts.setRole, { id, role: "hipster" });
+    expect((await owner.query(api.dashboard.accessLog, { paginationOpts: page })).page[0]).toMatchObject({ targetId: "", target: "Citra Dewi" });
+  });
+
+  it("tells an accepted applicant their program and role before onboarding, and nobody else", async () => {
+    const { t, owner, cohort } = await staffWithCohort();
+    await owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [{ email: "dina@example.com", name: "Dina", role: "hustler" }] });
+    const dina = await account(t, "dina@example.com", { onboarded: false });
+    const other = await account(t, "lain@example.com", { onboarded: false });
+    expect(await dina.query(api.cohorts.myInvitation, {})).toEqual({ cohort: "GDGoC Catalyst 2026/27", role: "Hustler" });
+    expect(await other.query(api.cohorts.myInvitation, {})).toBeNull();
+    expect(await t.query(api.cohorts.myInvitation, {})).toBeNull();
+    const id = (await t.run((ctx) => ctx.db.query("enrolments").first()))!._id;
+    await owner.mutation(api.cohorts.setStatus, { id, status: "withdrawn" });
+    expect(await dina.query(api.cohorts.myInvitation, {})).toBeNull();
+  });
+
+  it("returns null for an unknown cohort", async () => {
+    const { owner } = await staffWithCohort();
+    expect(await owner.query(api.cohorts.roster, { slug: "tidak-ada" })).toBeNull();
+  });
+});

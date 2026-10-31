@@ -13,6 +13,8 @@ export const appreciationStatus = v.union(v.literal("draft"), v.literal("submitt
 export const accessChange = v.union(
   v.literal("role"), v.literal("reviewer"), v.literal("active"), v.literal("memberType"), v.literal("assignmentReviewer"), v.literal("deleted"),
   v.literal("tagConfirmed"), v.literal("tagSelfChanged"),
+  // A participant's enrolment in a cohort: their role, withdrawn or back, or a corrected email (the values are not kept).
+  v.literal("enrolmentRole"), v.literal("enrolmentStatus"), v.literal("enrolmentEmail"),
 );
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
@@ -148,8 +150,10 @@ export default defineSchema({
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
-    // The value before and after: "admin"/"member", "on"/"off", "active"/"deactivated", or a community tag as "core:Technical".
+    // The value before and after: "admin"/"member", "on"/"off", "active"/"deactivated", a community tag as "core:Technical",
+    // or a cohort role key. Enrolment changes carry the cohort and enrolment; an unclaimed one has an empty `targetId`.
     from: v.string(), to: v.string(), assignmentId: v.optional(v.id("assignments")),
+    cohortId: v.optional(v.id("cohorts")), enrolmentId: v.optional(v.id("enrolments")),
   })
     .index("by_at", ["at"])
     .index("by_target", ["targetId", "at"]),

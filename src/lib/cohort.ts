@@ -49,3 +49,6 @@ export function validateCohort(values: CohortValues): CohortErrors {
 export function inCohortRoles(assignment: { cohortRoles?: string[] }, role: string) {
   return !assignment.cohortRoles?.length || assignment.cohortRoles.includes(role);
 }
+
+/** A cohort's roster in the dashboard. */
+export const programPath = (slug: string) => `/dashboard/program/${encodeURIComponent(slug)}`;

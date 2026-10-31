@@ -22,6 +22,8 @@ import { PixelIcon } from "../pixel-icons";
 
 type SaveStep = (args: { step: OnboardingStep; revision: number; values: OnboardingValues }) => Promise<Doc<"memberProfiles">>;
 const stepLabels = ["Kenalan", "Kampus", "Peran", "WhatsApp", "Jadi member"];
+const participantStepLabels = ["Kenalan", "Sekolah/kampus", "Peran", "WhatsApp", "Jadi member"];
+const participantHeading = "Dari sekolah atau\nkampus mana?";
 const headings = ["Kenalan dulu, yuk.", "Dari kampus mana?", "Peranmu di\nGDGoC IPB.", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB."];
 const descriptions = [
   "Selamat datang di GDGoC IPB. Mulai dari nama yang ingin kamu pakai di komunitas.",
@@ -35,6 +37,8 @@ export function OnboardingPage() {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.auth.viewer, isAuthenticated ? {} : "skip");
   const profile = useQuery(api.members.profile, isAuthenticated ? {} : "skip");
+  // An accepted program participant (e.g. Catalyst) may come from a school rather than a campus, so step 2 asks for either.
+  const invitation = useQuery(api.cohorts.myInvitation, isAuthenticated ? {} : "skip");
   const save = useMutation(api.members.saveStep);
   const router = useRouter();
   const params = useSearchParams();
@@ -46,10 +50,12 @@ export function OnboardingPage() {
   if (isLoading || !isAuthenticated || !viewer || profile === undefined || profile?.completedAt) {
     return <main id="main" className="onboard-loading" role="status">Menyiapkan ruang untukmu…</main>;
   }
-  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} onComplete={() => router.replace(destination)} />;
+  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} invitation={invitation ?? null} onComplete={() => router.replace(destination)} />;
 }
 
-export function OnboardingFlow({ viewer, profile, save, onComplete }: {
+export function OnboardingFlow({ viewer, profile, save, onComplete, invitation = null }: {
+  /** Set for an accepted program participant (cohorts.myInvitation): their program and role, and school-or-campus wording. */
+  invitation?: { cohort: string; role: string } | null;
   viewer: { name: string; email: string }; profile: Doc<"memberProfiles"> | null; save: SaveStep; onComplete: () => void;
 }) {
   const [step, setStep] = useState<OnboardingStep>(profile?.nextStep ?? 1);
@@ -126,11 +132,11 @@ export function OnboardingFlow({ viewer, profile, save, onComplete }: {
     <main id="main" className="onboard-layout">
       <OnboardingArtwork step={step} />
       <div className="onboard-content">
-        <nav aria-label="Langkah perkenalan"><ol className="onboard-progress">{stepLabels.map((label, index) => <li key={label} aria-current={step === index + 1 ? "step" : undefined} data-done={step > index + 1}><span className="onboard-progress-line"/><span className="onboard-progress-label"><b>{step > index + 1 ? <PixelIcon name="check" size={12} /> : `0${index + 1}`}</b> <span className="onboard-progress-name">{label}</span></span></li>)}</ol></nav>
+        <nav aria-label="Langkah perkenalan"><ol className="onboard-progress">{(invitation ? participantStepLabels : stepLabels).map((label, index) => <li key={label} aria-current={step === index + 1 ? "step" : undefined} data-done={step > index + 1}><span className="onboard-progress-line"/><span className="onboard-progress-label"><b>{step > index + 1 ? <PixelIcon name="check" size={12} /> : `0${index + 1}`}</b> <span className="onboard-progress-name">{label}</span></span></li>)}</ol></nav>
         <section className="onboard-step" aria-labelledby="onboard-title" aria-busy={busy}>
           <p className="onboard-step-counter">LANGKAH 0{step} DARI 0{finalStep} <span>{step > roleStep ? "OPSIONAL" : "TENTANG KAMU"}</span></p>
-          <h1 id="onboard-title" ref={title} tabIndex={-1}>{headings[step - 1]}</h1>
-          <p className="onboard-description">{descriptions[step - 1]}</p>
+          <h1 id="onboard-title" ref={title} tabIndex={-1}>{invitation && step === 2 ? participantHeading : headings[step - 1]}</h1>
+          <p className="onboard-description">{descriptions[step - 1]}{invitation && step === 1 && <> Kamu terdaftar sebagai peserta {invitation.cohort}, peran {invitation.role}.</>}</p>
           <form onSubmit={next} onKeyDown={(event) => {
             // An unhandled mobile Next key moves fields. Pointer submission must
             // still work in browsers that leave focus on the preceding input.
@@ -140,7 +146,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete }: {
             }
           }} noValidate>
             {step === 1 && <div className="onboard-field"><label htmlFor="fullName">Nama kamu <span aria-hidden="true">*</span></label><input id="fullName" ref={fullName} name="name" autoComplete="name" inputMode="text" enterKeyHint="next" autoCapitalize="words" maxLength={120} required disabled={busy} value={values.fullName} onChange={(event) => update("fullName", event.target.value)} aria-invalid={Boolean(errors.fullName)} aria-describedby={errors.fullName ? "name-hint name-error" : "name-hint"} placeholder="Nama yang ingin kamu pakai"/><p id="name-hint" className="onboard-hint">Kami isi dari akun Google. Kamu boleh menggantinya.</p>{errors.fullName && <p className="onboard-field-error" id="name-error">{errors.fullName}</p>}</div>}
-            {step === 2 && <div className="onboard-education"><EducationCombobox id="campus" label="Kampus" options={campusOptions} inputRef={campus} value={values.campus} onChange={(value) => update("campus", value)} error={errors.campus} disabled={busy} enterKeyHint="next"/><EducationCombobox id="studyProgram" label="Program studi" options={studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="done"/></div>}
+            {step === 2 && <div className="onboard-education"><EducationCombobox id="campus" label={invitation ? "Sekolah atau kampus" : "Kampus"} options={campusOptions} inputRef={campus} value={values.campus} onChange={(value) => update("campus", value)} error={errors.campus} disabled={busy} enterKeyHint="next"/><EducationCombobox id="studyProgram" label={invitation ? "Jurusan atau program studi" : "Program studi"} options={studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="done"/></div>}
             {step === roleStep && <RoleChoice id="onboard-role" value={values} errors={errors} disabled={busy} onChange={updateRole} typeRef={memberType} divisionRef={division} />}
             {step === 4 && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>}
             {step === finalStep && <div className="onboard-invitation"><div className="onboard-invite-icon gdg-icon" aria-hidden="true"><PixelIcon name="code" size={24} /></div><div><strong>GDG on Campus IPB University</strong><p>Buka halaman chapter, lalu pilih <b>Join us</b> untuk menjadi member.</p></div><a className="button onboard-external" href={communityLinks.membership} target="_blank" rel="noopener noreferrer">Gabung di GDG Community <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Sudah jadi member? Kamu bisa langsung menyelesaikan perkenalan.</p></div>}

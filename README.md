@@ -86,9 +86,9 @@ A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), m
 | Path | Purpose |
 | --- | --- |
 | `page.tsx`, `layout.tsx` | The landing and the root layout |
-| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `profil` |
+| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts and their rosters), `profil` |
 | `onboarding/` | Five-screen first-visit flow |
-| `program/tech-league/`, `privasi/` | Public pages |
+| `tentang/`, `bergabung/`, `program/` (the hub, `catalyst/`, `tech-league/`), `privasi/` | Public pages, each listed in `indexablePaths` |
 | `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |
 | `rai/` | Unlinked easter egg that unlocks the blue dino skin |
 | `api/auth/[...all]/` | Better Auth route handler |
@@ -106,13 +106,13 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `campus/`: the Three.js campus model and runtime.
 - `bogor-run/`: the game engine, shared with the server replay.
-- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `tech-league.ts`, `faq.ts`, `member-table.ts`, `rich-text.ts`) and shared helpers (`site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`).
+- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `cohort.ts`, `enrolment-import.ts`, `bevy-export.ts`, `member-table.ts`, `rich-text.ts`), the public pages' content and structured data (`tech-league.ts`, `catalyst.ts`, `about.ts`, `faq.ts`, `breadcrumb.ts`, with program dates in `schedule.ts`), and shared helpers (`site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`).
 - Tests sit beside the module as `*.test.ts` and run in the edge runtime.
 
 ### `convex/`: backend
 
-- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, the access log, and account deletions.
-- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `bogorRun` and `bogorRunToken`.
+- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments and mentors, the access log, and account deletions.
+- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `bogorRun` and `bogorRunToken`.
 - `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
 - `_generated/` is produced by Convex; do not edit it.
 - Tests (`*.test.ts`) run against `convex-test`, with no deployment.

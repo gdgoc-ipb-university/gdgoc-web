@@ -518,6 +518,9 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-program-card:hover { border-color: var(--blue); }
 .dash-program-card h2 { font-size: 22px; }
 .dash-roster-toolbar { flex-wrap: wrap; }
+.dash-roster-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.dash-bevy-note { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f4f6f1; font-size: 13px; margin-top: 10px; }
+.dash-bevy-note span { flex: 1; }
 .dash-import-map fieldset { border: 0; padding: 0; margin: 0 0 18px; display: grid; gap: 12px; }
 .dash-import-map legend { font-size: 12px; font-weight: 600; margin-bottom: 8px; }
 .dash-import-columns { grid-template-columns: repeat(3, minmax(0, 1fr)); }

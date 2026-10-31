@@ -273,6 +273,22 @@ describe("roster and import (#104)", () => {
     expect(await dina.query(api.cohorts.myInvitation, {})).toBeNull();
   });
 
+  it("exports active participants for Bevy to owners only, with the profile name once signed in", async () => {
+    const { t, owner, cohort } = await staffWithCohort();
+    const admin = await account(t, "admin@example.com");
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    await account(t, "rania@example.com");
+    await owner.mutation(api.cohorts.importEnrolments, { cohortId: cohort, rows: [
+      { email: "rania@example.com", name: "Rania P", role: "hacker" }, { email: "budi@example.com", name: "Budi", role: "hipster" }, { email: "eka@example.com", name: "Eka", role: "hustler" },
+    ] });
+    const eka = (await t.run((ctx) => ctx.db.query("enrolments").withIndex("by_email", (q) => q.eq("email", "eka@example.com")).unique()))!._id;
+    await owner.mutation(api.cohorts.setStatus, { id: eka, status: "withdrawn" });
+    expect((await owner.query(api.cohorts.exportBevy, { cohortId: cohort })).sort((a, b) => a.email.localeCompare(b.email))).toEqual([
+      { email: "budi@example.com", name: "Budi" }, { email: "rania@example.com", name: "Nama rania" },
+    ]);
+    await expect(admin.query(api.cohorts.exportBevy, { cohortId: cohort })).rejects.toThrow("Hanya pemilik");
+  });
+
   it("returns null for an unknown cohort", async () => {
     const { owner } = await staffWithCohort();
     expect(await owner.query(api.cohorts.roster, { slug: "tidak-ada" })).toBeNull();

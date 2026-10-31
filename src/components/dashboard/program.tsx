@@ -4,10 +4,11 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Button } from "react-aria-components/Button";
 import { Menu, MenuItem, MenuTrigger, Popover, Text } from "react-aria-components/Menu";
-import { useMutation, useQuery } from "convex/react";
+import { useConvex, useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { bevyConsentNote, bevyCsv, bevyFileName } from "@/lib/bevy-export";
 import { programPath, type CohortRole } from "@/lib/cohort";
 import { readableError } from "@/lib/draft-session";
 import { SKIP, guessColumns, guessRoles, importBatch, importLimits, parseDelimited, planImport, type ColumnMap } from "@/lib/enrolment-import";
@@ -15,7 +16,7 @@ import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
 import { Select } from "../select";
 import { StaffOnly } from "./assignments";
-import { ConfirmDialog, DashboardDialog, DialogContent, DialogFooter } from "./data-table";
+import { ConfirmDialog, CopyIconButton, DashboardDialog, DialogContent, DialogFooter } from "./data-table";
 import { isStaff, useDashboardViewer } from "./viewer";
 
 type Roster = NonNullable<FunctionReturnType<typeof api.cohorts.roster>>;
@@ -55,6 +56,7 @@ export function ProgramRoster({ slug }: { slug: string }) {
   const [role, setRole] = useState("all");
   const [status, setStatus] = useState<Status>("all");
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const back = <Link className="text-button app-back" href="/dashboard/program"><PixelIcon name="arrow-left" size={24} />Semua program</Link>;
   if (!isStaff(viewer)) return <StaffOnly />;
   if (data === undefined) return <LoadingPanel label="Memuat peserta…" />;
@@ -71,7 +73,10 @@ export function ProgramRoster({ slug }: { slug: string }) {
     {back}
     <div className="dash-intro dash-intro-action"><div><p className="eyebrow">ADMIN · PROGRAM</p><h1>{cohort.name}</h1>
       <p>{active.length} peserta aktif, {active.filter((row) => row.ownerId).length} sudah masuk ke dashboard. Peserta yang belum masuk terhubung otomatis saat masuk dengan email Google yang terdaftar.</p></div>
-      <button type="button" className="button button-blue" onClick={() => setImporting(true)}><PixelIcon name="upload" size={18} />Impor peserta</button>
+      <div className="dash-roster-actions">
+        {viewer.role === "owner" && <button type="button" className="button button-quiet" disabled={!active.length} onClick={() => setExporting(true)}><PixelIcon name="download" size={18} />CSV untuk Bevy</button>}
+        <button type="button" className="button button-blue" onClick={() => setImporting(true)}><PixelIcon name="upload" size={18} />Impor peserta</button>
+      </div>
     </div>
 
     <div className="dash-toolbar dash-roster-toolbar" role="search" aria-label="Cari dan saring peserta">
@@ -102,9 +107,48 @@ export function ProgramRoster({ slug }: { slug: string }) {
         </table>
       </div>}
 
+    <DashboardDialog open={exporting} onClose={() => setExporting(false)} title="CSV untuk Bevy">
+      <BevyExport cohort={cohort} count={active.length} onDone={() => setExporting(false)} />
+    </DashboardDialog>
     <DashboardDialog open={importing} onClose={() => setImporting(false)} title={`Impor peserta ${cohort.name}`} wide>
       <ImportForm cohortId={cohort._id} roles={cohort.roles} roster={rows} onDone={() => setImporting(false)} />
     </DashboardDialog>
+  </>;
+}
+
+/**
+ * Owners: the active participants in Bevy's member import template (email, first_name, last_name), for adding them as
+ * members of the chapter on gdg.community.dev. Bevy asks the importer to confirm consent, so the dialog says where it comes from.
+ */
+function BevyExport({ cohort, count, onDone }: { cohort: Roster["cohort"]; count: number; onDone: () => void }) {
+  const convex = useConvex();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const note = bevyConsentNote(cohort.name);
+  async function download() {
+    setBusy(true); setError("");
+    try {
+      const rows = await convex.query(api.cohorts.exportBevy, { cohortId: cohort._id });
+      const url = URL.createObjectURL(new Blob([bevyCsv(rows)], { type: "text/csv;charset=utf-8" }));
+      const link = document.createElement("a");
+      link.href = url; link.download = bevyFileName(cohort.slug, Date.now());
+      document.body.append(link); link.click(); link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      onDone();
+    } catch (cause) { setError(readableError(cause)); }
+    finally { setBusy(false); }
+  }
+  return <>
+    <DialogContent>
+      <p className="dash-dialog-body">Berisi email dan nama {count} peserta aktif dalam format template Bevy (<code>email</code>, <code>first_name</code>, <code>last_name</code>). Unggah di halaman chapter gdg.community.dev lewat <strong>Import members</strong>. Kata pertama nama menjadi nama depan; nama satu kata tidak punya nama belakang.</p>
+      <p className="dash-dialog-body">Bevy meminta konfirmasi bahwa peserta menyetujui pendaftarannya. Centang hanya jika form oprec menanyakan persetujuan itu. Untuk “How did they consent?”, tulis misalnya:</p>
+      <div className="dash-bevy-note"><span>{note}</span><CopyIconButton text={note} label="Salin teks persetujuan" /></div>
+      {error && <p className="field-error" role="alert">{error}</p>}
+    </DialogContent>
+    <DialogFooter>
+      <button className="dash-dialog-button" type="button" disabled={busy} onClick={onDone}>Batal</button>
+      <button className="dash-dialog-button" data-primary type="button" disabled={busy} onClick={() => void download()}>{busy ? "Menyiapkan CSV…" : "Unduh CSV"}</button>
+    </DialogFooter>
   </>;
 }
 

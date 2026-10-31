@@ -8,7 +8,8 @@ import { communityLinks } from "@/lib/community";
 import { breadcrumbJsonLd } from "@/lib/breadcrumb";
 import { faqJsonLd, type FaqItem } from "@/lib/faq";
 import { canonical } from "@/lib/site";
-import { currentRegistrationState, dayLabel, rangeLabel, techLeague, techLeagueJsonLd } from "@/lib/tech-league";
+import { dayLabel, rangeLabel } from "@/lib/schedule";
+import { currentRegistrationState, techLeague, techLeagueJsonLd } from "@/lib/tech-league";
 
 export const metadata: Metadata = {
   title: "Tech League",

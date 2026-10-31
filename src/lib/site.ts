@@ -6,9 +6,11 @@ export const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || "https://www.gdgocip
 export const siteName = "GDGoC IPB";
 /** The landing's `Organization` node; other pages' JSON-LD points at it instead of repeating it. */
 export const organizationId = `${siteUrl}/#organization`;
+/** The landing's `WebSite` node. */
+export const websiteId = `${siteUrl}/#website`;
 
 /** Every indexable path. The sitemap lists exactly these, and each one's page sets `canonical()` with the same path. */
-export const indexablePaths = ["/", "/program", "/program/catalyst", "/program/tech-league", "/privasi"] as const;
+export const indexablePaths = ["/", "/tentang", "/program", "/program/catalyst", "/program/tech-league", "/privasi"] as const;
 export const siteDescription =
   "Google Developer Group on Campus IPB University: komunitas mahasiswa Bogor untuk belajar coding, UI/UX, dan AI lewat sesi praktik, proyek tim, dan kompetisi.";
 

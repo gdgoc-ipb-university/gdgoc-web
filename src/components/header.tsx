@@ -12,7 +12,7 @@ import { cachedNavViewer, loadNavViewer, type NavViewer } from "@/lib/nav-viewer
 type SectionId = "community" | "explore" | "join";
 /** Landing sections the scrollspy follows. A section with `href` links to its own page instead of scrolling to it. */
 const SECTIONS: readonly { id: SectionId; label: string; href?: string }[] = [
-  { id: "community", label: "Tentang kami" },
+  { id: "community", label: "Tentang kami", href: "/tentang" },
   { id: "explore", label: "Program", href: "/program" },
   { id: "join", label: "Bogor Run" },
 ];

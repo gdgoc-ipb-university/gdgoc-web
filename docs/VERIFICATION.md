@@ -407,6 +407,15 @@ Evidence:
 - Headless Chromium screenshots at 1440 and 390 px wide: two cards per row on desktop and one column on phones, no horizontal overflow. The first pass showed "Gabung member" as dark text on blue, because the card-link rule `.program-grid a` also matched buttons inside a card; it now matches only `li > a`, which is how `/program` uses it.
 - Not checked: the deployed site and Google's Rich Results Test.
 
+## Structured data in Google Search — 31 October
+
+After #99–#102 shipped, the public pages' JSON-LD was checked against what Google Search still shows. The README's *Search and sharing* section now says which types Google uses.
+
+Evidence:
+- The [Schema Markup Validator](https://validator.schema.org) on the deployed site reports 0 errors and 0 warnings for `/` (`WebSite`, with the `Organization` as its publisher), `/program` (`BreadcrumbList`), `/program/catalyst` (`BreadcrumbList`, `Event`, `Course`, `FAQPage`), `/program/tech-league` (`BreadcrumbList`, `Event`, `FAQPage`), `/tentang` (`BreadcrumbList`, `AboutPage`) and `/bergabung` (`BreadcrumbList`, `FAQPage`).
+- Google's [Search Central documentation updates](https://developers.google.com/search/updates): breadcrumbs only on desktop results (22 January 2025); online event properties removed, and events must be bookable by the general public at a physical location (5 June 2025); Course info documentation removed because it is no longer shown (9 September 2025); FAQ rich results no longer shown from 7 May 2026.
+- Not checked: Google's Rich Results Test, which needs a browser. By the updates above it can only report the breadcrumbs and the landing's site data.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

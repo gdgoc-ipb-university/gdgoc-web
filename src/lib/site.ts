@@ -10,7 +10,7 @@ export const organizationId = `${siteUrl}/#organization`;
 export const websiteId = `${siteUrl}/#website`;
 
 /** Every indexable path. The sitemap lists exactly these, and each one's page sets `canonical()` with the same path. */
-export const indexablePaths = ["/", "/tentang", "/program", "/program/catalyst", "/program/tech-league", "/privasi"] as const;
+export const indexablePaths = ["/", "/tentang", "/bergabung", "/program", "/program/catalyst", "/program/tech-league", "/privasi"] as const;
 export const siteDescription =
   "Google Developer Group on Campus IPB University: komunitas mahasiswa Bogor untuk belajar coding, UI/UX, dan AI lewat sesi praktik, proyek tim, dan kompetisi.";
 

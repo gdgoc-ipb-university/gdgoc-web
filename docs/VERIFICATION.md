@@ -397,6 +397,16 @@ Evidence:
 - Headless Chromium screenshots at 1440 and 390 px wide: mission cards three across on desktop and stacked on phones, no horizontal overflow.
 - Not checked: the deployed site and Google's Rich Results Test. The mission descriptions are drafted from the mission names and the current programs, pending the leadership's wording.
 
+## Join page — 25 October
+
+`/bergabung` tells visitors how to take part (#95): the Google Developer Groups chapter page and the community WhatsApp group to join now, GDGoC Catalyst as the structured path, Tech League to compete, who can join, and a FAQ. The Catalyst and Tech League lines follow the same WIB windows as their pages, so the page is revalidated hourly. No member-intake batch dates are given (#86, decision 2). The join footer's note under "Gabung member", a "Cara bergabung" link in the footer directory, and `/tentang` link to it.
+
+Evidence:
+- `pnpm test` (44 files, 428 tests), `pnpm check`, and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs pass on Node 24; `/bergabung` prerenders with a 1-hour revalidate.
+- Through the dev server at https://gdgoc-ipb.yorhagarden.xyz, read with `curl`: `/bergabung` returns 200 with its own canonical, one `<h1>`, a `FAQPage` with the page's five questions and a Beranda › Bergabung breadcrumb; the Catalyst line reads "Pendaftaran dibuka 2–22 November 2026." and the Tech League line "Pendaftaran tim dibuka 2 November 2026 – 8 Februari 2027."; the page links the chapter page, WhatsApp, `/program/catalyst`, `/program/tech-league`, and `/program`; the landing, `/tentang`, and `/program` link to `/bergabung` from the join footer; `/sitemap.xml` lists it.
+- Headless Chromium screenshots at 1440 and 390 px wide: two cards per row on desktop and one column on phones, no horizontal overflow. The first pass showed "Gabung member" as dark text on blue, because the card-link rule `.program-grid a` also matched buttons inside a card; it now matches only `li > a`, which is how `/program` uses it.
+- Not checked: the deployed site and Google's Rich Results Test.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

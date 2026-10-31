@@ -61,6 +61,7 @@ export default function AboutPage() {
         <h2 id="about-next">Mulai dari sini</h2>
         <div className="league-actions">
           <Link className="button button-blue" href="/program">Lihat program <Arrow /></Link>
+          <Link className="button button-quiet" href="/bergabung">Cara bergabung <Arrow /></Link>
           <a className="text-button" href={communityLinks.instagram} target="_blank" rel="noreferrer">Instagram @gdgoc.ipb <Arrow external /></a>
         </div>
       </section>

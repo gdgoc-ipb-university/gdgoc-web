@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { DinoPlayground } from "@/components/dino-playground";
@@ -132,6 +133,11 @@ export function Landing() {
                 </Reveal>
               ))}
             </div>
+            <Reveal className="path-all">
+              <Link className="text-link" href="/program">
+                Lihat semua program <Arrow />
+              </Link>
+            </Reveal>
           </div>
         </section>
       </main>

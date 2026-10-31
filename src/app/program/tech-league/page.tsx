@@ -5,6 +5,7 @@ import { JsonLd } from "@/components/json-ld";
 import { Arrow } from "@/components/icons";
 import { PixelIcon, type PixelIconName } from "@/components/pixel-icons";
 import { communityLinks } from "@/lib/community";
+import { breadcrumbJsonLd } from "@/lib/breadcrumb";
 import { faqJsonLd, type FaqItem } from "@/lib/faq";
 import { canonical } from "@/lib/site";
 import { currentRegistrationState, dayLabel, rangeLabel, techLeague, techLeagueJsonLd } from "@/lib/tech-league";
@@ -52,6 +53,7 @@ export default function TechLeaguePage() {
   return <>
     <JsonLd data={techLeagueJsonLd()} />
     <JsonLd data={faqJsonLd(faq)} />
+    <JsonLd data={breadcrumbJsonLd([{ name: "Program", path: "/program" }, { name: "Tech League", path: techLeague.path }])} />
     <Header />
     <main id="main" className="league-page section-width">
       <p className="eyebrow">GDGOC IPB · KOMPETISI NASIONAL · 2026/27</p>

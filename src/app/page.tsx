@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { JsonLd } from "@/components/json-ld";
 import { Landing } from "@/components/landing";
 import { communityLinks } from "@/lib/community";
-import { canonical, organizationId, siteDescription, siteName, siteUrl } from "@/lib/site";
+import { canonical, organizationId, siteDescription, siteName, siteUrl, websiteId } from "@/lib/site";
 
 // `?motion=` and `?webgl=` are previews of this same page.
 export const metadata: Metadata = canonical("/");
@@ -24,7 +24,7 @@ const jsonLd = {
       address: { "@type": "PostalAddress", addressLocality: "Bogor", addressRegion: "Jawa Barat", addressCountry: "ID" },
     },
     {
-      "@id": `${siteUrl}/#website`,
+      "@id": websiteId,
       "@type": "WebSite",
       name: siteName,
       alternateName: ["GDGoC IPB University", "GDG on Campus IPB University"],

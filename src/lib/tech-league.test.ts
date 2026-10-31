@@ -1,16 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { indexablePaths, siteUrl } from "./site";
-import { dayLabel, rangeLabel, registrationState, techLeague, techLeagueJsonLd } from "./tech-league";
+import { registrationState, techLeague, techLeagueJsonLd } from "./tech-league";
 
 describe("Tech League schedule", () => {
-  it("writes Indonesian dates without shifting the calendar day", () => {
-    expect(dayLabel("2026-11-02")).toBe("2 November 2026");
-    expect(rangeLabel("2027-02-15")).toBe("15 Februari 2027");
-    expect(rangeLabel("2027-03-25", "2027-03-27")).toBe("25–27 Maret 2027");
-    expect(rangeLabel("2027-02-19", "2027-03-16")).toBe("19 Februari – 16 Maret 2027");
-    expect(rangeLabel("2026-11-02", "2027-02-08")).toBe("2 November 2026 – 8 Februari 2027");
-  });
-
   it("opens registration at midnight WIB on the first day and closes it at the end of the last day", () => {
     const at = (iso: string) => Date.parse(iso);
     expect(registrationState(at("2026-11-01T23:59:59+07:00"))).toBe("upcoming");

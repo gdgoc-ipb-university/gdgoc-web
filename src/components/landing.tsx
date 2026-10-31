@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
 import { DinoPlayground } from "@/components/dino-playground";
@@ -5,6 +6,7 @@ import { PixelIcon, type PixelIconName } from "@/components/pixel-icons";
 import { Reveal } from "@/components/reveal";
 import { Arrow, PixelSpark } from "@/components/icons";
 import { JoinFooter } from "@/components/join-footer";
+import { catalyst } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
 import { techLeague } from "@/lib/tech-league";
 
@@ -15,8 +17,9 @@ const paths = [
     title: "GDGoC Catalyst",
     label: "BELAJAR & BANGUN PRODUK",
     text: "Belajar membangun produk lewat tiga peran: Hustler untuk pengelolaan proyek, Hipster untuk desain UI/UX, dan Hacker untuk pengembangan teknologi. Kolaborasi dalam tim, lalu kerjakan capstone dengan pendampingan",
-    cta: "Pantau info Catalyst",
+    cta: "Lihat jadwal Catalyst",
     icon: "code" as PixelIconName,
+    href: catalyst.path,
   },
   {
     n: "02",
@@ -132,6 +135,11 @@ export function Landing() {
                 </Reveal>
               ))}
             </div>
+            <Reveal className="path-all">
+              <Link className="text-link" href="/program">
+                Lihat semua program <Arrow />
+              </Link>
+            </Reveal>
           </div>
         </section>
       </main>

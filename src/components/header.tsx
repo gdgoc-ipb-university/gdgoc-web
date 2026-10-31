@@ -9,12 +9,13 @@ import { ScrollProgress } from "./scroll-progress";
 import { PixelIcon } from "./pixel-icons";
 import { cachedNavViewer, loadNavViewer, type NavViewer } from "@/lib/nav-viewer";
 
-const SECTIONS = [
-  { id: "community", label: "Tentang kami" },
-  { id: "explore", label: "Program" },
+type SectionId = "community" | "explore" | "join";
+/** Landing sections the scrollspy follows. A section with `href` links to its own page instead of scrolling to it. */
+const SECTIONS: readonly { id: SectionId; label: string; href?: string }[] = [
+  { id: "community", label: "Tentang kami", href: "/tentang" },
+  { id: "explore", label: "Program", href: "/program" },
   { id: "join", label: "Bogor Run" },
-] as const;
-type SectionId = (typeof SECTIONS)[number]["id"];
+];
 /** The scroll-progress bar's quarters, in order; the active link is underlined in the quarter being filled. */
 const ACCENTS = ["blue", "red", "yellow", "green"] as const;
 type Accent = (typeof ACCENTS)[number];
@@ -110,8 +111,8 @@ export function Header() {
           <PixelIcon name={open ? "close" : "menu"} size={24} />
         </button>
         <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open} data-accent={accent}>
-          {SECTIONS.map(({ id, label }) => (
-            <Link key={id} href={home ? `#${id}` : `/#${id}`} aria-current={active === id ? "location" : undefined} onClick={() => setOpen(false)}>
+          {SECTIONS.map(({ id, label, href }) => (
+            <Link key={id} href={href ?? (home ? `#${id}` : `/#${id}`)} aria-current={href && pathname === href ? "page" : active === id ? "location" : undefined} onClick={() => setOpen(false)}>
               {label}
             </Link>
           ))}

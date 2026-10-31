@@ -358,6 +358,64 @@ Evidence:
   - the landing links only to `/program/tech-league`, from its Tech League card and the footer, and its `Organization` and `WebSite` JSON-LD is unchanged.
 - Not checked: the deployed site, Google's Rich Results Test, and screenshots (Playwright is not installed in this checkout; the page's markup and classes are unchanged).
 
+## Program hub — 24 October
+
+`/program` lists the three flagships (Catalyst, Tech League, Tech Support) and the regular programs (Study Jam, Google programs, Friday Tech Bulletin), each with who it is for and when it runs (#88). Only Tech League has its own page so far; the rest point to Instagram. The header's "Program" and the footer's "Program kami" open `/program` instead of scrolling the landing, and a "Lihat semua program" link sits under the landing's program cards. On the landing the scrollspy still underlines "Program" while its section is being read. `src/lib/breadcrumb.ts` builds `BreadcrumbList` JSON-LD, which `/program` and `/program/tech-league` carry.
+
+Evidence:
+- `pnpm test` (40 files, 416 tests), ESLint, `next typegen` and `tsc --noEmit` pass on Node 24; `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs prerenders `/program` as static.
+- Against `next start`, read with `curl`:
+  - `/program` returns 200 with title "Program · GDGoC IPB", canonical and `og:url` `https://www.gdgocipb.com/program`, one `<h1>`, six program cards under "Program utama" and "Program rutin", and a `BreadcrumbList` of Beranda › Program;
+  - `/program/tech-league` keeps its `Event` and `FAQPage` JSON-LD and adds Beranda › Program › Tech League;
+  - the header's Program link is `/program` on every page, with `aria-current="page"` on `/program`; the landing links to `/program` from the header, the program section, and the footer, and "Temukan program yang cocok" still scrolls to `#explore`;
+  - `/sitemap.xml` lists `/`, `/program`, `/program/tech-league`, and `/privasi`.
+- Headless Chromium screenshots of `/program` at 1440 and 390 px wide: three cards per row on desktop, one column on phones, no horizontal overflow.
+- Headless Chromium screenshots at 1440 and 390 px wide: mission cards three across on desktop and stacked on phones, no horizontal overflow.
+- Not checked: the deployed site and Google's Rich Results Test.
+
+## Catalyst page — 25 October
+
+`/program/catalyst` explains GDGoC Catalyst 2026/27 to applicants, in the shape of the Tech League page (#89): the Software Development track and its three roles, how the program runs, who can join, the schedule, and a FAQ. The oprec state follows the WIB date (upcoming until 2 November, open through 22 November, closed, then announced from 29 November); "Daftar" appears once `oprecUrl` is set in `src/lib/catalyst.ts` (#90). The landing's Catalyst card and the `/program` hub open the page instead of Instagram. The date labels and the WIB window check moved from `src/lib/tech-league.ts` to `src/lib/schedule.ts`, so both program pages share them.
+
+Evidence:
+- `pnpm test` (42 files, 423 tests) and `pnpm check` pass on Node 24; `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs prerenders `/program/catalyst` with a 1-hour revalidate.
+- Against `next start`, read with `curl` on 25 October:
+  - `/program/catalyst` returns 200 with title "GDGoC Catalyst · GDGoC IPB", canonical and `og:url` `https://www.gdgocipb.com/program/catalyst`, one `<h1>`, and four JSON-LD scripts that parse: a free online `Course` with a `CourseInstance` of nine Sunday sessions from 2026-12-06 to 2027-04-18, an online `Event` over the same dates with the chapter as organizer, a `FAQPage` with the page's six questions, and Beranda › Program › Catalyst;
+  - the status reads "Pendaftaran dibuka 2 November 2026 dan ditutup 22 November 2026. Peserta diumumkan 29 November 2026." with no "Daftar" button, since the form URL is not set;
+  - the landing's Catalyst card and the `/program` hub card link to `/program/catalyst`; `/program/tech-league` is unchanged;
+  - `/sitemap.xml` lists `/`, `/program`, `/program/catalyst`, `/program/tech-league`, and `/privasi`.
+- Headless Chromium screenshots at 1440 and 390 px wide: role cards three across on desktop and stacked on phones, no horizontal overflow.
+- Not checked: the deployed site, Google's Rich Results Test, and the open and announced states in a browser (covered by `src/lib/catalyst.test.ts`).
+
+## About page — 25 October
+
+`/tentang` answers what GDGoC IPB is (#93): the vision, the three missions, who it is for, and the history from GDSC IPB to Google Developer Groups on Campus, with a link to the official chapter page. The header's "Tentang kami" and the footer's "Tentang komunitas" open it instead of scrolling the landing. It adds `AboutPage` JSON-LD (about the landing's `Organization`, part of its `WebSite`) and a Beranda › Tentang breadcrumb. It links to `/program`; the links to `/tim` and `/bergabung` come with those pages (#94, #95).
+
+Evidence:
+- `pnpm test` (43 files, 426 tests), `pnpm check`, and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs pass on Node 24; `/tentang` prerenders as static.
+- Against the dev server through https://gdgoc-ipb.yorhagarden.xyz, read with `curl`: `/tentang` returns 200 with its own canonical, one `<h1>`, `AboutPage` and `BreadcrumbList` JSON-LD that parse; the header links "Tentang kami" to `/tentang` with `aria-current="page"` there; the landing footer links "Tentang komunitas" to `/tentang`; `/sitemap.xml` lists `/tentang`.
+- Headless Chromium screenshots at 1440 and 390 px wide: mission cards three across on desktop and stacked on phones, no horizontal overflow.
+- Not checked: the deployed site and Google's Rich Results Test. The mission descriptions are drafted from the mission names and the current programs, pending the leadership's wording.
+
+## Join page — 25 October
+
+`/bergabung` tells visitors how to take part (#95): the Google Developer Groups chapter page and the community WhatsApp group to join now, GDGoC Catalyst as the structured path, Tech League to compete, who can join, and a FAQ. The Catalyst and Tech League lines follow the same WIB windows as their pages, so the page is revalidated hourly. No member-intake batch dates are given (#86, decision 2). The join footer's note under "Gabung member", a "Cara bergabung" link in the footer directory, and `/tentang` link to it.
+
+Evidence:
+- `pnpm test` (44 files, 428 tests), `pnpm check`, and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs pass on Node 24; `/bergabung` prerenders with a 1-hour revalidate.
+- Through the dev server at https://gdgoc-ipb.yorhagarden.xyz, read with `curl`: `/bergabung` returns 200 with its own canonical, one `<h1>`, a `FAQPage` with the page's five questions and a Beranda › Bergabung breadcrumb; the Catalyst line reads "Pendaftaran dibuka 2–22 November 2026." and the Tech League line "Pendaftaran tim dibuka 2 November 2026 – 8 Februari 2027."; the page links the chapter page, WhatsApp, `/program/catalyst`, `/program/tech-league`, and `/program`; the landing, `/tentang`, and `/program` link to `/bergabung` from the join footer; `/sitemap.xml` lists it.
+- Headless Chromium screenshots at 1440 and 390 px wide: two cards per row on desktop and one column on phones, no horizontal overflow. The first pass showed "Gabung member" as dark text on blue, because the card-link rule `.program-grid a` also matched buttons inside a card; it now matches only `li > a`, which is how `/program` uses it.
+- Not checked: the deployed site and Google's Rich Results Test.
+
+## Structured data in Google Search — 31 October
+
+After #99–#102 shipped, the public pages' JSON-LD was checked against what Google Search still shows. The README's *Search and sharing* section now says which types Google uses.
+
+Evidence:
+- The [Schema Markup Validator](https://validator.schema.org) on the deployed site reports 0 errors and 0 warnings for `/` (`WebSite`, with the `Organization` as its publisher), `/program` (`BreadcrumbList`), `/program/catalyst` (`BreadcrumbList`, `Event`, `Course`, `FAQPage`), `/program/tech-league` (`BreadcrumbList`, `Event`, `FAQPage`), `/tentang` (`BreadcrumbList`, `AboutPage`) and `/bergabung` (`BreadcrumbList`, `FAQPage`).
+- Google's [Search Central documentation updates](https://developers.google.com/search/updates): breadcrumbs only on desktop results (22 January 2025); online event properties removed, and events must be bookable by the general public at a physical location (5 June 2025); Course info documentation removed because it is no longer shown (9 September 2025); FAQ rich results no longer shown from 7 May 2026.
+- Not checked: Google's Rich Results Test, which needs a browser. By the updates above it can only report the breadcrumbs and the landing's site data.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

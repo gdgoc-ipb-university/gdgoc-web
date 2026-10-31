@@ -6,6 +6,8 @@ import { authComponent, isOwner } from "./auth";
 import { requireMember, requireStaff, type DashboardRole } from "./access";
 import { memberType } from "./schema";
 import { logAccess } from "./accessLog";
+import { enrolledRoles, mentoredRoles, mentors } from "./cohorts";
+import { inCohortRoles } from "../src/lib/cohort";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 
@@ -31,9 +33,30 @@ function cleanAssignment(values: { title: string; slug?: string; description: st
   return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! };
 }
 
-/** Whether this account may see and submit to the assignment: staff see every assignment, members only those given to their community tag. */
-function reaches(assignment: Doc<"assignments">, access: { role: DashboardRole; profile: Doc<"memberProfiles"> | null }) {
-  return access.role !== "member" || inAudience(assignment, access.profile?.memberType);
+type Reach = { role: DashboardRole; profile: Doc<"memberProfiles"> | null; enrolled: Map<Id<"cohorts">, string> };
+
+/** An account's access plus its active enrolments (cohort → role), loaded once for every `reaches` check. */
+async function reachOf<A extends { role: DashboardRole; profile: Doc<"memberProfiles"> | null; user: { _id: string } }>(ctx: QueryCtx | MutationCtx, access: A): Promise<A & Reach> {
+  return { ...access, enrolled: await enrolledRoles(ctx, access.user._id) };
+}
+
+/**
+ * Whether this account may see and submit to the assignment: staff see every assignment. A cohort assignment goes to that
+ * cohort's active participants with one of its roles; any other goes to the members of its community tags.
+ */
+function reaches(assignment: Doc<"assignments">, access: Reach) {
+  if (access.role !== "member") return true;
+  if (assignment.cohortId) {
+    const role = access.enrolled.get(assignment.cohortId);
+    return role !== undefined && inCohortRoles(assignment, role);
+  }
+  return inAudience(assignment, access.profile?.memberType);
+}
+
+/** Staff, a reviewer staff added to this assignment, or a mentor of one of its cohort roles. */
+async function canReview(ctx: QueryCtx | MutationCtx, assignment: Doc<"assignments">, access: { role: DashboardRole; user: { _id: string } }) {
+  if (access.role !== "member" || (assignment.reviewers ?? []).includes(access.user._id)) return true;
+  return Boolean(assignment.cohortId) && mentors(assignment, await mentoredRoles(ctx, access.user._id));
 }
 
 /** Display name for an account: the onboarding name, else the Google name. */
@@ -56,13 +79,16 @@ async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignme
 
 export const maxReviewers = 10;
 
-/** Staff, or an active, onboarded member staff added as a reviewer of this assignment. `staff` decides what reviewers do not get (emails, managing the assignment). */
+/**
+ * Staff, or an active, onboarded member who reviews this assignment: added as its reviewer, or a mentor of one of its cohort
+ * roles. `staff` decides what reviewers do not get (emails, managing the assignment).
+ */
 async function requireReviewer(ctx: QueryCtx | MutationCtx, id: Id<"assignments">) {
   const access = await requireMember(ctx);
   const assignment = await ctx.db.get(id);
   if (!assignment) notFound();
   const staff = access.role !== "member";
-  if (!staff && !(assignment.reviewers ?? []).includes(access.user._id)) {
+  if (!(await canReview(ctx, assignment, access))) {
     throw new ConvexError({ code: "FORBIDDEN", message: "Akses ini hanya untuk admin GDGoC IPB dan penilai tugas ini." });
   }
   return { ...access, assignment, staff };
@@ -264,11 +290,16 @@ export const missing = query({
     // This assignment's reviewers judge it rather than submit to it.
     const reviewers = new Set(assignment.reviewers ?? []);
     const submitted = new Set((await submissionsOf(ctx, id)).map((item) => item.ownerId));
+    // A cohort assignment expects its participants (claimed, active, in its roles), not a community tag. Unclaimed ones are added in #105.
+    const cohortId = assignment.cohortId;
+    const participants = cohortId && new Set((await ctx.db.query("enrolments").withIndex("by_cohort_email", (q) => q.eq("cohortId", cohortId)).collect())
+      .filter((row) => row.status === "active" && row.ownerId && inCohortRoles(assignment, row.role)).map((row) => row.ownerId!));
+    const expected = (profile: Doc<"memberProfiles">) => participants ? participants.has(profile.ownerId) : inAudience(assignment, profile.memberType);
     const profiles = await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
     const missing: { ownerId: string; name: string; email: string; campus: string }[] = [];
     let active = 0;
     for (const profile of profiles) {
-      if (profile.deactivatedAt || profile.role === "admin" || reviewers.has(profile.ownerId) || !inAudience(assignment, profile.memberType)) continue;
+      if (profile.deactivatedAt || profile.role === "admin" || reviewers.has(profile.ownerId) || !expected(profile)) continue;
       const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
       if (isOwner(user?.email ?? "", Boolean(user?.emailVerified))) continue;
       active++;
@@ -379,7 +410,8 @@ export const reviewing = query({
     const { user, role } = await requireMember(ctx);
     if (role !== "member") return [];
     const recent = await ctx.db.query("assignments").withIndex("by_updated").order("desc").take(200);
-    const mine = recent.filter((assignment) => assignment.reviewers?.includes(user._id));
+    const mentored = await mentoredRoles(ctx, user._id);
+    const mine = recent.filter((assignment) => assignment.reviewers?.includes(user._id) || mentors(assignment, mentored));
     return Promise.all(mine.map(async (assignment) => {
       const submissions = await submissionsOf(ctx, assignment._id);
       const waiting = submissions.filter((item) => item.reviewedAt === undefined || isStaleReview(item)).length;
@@ -393,7 +425,7 @@ export const reviewing = query({
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const access = await requireMember(ctx);
+    const access = await reachOf(ctx, await requireMember(ctx));
     const { user } = access;
     const [open, ended] = await Promise.all([
       ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "published")).order("asc").take(100),
@@ -415,17 +447,17 @@ export const get = query({
   // A slug (current or previous) or, for older links, the assignment ID.
   args: { id: v.string() },
   handler: async (ctx, args) => {
-    const access = await requireMember(ctx);
+    const access = await reachOf(ctx, await requireMember(ctx));
     const { user, role } = access;
     const assignment = await findAssignment(ctx, args.id);
     const canManage = role !== "member";
-    const canReview = canManage || Boolean(assignment?.reviewers?.includes(user._id));
+    const reviews = Boolean(assignment) && await canReview(ctx, assignment!, access);
     // Outside the audience the assignment does not exist for this member, even if they submitted before it was narrowed.
-    if (!assignment || (!canReview && (assignment.status === "draft" || !reaches(assignment, access)))) return null;
+    if (!assignment || (!reviews && (assignment.status === "draft" || !reaches(assignment, access)))) return null;
     const submission = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
     const files = await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", user._id).eq("assignmentId", assignment._id)).collect();
     return {
-      assignment, canManage, canReview,
+      assignment, canManage, canReview: reviews,
       // Staff see who reviews this assignment; reviewers do not need the list.
       reviewers: canManage ? await Promise.all((assignment.reviewers ?? []).map(async (ownerId) => ({ ownerId, name: (await nameOf(ctx, ownerId)).name }))) : [],
       submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt), ...(await reviewView(ctx, submission)) },
@@ -444,7 +476,7 @@ async function acceptsFrom(ctx: MutationCtx, assignment: Doc<"assignments">, own
 
 async function openAssignment(ctx: MutationCtx, id: Id<"assignments">, access: Awaited<ReturnType<typeof requireMember>>) {
   const assignment = await ctx.db.get(id);
-  if (!assignment || assignment.status === "draft" || !reaches(assignment, access)) notFound();
+  if (!assignment || assignment.status === "draft" || !reaches(assignment, await reachOf(ctx, access))) notFound();
   if (!(await acceptsFrom(ctx, assignment, access.user._id))) closed();
   return assignment;
 }
@@ -461,7 +493,7 @@ export const generateUploadUrl = mutation({
 export const attachFile = mutation({
   args: { assignmentId: v.id("assignments"), storageId: v.id("_storage"), name: v.string() },
   handler: async (ctx, args): Promise<{ fileId: Id<"submissionFiles"> } | { error: string }> => {
-    const access = await requireMember(ctx);
+    const access = await reachOf(ctx, await requireMember(ctx));
     const { user } = access;
     const claimed = await ctx.db.query("submissionFiles").withIndex("by_storage", (q) => q.eq("storageId", args.storageId)).unique();
     if (claimed) {

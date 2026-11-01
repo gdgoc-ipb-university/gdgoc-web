@@ -19,9 +19,12 @@ export const accessChange = v.union(
   v.literal("card"),
   // Staff added or removed a door helper of one gathering ("on"/"off").
   v.literal("gatheringHelper"),
+  // An owner granted or revoked the Tech Support queue ("on"/"off").
+  v.literal("techSupportHandler"),
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
+export const techSupportStatus = v.union(v.literal("new"), v.literal("matched"), v.literal("inProgress"), v.literal("closed"));
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
 export const cohortRole = v.object({ key: v.string(), name: v.string() });
 
@@ -39,6 +42,8 @@ export default defineSchema({
     // Set when staff set or confirm the community tag; cleared when the member changes it themselves. A confirmed
     // Media & Creative Core Team or BoD tag also grants Apresiasi review (auth.reviewsByTag).
     tagConfirmedAt: v.optional(v.number()), tagConfirmedBy: v.optional(v.string()),
+    // The Tech Support queue granted by an owner, like `appreciationReviewer`; owners and admins handle it by role.
+    techSupportHandler: v.optional(v.boolean()),
   }).index("by_owner", ["ownerId"])
     .index("by_completed", ["completedAt"])
     .searchIndex("search_name", { searchField: "fullName" }),
@@ -178,6 +183,18 @@ export default defineSchema({
   })
     .index("by_gathering_owner", ["gatheringId", "ownerId"])
     .index("by_owner", ["ownerId", "checkedInAt"]),
+  // A member's request for a Tech Support mentor (#92). `deadline` is the competition's WIB date (YYYY-MM-DD). The mentor
+  // is a name staff type in, because mentors have no account yet; `matchedAt` is set on the first match and never cleared,
+  // so a request closed without a mentor is not counted as facilitated. `note` is for handlers only.
+  techSupportRequests: defineTable({
+    ownerId: v.string(), competition: v.string(), competitionUrl: v.string(), deadline: v.string(),
+    participation: v.union(v.literal("team"), v.literal("solo")), teamName: v.optional(v.string()),
+    helpKinds: v.array(v.string()), progress: v.string(), status: techSupportStatus,
+    mentorName: v.optional(v.string()), note: v.optional(v.string()),
+    submittedAt: v.number(), updatedAt: v.number(), matchedAt: v.optional(v.number()), closedAt: v.optional(v.number()), handledBy: v.optional(v.string()),
+  })
+    .index("by_owner", ["ownerId", "submittedAt"])
+    .index("by_submitted", ["submittedAt"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
@@ -198,6 +215,8 @@ export default defineSchema({
       enrolments: v.optional(v.number()), mentorGrants: v.optional(v.number()),
       // Added with member cards and gatherings.
       cards: v.optional(v.number()), checkIns: v.optional(v.number()), helperGrants: v.optional(v.number()),
+      // Added with Tech Support requests.
+      techSupportRequests: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

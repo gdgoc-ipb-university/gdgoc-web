@@ -53,6 +53,13 @@ describe("access log sentences", () => {
     ]);
   });
 
+  it("describes granting and revoking the Tech Support queue", () => {
+    expect([entry("techSupportHandler", "off", "on"), entry("techSupportHandler", "on", "off")].map(accessSentence)).toEqual([
+      "Aldio Lisafron memberi Rania Putri akses antrean Tech Support.",
+      "Aldio Lisafron mencabut akses antrean Tech Support dari Rania Putri.",
+    ]);
+  });
+
   it("reads stored community tags", () => {
     expect([tagLabel("member"), tagLabel("core:Media & Creative"), tagLabel("bod"), tagLabel("unknown")]).toEqual(["Member", "Core Team · Media & Creative", "BoD", "Member"]);
   });

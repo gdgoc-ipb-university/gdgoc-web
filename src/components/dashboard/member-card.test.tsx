@@ -14,6 +14,8 @@ const card = {
 let mine: object | null = card;
 const ensure = vi.fn(async () => null);
 const reissue = vi.fn(async () => null);
+// next/font runs at build time; in tests it only has to name the font.
+vi.mock("next/font/local", () => ({ default: () => ({ className: "font-vcr", variable: "font-vcr", style: { fontFamily: "'vcr'" } }) }));
 vi.mock("convex/react", () => ({
   useQuery: (ref: FunctionReference<"query">) => getFunctionName(ref) === "cards:mine" ? mine : undefined,
   useMutation: (ref: FunctionReference<"mutation">) => ({ "cards:ensure": ensure, "cards:reissue": reissue })[getFunctionName(ref)] ?? vi.fn(),

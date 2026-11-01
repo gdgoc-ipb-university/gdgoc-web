@@ -1,5 +1,6 @@
 "use client";
 
+import localFont from "next/font/local";
 import Image from "next/image";
 import { useMemo, useState, type CSSProperties, type PointerEvent, type ReactNode } from "react";
 import { chapterPeriod } from "@/lib/chapter";
@@ -8,6 +9,14 @@ import { memberTagLabel, type MemberType } from "@/lib/onboarding";
 import { qrMatrix, qrPath } from "@/lib/qr";
 import { PixelIcon } from "./pixel-icons";
 import "./member-card.css";
+
+/**
+ * VCR OSD Mono for the pass's titling (#135): the name, chapter, year, number and stamp. Scoped to the card. No
+ * generated Arial fallback, so a glyph it lacks (Latin Extended letters, the middle dot) falls back to Pixelify Sans.
+ */
+const vcr = localFont({ src: "../fonts/vcr-osd-mono.woff2", variable: "--font-vcr", weight: "400", display: "swap", adjustFontFallback: false });
+/** The class that defines `--font-vcr`, for the door view, and the family for the saved image. */
+export const passFont = { className: vcr.variable, family: vcr.style.fontFamily };
 
 export type CardFace = {
   name: string; photo: string | null; campus: string; studyProgram: string; number: string; period: string;
@@ -84,7 +93,7 @@ const still = (event: PointerEvent<HTMLElement>) => event.currentTarget.style.re
 export function MemberCardFace({ card, stamp, children }: { card: Partial<CardFace>; stamp?: "valid" | "invalid"; children?: ReactNode }) {
   const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : null;
   const campus = [card.campus, card.studyProgram].filter(Boolean).join(" · ");
-  return <div className="member-pass" style={{ "--accent": divisionAccent(card.division) } as CSSProperties} onPointerMove={swing} onPointerLeave={still}>
+  return <div className={`member-pass ${vcr.variable}`} style={{ "--accent": divisionAccent(card.division) } as CSSProperties} onPointerMove={swing} onPointerLeave={still}>
     <PassArt name="lanyard" className="member-pass-lanyard" scale={3} />
     <article className="member-card" aria-label={card.name ? `Kartu anggota ${card.name}` : "Kartu anggota"}>
       <span className="member-pass-slot" aria-hidden="true" />

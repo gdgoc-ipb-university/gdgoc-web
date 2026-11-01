@@ -40,14 +40,16 @@
 .member-card-qr { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--ink); image-rendering: pixelated; }
 .member-card-notice { margin: 0; padding: 16px; font-size: 14px; line-height: 1.55; background: #fdf0ee; border: 1px solid #f0b9b2; }
 .member-card-notice strong { display: block; margin-bottom: 4px; }
-.member-card-void { position: absolute; top: 50%; left: 50%; z-index: 2; margin: 0; padding: 6px 14px; font: 600 26px/1 var(--font-pixel), monospace; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; color: #b0372a; background: rgb(253 240 238 / .92); border: 3px solid #b0372a; transform: translate(-50%, -50%) rotate(-10deg); pointer-events: none; }
+.member-card-void { justify-self: center; align-self: center; margin: 0; padding: 6px 14px; font: 600 26px/1 var(--font-pixel), monospace; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; color: #b0372a; background: rgb(253 240 238 / .92); border: 3px solid #b0372a; transform: rotate(-6deg); }
 .member-card[data-invalid] .member-card-seal { background: #d9dfd7; }
 
 @container member-card (min-width: 600px) {
   .member-card-body { min-height: calc(100cqi / 1.586 - 70px); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
-  .member-card-body:has(> .member-card-code) { grid-template-columns: minmax(0, 1fr) 282px; column-gap: 22px; }
-  .member-card-code { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .member-card-body:has(> .member-card-code, > .member-card-void) { grid-template-columns: minmax(0, 1fr) 282px; column-gap: 22px; }
+  .member-card-code, .member-card-void { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
   .member-card-facts { grid-column: 1; }
+  /* Staff see the face without a QR: a larger photo to match against the person at the door. */
+  .member-card-body:not(:has(> .member-card-code, > .member-card-void)) .member-card-photo { width: 128px; height: 128px; font-size: 64px; }
 }
 @container member-card (max-width: 380px) {
   .member-card-head img { width: min(56%, 200px); margin-inline: 12px; }
@@ -79,16 +81,21 @@
 /* The page a scanned QR opens: a verdict anyone can read from arm's length, then the card for staff and its holder. */
 .card-check-page { display: grid; gap: 28px; max-width: 640px; padding-block: 48px 96px; }
 .card-check-loading { margin: 0; padding: 32px 0; color: var(--muted); }
-.card-check-verdict { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: start; padding: 26px 24px; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
-.card-check-verdict[data-valid="true"] { background: #e5f3e6; }
+.card-check-verdict { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 20px 18px; align-items: start; padding: 0 24px 26px; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
+.card-check-verdict::before { content: ""; grid-column: 1 / -1; height: 8px; margin-inline: -24px; background: linear-gradient(90deg, var(--google-blue) 0 25%, var(--red) 0 50%, var(--yellow) 0 75%, var(--green) 0); }
+.card-check-verdict[data-valid="true"] { background: var(--card-guilloche), var(--paper); }
 .card-check-verdict[data-valid="false"] { background: #fdf0ee; }
+.card-check-verdict[data-valid="false"]::before { height: 14px; background: repeating-linear-gradient(-45deg, #b0372a 0 8px, #fdf0ee 8px 16px); border-bottom: 1px solid #b0372a; }
 .card-check-verdict > svg { padding: 6px; color: #fff; background: #13652d; }
 .card-check-verdict[data-valid="false"] > svg { background: #b0372a; }
+.card-check-eyebrow { font: 500 10px/1.5 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .card-check-verdict h1 { margin: 0 0 10px; font: 600 clamp(30px, 7vw, 44px)/1.05 var(--font-pixel), monospace; letter-spacing: -.03em; }
 .card-check-verdict p { margin: 0 0 10px; line-height: 1.55; }
+.card-check-verdict p.card-check-eyebrow { margin-bottom: 6px; }
 .card-check-facts { display: grid; gap: 10px; margin: 6px 0 16px; }
 .card-check-facts dt { font: 500 10px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .card-check-facts dd { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0; font-size: 20px; font-weight: 500; overflow-wrap: anywhere; }
+.card-check-facts .member-card-chip { font-size: 17px; }
 .card-check-note { font-size: 14px; color: var(--muted); }
 .card-check-time { font: 500 12px/1.5 var(--font-mono), monospace; color: var(--muted); }
 .card-check-verdict p.card-check-time { margin: 12px 0 0; }

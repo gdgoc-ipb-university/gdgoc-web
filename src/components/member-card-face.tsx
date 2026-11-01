@@ -74,7 +74,7 @@ export function MemberCardFace({ card, invalid, children }: { card: CardFace; in
         <div><dt>Berlaku</dt><dd>{periodLabel(card.period)}</dd></div>
       </dl>
       {children && <div className="member-card-code">{children}</div>}
+      {invalid && <p className="member-card-void" aria-hidden="true">Tidak berlaku</p>}
     </div>
-    {invalid && <p className="member-card-void" aria-hidden="true">Tidak berlaku</p>}
   </article>;
 }

@@ -9,7 +9,7 @@ import { readableError } from "@/lib/draft-session";
 import { clockLabel } from "@/lib/gathering";
 import { cardStatusLabels } from "@/lib/member-card";
 import { memberTagLabel } from "@/lib/onboarding";
-import { MemberCardFace, periodLabel } from "./member-card-face";
+import { MemberCardFace, accentStyle, periodLabel } from "./member-card-face";
 import { PixelIcon } from "./pixel-icons";
 
 const clock = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -29,7 +29,7 @@ function CheckedAt() {
 function Verdict({ valid, title, children }: { valid: boolean; title: string; children?: ReactNode }) {
   return <section className="card-check-verdict" data-valid={valid} aria-labelledby="card-check-title">
     <PixelIcon name={valid ? "check" : "close"} size={40} />
-    <div><h1 id="card-check-title">{title}</h1>{children}<CheckedAt /></div>
+    <div><p className="card-check-eyebrow">Kartu anggota · GDGoC IPB University</p><h1 id="card-check-title">{title}</h1>{children}<CheckedAt /></div>
   </section>;
 }
 
@@ -94,7 +94,7 @@ export function CardCheckView({ result }: { result: Result }) {
     return <Verdict valid title="Kartu anggota aktif">
       <dl className="card-check-facts">
         <div><dt>Nama</dt><dd>{card.name}</dd></div>
-        {card.memberType && <div><dt>Peran komunitas</dt><dd>{memberTagLabel(card.memberType, card.division)}{card.tagConfirmed && <span className="member-card-verified"><PixelIcon name="check" size={14} />Terverifikasi</span>}</dd></div>}
+        {card.memberType && <div><dt>Peran komunitas</dt><dd><span className="member-card-chip" style={accentStyle(card.division)}>{memberTagLabel(card.memberType, card.division)}</span>{card.tagConfirmed && <span className="member-card-verified"><PixelIcon name="check" size={14} />Terverifikasi</span>}</dd></div>}
         <div><dt>Berlaku</dt><dd>{periodLabel(card.period)}</dd></div>
       </dl>
       <p className="card-check-note">Anggota GDGoC IPB University. Cocokkan nama dengan orang yang menunjukkan kartu.</p>
@@ -110,7 +110,7 @@ export function CardCheckView({ result }: { result: Result }) {
       {result.viewer === "self" && <p>Ini kartumu. Pengurus yang memindai QR-nya melihat kartu lengkap untuk mencatat kehadiranmu.</p>}
     </Verdict>
     {valid && doors.length > 0 && <DoorCheckIn token={card.token} name={card.name} doors={doors} />}
-    <div className="card-check-card"><MemberCardFace card={card} /></div>
+    <div className="card-check-card"><MemberCardFace card={card} invalid={!valid} /></div>
     {result.viewer !== "helper" && <p className="card-check-links">
       {result.viewer === "staff"
         ? <Link className="button button-blue" href={`/dashboard/anggota/${card.ownerId}`}>Buka halaman anggota</Link>

@@ -43,11 +43,11 @@ The [project board](https://github.com/orgs/gdgoc-ipb-university/projects/1) rea
 
 ### Evidence
 
-Screenshots, recordings and other images for a pull request go on one shared branch, `yorha/pr-evidence`, under `issue-<N>/<slug>/`. Its [README](https://github.com/gdgoc-ipb-university/gdgoc-web/blob/yorha/pr-evidence/README.md) gives the file names and the commands to add files.
+Screenshots, recordings and other images for a pull request go on one shared branch, `docs/pr-evidence`, under `issue-<N>/<slug>/`. Its [README](https://github.com/gdgoc-ipb-university/gdgoc-web/blob/docs/pr-evidence/README.md) gives the file names and the commands to add files.
 
-- **Embed** each image in the pull request body by its raw URL, `https://raw.githubusercontent.com/gdgoc-ipb-university/gdgoc-web/yorha/pr-evidence/issue-<N>/<slug>/<file>.png`.
+- **Embed** each image in the pull request body by its raw URL, `https://raw.githubusercontent.com/gdgoc-ipb-university/gdgoc-web/docs/pr-evidence/issue-<N>/<slug>/<file>.png`.
 - **Index.** Add a row for the folder to the index table in that branch's README.
-- **One branch.** Never create a per-PR evidence branch. `yorha/pr-evidence` is never merged and never force-pushed.
+- **One branch.** Never create a per-PR evidence branch. `docs/pr-evidence` is never merged and never force-pushed.
 
 ## Releasing
 

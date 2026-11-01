@@ -25,7 +25,7 @@ Closes #
 - [ ] After release: checked on https://www.gdgocipb.com for user-facing changes
 
 <!-- UI changes: add a screenshot, on a phone and on desktop when the layout differs. Add anything else you checked by hand. -->
-<!-- Screenshots go on the yorha/pr-evidence branch under issue-<N>/<slug>/, embedded by raw URL; see "Evidence" in docs/CONTRIBUTING.md. -->
+<!-- Screenshots go on the docs/pr-evidence branch under issue-<N>/<slug>/, embedded by raw URL; see "Evidence" in docs/CONTRIBUTING.md. -->
 
 ## Deployment prerequisites
 

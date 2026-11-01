@@ -133,7 +133,7 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   const campus = [card.campus, card.studyProgram].filter(Boolean).join(" · ");
   const matrix = qrMatrix(cardUrl(card.token)), cell = Math.floor(280 * scale / matrix.length), qr = cell * matrix.length / scale;
   const top = margin + 72, nameHeight = name.lines.length * name.px * 1.05;
-  const heights = { head: 40 + 34 + 6 + 21 + 2 + 18, avatar: 16 + 78, name: 12 + nameHeight, number: 6 + 24, role: tag ? 18 + 20 * roleRows + 20 : 0, facts: 14 + (campus ? 37 : 0) + 37, qr: 18 + qr + 2, town: 14 + 150 };
+  const heights = { head: 40 + 34 + 6 + 21 + 2 + 18, avatar: 16 + 78, name: 12 + nameHeight, number: 6 + 24, role: tag ? 18 + 20 * roleRows + 20 : 0, facts: 14 + (campus ? 37 : 0) + 37, qr: 18 + qr + 2, town: 316 - 120 };
   const height = 1 + Object.values(heights).reduce((sum, value) => sum + value, 0) + 1;
 
   const canvas = document.createElement("canvas");
@@ -210,8 +210,24 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
     text(fitText(g, periodLabel(card.period), "500", 13, 10, mono, content - 32 - labelWidth), x + labelWidth, y + 23, g.font, ink);
   });
   g.textAlign = "center";
-  // The QR: an ink frame, then white with the quiet zone, then the modules, all on whole device pixels.
+  // The landmark strip at 2x, rising 120 px behind the QR's plate and clipped to the card, as on the face.
   y += 18;
+  const town = y + qr + 2 - 120, base = town + 316 - 17, ground = town + 316 - 22;
+  g.save();
+  g.beginPath(); g.rect(x0, y0, inner, height - 2); g.clip();
+  draw("cloud", x0 + 4, town + 66, 3); draw("cloud", x0 + inner - 64, town + 34, 3);
+  for (const [dx, dy, color] of [[-150, 34, "#34a853"], [-132, 62, "#ea4335"], [128, 12, "#fbbc05"], [150, 44, "#4285f4"]] as const) {
+    g.fillStyle = color; g.fillRect(mid + dx, town + 120 + dy, 6, 6);
+  }
+  draw("kujang", mid - 220, base - passArt.kujang.height * 2, 2);
+  draw("ahn", x0 + Math.min(inner / 2 + 33, inner - 170), base - passArt.ahn.height * 2, 2);
+  draw("gate", mid - passArt.gate.width, base - passArt.gate.height * 2, 2);
+  draw("tree", mid - 152, base - 48, 4); draw("tree", mid + 100, base - 48, 4); draw("tree", x0 + inner - 2 - 30, base - 36, 3);
+  for (const [from, to, color] of [[0, 2, "#2f6b3a"], [2, 9, "#4f9441"], [9, 10, ink], [10, 22, "#778e8c"]] as const) { g.fillStyle = color; g.fillRect(x0, ground + from, inner, to - from); }
+  g.fillStyle = "#6fb24f"; for (let x = 0; x < inner; x += 8) g.fillRect(x0 + x, ground + 2, 2, 2);
+  g.fillStyle = "#d9e2dd"; for (let x = 0; x < inner; x += 22) g.fillRect(x0 + x, ground + 15, Math.min(10, inner - x), 2);
+  g.restore();
+  // The QR over it: an ink frame, then white with the quiet zone, then the modules, all on whole device pixels.
   const qx = Math.round((mid - qr / 2) * scale), qy = Math.round((y + 1) * scale), size = cell * matrix.length;
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = ink; g.fillRect(qx - scale, qy - scale, size + scale * 2, size + scale * 2);
@@ -219,21 +235,6 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   g.fillStyle = "#000";
   matrix.forEach((cells, my) => cells.forEach((dark, mx) => { if (dark) g.fillRect(qx + mx * cell, qy + my * cell, cell, cell); }));
   g.setTransform(scale, 0, 0, scale, 0, 0);
-  y += qr + 2 + 14;
-  // The landmark strip, under the QR: clouds, confetti, Tugu Kujang, Gedung AHN, the gate, trees, grass and road.
-  const base = y + 150 - 17;
-  draw("cloud", x0 + inner * .22, y + 10, 3); draw("cloud", x0 + inner * .76 - 60, y + 2, 3);
-  for (const [dx, dy, color] of [[-96, 0, "#34a853"], [-80, 26, "#ea4335"], [70, -8, "#fbbc05"], [88, 18, "#4285f4"]] as const) {
-    g.fillStyle = color; g.fillRect(mid + dx, y + 40 + dy, 6, 6);
-  }
-  draw("kujang", x0 + 6, base - passArt.kujang.height);
-  draw("ahn", x0 + inner - 4 - passArt.ahn.width, base - passArt.ahn.height);
-  draw("gate", mid - passArt.gate.width * .56, base - passArt.gate.height);
-  draw("tree", x0 + 70, base - 36, 3); draw("tree", x0 + inner - 106 - 30, base - 36, 3); draw("tree", x0 + inner - 2 - 20, base - 24, 2);
-  const ground = y + 150 - 22;
-  for (const [from, to, color] of [[0, 2, "#2f6b3a"], [2, 9, "#4f9441"], [9, 10, ink], [10, 22, "#778e8c"]] as const) { g.fillStyle = color; g.fillRect(x0, ground + from, inner, to - from); }
-  g.fillStyle = "#6fb24f"; for (let x = 0; x < inner; x += 8) g.fillRect(x0 + x, ground + 2, 2, 2);
-  g.fillStyle = "#d9e2dd"; for (let x = 0; x < inner; x += 22) g.fillRect(x0 + x, ground + 15, Math.min(10, inner - x), 2);
   // The strap and clip last, over the card's top edge into the slot.
   draw("lanyard", mid - 36, margin, 3);
   g.textAlign = "left";

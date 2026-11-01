@@ -53,12 +53,16 @@ export function periodLabel(period: string) {
 export const PassArt = ({ name, className, scale = 1 }: { name: keyof typeof passArt; className: string; scale?: number }) =>
   <Image className={className} src={passArt[name].src} alt="" width={passArt[name].width * scale} height={passArt[name].height * scale} unoptimized />;
 
-/** The Bogor skyline along the bottom of the pass: Tugu Kujang, the IPB Dramaga gate and Gedung AHN on grass and road. */
-export function PassTown() {
-  return <div className="member-pass-town" aria-hidden="true">
+/**
+ * The Bogor skyline along the bottom of the pass: Tugu Kujang, the IPB Dramaga gate and Gedung AHN on grass and road.
+ * On the pass it is drawn at two CSS pixels per art pixel and rises behind the QR's plate; the door view keeps it small.
+ */
+export function PassTown({ large = false }: { large?: boolean }) {
+  const scale = large ? 2 : 1;
+  return <div className="member-pass-town" data-large={large || undefined} aria-hidden="true">
     <PassArt name="cloud" className="member-pass-cloud" scale={3} /><PassArt name="cloud" className="member-pass-cloud" scale={3} />
-    <PassArt name="kujang" className="member-pass-kujang" /><PassArt name="ahn" className="member-pass-ahn" /><PassArt name="gate" className="member-pass-gate" />
-    <PassArt name="tree" className="member-pass-tree" scale={3} /><PassArt name="tree" className="member-pass-tree" scale={3} /><PassArt name="tree" className="member-pass-tree" scale={2} />
+    <PassArt name="kujang" className="member-pass-kujang" scale={scale} /><PassArt name="ahn" className="member-pass-ahn" scale={scale} /><PassArt name="gate" className="member-pass-gate" scale={scale} />
+    <PassArt name="tree" className="member-pass-tree" scale={3 + scale - 1} /><PassArt name="tree" className="member-pass-tree" scale={3 + scale - 1} /><PassArt name="tree" className="member-pass-tree" scale={2 + scale - 1} />
     <span className="member-pass-ground" />
   </div>;
 }
@@ -74,7 +78,8 @@ const still = (event: PointerEvent<HTMLElement>) => event.currentTarget.style.re
 /**
  * The card itself, as an event lanyard pass (#135). It shows the fields it is given: the holder's own card and staff get
  * everything, a guest only the name, tag and chapter year (epic #113, decision 5), and an invalid card for a guest
- * nothing. The QR (or a notice in its place) comes as `children`; the scan page puts a stamp there instead.
+ * nothing. The QR (or a notice in its place) comes as `children` on an opaque white plate that the landmark strip rises
+ * behind; the scan page puts a stamp there instead.
  */
 export function MemberCardFace({ card, stamp, children }: { card: Partial<CardFace>; stamp?: "valid" | "invalid"; children?: ReactNode }) {
   const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : null;
@@ -99,7 +104,7 @@ export function MemberCardFace({ card, stamp, children }: { card: Partial<CardFa
       </ul>}
       {children && <div className="member-pass-code">{children}</div>}
       {stamp && <p className="member-pass-stamp" data-stamp={stamp} aria-hidden="true"><PixelIcon name={stamp === "valid" ? "check" : "close"} size={26} />{stamp === "valid" ? "Aktif" : "Tidak berlaku"}</p>}
-      <PassTown />
+      <PassTown large />
     </article>
   </div>;
 }

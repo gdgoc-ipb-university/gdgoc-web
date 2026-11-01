@@ -35,7 +35,7 @@
 .member-card-qr { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--ink); image-rendering: pixelated; }
 .member-card-notice { margin: 0; padding: 16px; font-size: 14px; line-height: 1.55; text-align: left; background: #fdf0ee; border: 1px solid #f0b9b2; }
 .member-card-notice strong { display: block; margin-bottom: 4px; }
-.member-pass-stamp { display: inline-flex; align-items: center; gap: 8px; margin: 28px 0 6px; padding: 8px 16px; font: 600 30px/1 var(--font-pixel), monospace; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: 3px solid currentColor; transform: rotate(-5deg); }
+.member-pass-stamp { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 8px; margin: 28px 0 6px; padding: 8px 16px; font: 600 30px/1 var(--font-pixel), monospace; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: 3px solid currentColor; transform: rotate(-5deg); }
 .member-pass-stamp[data-stamp="invalid"] { color: #b0372a; background: #fdf0ee; }
 .member-pass-town { position: relative; justify-self: stretch; height: 150px; margin: 14px -20px 0; }
 .member-pass-town img { position: absolute; bottom: 17px; }
@@ -48,6 +48,18 @@
 .member-pass-gate { left: 50%; translate: -56% 0; }
 .member-pass-ahn { right: 4px; }
 .member-pass-town::before { content: ""; position: absolute; top: 40px; left: 50%; width: 6px; height: 6px; box-shadow: -96px 0 var(--green), -80px 26px var(--red), 70px -8px var(--yellow), 88px 18px var(--google-blue); }
+/* On the pass the strip is drawn at 2x and rises 120 px behind the QR's plate, which stays on top. */
+.member-pass-town[data-large] { height: 316px; }
+.member-pass-code + .member-pass-town[data-large] { margin-top: -120px; }
+.member-pass-stamp + .member-pass-town[data-large] { margin-top: -70px; }
+.member-pass-town[data-large] .member-pass-cloud:nth-child(1) { top: 66px; left: 4px; }
+.member-pass-town[data-large] .member-pass-cloud:nth-child(2) { top: 34px; right: 4px; }
+.member-pass-town[data-large] .member-pass-kujang { left: calc(50% - 220px); }
+.member-pass-town[data-large] .member-pass-ahn { right: auto; left: min(calc(50% + 33px), calc(100% - 170px)); }
+.member-pass-town[data-large] .member-pass-gate { translate: -50% 0; }
+.member-pass-town[data-large] .member-pass-tree:nth-of-type(6) { left: calc(50% - 152px); }
+.member-pass-town[data-large] .member-pass-tree:nth-of-type(7) { right: auto; left: calc(50% + 100px); }
+.member-pass-town[data-large]::before { top: 120px; box-shadow: -150px 34px var(--green), -132px 62px var(--red), 128px 12px var(--yellow), 150px 44px var(--google-blue); }
 .member-pass-ground { position: absolute; inset: auto 0 0; height: 22px; background: repeating-linear-gradient(90deg, #d9e2dd 0 10px, transparent 0 22px) 0 15px / 100% 2px no-repeat, repeating-linear-gradient(90deg, #6fb24f 0 2px, transparent 0 8px) 0 2px / 100% 2px no-repeat, linear-gradient(#2f6b3a 0 2px, #4f9441 2px 9px, #243645 9px 10px, #778e8c 10px); }
 
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {

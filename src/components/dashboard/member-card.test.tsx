@@ -36,7 +36,7 @@ describe("member card page", () => {
     expect(result.violations.map(({ id, nodes }) => ({ id, elements: nodes.map((node) => node.html) }))).toEqual([]);
   });
 
-  it("keeps the QR plain black on white, above the landmark strip and with no art or tint on it", () => {
+  it("keeps the QR plain black on white on an opaque plate that the landmark strip stays under", () => {
     render(<MemberCardPage />);
     const face = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
     expect((face.parentElement as HTMLElement).style.getPropertyValue("--accent")).toBe("#1967d2");
@@ -44,7 +44,7 @@ describe("member card page", () => {
     expect(qr.getAttribute("class")).toBe("member-card-qr");
     expect(qr.getAttribute("style")).toBeNull();
     expect([...qr.querySelectorAll("rect, path")].map((shape) => shape.getAttribute("fill"))).toEqual(["#fff", "#000"]);
-    // The strip comes after the QR's plate, not around or behind it.
+    // The strip comes after the plate and may rise behind it, never inside it or over it.
     const plate = qr.parentElement as HTMLElement, town = face.querySelector(".member-pass-town") as HTMLElement;
     expect(plate.className).toBe("member-pass-code");
     expect(plate.compareDocumentPosition(town) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
@@ -53,6 +53,7 @@ describe("member card page", () => {
     expect(rules.length).toBeGreaterThan(1);
     for (const rule of rules) expect(rule).not.toMatch(/gradient|url\(|opacity|filter|mix-blend/);
     expect(rules.some((rule) => /^\s*\.member-card-qr \{[^}]*background: #fff;/.test(rule))).toBe(true);
+    expect(rules.some((rule) => /^\s*\.member-pass-code \{[^}]*position: relative; z-index: 1;/.test(rule))).toBe(true);
   });
 
   it("shows the QR full screen, with the name, number and chapter year", async () => {

@@ -199,7 +199,7 @@ Every active, onboarded member has one member card, like a student ID, for check
   - A strap and clip over a punched slot, then the brackets mark, "GDGoC IPB University" and the chapter year.
   - The photo or pixel initial in a pixel frame, the name large in Pixelify Sans, and the number in mono.
   - A role bar in the division's colour, campus and validity rows with Pixelarticons icons, and the QR on a white plate.
-  - A strip of Bogor landmarks under the QR: Tugu Kujang, the IPB Dramaga gate and Gedung AHN, on grass and road.
+  - A strip of Bogor landmarks at two CSS pixels per art pixel: Tugu Kujang, the IPB Dramaga gate and Gedung AHN, on grass and road. It rises behind the QR's plate, which stays on top: opaque white with the quiet zone, so nothing shows through the code.
   - The art is in `public/cards/`. The landmarks and the brackets mark come from the Design System page of the GDGOC 26/27 Figma file, cropped so one art pixel is one CSS pixel; the strap, clip, cloud and tree are drawn to match.
   - `divisionAccents` in `src/lib/member-card.ts` gives each division one Google colour, darkened until white text passes AA. Secretary Treasurer, BoD without a division and members take the ink.
   - The face (`src/components/member-card-face.tsx`) shows only the fields it is given, so the scan page can hand it a guest's limited card.

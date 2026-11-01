@@ -69,7 +69,7 @@ function fitText(g: CanvasRenderingContext2D, text: string, weight: string, size
 function nameLines(g: CanvasRenderingContext2D, name: string, family: string, size: number, min: number, width: number) {
   const words = name.trim().split(/\s+/);
   for (let px = size; px >= min; px--) {
-    g.font = `600 ${px}px ${family}`;
+    g.font = `400 ${px}px ${family}`;
     if (g.measureText(name).width <= width) return { px, lines: [name] };
     let best: string[] | null = null, widest = Infinity;
     for (let cut = 1; cut < words.length; cut++) {
@@ -78,7 +78,7 @@ function nameLines(g: CanvasRenderingContext2D, name: string, family: string, si
     }
     if (best) return { px, lines: best };
   }
-  return { px: min, lines: [fitText(g, name, "600", min, min, family, width)] };
+  return { px: min, lines: [fitText(g, name, "400", min, min, family, width)] };
 }
 
 /** An image, or null when it does not load; a photo without CORS would taint the canvas, so it falls back to the initial. */
@@ -99,10 +99,11 @@ const ink = "#172d43", muted = "#596775", cream = "#fffcf3";
  */
 export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus" | "studyProgram" | "memberType" | "division" | "tagConfirmed" | "number" | "period" | "token">) {
   const scale = 2, margin = 16, width = 380, inner = width - 2, content = inner - 40, shadow = 6;
-  const pixel = fontOf("--font-pixel", "monospace"), space = fontOf("--font-space", "sans-serif"), body = fontOf("--font-body", "sans-serif"), mono = fontOf("--font-mono", "monospace");
+  // The titling falls back to Pixelify Sans for glyphs VCR OSD Mono lacks, as on the face.
+  const pixel = fontOf("--font-pixel", "monospace"), vcr = `${passFont.family}, ${pixel}`, space = fontOf("--font-space", "sans-serif"), body = fontOf("--font-body", "sans-serif"), mono = fontOf("--font-mono", "monospace");
   // Load each face first, as the mono one is not preloaded. Only the first family: Next's local() fallback faces can fail
   // to load, which would end the wait early. A face that still fails only falls back.
-  await Promise.all([`600 36px ${pixel}`, `600 15px ${space}`, `400 13px ${body}`, `500 13px ${mono}`]
+  await Promise.all([`400 32px ${passFont.family}`, `600 36px ${pixel}`, `600 15px ${space}`, `400 13px ${body}`, `500 13px ${mono}`]
     .map((font) => document.fonts.load(font.replace(/,.*$/, "")).catch(() => [])));
   const names = Object.keys(passArt) as (keyof typeof passArt)[];
   const [photo, ...loaded] = await Promise.all([loadImage(photoAt(card.photo, 144), "anonymous"), ...names.map((name) => loadImage(passArt[name].src))]);
@@ -122,7 +123,7 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   const measure = document.createElement("canvas").getContext("2d");
   if (!measure) throw new Error("canvas");
   let g = measure;
-  const name = nameLines(g, card.name, pixel, 35, 24, content);
+  const name = nameLines(g, card.name, vcr, 32, 22, content);
   const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : "";
   g.font = `600 15px ${space}`;
   const tagWidth = g.measureText(tag).width;
@@ -132,8 +133,8 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   const roleRows = tag && tagWidth + (verifiedWidth ? 12 + verifiedWidth : 0) > content - 26 ? 2 : 1;
   const campus = [card.campus, card.studyProgram].filter(Boolean).join(" · ");
   const matrix = qrMatrix(cardUrl(card.token)), cell = Math.floor(280 * scale / matrix.length), qr = cell * matrix.length / scale;
-  const top = margin + 72, nameHeight = name.lines.length * name.px * 1.05;
-  const heights = { head: 40 + 34 + 6 + 21 + 2 + 18, avatar: 16 + 78, name: 12 + nameHeight, number: 6 + 24, role: tag ? 18 + 20 * roleRows + 20 : 0, facts: 14 + (campus ? 37 : 0) + 37, qr: 18 + qr + 2, town: 316 - 120 };
+  const top = margin + 72, nameHeight = name.lines.length * name.px * 1.08;
+  const heights = { head: 40 + 34 + 6 + 21 + 2 + 21, avatar: 16 + 78, name: 12 + nameHeight, number: 6 + 27, role: tag ? 18 + 20 * roleRows + 20 : 0, facts: 14 + (campus ? 37 : 0) + 37, qr: 18 + qr + 2, town: 316 - 120 };
   const height = 1 + Object.values(heights).reduce((sum, value) => sum + value, 0) + 1;
 
   const canvas = document.createElement("canvas");
@@ -159,20 +160,20 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   g.textAlign = "center";
   draw("mark", mid - 27, y, 54 / passArt.mark.width);
   y += 34 + 6;
-  text("GDGoC IPB University", mid, y + 16, `600 17px ${space}`, ink);
-  text(card.period, mid, y + 21 + 2 + 14, `500 13px ${mono}`, muted, "1.04px");
-  y += 21 + 2 + 18 + 16;
+  text("GDGoC IPB University", mid, y + 16, `400 17px ${vcr}`, ink);
+  text(card.period, mid, y + 21 + 2 + 16, `400 15px ${vcr}`, muted, ".9px");
+  y += 21 + 2 + 21 + 16;
   // The photo or pixel initial in a pixel frame with notched corners.
   g.fillStyle = ink; g.fillRect(mid - 39, y, 78, 78);
   g.fillStyle = cream; for (const [cx, cy] of [[0, 0], [75, 0], [0, 75], [75, 75]]) g.fillRect(mid - 39 + cx, y + cy, 3, 3);
   if (photo) g.drawImage(photo, mid - 36, y + 3, 72, 72);
   else { g.fillStyle = "#e6eddc"; g.fillRect(mid - 36, y + 3, 72, 72); text(card.name.trim().slice(0, 1).toUpperCase(), mid, y + 3 + 50, `400 38px ${pixel}`, ink); }
   y += 78 + 12;
-  // The name, large, and the number in mono.
-  name.lines.forEach((line, index) => text(line, mid, y + name.px * (1.05 * index + .85), `600 ${name.px}px ${pixel}`, ink));
+  // The name, large, and the number.
+  name.lines.forEach((line, index) => text(line, mid, y + name.px * (1.08 * index + .85), `400 ${name.px}px ${vcr}`, ink));
   y += nameHeight + 6;
-  text(card.number, mid, y + 18, `500 17px ${mono}`, ink, "2.38px");
-  y += 24;
+  text(card.number, mid, y + 20, `400 19px ${vcr}`, ink, "2.28px");
+  y += 27;
   // The role bar in the division's colour, with the verified mark.
   if (tag) {
     y += 18;

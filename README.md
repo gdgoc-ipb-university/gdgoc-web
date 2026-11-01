@@ -1,0 +1,42 @@
+# PR evidence
+
+Screenshots and other evidence for pull requests in `gdgoc-ipb-university/gdgoc-web`. This branch is an orphan: it shares no history with `main`, is never merged, and holds only evidence files.
+
+## Layout
+
+One folder per issue, then one subfolder per piece of work or attempt:
+
+```text
+issue-<N>/<slug>/<view>-<width>x<height>[-state].png
+```
+
+- `before-…` and `after-…` prefixes when a change is compared; plain names when there is no "before".
+- Keep images small: PNG screenshots at 1× unless detail needs 2×, and crop to what matters.
+
+## Linking from a pull request
+
+Embed with the raw URL, so the image renders in the PR body:
+
+```text
+https://raw.githubusercontent.com/gdgoc-ipb-university/gdgoc-web/yorha/pr-evidence/issue-<N>/<slug>/<file>.png
+```
+
+## Adding evidence
+
+```sh
+git fetch origin yorha/pr-evidence
+git worktree add ../pr-evidence yorha/pr-evidence
+# copy files into issue-<N>/<slug>/, then
+git -C ../pr-evidence add issue-<N> && git -C ../pr-evidence commit -m "docs(evidence): screenshots for #<N>"
+git -C ../pr-evidence push origin yorha/pr-evidence
+```
+
+Never force-push this branch, and never open a pull request from it.
+
+## Index
+
+| Folder | Issue | Pull request |
+| --- | --- | --- |
+| `issue-132/sidebar` | #132 sidebar cut off on short windows | #133 |
+| `issue-135/direction-a` | #135 member card, campus credential attempt | #136 (superseded) |
+| `issue-135/lanyard-pass` | #135 member card, lanyard pass | pending |

@@ -1,0 +1,78 @@
+name: Release
+
+# Opens a main → release pull request that lists what it ships. It never merges: the
+# maintainer checks staging and merges it with a merge commit, and the push to release
+# deploys production on Vercel. See "Deployment" in README.md and ADR 0006.
+#
+# Opening a pull request with GITHUB_TOKEN needs "Allow GitHub Actions to create and
+# approve pull requests" under Settings → Actions → General. Such a pull request starts
+# no other workflows, so it relies on the CI check already on main's tip commit.
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  release:
+    name: Open the release pull request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Open the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin +refs/heads/main:refs/remotes/origin/main +refs/heads/release:refs/remotes/origin/release
+
+          ahead=$(git rev-list --count origin/release..origin/main)
+          if [ "$ahead" -eq 0 ]; then
+            echo "::notice::main has no commits ahead of release; nothing to release."
+            exit 0
+          fi
+
+          open=$(gh pr list --base release --head main --state open --json url --jq '.[0].url // empty')
+          if [ -n "$open" ]; then
+            echo "::error::A release pull request is already open: $open"
+            exit 1
+          fi
+
+          # Squash commits on main end in the pull request number, e.g. "feat(tim): ... (#94) (#126)".
+          subjects=$(git log --reverse --format='%s' origin/release..origin/main)
+          prs=$(sed -nE 's/.*\(#([0-9]+)\)$/\1/p' <<<"$subjects")
+          issues=$(for pr in $prs; do gh pr view "$pr" --json closingIssuesReferences --jq '.closingIssuesReferences[].number'; done | sort -nu)
+
+          {
+            echo "Ships $ahead commit(s) from \`main\` to production."
+            echo
+            echo "## Pull requests"
+            echo
+            sed 's/^/- /' <<<"$subjects"
+            echo
+            echo "## Issues"
+            echo
+            if [ -n "$issues" ]; then sed 's/^/- #/' <<<"$issues"; else echo "None linked."; fi
+            echo
+            echo "## Checklist"
+            echo
+            echo "- [ ] Checked on staging at https://gdgoc-ipb.yorhagarden.xyz"
+            echo "- [ ] Convex schema changes, deleted or renamed functions, and new environment variables noted here (the build deploys Convex production first)"
+            echo "- [ ] Merge with a merge commit, not squash"
+            echo "- [ ] After release: checked on https://www.gdgocipb.com"
+          } >"$RUNNER_TEMP/body.md"
+
+          title="chore(release): $(TZ=Asia/Jakarta date +%F) WIB"
+          url=$(gh pr create --base release --head main --title "$title" --body-file "$RUNNER_TEMP/body.md")
+          echo "::notice::Opened $url"
+          echo "Opened [$title]($url)" >>"$GITHUB_STEP_SUMMARY"

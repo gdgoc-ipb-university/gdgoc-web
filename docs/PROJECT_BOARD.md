@@ -16,3 +16,5 @@ Run **Actions → Project board → Run workflow**, or dispatch it through the A
 - `action: set` with `item` (an issue or PR number in this repository) and `fields` (for example `Status=In progress; Priority=High`) adds the issue or PR to the board if needed, then sets each field. Names and options match case-insensitively, dates are `YYYY-MM-DD`, and an empty value (`Target date=`) clears the field. Every value is checked before anything changes, so a typo changes nothing.
 
 Only people with write access to the repository can start the workflow. The built-in board workflows (auto-add from this repository, item closed or PR merged → Done) still handle routine moves.
+
+Done means merged to `main`, not released: production deploys later from `release`, and each release pull request lists the issues and pull requests it ships.

@@ -12,6 +12,7 @@ import { cardPath } from "@/lib/member-card";
 import { memberTagLabel } from "@/lib/onboarding";
 import { qrMatrix } from "@/lib/qr";
 import { siteUrl } from "@/lib/site";
+import { BrandLogo } from "../brand-logo";
 import { PixelIcon } from "../pixel-icons";
 import { LoadingPanel } from "../appreciation/shared";
 import { MemberCardFace, QrCode, periodLabel } from "../member-card-face";
@@ -36,10 +37,15 @@ function DoorQr({ card, open, onClose }: { card: Card; open: boolean; onClose: (
   return <ModalOverlay className="member-qr-overlay" isOpen={open} onOpenChange={(next) => { if (!next) onClose(); }} isDismissable>
     <Modal className="member-qr-modal">
       <Dialog className="member-qr-dialog">
-        <Button className="icon-button member-qr-close" aria-label="Tutup" onPress={onClose}><PixelIcon name="close" size={24} /></Button>
+        <div className="member-card-stripe" aria-hidden="true"><span /><span /><span /><span /></div>
+        <div className="member-qr-top"><BrandLogo /><Button className="icon-button member-qr-close" aria-label="Tutup" onPress={onClose}><PixelIcon name="close" size={24} /></Button></div>
         <Heading slot="title" className="sr-only">QR kartu anggota</Heading>
         <QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}`} />
-        <div><p className="member-qr-name">{card.name}</p><p className="member-qr-number">{card.number}</p></div>
+        <div className="member-qr-id">
+          <p className="member-qr-name">{card.name}</p>
+          <p className="member-qr-number">{card.number}</p>
+          <p className="member-qr-year">Kartu anggota · {card.period}</p>
+        </div>
       </Dialog>
     </Modal>
   </ModalOverlay>;

@@ -9,6 +9,14 @@ Do not credit or mention AI anywhere, unless a maintainer explicitly asks for it
 - No "Generated with Claude Code" footer or session link in pull request descriptions, issues, or comments. Tools may append one when posting; read the posted text back and remove it.
 - No mention of AI in code, comments, or docs.
 
+# Working on an issue
+
+The full rules are in `docs/CONTRIBUTING.md`; these three are the ones to check every time.
+
+- Post the approach on the issue before implementing: a short comment on what will change and where.
+- Commit per logical step on the branch, with `pnpm check` and `pnpm test` green before each commit.
+- Keep a pull request under about 500 changed lines, or split it into a stack of pull requests.
+
 # Project board
 
 Cloud sessions cannot call the org project board API. Read or update [project 1](https://github.com/orgs/gdgoc-ipb-university/projects/1) by dispatching the **Project board** workflow (`project-board.yml`, ref `main`) and reading its job log; see `docs/PROJECT_BOARD.md`.

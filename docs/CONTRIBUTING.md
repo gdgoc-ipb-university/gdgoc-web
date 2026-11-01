@@ -34,12 +34,20 @@ The [project board](https://github.com/orgs/gdgoc-ipb-university/projects/1) rea
   - **Summary:** what changed, `Closes #N`, and the Linear `GDG-xx` issue if there is one.
   - **Problem:** what was wrong or missing, and for whom.
   - **Solution:** how this solves it, and the choices a reader would not guess from the diff.
-  - **Test evidence:** the check boxes, plus a screenshot for any UI change and what you checked by hand.
+  - **Test evidence:** the check boxes, plus a screenshot for any UI change (see [Evidence](#evidence)) and what you checked by hand.
   - **Deployment prerequisites:** environment variables, Convex schema changes, deleted or renamed Convex functions. "None" when there are none.
   - **Notes:** follow-ups, open questions, and performance comparisons or migration steps when they apply.
 - **Review.** "Human review only when asked for" ([board](https://github.com/orgs/gdgoc-ipb-university/projects/1)). There are no required reviewers; ask on the pull request when you want one.
 - **Merge.** CI ("Lint, typecheck and test") must pass on the pull request's own head commit, and `main` accepts squash merges only.
 - **Done.** "Done means shipped: `pnpm test`, `pnpm check`, `pnpm build` pass, docs are updated, and user-facing changes are checked on production" ([board](https://github.com/orgs/gdgoc-ipb-university/projects/1)). The card moves to Done when the pull request merges to `main`; the production check follows the next release.
+
+### Evidence
+
+Screenshots, recordings and other images for a pull request go on one shared branch, `yorha/pr-evidence`, under `issue-<N>/<slug>/`. Its [README](https://github.com/gdgoc-ipb-university/gdgoc-web/blob/yorha/pr-evidence/README.md) gives the file names and the commands to add files.
+
+- **Embed** each image in the pull request body by its raw URL, `https://raw.githubusercontent.com/gdgoc-ipb-university/gdgoc-web/yorha/pr-evidence/issue-<N>/<slug>/<file>.png`.
+- **Index.** Add a row for the folder to the index table in that branch's README.
+- **One branch.** Never create a per-PR evidence branch. `yorha/pr-evidence` is never merged and never force-pushed.
 
 ## Releasing
 

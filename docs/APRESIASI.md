@@ -59,14 +59,7 @@ The queue has status tabs and, above the cards, a search by achievement or sende
 
 ## Release
 
-```sh
-pnpm test
-pnpm check
-pnpm build
-git push origin main
-```
-
-Pushing to `main` starts the Vercel production build, which deploys Convex before building the frontend. Other branches are skipped by the Ignored Build Step. To redeploy without a new commit, use **Create Deployment** with the `main` branch in the Vercel dashboard.
+Production deploys from the `release` branch. Changes merge to `main` by pull request, with `pnpm test`, `pnpm check` and `pnpm build` passing, and wait on staging until the next release: run the **Release** workflow and merge the `main` → `release` pull request with a merge commit (see "Releasing" in `README.md`). The push to `release` starts the Vercel production build, which deploys Convex before building the frontend. Other branches, `main` included, are skipped by the Ignored Build Step. To redeploy without a new commit, use **Create Deployment** with the `release` branch in the Vercel dashboard.
 
 After the deployment is ready, verify `https://www.gdgocipb.com` and the redirects from `gdgocipb.com` and `gdgoc-ipb-web.vercel.app`, same-origin Google callback, authenticated session, saved draft after a reload, and reviewer access restrictions. Do not use the local fixture or unit tests as evidence that production OAuth works. Keep any live test content explicitly labeled and remove test drafts after checking persistence.
 

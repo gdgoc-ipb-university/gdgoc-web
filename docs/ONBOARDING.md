@@ -48,4 +48,4 @@ Reviewed 26 September 2026. The campus and study-program options are a curated s
 
 ## Release
 
-Onboarding ships with the rest of the site: pushing to `main` deploys Convex and then the frontend, as described in the Release section of `APRESIASI.md`. CI runs `pnpm check` and `pnpm test` on the pull request first. No onboarding-specific environment variables or OAuth scopes are required; the schema changes are additive, so the backend-first deploy keeps the previous frontend working.
+Onboarding ships with the rest of the site: a release to the `release` branch deploys Convex and then the frontend, as described in the Release section of `APRESIASI.md`. CI runs `pnpm check` and `pnpm test` on the pull request to `main` first. No onboarding-specific environment variables or OAuth scopes are required; the schema changes are additive, so the backend-first deploy keeps the previous frontend working.

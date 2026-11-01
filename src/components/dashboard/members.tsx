@@ -205,6 +205,7 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
   const setReviewer = useMutation(api.dashboard.setReviewer);
   const setActive = useMutation(api.dashboard.setActive);
   const setMemberType = useMutation(api.dashboard.setMemberType);
+  const setCardRevoked = useMutation(api.cards.setRevoked);
   const [pending, setPending] = useState<Action | null>(null);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -228,6 +229,10 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
   if (!self && row.role === "member") actions.push(row.active
     ? { key: "deactivate", group: "status", icon: "lock", label: "Nonaktifkan", danger: true, confirm: `Nonaktifkan ${row.fullName}? Ia tidak bisa membuka tugas sampai diaktifkan kembali. Kirimannya tetap tersimpan.`, run: () => setActive({ ownerId: row.ownerId, active: false }) }
     : { key: "activate", group: "status", icon: "check", label: "Aktifkan kembali", confirm: `Aktifkan kembali ${row.fullName}?`, run: () => setActive({ ownerId: row.ownerId, active: true }) });
+  // A member card someone else is using: admins block members' cards, owners admins' too (cards.setRevoked).
+  if (!self && row.card && (row.role === "member" || (owner && row.role === "admin"))) actions.push(row.card.revoked
+    ? { key: "unblock-card", group: "status", icon: "id-card", label: "Buka blokir kartu", confirm: `Buka blokir kartu anggota ${row.fullName}? QR-nya kembali berlaku.`, run: () => setCardRevoked({ ownerId: row.ownerId, revoked: false }) }
+    : { key: "block-card", group: "status", icon: "id-card", label: "Blokir kartu", danger: true, confirm: `Blokir kartu anggota ${row.fullName}? QR-nya langsung tidak berlaku sampai blokir dibuka. Akunnya tetap aktif.`, run: () => setCardRevoked({ ownerId: row.ownerId, revoked: true }) });
 
   async function confirm() {
     if (!pending) return;

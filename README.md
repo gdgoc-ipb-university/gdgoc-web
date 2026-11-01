@@ -86,7 +86,7 @@ A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), m
 | Path | Purpose |
 | --- | --- |
 | `page.tsx`, `layout.tsx` | The landing and the root layout |
-| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts and their rosters), `profil` |
+| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts and their rosters), `kartu` (the member card), `profil` |
 | `onboarding/` | Five-screen first-visit flow |
 | `tentang/`, `bergabung/`, `program/` (the hub, `catalyst/`, `tech-league/`), `privasi/` | Public pages, each listed in `indexablePaths` |
 | `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |
@@ -98,7 +98,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 ### `src/components/`: UI
 
-- Top level: landing sections (`landing.tsx`, `hero.tsx`, `header.tsx`, `join-footer.tsx`), the 3D scene and preloader (`campus-environment.tsx`, `scene-preloader.tsx`, `dino-playground.tsx`), the Bogor Run game (`bogor-run.tsx`), providers (`experience-provider.tsx`, `member-provider.tsx`), the FAQ and JSON-LD blocks, a shared `select.tsx`, and icon sets.
+- Top level: landing sections (`landing.tsx`, `hero.tsx`, `header.tsx`, `join-footer.tsx`), the 3D scene and preloader (`campus-environment.tsx`, `scene-preloader.tsx`, `dino-playground.tsx`), the Bogor Run game (`bogor-run.tsx`), providers (`experience-provider.tsx`, `member-provider.tsx`), the FAQ and JSON-LD blocks, a shared `select.tsx`, the member card face shared by the dashboard and the scan page (`member-card-face.tsx`), and icon sets.
 - `dashboard/`, `appreciation/`, `onboarding/`, `rai/`: one folder per feature area.
 - Tests sit beside the component as `*.test.tsx` and run in jsdom.
 
@@ -106,7 +106,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `campus/`: the Three.js campus model and runtime.
 - `bogor-run/`: the game engine, shared with the server replay.
-- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `cohort.ts`, `enrolment-import.ts`, `bevy-export.ts`, `member-card.ts`, `member-table.ts`, `rich-text.ts`), the public pages' content and structured data (`tech-league.ts`, `catalyst.ts`, `about.ts`, `faq.ts`, `breadcrumb.ts`, with program dates in `schedule.ts`), and shared helpers (`chapter.ts` for the chapter year, `site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`).
+- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `cohort.ts`, `enrolment-import.ts`, `bevy-export.ts`, `member-card.ts`, `member-table.ts`, `rich-text.ts`), the public pages' content and structured data (`tech-league.ts`, `catalyst.ts`, `about.ts`, `faq.ts`, `breadcrumb.ts`, with program dates in `schedule.ts`), and shared helpers (`chapter.ts` for the chapter year, `site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`, and `qr.ts`, which draws QR codes on the page).
 - Tests sit beside the module as `*.test.ts` and run in the edge runtime.
 
 ### `convex/`: backend

@@ -9,7 +9,7 @@ import { MembersPage } from "./members";
 import { ViewerContext, type DashboardViewer } from "./viewer";
 
 // The members page against a fake Convex: the list is cut and sorted the way `dashboard.members` does it.
-type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; tagConfirmed: boolean; reviewsByTag: boolean };
+type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null };
 const names = ["Adi", "Bima", "Citra", "Dewi", "Eka", "Fajar", "Gita", "Hana", "Indra", "Joko", "Kiki", "Lina", "Mira", "Nadia", "Oki", "Putri", "Qori", "Rania", "Sari", "Tono", "Umar", "Vina", "Wati", "Xena", "Yusuf", "Zahra", "Agus", "Bayu", "Cahya", "Dina"];
 const rows: Row[] = names.map((fullName, index) => ({
   ownerId: `u${index}`, fullName, email: `${fullName.toLowerCase()}@example.com`, campus: "IPB University", studyProgram: "Ilmu Komputer",
@@ -17,9 +17,11 @@ const rows: Row[] = names.map((fullName, index) => ({
 }));
 rows[1] = { ...rows[1], memberType: "core", division: "Technical" };
 rows[2] = { ...rows[2], active: false };
+rows[29] = { ...rows[29], card: { number: "2627-0030", revoked: false } };
 
 const setActive = vi.fn(async () => null);
-const mutations: Record<string, ReturnType<typeof vi.fn>> = { "dashboard:setActive": setActive };
+const setCardRevoked = vi.fn(async () => null);
+const mutations: Record<string, ReturnType<typeof vi.fn>> = { "dashboard:setActive": setActive, "cards:setRevoked": setCardRevoked };
 // Like Convex, the same arguments return the same object, so results can be compared by reference.
 const results = new Map<string, unknown>();
 vi.mock("convex/react", () => ({
@@ -144,6 +146,23 @@ describe("members table", () => {
     await user.click(within(dialog).getByRole("button", { name: "Ya, nonaktifkan" }));
     expect(setActive).toHaveBeenCalledWith({ ownerId: "u29", active: false });
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+
+  it("blocks a member's card from the status group, after asking", async () => {
+    const user = userEvent.setup();
+    show("admin");
+    await user.click(screen.getByRole("button", { name: "Kelola Dina" }));
+    const status = within(screen.getByRole("menu", { name: "Kelola Dina" })).getByRole("group", { name: "Status" });
+    expect(within(status).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Nonaktifkan", "Blokir kartu"]);
+    await user.click(within(status).getByRole("menuitem", { name: "Blokir kartu" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Blokir kartu?" });
+    expect(dialog.textContent).toContain("Akunnya tetap aktif");
+    await user.click(within(dialog).getByRole("button", { name: "Ya, blokir kartu" }));
+    expect(setCardRevoked).toHaveBeenCalledWith({ ownerId: "u29", revoked: true });
+    // A member who has not opened their card has nothing to block.
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await user.click(screen.getByRole("button", { name: "Kelola Cahya" }));
+    expect(within(screen.getByRole("menu", { name: "Kelola Cahya" })).queryByRole("menuitem", { name: "Blokir kartu" })).toBeNull();
   });
 
   it("offers admins no access changes, and links every row to the member's page", async () => {

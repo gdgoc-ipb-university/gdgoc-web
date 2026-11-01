@@ -1,0 +1,51 @@
+/* The member card (E10, #113): the dashboard card page and the page a scanned QR opens. */
+.member-card { position: relative; display: grid; gap: 18px; width: 100%; max-width: 420px; padding: 0 22px 22px; background: #fff; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); overflow: hidden; }
+.member-card-stripe { display: grid; grid-template-columns: repeat(4, 1fr); height: 8px; margin-inline: -22px; }
+.member-card-stripe span:nth-child(1) { background: var(--google-blue); }
+.member-card-stripe span:nth-child(2) { background: var(--red); }
+.member-card-stripe span:nth-child(3) { background: var(--yellow); }
+.member-card-stripe span:nth-child(4) { background: var(--green); }
+.member-card-head { display: grid; gap: 10px; }
+.member-card-head img { width: min(100%, 280px); height: auto; }
+.member-card-head p { margin: 0; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.member-card-person { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
+.member-card-photo { display: grid; place-items: center; object-fit: cover; border: 1px solid var(--ink); background: #e6eddc; font-size: 44px; }
+.member-card-person h2 { margin: 0 0 6px; font: 600 26px/1.08 var(--font-pixel), monospace; letter-spacing: -.02em; overflow-wrap: anywhere; }
+.member-card-person p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
+.member-card-person .member-card-tag { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 8px; color: var(--ink); font-weight: 500; }
+.member-card-verified { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 5px; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .04em; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: 1px solid #9fceaa; }
+.member-card-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 22px; margin: 0; padding-block: 14px; border-block: 1px dashed #c3ccc0; }
+.member-card-facts > div { display: contents; }
+.member-card-facts dt { font: 500 10px/1.8 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.member-card-facts dd { margin: 0; font: 500 14px/1.5 var(--font-mono), monospace; overflow-wrap: anywhere; }
+.member-card-qr { display: block; width: 100%; max-width: 280px; height: auto; margin-inline: auto; image-rendering: pixelated; }
+.member-card-notice { margin: 0; padding: 16px; font-size: 14px; line-height: 1.55; background: #fdf0ee; border: 1px solid #f0b9b2; }
+.member-card-notice strong { display: block; margin-bottom: 4px; }
+
+/* The dashboard page: the card beside what to do with it at the door. */
+.member-card-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 32px; align-items: start; }
+.member-card-actions h2 { margin-block: 0 8px; font-size: 22px; }
+.member-card-actions h3 { margin-block: 26px 4px; font-size: 16px; }
+.member-card-actions p { margin-block: 0 14px; }
+.member-card-buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
+.member-card-actions .button { gap: 12px; }
+
+/* The QR alone on white for the door: as large as the screen allows, with the name underneath. */
+.member-qr-overlay { position: fixed; inset: 0; z-index: 80; background: #fff; display: grid; }
+.member-qr-modal { display: grid; outline: none; }
+.member-qr-dialog { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 18px; min-height: 100dvh; padding: 18px 18px max(24px, env(safe-area-inset-bottom)); outline: none; color: #000; }
+.member-qr-close { justify-self: end; }
+.member-qr-dialog .member-card-qr { align-self: center; width: min(92vw, 72dvh, 520px); max-width: none; }
+.member-qr-dialog p { margin: 0; text-align: center; }
+.member-qr-name { font: 600 clamp(26px, 7vw, 40px)/1.1 var(--font-pixel), monospace; overflow-wrap: anywhere; }
+.member-qr-number { font: 500 15px/1.4 var(--font-mono), monospace; letter-spacing: .06em; }
+
+@media (max-width: 900px) {
+  .member-card-layout { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  .member-card-actions { width: 100%; max-width: 420px; }
+}
+@media (max-width: 400px) {
+  .member-card { padding-inline: 16px; box-shadow: 4px 4px 0 var(--ink); }
+  .member-card-stripe { margin-inline: -16px; }
+  .member-card-person { grid-template-columns: 1fr; }
+}

@@ -41,6 +41,7 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
       <div><dt>Kampus</dt><dd>{member.campus || "—"}</dd></div>
       <div><dt>Program studi</dt><dd>{member.studyProgram || "—"}</dd></div>
       <div><dt>Bergabung</dt><dd>{dateLabel(member.joinedAt)}</dd></div>
+      <div><dt>Kartu anggota</dt><dd>{member.card ? `${member.card.number}${member.card.revoked ? " · Diblokir" : ""}` : "Belum dibuka"}</dd></div>
       <div><dt>Perubahan akses terakhir</dt><dd>{member.accessUpdatedBy ?? "Belum pernah diubah"}</dd></div>
     </dl>
 

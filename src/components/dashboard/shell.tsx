@@ -72,7 +72,10 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
       ...(isStaff(viewer) ? [{ href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/program", label: "Program", icon: "teach" as const, current: at("/dashboard/program") }] : []),
     ] }] : []),
-    { title: "Akun", items: [{ href: "/dashboard/profil", label: "Profil", icon: "user", current: at("/dashboard/profil") }] },
+    { title: "Akun", items: [
+      { href: "/dashboard/kartu", label: "Kartu anggota", icon: "id-card", current: at("/dashboard/kartu") },
+      { href: "/dashboard/profil", label: "Profil", icon: "user", current: at("/dashboard/profil") },
+    ] },
   ];
   const firstHref = groups[0].items[0].href;
   return <div className="dash-app" data-menu-open={open}>

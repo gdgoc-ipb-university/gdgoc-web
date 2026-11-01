@@ -11,6 +11,7 @@ const ILLUSTRATIONS = new Set([
   "components/onboarding/artwork.tsx", // the onboarding campus illustration
   "components/rai/badge.tsx", // the Rising Star badge
   "components/rai/rising-star.tsx", // the /rai sky and its gate star
+  "components/member-card-face.tsx", // the member card's QR code
 ]);
 const root = join(process.cwd(), "src"); // vitest runs from the repo root; jsdom has no file: import.meta.url
 const sources = (dir: string): string[] => readdirSync(dir).flatMap((name) => {

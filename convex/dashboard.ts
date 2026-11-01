@@ -30,6 +30,7 @@ export const viewer = query({
 
 async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfiles">) {
   const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
+  const card = await ctx.db.query("memberCards").withIndex("by_owner", (q) => q.eq("ownerId", profile.ownerId)).unique();
   const role = roleOf(user?.email ?? "", Boolean(user?.emailVerified), profile);
   return {
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
@@ -39,6 +40,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     reviewer: Boolean(profile.appreciationReviewer),
     // Staff set or confirmed the community tag; a confirmed Media & Creative Core Team or BoD tag reviews Apresiasi too.
     tagConfirmed: Boolean(profile.tagConfirmedAt), reviewsByTag: !isActive(role, profile) ? false : reviewsByTag(profile),
+    // The member card, once they have opened it, and whether staff blocked it (cards.setRevoked).
+    card: card ? { number: card.number, revoked: Boolean(card.revokedAt) } : null,
   };
 }
 

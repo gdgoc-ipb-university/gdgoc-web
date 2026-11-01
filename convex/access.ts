@@ -36,3 +36,24 @@ export async function requireStaff(ctx: QueryCtx | MutationCtx) {
   if (access.role === "member") throw new ConvexError({ code: "FORBIDDEN", message: "Akses ini hanya untuk admin GDGoC IPB." });
   return access;
 }
+
+/**
+ * The Tech Support queue (#92): owners, active admins, and active members an owner granted `techSupportHandler`
+ * (Community & External staff). The one check the queue, the viewer and the sidebar use.
+ */
+export function handlesTechSupport(role: DashboardRole, profile: Doc<"memberProfiles"> | null) {
+  if (role === "owner") return true;
+  if (!profile || profile.deactivatedAt) return false;
+  return role === "admin" || Boolean(profile.techSupportHandler);
+}
+
+export async function requireTechSupportHandler(ctx: QueryCtx | MutationCtx) {
+  const access = await requireMember(ctx);
+  if (!handlesTechSupport(access.role, access.profile)) throw new ConvexError({ code: "FORBIDDEN", message: "Akses ini hanya untuk pengelola Tech Support." });
+  return access;
+}
+
+/** Who can ask for a Tech Support mentor: any active, onboarded member, with no community tag required (#92). Narrow it here. */
+export async function requireTechSupportRequester(ctx: QueryCtx | MutationCtx) {
+  return requireMember(ctx);
+}

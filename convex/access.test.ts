@@ -15,7 +15,7 @@ import { toJakartaInput } from "../src/lib/assignment";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 10, cursor: null };
-const ROLES = ["guest", "fresh", "inactive", "member", "mediaSelf", "media", "apresiasi", "grader", "participant", "mentor", "admin", "owner"] as const;
+const ROLES = ["guest", "fresh", "inactive", "member", "mediaSelf", "media", "apresiasi", "grader", "participant", "mentor", "handler", "admin", "owner"] as const;
 type Role = typeof ROLES[number];
 /** Every message a guard throws; a refusal for any other reason would hide a broken matrix row. */
 const DENIED = /Masuk kembali|Selesaikan perkenalan|dinonaktifkan|hanya untuk|Hanya pemilik/;
@@ -24,7 +24,8 @@ const OWNER: Role[] = ["owner"];
 const STAFF: Role[] = ["admin", "owner"];
 const GRADERS: Role[] = ["grader", "admin", "owner"];
 const APRESIASI: Role[] = ["apresiasi", "media", "admin", "owner"];
-const MEMBERS: Role[] = ["member", "mediaSelf", "media", "apresiasi", "grader", "participant", "mentor", "admin", "owner"];
+const HANDLERS: Role[] = ["handler", "admin", "owner"];
+const MEMBERS: Role[] = ["member", "mediaSelf", "media", "apresiasi", "grader", "participant", "mentor", "handler", "admin", "owner"];
 
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 type Test = ReturnType<typeof setup>;
@@ -59,6 +60,8 @@ async function fixture() {
   // A Catalyst participant (enrolled and claimed) and a mentor of the Hacker role. Neither reviews the community assignment below.
   const participant = await account(t, "participant@example.com", "Peserta");
   const mentor = await account(t, "mentorrole@example.com", "Mentor Peran");
+  // Community & External staff granted the Tech Support queue.
+  const handler = await account(t, "handler@example.com", "Pengelola Tech Support");
   const cohort = await t.mutation(internal.cohorts.seedCatalyst, {});
   const enrolment = await t.run(async (ctx) => {
     const id = await ctx.db.insert("enrolments", { cohortId: cohort, email: "participant@example.com", name: "Peserta", role: "hacker", status: "active", importedAt: Date.now(), importedBy: "test" });
@@ -72,6 +75,7 @@ async function fixture() {
   });
   await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
   await owner.mutation(api.dashboard.setReviewer, { ownerId: apresiasi.id, reviewer: true });
+  await owner.mutation(api.dashboard.setTechSupportHandler, { ownerId: handler.id, handler: true });
   await owner.mutation(api.dashboard.setActive, { ownerId: inactive.id, active: false });
   await owner.mutation(api.dashboard.setMemberType, { ownerId: media.id, memberType: "core", division: "Media & Creative" });
   const due = new Date(Date.now() + 55 * 3600000).toISOString().slice(0, 16);
@@ -86,6 +90,9 @@ async function fixture() {
   await owner.mutation(api.gatherings.setStatus, { id: gathering, status: "open" });
   await owner.mutation(api.gatherings.checkIn, { id: gathering, ownerId: grader.id });
   const checkIn = await t.run(async (ctx) => (await ctx.db.query("checkIns").first())!._id);
+  const request = await member.mutation(api.techSupport.submit, { values: {
+    competition: "Gemastik", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-12-31", participation: "solo", teamName: "", helpKinds: ["Ideasi"], progress: "Baru ide.",
+  } });
   const values = {
     fullName: "Rania Putri", memberType: "member", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania",
     achievement: "Juara 1", eventName: "Hackathon", organizer: "Panitia", level: "Nasional", participation: "Tim", teamName: "Tim A",
@@ -99,8 +106,8 @@ async function fixture() {
     const entry = await ctx.db.insert("gameBests", { ownerId: member.id, period: "all", score: 100, name: "Rania P.", achievedAt: Date.now(), hidden: false });
     return { submission, appreciation, entry, draftRevision: (await ctx.db.get(draft))!.revision };
   });
-  const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, participant, mentor, admin, owner };
-  return { t, callers, ids: { member: member.id, gathering, draftGathering, gatheringValues, checkIn, cohort, enrolment, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
+  const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, participant, mentor, handler, admin, owner };
+  return { t, callers, ids: { member: member.id, request, gathering, draftGathering, gatheringValues, checkIn, cohort, enrolment, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 type Ids = Fixture["ids"];
@@ -126,6 +133,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["appreciations.queue", api.appreciations.queue, APRESIASI, () => ({ status: "submitted", paginationOpts: page })],
   ["appreciations.search", api.appreciations.search, APRESIASI, () => ({ status: "submitted", search: "", level: "", campus: "" })],
   ["appreciations.history", api.appreciations.history, APRESIASI, (ids) => ({ id: ids.appreciation })],
+  ["techSupport.queue", api.techSupport.queue, HANDLERS, () => ({})],
   ["assignments.list", api.assignments.list, MEMBERS, () => ({})],
   ["assignments.reviewing", api.assignments.reviewing, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
@@ -135,6 +143,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
 const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["dashboard.setRole", api.dashboard.setRole, OWNER, (ids) => ({ ownerId: ids.member, role: "admin" })],
   ["dashboard.setReviewer", api.dashboard.setReviewer, OWNER, (ids) => ({ ownerId: ids.member, reviewer: true })],
+  ["dashboard.setTechSupportHandler", api.dashboard.setTechSupportHandler, OWNER, (ids) => ({ ownerId: ids.member, handler: true })],
   ["dashboard.deleteAccount", api.dashboard.deleteAccount, OWNER, (ids) => ({ ownerId: ids.member, confirmName: "Rania Putri" })],
   ["dashboard.setActive", api.dashboard.setActive, STAFF, (ids) => ({ ownerId: ids.member, active: false })],
   ["dashboard.setMemberType", api.dashboard.setMemberType, STAFF, (ids) => ({ ownerId: ids.member, memberType: "core", division: "Technical" })],
@@ -162,6 +171,7 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.requestRevision", api.assignments.requestRevision, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, note: "Perbaiki bagian dua." })],
   ["assignments.cancelRevision", api.assignments.cancelRevision, GRADERS, (ids) => ({ submissionId: ids.submission })],
   ["appreciations.review", api.appreciations.review, APRESIASI, (ids) => ({ id: ids.appreciation, revision: 1, status: "reviewing", note: "", postUrl: "" })],
+  ["techSupport.handle", api.techSupport.handle, HANDLERS, (ids) => ({ id: ids.request, status: "matched", mentorName: "Dika Aprilio Wibowo", note: "" })],
 ];
 
 // Door helpers of one gathering also use gatherings.list, get and checkIn; gatherings.test.ts covers them.
@@ -183,6 +193,7 @@ const OPEN: Record<string, string> = {
   "cards.mine": "own card, active members", "cards.ensure": "own card, active members", "cards.reissue": "own card, active members",
   "cards.verify": "public: a scanned card, with more for its holder, staff and door helpers (cards.test.ts, gatherings.test.ts)",
   "gatherings.mine": "own check-ins, active members",
+  "techSupport.mine": "own requests, active members", "techSupport.submit": "own request, active members (techSupport.test.ts)",
 };
 
 beforeEach(() => vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com"));

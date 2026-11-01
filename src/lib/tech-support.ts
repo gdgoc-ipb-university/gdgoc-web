@@ -1,6 +1,7 @@
 import { communityLinks } from "./community";
 import type { FaqItem } from "./faq";
 import { organizationId, siteUrl } from "./site";
+import { techSupportHelpKinds, techSupportResponseDays } from "./tech-support-request";
 
 /**
  * Tech Support, the Competition Support Hub, shown at /program/tech-support: mentor facilitation for members
@@ -15,7 +16,7 @@ export const techSupport = {
   description:
     "Tech Support GDGoC IPB: fasilitasi mentor untuk member yang bersiap mengikuti kompetisi eksternal, dari ideasi dan konsultasi teknis sampai mock judging. Dibalas paling lama 3 hari kerja.",
   /** Working days within which a request gets a reply. */
-  responseDays: 3,
+  responseDays: techSupportResponseDays,
   steps: [
     { title: "Ajukan permintaan mentoring", text: "Sampaikan bahwa kamu ingin didampingi untuk sebuah kompetisi." },
     { title: "Ceritakan kompetisi dan progresmu", text: "Bagikan info lomba, kondisi ide atau proyek saat ini, dan bagian yang ingin dibahas." },
@@ -23,7 +24,7 @@ export const techSupport = {
     { title: "Konsultasi pertama", text: "GDGoC memfasilitasi pertemuan pertama antara tim dan mentor." },
     { title: "Sepakati cakupan pendampingan", text: "Mentor dan tim menyepakati apa yang dibahas dan sampai mana pendampingan berjalan." },
   ],
-  helpKinds: ["Mencari rekan tim", "Ideasi", "Konsultasi teknis", "Review UI/UX", "Umpan balik proposal", "Review pitch deck", "Mock judging", "Latihan presentasi"],
+  helpKinds: techSupportHelpKinds,
   mentors: [
     { name: "Badzlan Nur Dhabith", role: "Director of Program & Development, GDGoC IPB" },
     { name: "Dika Aprilio Wibowo", role: "Lead GDGoC IPB" },

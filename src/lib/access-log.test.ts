@@ -43,6 +43,16 @@ describe("access log sentences", () => {
     ]);
   });
 
+  it("describes door helpers of a gathering, and a gathering that is gone", () => {
+    expect([
+      entry("gatheringHelper", "off", "on", { gathering: { title: "Kumpul member November" } }),
+      entry("gatheringHelper", "on", "off", { gathering: { title: null } }),
+    ].map(accessSentence)).toEqual([
+      "Aldio Lisafron menunjuk Rania Putri sebagai penjaga pintu kegiatan “Kumpul member November”.",
+      "Aldio Lisafron mencabut Rania Putri dari penjaga pintu kegiatan yang sudah dihapus.",
+    ]);
+  });
+
   it("reads stored community tags", () => {
     expect([tagLabel("member"), tagLabel("core:Media & Creative"), tagLabel("bod"), tagLabel("unknown")]).toEqual(["Member", "Core Team · Media & Creative", "BoD", "Member"]);
   });

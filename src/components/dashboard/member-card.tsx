@@ -7,6 +7,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { communityLinks } from "@/lib/community";
 import { readableError } from "@/lib/draft-session";
+import { clockLabel, gatheringTimeLabel } from "@/lib/gathering";
 import { cardPath } from "@/lib/member-card";
 import { memberTagLabel } from "@/lib/onboarding";
 import { qrMatrix } from "@/lib/qr";
@@ -133,6 +134,17 @@ function CardActions({ card }: { card: Card }) {
   </section>;
 }
 
+/** The member's own check-ins at gatherings (#117). Lists only; rates wait for one check-in model with Catalyst (#109). */
+function CheckInHistory() {
+  const rows = useQuery(api.gatherings.mine);
+  if (!rows) return null;
+  return <section className="app-panel member-card-history" aria-labelledby="history-title">
+    <h2 id="history-title">Riwayat kehadiran</h2>
+    {!rows.length ? <p className="app-small">Kehadiranmu di rapat dan kumpul member akan tercatat di sini setelah kartumu dipindai.</p>
+      : <ul>{rows.map((row) => <li key={row._id}><strong>{row.title}</strong><span className="app-small">{gatheringTimeLabel(row)} · {row.venue}</span><span className="app-small">Hadir {clockLabel(row.checkedInAt)}</span></li>)}</ul>}
+  </section>;
+}
+
 export function MemberCardPage() {
   const ensure = useMutation(api.cards.ensure);
   const card = useQuery(api.cards.mine);
@@ -149,7 +161,7 @@ export function MemberCardPage() {
           ? <p className="member-card-notice" role="status"><strong>Kartu diblokir</strong>Pengurus memblokir kartu ini, jadi QR-nya tidak berlaku. Hubungi admin GDGoC IPB lewat <a href={communityLinks.instagram} target="_blank" rel="noreferrer">Instagram @gdgoc.ipb</a>.</p>
           : <QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}. Pengurus memindainya untuk mencatat kehadiran.`} />}
       </MemberCardFace>
-      {!revoked && <CardActions card={card} />}
+      <div className="member-card-side">{!revoked && <CardActions card={card} />}<CheckInHistory /></div>
     </div>
   </>;
 }

@@ -86,7 +86,7 @@ A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), m
 | Path | Purpose |
 | --- | --- |
 | `page.tsx`, `layout.tsx` | The landing and the root layout |
-| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts and their rosters), `kartu` (the member card), `profil` |
+| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts and their rosters), `kartu` (the member card), `kehadiran` (gatherings and check-in), `profil` |
 | `onboarding/` | Five-screen first-visit flow |
 | `tentang/`, `bergabung/`, `program/` (the hub, `catalyst/`, `tech-league/`), `privasi/` | Public pages, each listed in `indexablePaths` |
 | `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |
@@ -107,13 +107,13 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `campus/`: the Three.js campus model and runtime.
 - `bogor-run/`: the game engine, shared with the server replay.
-- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `cohort.ts`, `enrolment-import.ts`, `bevy-export.ts`, `member-card.ts`, `member-table.ts`, `rich-text.ts`), the public pages' content and structured data (`tech-league.ts`, `catalyst.ts`, `about.ts`, `faq.ts`, `breadcrumb.ts`, with program dates in `schedule.ts`), and shared helpers (`chapter.ts` for the chapter year, `site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`, and `qr.ts`, which draws QR codes on the page).
+- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `cohort.ts`, `enrolment-import.ts`, `bevy-export.ts`, `member-card.ts`, `gathering.ts`, `member-table.ts`, `rich-text.ts`), the public pages' content and structured data (`tech-league.ts`, `catalyst.ts`, `about.ts`, `faq.ts`, `breadcrumb.ts`, with program dates in `schedule.ts`), and shared helpers (`chapter.ts` for the chapter year, `site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`, and `qr.ts`, which draws QR codes on the page).
 - Tests sit beside the module as `*.test.ts` and run in the edge runtime.
 
 ### `convex/`: backend
 
-- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments and mentors, member cards and their per-year counters, the access log, and account deletions.
-- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `bogorRun` and `bogorRunToken`.
+- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments and mentors, member cards and their per-year counters, gatherings and check-ins, the access log, and account deletions.
+- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `bogorRun` and `bogorRunToken`.
 - `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
 - `_generated/` is produced by Convex; do not edit it.
 - Tests (`*.test.ts`) run against `convex-test`, with no deployment.

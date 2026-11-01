@@ -29,6 +29,11 @@
 .member-card-actions p { margin-block: 0 14px; }
 .member-card-buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 .member-card-actions .button { gap: 12px; }
+.member-card-side { display: grid; gap: 24px; min-width: 0; }
+.member-card-history h2 { margin-block: 0 12px; font-size: 22px; }
+.member-card-history ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
+.member-card-history li { display: grid; gap: 2px; padding-block: 12px; border-top: 1px solid #e8ece4; }
+.member-card-history li:first-child { border-top: 0; padding-top: 0; }
 
 /* The page a scanned QR opens: a verdict anyone can read from arm's length, then the card for staff and its holder. */
 .card-check-page { display: grid; gap: 28px; max-width: 640px; padding-block: 48px 96px; }
@@ -49,6 +54,22 @@
 .card-check-card { display: grid; justify-items: start; }
 .card-check-links { margin: 0; }
 
+/* "Catat hadir" for the door, right under the verdict so it is the next thing to press. */
+.card-check-door { display: grid; gap: 12px; padding: 20px 22px; background: #fff; border: 1px solid var(--ink); }
+.card-check-door h2 { margin: 0; font-size: 20px; }
+.card-check-door p { margin: 0; line-height: 1.5; }
+.card-check-door fieldset { display: grid; gap: 8px; margin: 0; padding: 0; border: 0; }
+.card-check-door legend { margin-bottom: 6px; font: 500 10px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.card-check-option { display: flex; gap: 12px; align-items: center; min-height: 48px; padding: 8px 12px; border: 1px solid #c3ccc0; cursor: pointer; }
+.card-check-option:has(input:checked) { border-color: var(--ink); background: #eef4ff; }
+.card-check-option input { width: 20px; height: 20px; accent-color: var(--blue); }
+.card-check-option span { display: grid; }
+.card-check-option small { color: var(--muted); }
+.card-check-record { width: 100%; font-size: 15px; }
+.card-check-done { display: flex; gap: 8px; align-items: center; padding: 12px 14px; font-weight: 500; color: #13652d; background: #e5f3e6; border: 1px solid #9fceaa; }
+.card-check-warning { display: grid; gap: 12px; padding: 14px; background: #fff7e0; border: 1px solid #e6c463; }
+.card-check-buttons { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+
 /* The QR alone on white for the door: as large as the screen allows, with the name underneath. */
 .member-qr-overlay { position: fixed; inset: 0; z-index: 80; background: #fff; display: grid; }
 .member-qr-modal { display: grid; outline: none; }
@@ -61,7 +82,7 @@
 
 @media (max-width: 900px) {
   .member-card-layout { grid-template-columns: minmax(0, 1fr); justify-items: center; }
-  .member-card-actions { width: 100%; max-width: 420px; }
+  .member-card-side { width: 100%; max-width: 420px; }
 }
 @media (max-width: 400px) {
   .member-card { padding-inline: 16px; box-shadow: 4px 4px 0 var(--ink); }

@@ -67,10 +67,11 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
       { href: "/dashboard/apresiasi", label: "Apresiasi", icon: "trophy", current: pathname === "/dashboard/apresiasi" },
       { href: "/dashboard/papan-skor", label: "Papan skor", icon: "gamepad", current: at("/dashboard/papan-skor") },
     ] },
-    ...(isStaff(viewer) || isReviewer(viewer) ? [{ title: "Kelola", items: [
+    ...(isStaff(viewer) || isReviewer(viewer) || viewer.doorHelper ? [{ title: "Kelola", items: [
       ...(isReviewer(viewer) ? [{ href: "/dashboard/apresiasi/tinjau", label: "Tinjau apresiasi", icon: "shield" as const, current: at("/dashboard/apresiasi/tinjau") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/program", label: "Program", icon: "teach" as const, current: at("/dashboard/program") }] : []),
+      ...(isStaff(viewer) || viewer.doorHelper ? [{ href: "/dashboard/kehadiran", label: "Kehadiran", icon: "check-double" as const, current: at("/dashboard/kehadiran") }] : []),
     ] }] : []),
     { title: "Akun", items: [
       { href: "/dashboard/kartu", label: "Kartu anggota", icon: "id-card", current: at("/dashboard/kartu") },

@@ -6,14 +6,21 @@ import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "
 import { logAccess } from "./accessLog";
 import { newNonce } from "./bogorRunToken";
 import { chapterPeriod, inChapterPeriod } from "../src/lib/chapter";
+import { runsToday } from "../src/lib/gathering";
 import { cardNumber, cardPrefix, cardTokenPattern, type CardStatus } from "../src/lib/member-card";
 
 async function cardOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
   return ctx.db.query("memberCards").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
 }
 
-async function profileOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
+export async function profileOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
   return ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
+}
+
+/** Today's open gatherings whose door an account runs: all of them for active staff, the ones they help at otherwise. */
+export async function doorsFor(ctx: QueryCtx | MutationCtx, viewer: { id: string; staff: boolean }, now: number) {
+  const open = await ctx.db.query("gatherings").withIndex("by_status", (q) => q.eq("status", "open")).collect();
+  return open.filter((gathering) => runsToday(gathering, now) && (viewer.staff || gathering.helpers.includes(viewer.id)));
 }
 
 /** The next member number of the current chapter year. The counter row is read and written in the caller's transaction. */
@@ -87,7 +94,8 @@ export const reissue = mutation({
 });
 
 /**
- * What a scanned QR shows (`/k/<token>`). The holder and active staff get the whole card with the exact status.
+ * What a scanned QR shows (`/k/<token>`). Active staff, door helpers of a gathering running today, and the holder get
+ * the whole card with the exact status; staff and helpers also get the gatherings they can check the holder into.
  * Anyone else gets the name, community tag and chapter year of a valid card (E10, decision 5), and one "invalid" for
  * every other status, so a token never confirms that an account exists.
  */
@@ -96,11 +104,20 @@ export const verify = query({
   handler: async (ctx, { token }) => {
     const card = cardTokenPattern.test(token) ? await ctx.db.query("memberCards").withIndex("by_token", (q) => q.eq("token", token)).first() : null;
     const holder: Holder = card ? { profile: await profileOf(ctx, card.ownerId), user: await authComponent.getAnyUserById(ctx, card.ownerId) } : { profile: null, user: null };
-    const status = cardStatus(card, holder, Date.now());
+    const now = Date.now(), status = cardStatus(card, holder, now);
     const access = await dashboardAccess(ctx);
-    if (access?.profile?.completedAt && access.active && access.role !== "member") {
-      return { viewer: "staff" as const, status, card: card && fullCard(card, holder, status) };
-    }
+    const member = access?.profile?.completedAt && access.active ? access : null;
+    const staff = Boolean(member && member.role !== "member");
+    const doors = member ? await doorsFor(ctx, { id: member.user._id, staff }, now) : [];
+    const gatherings = await Promise.all((card ? doors : []).map(async (gathering) => {
+      const checkIn = await ctx.db.query("checkIns").withIndex("by_gathering_owner", (q) => q.eq("gatheringId", gathering._id).eq("ownerId", card!.ownerId)).unique();
+      const memberType = holder.profile?.memberType;
+      return {
+        _id: gathering._id, title: gathering.title, venue: gathering.venue, checkedInAt: checkIn?.checkedInAt ?? null,
+        inAudience: Boolean(memberType && gathering.audience.includes(memberType)),
+      };
+    }));
+    if (staff || doors.length) return { viewer: staff ? "staff" as const : "helper" as const, status, card: card && fullCard(card, holder, status), gatherings };
     if (card && access?.profile?.completedAt && access.user._id === card.ownerId) return { viewer: "self" as const, status, card: fullCard(card, holder, status) };
     if (status !== "valid" || !card || !holder.profile) return { viewer: "guest" as const, status: "invalid" as const, card: null };
     const { profile } = holder;

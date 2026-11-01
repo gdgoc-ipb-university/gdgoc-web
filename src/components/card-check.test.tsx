@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { CardCheck } from "./card-check";
 
@@ -11,12 +12,15 @@ const full = {
 let answer: unknown;
 let authLoading = false;
 const query = vi.fn();
+const checkIn = vi.fn();
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isLoading: authLoading, isAuthenticated: false }),
   useQuery: (_ref: unknown, args: unknown) => { query(args); return args === "skip" ? undefined : answer; },
+  useMutation: () => checkIn,
 }));
 
-afterEach(() => { cleanup(); authLoading = false; query.mockClear(); });
+afterEach(() => { cleanup(); authLoading = false; query.mockClear(); checkIn.mockReset(); });
+const door = (id: string, title: string, checkedInAt: number | null = null) => ({ _id: id, title, venue: "Javano Coffee", checkedInAt, inAudience: true });
 const show = () => render(<CardCheck token="abcdefghijklmnopqrst_-" />);
 const accessible = async (container: HTMLElement) => {
   const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] }, rules: { "color-contrast": { enabled: false } } });
@@ -50,7 +54,7 @@ describe("member card check", () => {
   });
 
   it("shows staff the whole card, why it is not valid, and a link to the member's page", async () => {
-    answer = { viewer: "staff", status: "revoked", card: { ...full, status: "revoked", revokedAt: 2 } };
+    answer = { viewer: "staff", status: "revoked", card: { ...full, status: "revoked", revokedAt: 2 }, gatherings: [] };
     const { container } = show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu tidak berlaku");
     expect(screen.getByText("Kartu diblokir pengurus.")).toBeTruthy();
@@ -60,9 +64,47 @@ describe("member card check", () => {
   });
 
   it("tells staff a token matches no card", () => {
-    answer = { viewer: "staff", status: "unknown", card: null };
+    answer = { viewer: "staff", status: "unknown", card: null, gatherings: [] };
     show();
     expect(screen.getByText("Kartu tidak dikenal atau QR sudah diganti.")).toBeTruthy();
+  });
+
+  it("lets a door helper check the holder in to today's only gathering, without a member link", async () => {
+    answer = { viewer: "helper", status: "valid", card: full, gatherings: [door("g1", "Rapat Core Team")] };
+    checkIn.mockResolvedValue({ result: "checkedIn", name: "Rania Putri", checkedInAt: 1 });
+    const { container } = show();
+    const panel = screen.getByRole("region", { name: "Catat kehadiran" });
+    expect(panel.textContent).toContain("Rapat Core Team");
+    await userEvent.click(within(panel).getByRole("button", { name: "Catat hadir" }));
+    expect(checkIn).toHaveBeenCalledWith({ id: "g1", token: full.token, allowOutside: false });
+    expect(screen.queryByRole("link")).toBeNull();
+    await accessible(container);
+  });
+
+  it("asks before checking in someone outside the audience", async () => {
+    answer = { viewer: "staff", status: "valid", card: full, gatherings: [door("g1", "Rapat Core Team")] };
+    checkIn.mockResolvedValueOnce({ result: "outside", name: "Rania Putri", memberType: "member", division: null }).mockResolvedValueOnce({ result: "checkedIn", name: "Rania Putri", checkedInAt: 1 });
+    show();
+    await userEvent.click(screen.getByRole("button", { name: "Catat hadir" }));
+    expect((await screen.findByRole("alert")).textContent).toContain("tidak termasuk sasaran");
+    await userEvent.click(screen.getByRole("button", { name: "Tetap catat hadir" }));
+    expect(checkIn).toHaveBeenLastCalledWith({ id: "g1", token: full.token, allowOutside: true });
+  });
+
+  it("has the door choose between gatherings, and shows who is already in", async () => {
+    answer = { viewer: "staff", status: "valid", card: full, gatherings: [door("g1", "Rapat Core Team", Date.parse("2026-11-21T09:05:00+07:00")), door("g2", "Kumpul member")] };
+    show();
+    expect(screen.queryByRole("button", { name: "Catat hadir" })).toBeNull();
+    await userEvent.click(screen.getByRole("radio", { name: /Rapat Core Team/ }));
+    expect(screen.getByRole("status").textContent).toBe("Rania Putri sudah tercatat hadir pukul 09.05 WIB.");
+    await userEvent.click(screen.getByRole("radio", { name: /Kumpul member/ }));
+    expect(screen.getByRole("button", { name: "Catat hadir" })).toBeTruthy();
+  });
+
+  it("offers no check-in on a card that is not valid", () => {
+    answer = { viewer: "staff", status: "revoked", card: { ...full, status: "revoked" }, gatherings: [door("g1", "Rapat Core Team")] };
+    show();
+    expect(screen.queryByRole("region", { name: "Catat kehadiran" })).toBeNull();
   });
 
   it("shows the holder their own card and the way back to it", () => {

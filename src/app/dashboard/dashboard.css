@@ -9,9 +9,11 @@
 .dash-app { display: grid; grid-template-columns: 272px minmax(0, 1fr); min-height: 100dvh; background: linear-gradient(90deg, #f4f3ea 271px, var(--line) 271px 272px, var(--paper) 272px); }
 .dash-topbar { display: none; }
 .dash-sidebar { position: sticky; top: 0; height: 100dvh; display: flex; flex-direction: column; gap: 26px; padding: 26px 18px 22px; border-right: 1px solid var(--line); background: #f4f3ea; overflow-y: auto; }
-.dash-brand { display: block; padding: 0 8px; }
+.dash-brand { flex-shrink: 0; display: block; padding: 0 8px; }
 .dash-brand img, .dash-topbar-brand img { display: block; width: 204px; height: auto; }
-.dash-nav { display: grid; gap: 22px; }
+/* Only the nav scrolls, so the brand and the account block stay in view on short windows. The padding keeps the focus outline and the current link's shadow inside the scroll box; the shadows at either end show there is more to scroll. */
+.dash-nav { flex: 1 1 auto; min-height: 0; display: grid; align-content: start; gap: 22px; margin: -6px; padding: 6px; overflow-y: auto; overscroll-behavior: contain; scroll-padding-block: 8px; scrollbar-width: thin;
+  background: linear-gradient(#f4f3ea 40%, #f4f3ea00) top / 100% 24px no-repeat local, linear-gradient(#f4f3ea00, #f4f3ea 60%) bottom / 100% 24px no-repeat local, linear-gradient(#172d4314, #172d4300) top / 100% 10px no-repeat scroll, linear-gradient(#172d4300, #172d4314) bottom / 100% 10px no-repeat scroll; }
 .dash-nav-heading { font: 500 10px/1 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: #6b7880; padding: 0 10px 8px; }
 .dash-nav ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 .dash-nav-link { display: flex; align-items: center; gap: 12px; min-height: 42px; padding: 9px 10px; font-size: 13px; color: var(--ink); border: 1px solid transparent; }
@@ -20,7 +22,7 @@
 .dash-nav-link[aria-current="page"] { background: var(--blue); color: white; box-shadow: 3px 3px 0 var(--ink); }
 .dash-nav-link[aria-current="page"] svg { color: white; }
 .dash-nav-link:focus-visible, .dash-account-link:focus-visible, .dash-menu-button:focus-visible { outline: 3px solid #2563eb; outline-offset: 2px; }
-.dash-account { margin-top: auto; display: grid; gap: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
+.dash-account { flex-shrink: 0; margin-top: auto; display: grid; gap: 6px; padding-top: 18px; border-top: 1px solid var(--line); }
 .dash-account-identity { display: flex; align-items: center; gap: 11px; min-width: 0; padding: 0 4px 6px; }
 .dash-account-identity > div { min-width: 0; }
 .dash-account-identity strong { display: block; font-size: 13px; font-weight: 500; overflow-wrap: anywhere; }
@@ -210,6 +212,22 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
   .dropzone[data-dragging="true"] .dropzone-icon, .dropzone[data-over="true"] .dropzone-icon { animation: none; }
 }
 
+/* Short desktop windows: a tighter sidebar so more of the nav fits; links stay at least 36px tall. */
+@media (max-height: 760px) and (min-width: 961px) {
+  .dash-sidebar { gap: 16px; padding-block: 18px 14px; }
+  .dash-brand img { width: 180px; }
+  .dash-nav { gap: 14px; }
+  .dash-nav-heading { padding-bottom: 6px; }
+  .dash-nav-link { min-height: 36px; padding-block: 6px; }
+  .dash-account { gap: 2px; padding-top: 12px; }
+  .dash-account-identity { padding-bottom: 4px; }
+  .dash-account-badges { padding-bottom: 6px; }
+  .dash-account-link { min-height: 36px; padding-block: 6px; }
+}
+/* Too short to keep the account block fixed as well: the whole sidebar scrolls instead. */
+@media (max-height: 480px) {
+  .dash-nav { flex: none; overflow: visible; background: none; }
+}
 @media (max-width: 960px) {
   .dash-app { display: block; background: var(--paper); }
   .dash-topbar { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 16px; height: 68px; padding: 0 20px; background: var(--paper); border-bottom: 1px solid var(--line); }

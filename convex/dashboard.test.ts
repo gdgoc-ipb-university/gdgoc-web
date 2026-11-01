@@ -232,6 +232,7 @@ describe("dashboard roles and member management", () => {
     const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page.filter((entry) => entry.email === "member@example.com");
     await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 70, feedback: "" });
     await owner.mutation(api.assignments.setReviewer, { id: other, ownerId: member.id, reviewer: true });
+    await member.mutation(api.cards.ensure, {});
     await t.run(async (ctx) => {
       const values = { fullName: "Anggota Hapus", memberType: "Member", campus: "IPB", studyProgram: "", instagram: "hapus", achievement: "Juara", eventName: "Lomba", organizer: "Panitia", level: "Nasional", participation: "Individu", teamName: "", teamMembers: "", eventDate: "2026-08-10", story: "Cerita", documentationLinks: "https://example.com", publicationConsent: true };
       const appreciation = await ctx.db.insert("appreciations", { ownerId: member.id, ownerName: "Anggota Hapus", ownerEmail: "member@example.com", clientId: "a", values, status: "submitted", revision: 2, updatedAt: Date.now(), submittedAt: Date.now() });
@@ -245,7 +246,7 @@ describe("dashboard roles and member management", () => {
     await expect(owner.mutation(api.dashboard.deleteAccount, { ownerId: owner.id, confirmName: "Pemilik" })).rejects.toThrow("akunmu sendiri");
     await expect(owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "anggota" })).rejects.toThrow("Ketik nama");
     expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: " Anggota Hapus " })).toEqual({
-      appreciations: 1, appreciationReviews: 1, submissions: 1, submissionReviews: 1, files: 2, gameRuns: 1, gameBests: 1, reviewerGrants: 1, sessions: 1, accounts: 0, enrolments: 0, mentorGrants: 0,
+      appreciations: 1, appreciationReviews: 1, submissions: 1, submissionReviews: 1, files: 2, gameRuns: 1, gameBests: 1, reviewerGrants: 1, sessions: 1, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 1,
     });
 
     const left = await t.run(async (ctx) => {

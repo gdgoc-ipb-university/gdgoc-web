@@ -15,6 +15,8 @@ export const accessChange = v.union(
   v.literal("tagConfirmed"), v.literal("tagSelfChanged"),
   // A participant's enrolment in a cohort: their role, withdrawn or back, or a corrected email (the values are not kept).
   v.literal("enrolmentRole"), v.literal("enrolmentStatus"), v.literal("enrolmentEmail"),
+  // Staff blocked a member card or lifted the block ("active"/"revoked").
+  v.literal("card"),
 );
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
@@ -147,6 +149,17 @@ export default defineSchema({
   cohortMentors: defineTable({ cohortId: v.id("cohorts"), ownerId: v.string(), role: v.string(), addedBy: v.string(), addedAt: v.number() })
     .index("by_owner_cohort", ["ownerId", "cohortId"])
     .index("by_cohort_role", ["cohortId", "role"]),
+  // One member card per account (E10, #113). Opening it in a new chapter year gives it that year's number and a new
+  // token; the member replacing their QR changes the token alone. Staff block a card with `revokedAt`.
+  memberCards: defineTable({
+    ownerId: v.string(), period: v.string(), number: v.string(), token: v.string(), issuedAt: v.number(),
+    reissuedAt: v.optional(v.number()), revokedAt: v.optional(v.number()), revokedBy: v.optional(v.string()),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_token", ["token"])
+    .index("by_number", ["number"]),
+  // How many member numbers each chapter year has given out, so a number is never reused, even after a deletion.
+  cardCounters: defineTable({ period: v.string(), issued: v.number() }).index("by_period", ["period"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
@@ -165,6 +178,8 @@ export default defineSchema({
       files: v.number(), gameRuns: v.number(), gameBests: v.number(), reviewerGrants: v.number(), sessions: v.number(), accounts: v.number(),
       // Added with cohorts; rows from before them lack these.
       enrolments: v.optional(v.number()), mentorGrants: v.optional(v.number()),
+      // Added with member cards.
+      cards: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

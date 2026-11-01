@@ -1,11 +1,8 @@
+import { chapterPeriod } from "./chapter";
+
 /** "BoD" is offered only to members staff tagged as BoD; the server checks it on submit. */
 export const memberTypes = ["Member", "Core Team", "BoD"] as const;
 export const achievementLevels = ["Kampus", "Regional", "Nasional", "Internasional"] as const;
-/**
- * The current GDGoC IPB University chapter year, both ends inclusive. Only achievements announced within it can be
- * submitted for appreciation. Update it when a new chapter year starts in July.
- */
-export const chapterPeriod = { start: "2026-07-01", end: "2027-07-01", label: "1 Juli 2026 – 1 Juli 2027" } as const;
 
 /** Today's date in Bogor (WIB) as YYYY-MM-DD, the calendar the form's dates use. */
 export function todayInWib(now = new Date()) {

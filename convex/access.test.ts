@@ -78,6 +78,7 @@ async function fixture() {
   const draft = await owner.mutation(api.assignments.create, { values: { title: "Draft", description: "Belum.", dueAt: due }, publish: false });
   await owner.mutation(api.assignments.setReviewer, { id: assignment, ownerId: grader.id, reviewer: true });
   await member.mutation(api.assignments.submit, { assignmentId: assignment, revision: 0, answer: "Selesai", fileIds: [] });
+  await member.mutation(api.cards.ensure, {});
   const values = {
     fullName: "Rania Putri", memberType: "member", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania",
     achievement: "Juara 1", eventName: "Hackathon", organizer: "Panitia", level: "Nasional", participation: "Tim", teamName: "Tim A",
@@ -134,6 +135,7 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.remove", api.assignments.remove, STAFF, (ids) => ({ id: ids.draft, revision: ids.draftRevision })],
   ["assignments.setReviewer", api.assignments.setReviewer, STAFF, (ids) => ({ id: ids.assignment, ownerId: ids.member, reviewer: true })],
   ["bogorRun.setHidden", api.bogorRun.setHidden, STAFF, (ids) => ({ entryId: ids.entry, hidden: true })],
+  ["cards.setRevoked", api.cards.setRevoked, STAFF, (ids) => ({ ownerId: ids.member, revoked: true })],
   ["cohorts.create", api.cohorts.create, STAFF, () => ({ values: { slug: "intake-2027", name: "Intake 2027", roles: [{ key: "member", name: "Member" }] } })],
   ["cohorts.importEnrolments", api.cohorts.importEnrolments, STAFF, (ids) => ({ cohortId: ids.cohort, rows: [{ email: "baru@example.com", name: "Peserta Baru", role: "hustler" }] })],
   ["cohorts.setRole", api.cohorts.setRole, STAFF, (ids) => ({ id: ids.enrolment, role: "hipster" })],
@@ -160,6 +162,8 @@ const OPEN: Record<string, string> = {
   "bogorRun.leaderboard": "public board",
   "cohorts.claimMine": "own: enrolments for the caller's verified email",
   "cohorts.myInvitation": "own: the caller's active enrolment by verified email",
+  "cards.mine": "own card, active members", "cards.ensure": "own card, active members", "cards.reissue": "own card, active members",
+  "cards.verify": "public: a scanned card, with more for its holder and staff (cards.test.ts)",
 };
 
 beforeEach(() => vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com"));

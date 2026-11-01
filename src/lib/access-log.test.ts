@@ -36,6 +36,13 @@ describe("access log sentences", () => {
     expect(accessSentence(entry("active", "active", "deactivated", { actor: null, target: null }))).toBe("Pengurus yang akunnya sudah dihapus menonaktifkan akun anggota yang akunnya sudah dihapus.");
   });
 
+  it("describes blocking a member card and lifting the block", () => {
+    expect([entry("card", "active", "revoked"), entry("card", "revoked", "active")].map(accessSentence)).toEqual([
+      "Aldio Lisafron memblokir kartu anggota Rania Putri.",
+      "Aldio Lisafron membuka blokir kartu anggota Rania Putri.",
+    ]);
+  });
+
   it("reads stored community tags", () => {
     expect([tagLabel("member"), tagLabel("core:Media & Creative"), tagLabel("bod"), tagLabel("unknown")]).toEqual(["Member", "Core Team · Media & Creative", "BoD", "Member"]);
   });

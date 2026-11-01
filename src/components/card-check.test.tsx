@@ -13,6 +13,8 @@ let answer: unknown;
 let authLoading = false;
 const query = vi.fn();
 const checkIn = vi.fn();
+// next/font runs at build time; in tests it only has to name the font.
+vi.mock("next/font/local", () => ({ default: () => ({ className: "font-vcr", variable: "font-vcr", style: { fontFamily: "'vcr'" } }) }));
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isLoading: authLoading, isAuthenticated: false }),
   useQuery: (_ref: unknown, args: unknown) => { query(args); return args === "skip" ? undefined : answer; },

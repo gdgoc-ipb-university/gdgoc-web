@@ -144,9 +144,10 @@ function MemberTableRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) 
 
 export const initial = (name: string) => name.trim().slice(0, 1).toUpperCase();
 
-export function AccessBadges({ row }: { row: Pick<Row, "role" | "reviewer" | "reviewsByTag"> }) {
+export function AccessBadges({ row }: { row: Pick<Row, "role" | "reviewer" | "reviewsByTag" | "techSupportHandler"> }) {
   return <span className="dash-badges"><span className="dash-role" data-role={row.role}>{roleLabels[row.role]}</span>
-    {(row.reviewer || row.reviewsByTag) && row.role === "member" && <span className="dash-role" data-role="reviewer">Peninjau Apresiasi</span>}</span>;
+    {(row.reviewer || row.reviewsByTag) && row.role === "member" && <span className="dash-role" data-role="reviewer">Peninjau Apresiasi</span>}
+    {row.techSupportHandler && row.role === "member" && <span className="dash-role" data-role="support">Pengelola Tech Support</span>}</span>;
 }
 
 export function CommunityBadge({ row }: { row: Pick<Row, "memberType" | "division" | "tagConfirmed"> }) {
@@ -203,6 +204,7 @@ const groupLabels = { access: "Akses", community: "Komunitas", status: "Status" 
 export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row, keyof Row>; viewer: DashboardViewer; labelled?: boolean }) {
   const setRole = useMutation(api.dashboard.setRole);
   const setReviewer = useMutation(api.dashboard.setReviewer);
+  const setTechSupportHandler = useMutation(api.dashboard.setTechSupportHandler);
   const setActive = useMutation(api.dashboard.setActive);
   const setMemberType = useMutation(api.dashboard.setMemberType);
   const setCardRevoked = useMutation(api.cards.setRevoked);
@@ -219,6 +221,10 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
   if (!self && owner && row.role === "member" && row.active && (row.reviewer || !row.reviewsByTag)) actions.push(row.reviewer
     ? { key: "unreview", group: "access", icon: "user-x", label: "Cabut peninjau apresiasi", confirm: `Cabut akses tinjau apresiasi ${row.fullName}? Kiriman pribadinya tetap bisa dibuka.`, run: () => setReviewer({ ownerId: row.ownerId, reviewer: false }) }
     : { key: "review", group: "access", icon: "user-plus", label: "Jadikan peninjau apresiasi", confirm: `Jadikan ${row.fullName} peninjau apresiasi? Ia bisa membuka antrean tinjauan, memberi catatan, dan mencatat link post.`, run: () => setReviewer({ ownerId: row.ownerId, reviewer: true }) });
+  // The Tech Support queue, granted like Apresiasi review; admins handle it by role.
+  if (!self && owner && row.role === "member" && (row.techSupportHandler || row.active)) actions.push(row.techSupportHandler
+    ? { key: "unsupport", group: "access", icon: "user-x", label: "Cabut pengelola Tech Support", confirm: `Cabut akses antrean Tech Support dari ${row.fullName}? Catatan yang sudah ia tulis tetap tersimpan.`, run: () => setTechSupportHandler({ ownerId: row.ownerId, handler: false }) }
+    : { key: "support", group: "access", icon: "user-plus", label: "Jadikan pengelola Tech Support", confirm: `Jadikan ${row.fullName} pengelola Tech Support? Ia bisa membuka antrean permintaan mentoring, melihat email pemohon, mencatat mentor, dan mengubah status.`, run: () => setTechSupportHandler({ ownerId: row.ownerId, handler: true }) });
   const mediaTag = row.division === "Media & Creative";
   // A self-declared Core Team or BoD tag counts once staff confirm it; for Media & Creative that also grants Apresiasi review.
   if (row.memberType && row.memberType !== "member" && !row.tagConfirmed) actions.push({

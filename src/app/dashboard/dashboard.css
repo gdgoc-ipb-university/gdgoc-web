@@ -41,6 +41,7 @@
 .dash-role[data-role="core"] { background: #fbe3df; color: #8e2c21; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .dash-role[data-role="bod"] { background: #e3f3e6; color: #1e6b34; text-transform: none; letter-spacing: 0; font-size: 11px; }
 .dash-role[data-role="member"] { text-transform: none; letter-spacing: 0; font-size: 11px; }
+.dash-role[data-role="support"] { background: #e2f1f3; color: #1d5b66; text-transform: none; letter-spacing: 0; font-size: 11px; }
 
 .dash-intro { margin-bottom: 34px; }
 .dash-intro h1, .dash-blocked h1, .dash-assignment h1 { font: 600 clamp(40px, 5vw, 64px)/1.06 var(--font-pixel), monospace; letter-spacing: -.04em; margin-block: 16px 18px; overflow-wrap: anywhere; }

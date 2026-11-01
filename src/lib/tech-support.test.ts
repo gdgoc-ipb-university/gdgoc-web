@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { communityLinks } from "./community";
 import { faqJsonLd, faqText } from "./faq";
 import { indexablePaths, siteUrl } from "./site";
 import { requestLink, techSupport, techSupportFaq, techSupportJsonLd } from "./tech-support";
@@ -23,11 +22,11 @@ describe("Tech Support", () => {
     for (const mentor of techSupport.mentors) expect(mentor.role).not.toBe("");
   });
 
-  it("sends members to Instagram until the dashboard form exists", () => {
-    expect(techSupport.requestPath).toBeNull();
-    expect(requestLink()).toEqual({ label: "Tanya alur mentoring", href: communityLinks.instagram, external: true });
+  it("sends members to the dashboard form", () => {
+    expect(techSupport.requestPath).toBe("/dashboard/tech-support");
+    expect(requestLink()).toEqual({ label: "Ajukan mentoring", href: "/dashboard/tech-support", external: false });
     const how = techSupportFaq.find((item) => item.question === "Bagaimana cara mengajukan?");
-    expect(how?.answer).toContainEqual({ text: "Instagram @gdgoc.ipb", href: communityLinks.instagram });
+    expect(how?.answer).toContainEqual({ text: "form pengajuan Tech Support", href: "/dashboard/tech-support" });
   });
 
   it("keeps the reply time, the join page and the FAQPage markup in step with the FAQ", () => {

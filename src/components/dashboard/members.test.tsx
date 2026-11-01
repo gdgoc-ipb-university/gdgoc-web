@@ -9,7 +9,7 @@ import { MembersPage } from "./members";
 import { ViewerContext, type DashboardViewer } from "./viewer";
 
 // The members page against a fake Convex: the list is cut and sorted the way `dashboard.members` does it.
-type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null };
+type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; techSupportHandler?: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null };
 const names = ["Adi", "Bima", "Citra", "Dewi", "Eka", "Fajar", "Gita", "Hana", "Indra", "Joko", "Kiki", "Lina", "Mira", "Nadia", "Oki", "Putri", "Qori", "Rania", "Sari", "Tono", "Umar", "Vina", "Wati", "Xena", "Yusuf", "Zahra", "Agus", "Bayu", "Cahya", "Dina"];
 const rows: Row[] = names.map((fullName, index) => ({
   ownerId: `u${index}`, fullName, email: `${fullName.toLowerCase()}@example.com`, campus: "IPB University", studyProgram: "Ilmu Komputer",
@@ -21,7 +21,8 @@ rows[29] = { ...rows[29], card: { number: "2627-0030", revoked: false } };
 
 const setActive = vi.fn(async () => null);
 const setCardRevoked = vi.fn(async () => null);
-const mutations: Record<string, ReturnType<typeof vi.fn>> = { "dashboard:setActive": setActive, "cards:setRevoked": setCardRevoked };
+const setTechSupportHandler = vi.fn(async () => null);
+const mutations: Record<string, ReturnType<typeof vi.fn>> = { "dashboard:setActive": setActive, "cards:setRevoked": setCardRevoked, "dashboard:setTechSupportHandler": setTechSupportHandler };
 // Like Convex, the same arguments return the same object, so results can be compared by reference.
 const results = new Map<string, unknown>();
 vi.mock("convex/react", () => ({
@@ -138,7 +139,7 @@ describe("members table", () => {
     show("owner");
     await user.click(screen.getByRole("button", { name: "Kelola Dina" }));
     const menu = screen.getByRole("menu", { name: "Kelola Dina" });
-    expect(within(within(menu).getByRole("group", { name: "Akses" })).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Jadikan admin", "Jadikan peninjau apresiasi"]);
+    expect(within(within(menu).getByRole("group", { name: "Akses" })).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Jadikan admin", "Jadikan peninjau apresiasi", "Jadikan pengelola Tech Support"]);
     expect(within(within(menu).getByRole("group", { name: "Komunitas" })).getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Ubah peran komunitas"]);
     await user.click(within(within(menu).getByRole("group", { name: "Status" })).getByRole("menuitem", { name: "Nonaktifkan" }));
     const dialog = await screen.findByRole("alertdialog", { name: "Nonaktifkan?" });
@@ -146,6 +147,17 @@ describe("members table", () => {
     await user.click(within(dialog).getByRole("button", { name: "Ya, nonaktifkan" }));
     expect(setActive).toHaveBeenCalledWith({ ownerId: "u29", active: false });
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+  });
+
+  it("lets owners grant the Tech Support queue, after asking", async () => {
+    const user = userEvent.setup();
+    show("owner");
+    await user.click(screen.getByRole("button", { name: "Kelola Dina" }));
+    await user.click(screen.getByRole("menuitem", { name: "Jadikan pengelola Tech Support" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog.textContent).toContain("Jadikan Dina pengelola Tech Support?");
+    await user.click(within(dialog).getByRole("button", { name: /Jadikan pengelola Tech Support|Ya/ }));
+    expect(setTechSupportHandler).toHaveBeenCalledWith({ ownerId: "u29", handler: true });
   });
 
   it("blocks a member's card from the status group, after asking", async () => {

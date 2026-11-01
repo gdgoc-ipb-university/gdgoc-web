@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
     { source: "/footer-directions", destination: "/", permanent: true },
     { source: "/apresiasi", destination: "/dashboard/apresiasi", permanent: true },
     { source: "/apresiasi/admin", destination: "/dashboard/apresiasi/tinjau", permanent: true },
+    // A member card's QR opens /k/<token>; the bare path has nothing to show.
+    { source: "/k", destination: "/", permanent: false },
   ],
 };
 

@@ -9,7 +9,7 @@
 .member-card-head img { width: min(100%, 280px); height: auto; }
 .member-card-head p { margin: 0; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .member-card-person { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
-.member-card-photo { display: grid; place-items: center; object-fit: cover; border: 1px solid var(--ink); background: #e6eddc; font-size: 44px; }
+.member-card-photo { display: grid; place-items: center; object-fit: cover; border: 1px solid var(--ink); background: #e6eddc; font: 400 44px/1 var(--font-pixel), monospace; }
 .member-card-person h2 { margin: 0 0 6px; font: 600 26px/1.08 var(--font-pixel), monospace; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .member-card-person p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
 .member-card-person .member-card-tag { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 8px; color: var(--ink); font-weight: 500; }
@@ -29,6 +29,25 @@
 .member-card-actions p { margin-block: 0 14px; }
 .member-card-buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 .member-card-actions .button { gap: 12px; }
+
+/* The page a scanned QR opens: a verdict anyone can read from arm's length, then the card for staff and its holder. */
+.card-check-page { display: grid; gap: 28px; max-width: 640px; padding-block: 48px 96px; }
+.card-check-loading { margin: 0; padding: 32px 0; color: var(--muted); }
+.card-check-verdict { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 18px; align-items: start; padding: 26px 24px; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); }
+.card-check-verdict[data-valid="true"] { background: #e5f3e6; }
+.card-check-verdict[data-valid="false"] { background: #fdf0ee; }
+.card-check-verdict > svg { padding: 6px; color: #fff; background: #13652d; }
+.card-check-verdict[data-valid="false"] > svg { background: #b0372a; }
+.card-check-verdict h1 { margin: 0 0 10px; font: 600 clamp(30px, 7vw, 44px)/1.05 var(--font-pixel), monospace; letter-spacing: -.03em; }
+.card-check-verdict p { margin: 0 0 10px; line-height: 1.55; }
+.card-check-facts { display: grid; gap: 10px; margin: 6px 0 16px; }
+.card-check-facts dt { font: 500 10px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.card-check-facts dd { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0; font-size: 20px; font-weight: 500; overflow-wrap: anywhere; }
+.card-check-note { font-size: 14px; color: var(--muted); }
+.card-check-time { font: 500 12px/1.5 var(--font-mono), monospace; color: var(--muted); }
+.card-check-verdict p.card-check-time { margin: 12px 0 0; }
+.card-check-card { display: grid; justify-items: start; }
+.card-check-links { margin: 0; }
 
 /* The QR alone on white for the door: as large as the screen allows, with the name underneath. */
 .member-qr-overlay { position: fixed; inset: 0; z-index: 80; background: #fff; display: grid; }

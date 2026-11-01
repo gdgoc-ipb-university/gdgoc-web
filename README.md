@@ -91,6 +91,7 @@ A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), m
 | `tentang/`, `bergabung/`, `program/` (the hub, `catalyst/`, `tech-league/`), `privasi/` | Public pages, each listed in `indexablePaths` |
 | `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |
 | `rai/` | Unlinked easter egg that unlocks the blue dino skin |
+| `k/[token]/` | The page a member card's QR opens: whether the card is valid, and the whole card for staff and its holder; `noindex`, rendered per request |
 | `api/auth/[...all]/` | Better Auth route handler |
 | `robots.ts`, `sitemap.ts`, `icon.svg`, `globals.css` | Search, icon and global styles |
 

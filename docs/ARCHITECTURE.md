@@ -7,7 +7,7 @@ flowchart LR
   browser["Browser"]
   google["Google OAuth"]
 
-  subgraph vercel["Vercel: production"]
+  subgraph vercel["Vercel: production, from release"]
     next["Next.js App Router<br/>pages and /api/auth/[...all]"]
   end
 
@@ -17,7 +17,7 @@ flowchart LR
     db[("Database and file storage")]
   end
 
-  subgraph staging["Staging VM"]
+  subgraph staging["Staging VM, following main"]
     dev["next dev on 127.0.0.1:3104"]
   end
   tunnel["Cloudflare tunnel<br/>gdgoc-ipb.yorhagarden.xyz"]
@@ -40,7 +40,7 @@ Server-rendered pages arrive from Vercel; the landing is prerendered and needs n
 
 ## Next.js on Vercel
 
-Pages, layouts and the 3D scene live in `src/app/` and `src/components/`. Every push to `main` deploys production; the build runs `pnpm exec convex deploy --cmd 'pnpm build'`, so the backend ships before the frontend that depends on it. The only HTTP API in this repository is the Better Auth route handler at `src/app/api/auth/[...all]/route.ts`, which forwards to the Convex site URL. There is no other REST or GraphQL endpoint to specify.
+Pages, layouts and the 3D scene live in `src/app/` and `src/components/`. Vercel deploys production from the `release` branch, which takes only release pull requests from `main` ([ADR 0006](decisions/0006-production-deploys-from-release.md)); pushes to `main` do not build. The build runs `pnpm exec convex deploy --cmd 'pnpm build'`, so the backend ships before the frontend that depends on it. The only HTTP API in this repository is the Better Auth route handler at `src/app/api/auth/[...all]/route.ts`, which forwards to the Convex site URL. There is no other REST or GraphQL endpoint to specify.
 
 ## Convex functions and database
 
@@ -56,4 +56,4 @@ The game runs in the browser on the fixed-tick engine in `src/lib/bogor-run/`. B
 
 ## Staging VM and Cloudflare tunnel
 
-A preview runs `next dev` on another VM against the Convex development deployment, reached at `gdgoc-ipb.yorhagarden.xyz` through a Cloudflare tunnel. `DEV_ALLOWED_ORIGINS` lets that hostname reach the dev server, and the tunnel's origin is set as `NEXT_PUBLIC_SITE_URL` and as `SITE_URL` on the development deployment, with its callback registered on the Google OAuth client. Vercel builds production only, so this is the place to check a branch before it merges.
+A preview runs `next dev` on another VM against the Convex development deployment, reached at `gdgoc-ipb.yorhagarden.xyz` through a Cloudflare tunnel. `DEV_ALLOWED_ORIGINS` lets that hostname reach the dev server, and the tunnel's origin is set as `NEXT_PUBLIC_SITE_URL` and as `SITE_URL` on the development deployment, with its callback registered on the Google OAuth client. The VM follows `main`, so it previews the next release; Vercel builds production only. It is also the place to check a branch before it merges.

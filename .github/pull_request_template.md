@@ -22,7 +22,7 @@ Closes #
 - [ ] `pnpm check`
 - [ ] `pnpm build` (when the build or dependencies change)
 - [ ] Docs updated (`README.md`, `docs/`) where behaviour changed
-- [ ] After merge: checked on https://www.gdgocipb.com for user-facing changes
+- [ ] After release: checked on https://www.gdgocipb.com for user-facing changes
 
 <!-- UI changes: add a screenshot, on a phone and on desktop when the layout differs. Add anything else you checked by hand. -->
 

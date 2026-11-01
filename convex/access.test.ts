@@ -11,6 +11,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
+import { toJakartaInput } from "../src/lib/assignment";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 10, cursor: null };
@@ -79,6 +80,12 @@ async function fixture() {
   await owner.mutation(api.assignments.setReviewer, { id: assignment, ownerId: grader.id, reviewer: true });
   await member.mutation(api.assignments.submit, { assignmentId: assignment, revision: 0, answer: "Selesai", fileIds: [] });
   await member.mutation(api.cards.ensure, {});
+  const gatheringValues = { title: "Kumpul member", venue: "Javano Coffee", audience: ["member" as const], startsAt: toJakartaInput(Date.now() - 3600000), endsAt: toJakartaInput(Date.now() + 3 * 3600000) };
+  const gathering = await owner.mutation(api.gatherings.create, { values: gatheringValues });
+  const draftGathering = await owner.mutation(api.gatherings.create, { values: gatheringValues });
+  await owner.mutation(api.gatherings.setStatus, { id: gathering, status: "open" });
+  await owner.mutation(api.gatherings.checkIn, { id: gathering, ownerId: grader.id });
+  const checkIn = await t.run(async (ctx) => (await ctx.db.query("checkIns").first())!._id);
   const values = {
     fullName: "Rania Putri", memberType: "member", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania",
     achievement: "Juara 1", eventName: "Hackathon", organizer: "Panitia", level: "Nasional", participation: "Tim", teamName: "Tim A",
@@ -93,7 +100,7 @@ async function fixture() {
     return { submission, appreciation, entry, draftRevision: (await ctx.db.get(draft))!.revision };
   });
   const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, participant, mentor, admin, owner };
-  return { t, callers, ids: { member: member.id, cohort, enrolment, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
+  return { t, callers, ids: { member: member.id, gathering, draftGathering, gatheringValues, checkIn, cohort, enrolment, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 type Ids = Fixture["ids"];
@@ -111,6 +118,8 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.list", api.cohorts.list, STAFF, () => ({})],
   ["cohorts.roster", api.cohorts.roster, STAFF, () => ({ slug: "catalyst-2026" })],
   ["assignments.slugPreview", api.assignments.slugPreview, STAFF, () => ({ slug: "tugas-baru" })],
+  ["gatherings.list", api.gatherings.list, STAFF, () => ({})],
+  ["gatherings.get", api.gatherings.get, STAFF, (ids) => ({ id: ids.gathering })],
   ["assignments.submissions", api.assignments.submissions, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
   ["assignments.exportPage", api.assignments.exportPage, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
   ["assignments.missing", api.assignments.missing, GRADERS, (ids) => ({ id: ids.assignment })],
@@ -136,6 +145,13 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.setReviewer", api.assignments.setReviewer, STAFF, (ids) => ({ id: ids.assignment, ownerId: ids.member, reviewer: true })],
   ["bogorRun.setHidden", api.bogorRun.setHidden, STAFF, (ids) => ({ entryId: ids.entry, hidden: true })],
   ["cards.setRevoked", api.cards.setRevoked, STAFF, (ids) => ({ ownerId: ids.member, revoked: true })],
+  ["gatherings.create", api.gatherings.create, STAFF, (ids) => ({ values: ids.gatheringValues })],
+  ["gatherings.update", api.gatherings.update, STAFF, (ids) => ({ id: ids.draftGathering, values: { ...ids.gatheringValues, title: "Rapat" } })],
+  ["gatherings.setStatus", api.gatherings.setStatus, STAFF, (ids) => ({ id: ids.draftGathering, status: "open" })],
+  ["gatherings.remove", api.gatherings.remove, STAFF, (ids) => ({ id: ids.draftGathering })],
+  ["gatherings.setHelper", api.gatherings.setHelper, STAFF, (ids) => ({ id: ids.gathering, ownerId: ids.member, helper: true })],
+  ["gatherings.checkIn", api.gatherings.checkIn, STAFF, (ids) => ({ id: ids.gathering, ownerId: ids.member })],
+  ["gatherings.removeCheckIn", api.gatherings.removeCheckIn, STAFF, (ids) => ({ id: ids.checkIn })],
   ["cohorts.create", api.cohorts.create, STAFF, () => ({ values: { slug: "intake-2027", name: "Intake 2027", roles: [{ key: "member", name: "Member" }] } })],
   ["cohorts.importEnrolments", api.cohorts.importEnrolments, STAFF, (ids) => ({ cohortId: ids.cohort, rows: [{ email: "baru@example.com", name: "Peserta Baru", role: "hustler" }] })],
   ["cohorts.setRole", api.cohorts.setRole, STAFF, (ids) => ({ id: ids.enrolment, role: "hipster" })],
@@ -147,6 +163,8 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.cancelRevision", api.assignments.cancelRevision, GRADERS, (ids) => ({ submissionId: ids.submission })],
   ["appreciations.review", api.appreciations.review, APRESIASI, (ids) => ({ id: ids.appreciation, revision: 1, status: "reviewing", note: "", postUrl: "" })],
 ];
+
+// Door helpers of one gathering also use gatherings.list, get and checkIn; gatherings.test.ts covers them.
 
 /** Public functions outside the matrix: open to anyone, or acting only on the caller's own data (covered in their own tests). */
 const OPEN: Record<string, string> = {
@@ -163,7 +181,8 @@ const OPEN: Record<string, string> = {
   "cohorts.claimMine": "own: enrolments for the caller's verified email",
   "cohorts.myInvitation": "own: the caller's active enrolment by verified email",
   "cards.mine": "own card, active members", "cards.ensure": "own card, active members", "cards.reissue": "own card, active members",
-  "cards.verify": "public: a scanned card, with more for its holder and staff (cards.test.ts)",
+  "cards.verify": "public: a scanned card, with more for its holder, staff and door helpers (cards.test.ts, gatherings.test.ts)",
+  "gatherings.mine": "own check-ins, active members",
 };
 
 beforeEach(() => vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com"));

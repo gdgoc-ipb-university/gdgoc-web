@@ -86,7 +86,7 @@ describe("member cards", () => {
     // Staff see why.
     expect((await owner.query(api.cards.verify, { token: revoked.token })).status).toBe("revoked");
     expect((await owner.query(api.cards.verify, { token: inactive.token })).status).toBe("inactive");
-    expect(await owner.query(api.cards.verify, { token: "A".repeat(22) })).toEqual({ viewer: "staff", status: "unknown", card: null });
+    expect(await owner.query(api.cards.verify, { token: "A".repeat(22) })).toEqual({ viewer: "staff", status: "unknown", card: null, gatherings: [] });
   });
 
   it("shows the whole card to staff and to its holder, and the guest view to other members", async () => {

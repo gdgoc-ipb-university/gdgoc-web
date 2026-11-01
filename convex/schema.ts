@@ -17,7 +17,10 @@ export const accessChange = v.union(
   v.literal("enrolmentRole"), v.literal("enrolmentStatus"), v.literal("enrolmentEmail"),
   // Staff blocked a member card or lifted the block ("active"/"revoked").
   v.literal("card"),
+  // Staff added or removed a door helper of one gathering ("on"/"off").
+  v.literal("gatheringHelper"),
 );
+export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
 export const cohortRole = v.object({ key: v.string(), name: v.string() });
@@ -160,13 +163,28 @@ export default defineSchema({
     .index("by_number", ["number"]),
   // How many member numbers each chapter year has given out, so a number is never reused, even after a deletion.
   cardCounters: defineTable({ period: v.string(), issued: v.number() }).index("by_period", ["period"]),
+  // A chapter gathering that checks in with member cards (E10, #117). `audience` uses the community tags, as on
+  // assignments; `helpers` are members staff chose to run the door of this gathering only (account IDs, up to 10).
+  gatherings: defineTable({
+    title: v.string(), startsAt: v.number(), endsAt: v.number(), venue: v.string(), audience: v.array(memberType),
+    status: gatheringStatus, helpers: v.array(v.string()), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(),
+  })
+    .index("by_starts", ["startsAt"])
+    .index("by_status", ["status", "startsAt"]),
+  // One per member and gathering. `outsideAudience` marks a guest checked in after the warning.
+  checkIns: defineTable({
+    gatheringId: v.id("gatherings"), ownerId: v.string(), checkedInAt: v.number(), checkedInBy: v.string(),
+    method: v.union(v.literal("scan"), v.literal("manual")), outsideAudience: v.boolean(),
+  })
+    .index("by_gathering_owner", ["gatheringId", "ownerId"])
+    .index("by_owner", ["ownerId", "checkedInAt"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
     // The value before and after: "admin"/"member", "on"/"off", "active"/"deactivated", a community tag as "core:Technical",
     // or a cohort role key. Enrolment changes carry the cohort and enrolment; an unclaimed one has an empty `targetId`.
     from: v.string(), to: v.string(), assignmentId: v.optional(v.id("assignments")),
-    cohortId: v.optional(v.id("cohorts")), enrolmentId: v.optional(v.id("enrolments")),
+    cohortId: v.optional(v.id("cohorts")), enrolmentId: v.optional(v.id("enrolments")), gatheringId: v.optional(v.id("gatherings")),
   })
     .index("by_at", ["at"])
     .index("by_target", ["targetId", "at"]),
@@ -178,8 +196,8 @@ export default defineSchema({
       files: v.number(), gameRuns: v.number(), gameBests: v.number(), reviewerGrants: v.number(), sessions: v.number(), accounts: v.number(),
       // Added with cohorts; rows from before them lack these.
       enrolments: v.optional(v.number()), mentorGrants: v.optional(v.number()),
-      // Added with member cards.
-      cards: v.optional(v.number()),
+      // Added with member cards and gatherings.
+      cards: v.optional(v.number()), checkIns: v.optional(v.number()), helperGrants: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

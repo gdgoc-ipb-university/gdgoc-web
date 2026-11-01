@@ -16,7 +16,7 @@
 .member-pass-sky::after { right: 0; box-shadow: -60px 30px var(--google-blue), -24px 92px var(--green), -36px 104px var(--yellow); }
 .member-pass-head { position: relative; display: grid; justify-items: center; gap: 2px; }
 .member-pass-mark { width: 54px; height: auto; margin-bottom: 6px; }
-.member-pass-org { margin: 0; font: 400 17px/1.25 var(--font-vcr), var(--font-pixel), monospace; }
+.member-pass-org { margin: 0; font: 600 17px/1.25 var(--font-space), sans-serif; }
 .member-pass-year { margin: 0; font: 400 15px/1.4 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; color: var(--muted); }
 .member-pass-avatar { margin-top: 16px; padding: 3px; background: var(--ink); clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px); }
 .member-pass-avatar .member-card-photo { display: grid; place-items: center; width: 72px; height: 72px; object-fit: cover; border: 0; background: #e6eddc; font: 400 38px/1 var(--font-pixel), monospace; }
@@ -63,8 +63,8 @@
 .member-pass-ground { position: absolute; inset: auto 0 0; height: 22px; background: repeating-linear-gradient(90deg, #d9e2dd 0 10px, transparent 0 22px) 0 15px / 100% 2px no-repeat, repeating-linear-gradient(90deg, #6fb24f 0 2px, transparent 0 8px) 0 2px / 100% 2px no-repeat, linear-gradient(#2f6b3a 0 2px, #4f9441 2px 9px, #243645 9px 10px, #778e8c 10px); }
 
 /* VCR OSD Mono titling is set in capitals, with an outline in its own colour drawn behind the fill to give it weight. */
-.member-pass-org, .member-pass-year, .member-card h2, .member-pass-number, .member-pass-stamp, .member-qr-org > span, .member-qr-name, .member-qr-number { text-transform: uppercase; -webkit-text-stroke: .08em currentColor; paint-order: stroke fill; }
-.member-pass-org, .member-pass-year, .member-qr-org > span { -webkit-text-stroke-width: .05em; }
+.member-pass-year, .member-card h2, .member-pass-number, .member-pass-stamp, .member-qr-org > span > span, .member-qr-name, .member-qr-number { text-transform: uppercase; -webkit-text-stroke: .08em currentColor; paint-order: stroke fill; }
+.member-pass-year, .member-qr-org > span > span { -webkit-text-stroke-width: .05em; }
 
 @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
   .member-pass:hover { transform: rotate(calc(var(--tx, 0) * -1.2deg)); }
@@ -122,9 +122,9 @@
 .member-qr-top { display: flex; justify-content: space-between; align-items: center; justify-self: stretch; gap: 12px; padding: 0 12px 0 18px; }
 .member-qr-dialog p { margin: 0; }
 .member-qr-org { display: flex; align-items: center; gap: 10px; }
-.member-qr-org > span { display: grid; font: 400 16px/1.25 var(--font-vcr), var(--font-pixel), monospace; }
-.member-qr-org strong { font-weight: 400; }
-.member-qr-org > span > span { font-size: 14px; letter-spacing: .06em; color: var(--muted); }
+.member-qr-org > span { display: grid; }
+.member-qr-org strong { font: 600 16px/1.25 var(--font-space), sans-serif; }
+.member-qr-org > span > span { font: 400 14px/1.4 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; color: var(--muted); }
 .member-qr-org .member-pass-mark { width: 46px; margin: 0; }
 .member-qr-dialog .member-card-qr { align-self: center; width: min(92vw, 56dvh, 520px); }
 .member-qr-id { display: grid; justify-items: center; gap: 6px; padding-inline: 18px; text-align: center; }

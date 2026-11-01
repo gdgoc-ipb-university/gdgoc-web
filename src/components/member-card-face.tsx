@@ -11,7 +11,7 @@ import { PixelIcon } from "./pixel-icons";
 import "./member-card.css";
 
 /**
- * VCR OSD Mono for the pass's titling (#135): the name, chapter, year, number and stamp. Scoped to the card. No
+ * VCR OSD Mono for the pass's titling (#135): the name, year, number and stamp. Scoped to the card. No
  * generated Arial fallback, so a glyph it lacks (Latin Extended letters, the middle dot) falls back to Pixelify Sans.
  */
 const vcr = localFont({ src: "../fonts/vcr-osd-mono.woff2", variable: "--font-vcr", weight: "400", display: "swap", adjustFontFallback: false });

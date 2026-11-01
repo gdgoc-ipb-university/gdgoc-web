@@ -6,8 +6,8 @@ import { techSupportHelpKinds, techSupportResponseDays } from "./tech-support-re
 /**
  * Tech Support, the Competition Support Hub, shown at /program/tech-support: mentor facilitation for members
  * preparing for competitions outside the chapter, following the program blueprint recorded in issue #91.
- * Requests will be submitted from the dashboard (#92); until that form ships `requestPath` stays null and the
- * page points members to Instagram. The mentor lines are the names and roles Community & External confirmed;
+ * Members request mentoring from the dashboard form (#92), which `requestPath` points the call to action and the FAQ
+ * at; with it set to null the page falls back to Instagram. The mentor lines are the names and roles Community & External confirmed;
  * longer profile copy is added once it is approved.
  */
 export const techSupport = {
@@ -30,8 +30,8 @@ export const techSupport = {
     { name: "Dika Aprilio Wibowo", role: "Lead GDGoC IPB" },
     { name: "Maghfira Aulia Ramadhanti", role: "Founder Omongin.id" },
   ],
-  /** The dashboard request form (#92). Until it exists, the page sends members to Instagram. */
-  requestPath: null as string | null,
+  /** The dashboard request form (#92). Set to null to send members to Instagram instead. */
+  requestPath: "/dashboard/tech-support" as string | null,
 } as const;
 
 /** Where a member goes to request mentoring right now: the dashboard form once it ships, Instagram until then. */

@@ -66,9 +66,11 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
       { href: "/dashboard/tugas", label: isStaff(viewer) ? "Kelola tugas" : "Tugas", icon: "clipboard-note", current: at("/dashboard/tugas") },
       { href: "/dashboard/apresiasi", label: "Apresiasi", icon: "trophy", current: pathname === "/dashboard/apresiasi" },
       { href: "/dashboard/papan-skor", label: "Papan skor", icon: "gamepad", current: at("/dashboard/papan-skor") },
+      { href: "/dashboard/tech-support", label: "Tech Support", icon: "message-text", current: pathname === "/dashboard/tech-support" },
     ] },
-    ...(isStaff(viewer) || isReviewer(viewer) || viewer.doorHelper ? [{ title: "Kelola", items: [
+    ...(isStaff(viewer) || isReviewer(viewer) || viewer.doorHelper || viewer.techSupportHandler ? [{ title: "Kelola", items: [
       ...(isReviewer(viewer) ? [{ href: "/dashboard/apresiasi/tinjau", label: "Tinjau apresiasi", icon: "shield" as const, current: at("/dashboard/apresiasi/tinjau") }] : []),
+      ...(viewer.techSupportHandler ? [{ href: "/dashboard/tech-support/antrean", label: "Antrean Tech Support", icon: "clock" as const, current: at("/dashboard/tech-support/antrean") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/program", label: "Program", icon: "teach" as const, current: at("/dashboard/program") }] : []),
       ...(isStaff(viewer) || viewer.doorHelper ? [{ href: "/dashboard/kehadiran", label: "Kehadiran", icon: "check-double" as const, current: at("/dashboard/kehadiran") }] : []),

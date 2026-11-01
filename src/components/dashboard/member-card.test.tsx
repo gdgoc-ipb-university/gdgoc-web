@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
@@ -35,12 +36,28 @@ describe("member card page", () => {
     expect(result.violations.map(({ id, nodes }) => ({ id, elements: nodes.map((node) => node.html) }))).toEqual([]);
   });
 
-  it("shows the QR alone, full screen, with the name underneath", async () => {
+  it("keeps the QR plain black on white, with no pattern or tint on it", () => {
+    render(<MemberCardPage />);
+    const face = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
+    expect(face.getAttribute("style")).toContain("--accent: #4285f4");
+    const qr = within(face).getByRole("img", { name: /QR kartu anggota/ });
+    expect(qr.getAttribute("class")).toBe("member-card-qr");
+    expect(qr.getAttribute("style")).toBeNull();
+    expect([...qr.querySelectorAll("rect, path")].map((shape) => shape.getAttribute("fill"))).toEqual(["#fff", "#000"]);
+    const rules = readFileSync("src/components/member-card.css", "utf8").match(/[^{}]*member-card-qr[^{}]*\{[^}]*\}/g) ?? [];
+    expect(rules.length).toBeGreaterThan(0);
+    for (const rule of rules) expect(rule).not.toMatch(/gradient|guilloche|opacity|filter|mix-blend/);
+    expect(rules.some((rule) => /^\s*\.member-card-qr \{[^}]*background: #fff;/.test(rule))).toBe(true);
+  });
+
+  it("shows the QR alone, full screen, with the name, number and chapter year underneath", async () => {
     render(<MemberCardPage />);
     await userEvent.click(screen.getByRole("button", { name: "Tampilkan QR" }));
     const dialog = screen.getByRole("dialog", { name: "QR kartu anggota" });
     expect(within(dialog).getByRole("img", { name: "QR kartu anggota Rania Putri" })).toBeTruthy();
     expect(within(dialog).getByText("Rania Putri")).toBeTruthy();
+    expect(within(dialog).getByText("2627-0042")).toBeTruthy();
+    expect(within(dialog).getByText("Kartu anggota · 2026/27")).toBeTruthy();
     await userEvent.click(within(dialog).getByRole("button", { name: "Tutup" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });

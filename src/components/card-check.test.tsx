@@ -58,7 +58,9 @@ describe("member card check", () => {
     const { container } = show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu tidak berlaku");
     expect(screen.getByText("Kartu diblokir pengurus.")).toBeTruthy();
-    expect(screen.getByRole("article", { name: "Kartu anggota Rania Putri" }).textContent).toContain("2627-0042");
+    const face = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
+    expect(face.textContent).toContain("2627-0042");
+    expect(face.querySelector(".member-card-void")?.textContent).toBe("Tidak berlaku");
     expect(screen.getByRole("link", { name: "Buka halaman anggota" }).getAttribute("href")).toBe("/dashboard/anggota/u1");
     await accessible(container);
   });
@@ -111,6 +113,7 @@ describe("member card check", () => {
     answer = { viewer: "self", status: "valid", card: full };
     show();
     expect(screen.getByText(/Ini kartumu/)).toBeTruthy();
+    expect(document.querySelector(".member-card-void")).toBeNull();
     expect(screen.getByRole("link", { name: "Buka kartumu di dashboard" }).getAttribute("href")).toBe("/dashboard/kartu");
   });
 });

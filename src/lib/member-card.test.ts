@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { chapterPeriod, inChapterPeriod } from "./chapter";
-import { cardNumber, cardPath, cardPrefix, cardTokenPattern, photoAt } from "./member-card";
+import { cardNumber, cardPath, cardPrefix, cardTokenPattern, divisionAccent, divisionAccents, photoAt } from "./member-card";
+import { divisions } from "./onboarding";
 
 describe("member card helpers", () => {
   it("numbers cards by chapter year", () => {
@@ -19,6 +20,14 @@ describe("member card helpers", () => {
     expect(photoAt("https://lh3.googleusercontent.com/a/abc=s96-c", 256)).toBe("https://lh3.googleusercontent.com/a/abc=s256-c");
     expect(photoAt("https://example.com/me.png", 256)).toBe("https://example.com/me.png");
     expect([photoAt(null, 256), photoAt("", 256)]).toEqual([null, null]);
+  });
+
+  it("gives each division one accent, a different Google colour for all but Secretary Treasurer", () => {
+    expect(Object.keys(divisionAccents).sort()).toEqual([...divisions].sort());
+    const google = ["#4285f4", "#ea4335", "#fbbc05", "#34a853"];
+    expect(divisions.filter((division) => division !== "Secretary Treasurer").map(divisionAccent).sort()).toEqual([...google].sort());
+    expect(divisionAccent("Technical")).toBe("#4285f4");
+    for (const division of ["Secretary Treasurer", null, undefined, "", "Unknown", "constructor"]) expect(divisionAccent(division), String(division)).toBe("#172d43");
   });
 
   it("holds the chapter year from 00:00 WIB on its first day to the end of its last day", () => {

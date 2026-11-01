@@ -18,17 +18,17 @@ issue-<N>/<slug>/<view>-<width>x<height>[-state].png
 Embed with the raw URL, so the image renders in the PR body:
 
 ```text
-https://raw.githubusercontent.com/gdgoc-ipb-university/gdgoc-web/yorha/pr-evidence/issue-<N>/<slug>/<file>.png
+https://raw.githubusercontent.com/gdgoc-ipb-university/gdgoc-web/docs/pr-evidence/issue-<N>/<slug>/<file>.png
 ```
 
 ## Adding evidence
 
 ```sh
-git fetch origin yorha/pr-evidence
-git worktree add ../pr-evidence yorha/pr-evidence
+git fetch origin docs/pr-evidence
+git worktree add ../pr-evidence docs/pr-evidence
 # copy files into issue-<N>/<slug>/, then
 git -C ../pr-evidence add issue-<N> && git -C ../pr-evidence commit -m "docs(evidence): screenshots for #<N>"
-git -C ../pr-evidence push origin yorha/pr-evidence
+git -C ../pr-evidence push origin docs/pr-evidence
 ```
 
 Never force-push this branch, and never open a pull request from it.

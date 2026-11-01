@@ -77,13 +77,10 @@
 .card-check-verdict[data-valid="false"] > svg { background: #b0372a; }
 .card-check-verdict h1 { margin: 0 0 10px; font: 600 clamp(30px, 7vw, 44px)/1.05 var(--font-pixel), monospace; letter-spacing: -.03em; }
 .card-check-verdict p { margin: 0 0 10px; line-height: 1.55; }
-.card-check-facts { display: grid; gap: 10px; margin: 6px 0 16px; }
-.card-check-facts dt { font: 500 10px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.card-check-facts dd { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 0; font-size: 20px; font-weight: 500; overflow-wrap: anywhere; }
 .card-check-note { font-size: 14px; color: var(--muted); }
 .card-check-time { font: 500 12px/1.5 var(--font-mono), monospace; color: var(--muted); }
 .card-check-verdict p.card-check-time { margin: 12px 0 0; }
-.card-check-card { display: grid; justify-items: start; }
+.card-check-card { display: grid; justify-items: start; max-width: 420px; }
 .card-check-links { margin: 0; }
 
 /* "Catat hadir" for the door, right under the verdict so it is the next thing to press. */

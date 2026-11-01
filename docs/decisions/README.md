@@ -8,7 +8,7 @@ Write a record when a decision settles something a later change could undo by ac
 
 ## Format
 
-Copy [`0000-template.md`](0000-template.md) to the next free number with a short kebab-case title, for example `0006-tech-support-requests-in-the-dashboard.md`, and fill in:
+Copy [`0000-template.md`](0000-template.md) to the next free number with a short kebab-case title, for example `0007-tech-support-requests-in-the-dashboard.md`, and fill in:
 
 - **Status:** Proposed, Accepted, or Superseded by a later record (link it).
 - **Date:** the day the decision was made, not the day it was written down.
@@ -26,3 +26,4 @@ Records are not edited after they are accepted, except to mark them superseded. 
 | [0003](0003-squash-only-merges.md) | `main` accepts squash merges only | 2026-10-04 |
 | [0004](0004-no-ai-attribution.md) | No AI identity or attribution in commits, pull requests, code or docs | 2026-10-13 |
 | [0005](0005-member-card-for-chapter-gatherings.md) | The member card checks people in at the chapter's own gatherings; public events stay on Bevy | 2026-11-01 |
+| [0006](0006-production-deploys-from-release.md) | Production deploys from the `release` branch, not `main` | 2026-11-02 |

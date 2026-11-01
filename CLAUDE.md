@@ -17,6 +17,10 @@ The full rules are in `docs/CONTRIBUTING.md`; these three are the ones to check 
 - Commit per logical step on the branch, with `pnpm check` and `pnpm test` green before each commit.
 - Keep a pull request under about 500 changed lines, or split it into a stack of pull requests.
 
+# Releases
+
+Production deploys from the `release` branch. Never push to `release`, and never merge a `main` → `release` pull request, unless the maintainer asks; see "Releasing" in `README.md`.
+
 # Project board
 
 Cloud sessions cannot call the org project board API. Read or update [project 1](https://github.com/orgs/gdgoc-ipb-university/projects/1) by dispatching the **Project board** workflow (`project-board.yml`, ref `main`) and reading its job log; see `docs/PROJECT_BOARD.md`.

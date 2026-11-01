@@ -1,4 +1,5 @@
 import { chapterPeriod } from "./chapter";
+import type { divisions } from "./onboarding";
 
 /** What a member card verifies as. Guests see every status but `valid` as one "invalid", so a token never confirms an account. */
 export type CardStatus = "valid" | "revoked" | "inactive" | "expired" | "unknown";
@@ -32,3 +33,20 @@ export const cardStatusLabels: Record<CardStatus, string> = {
   expired: "Kartu dari tahun chapter sebelumnya",
   unknown: "Kartu tidak dikenal atau QR sudah diganti",
 };
+
+/**
+ * The role bar's colour on the member pass (#135): one Google colour per division, darkened until white text on it
+ * passes WCAG AA. Five divisions and four colours, so Secretary Treasurer shares the navy ink with BoD without a
+ * division and members. Hex, not CSS variables, because the saved image draws with it too.
+ */
+export const divisionAccents: Record<(typeof divisions)[number], string> = {
+  "Program & Development": "#a35b00",
+  "Media & Creative": "#c5221f",
+  "Technical": "#1967d2",
+  "Community & External": "#188038",
+  "Secretary Treasurer": "#172d43",
+};
+
+export function divisionAccent(division: string | null | undefined) {
+  return division && Object.hasOwn(divisionAccents, division) ? divisionAccents[division as keyof typeof divisionAccents] : "#172d43";
+}

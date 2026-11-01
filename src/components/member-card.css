@@ -1,26 +1,58 @@
 /* The member card (E10, #113): the dashboard card page and the page a scanned QR opens. */
-.member-card { position: relative; display: grid; gap: 18px; width: 100%; max-width: 420px; padding: 0 22px 22px; background: #fff; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); overflow: hidden; }
-.member-card-stripe { display: grid; grid-template-columns: repeat(4, 1fr); height: 8px; margin-inline: -22px; }
-.member-card-stripe span:nth-child(1) { background: var(--google-blue); }
-.member-card-stripe span:nth-child(2) { background: var(--red); }
-.member-card-stripe span:nth-child(3) { background: var(--yellow); }
-.member-card-stripe span:nth-child(4) { background: var(--green); }
-.member-card-head { display: grid; gap: 10px; }
-.member-card-head img { width: min(100%, 280px); height: auto; }
-.member-card-head p { margin: 0; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.member-card-person { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
-.member-card-photo { display: grid; place-items: center; object-fit: cover; border: 1px solid var(--ink); background: #e6eddc; font: 400 44px/1 var(--font-pixel), monospace; }
-.member-card-person h2 { margin: 0 0 6px; font: 600 26px/1.08 var(--font-pixel), monospace; letter-spacing: -.02em; overflow-wrap: anywhere; }
-.member-card-person p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
-.member-card-person .member-card-tag { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 8px; color: var(--ink); font-weight: 500; }
-.member-card-verified { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 5px; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .04em; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: 1px solid #9fceaa; }
-.member-card-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 22px; margin: 0; padding-block: 14px; border-block: 1px dashed #c3ccc0; }
-.member-card-facts > div { display: contents; }
-.member-card-facts dt { font: 500 10px/1.8 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.member-card-facts dd { margin: 0; font: 500 14px/1.5 var(--font-mono), monospace; overflow-wrap: anywhere; }
-.member-card-qr { display: block; width: 100%; max-width: 280px; height: auto; margin-inline: auto; image-rendering: pixelated; }
-.member-card-notice { margin: 0; padding: 16px; font-size: 14px; line-height: 1.55; background: #fdf0ee; border: 1px solid #f0b9b2; }
+/*
+ * The pass (#135): a portrait event badge on a lanyard. The art is drawn at one art pixel per CSS pixel; the QR sits on
+ * its own white plate above the landmark strip, never over art, texture or tint.
+ */
+.member-pass { position: relative; display: grid; width: 100%; max-width: 420px; padding-top: 72px; transform-origin: 50% 0; transition: transform .35s ease-out; }
+.member-pass-lanyard { position: absolute; top: 0; left: 50%; z-index: 2; translate: -50% 0; }
+.member-card { container: member-card / inline-size; position: relative; display: grid; justify-items: center; padding: 40px 20px 0; text-align: center; color: var(--ink); background: #fffcf3; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); overflow: hidden; }
+.member-pass-slot { position: absolute; top: 10px; left: 50%; width: 46px; height: 14px; translate: -50% 0; background: #e3e0d2; border: 2px solid var(--ink); box-shadow: inset 0 3px 0 #c9c4b0; }
+.member-pass-sky { position: absolute; inset: 0 0 auto; height: 120px; pointer-events: none; }
+.member-pass-sky .member-pass-cloud:first-child { position: absolute; top: 28px; left: 12px; }
+.member-pass-sky .member-pass-cloud:last-child { position: absolute; top: 58px; right: 10px; }
+/* Google-colour confetti, one square repeated by box-shadow from each top corner. */
+.member-pass-sky::before, .member-pass-sky::after { content: ""; position: absolute; top: 0; width: 6px; height: 6px; }
+.member-pass-sky::before { left: 0; box-shadow: 70px 18px var(--red), 84px 42px var(--yellow), 26px 64px var(--google-blue); }
+.member-pass-sky::after { right: 0; box-shadow: -60px 30px var(--google-blue), -24px 92px var(--green), -36px 104px var(--yellow); }
+.member-pass-head { position: relative; display: grid; justify-items: center; gap: 2px; }
+.member-pass-mark { width: 54px; height: auto; margin-bottom: 6px; }
+.member-pass-org { margin: 0; font: 600 17px/1.25 var(--font-space), sans-serif; }
+.member-pass-year { margin: 0; font: 500 13px/1.4 var(--font-mono), monospace; letter-spacing: .08em; color: var(--muted); }
+.member-pass-avatar { margin-top: 16px; padding: 3px; background: var(--ink); clip-path: polygon(3px 0, calc(100% - 3px) 0, calc(100% - 3px) 3px, 100% 3px, 100% calc(100% - 3px), calc(100% - 3px) calc(100% - 3px), calc(100% - 3px) 100%, 3px 100%, 3px calc(100% - 3px), 0 calc(100% - 3px), 0 3px, 3px 3px); }
+.member-pass-avatar .member-card-photo { display: grid; place-items: center; width: 72px; height: 72px; object-fit: cover; border: 0; background: #e6eddc; font: 400 38px/1 var(--font-pixel), monospace; }
+.member-card h2 { margin: 12px 0 0; font: 600 clamp(30px, 10.5cqi, 42px)/1.05 var(--font-pixel), monospace; letter-spacing: -.02em; text-wrap: balance; overflow-wrap: anywhere; }
+.member-pass-number { margin: 6px 0 0; font: 500 17px/1.4 var(--font-mono), monospace; letter-spacing: .14em; }
+.member-pass-role { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 12px; width: 100%; margin: 18px 0 0; padding: 9px 12px; font: 600 15px/1.3 var(--font-space), sans-serif; color: #fff; background: var(--accent, var(--ink)); border: 1px solid var(--ink); box-shadow: 3px 3px 0 var(--ink); }
+.member-pass-role .member-card-verified { padding: 0 0 0 12px; color: #fff; background: none; border: 0; border-left: 1px solid rgb(255 255 255 / .55); }
+.member-card-verified { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 5px; font: 500 11px/1.4 var(--font-mono), monospace; letter-spacing: .04em; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: 1px solid #9fceaa; }
+.member-pass-facts { display: grid; width: 100%; margin: 14px 0 0; padding: 0; list-style: none; text-align: left; }
+.member-pass-facts li { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; padding: 9px 2px; font-size: 13px; line-height: 1.4; border-bottom: 1px solid rgb(23 45 67 / .2); }
+.member-pass-facts li > span:last-child { overflow-wrap: anywhere; }
+.member-pass-facts svg { flex: none; }
+.member-pass-label { font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.member-pass-label + span { font: 500 13px/1.4 var(--font-mono), monospace; }
+.member-pass-code { position: relative; z-index: 1; width: 100%; max-width: 282px; margin-top: 18px; }
+.member-card-qr { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--ink); image-rendering: pixelated; }
+.member-card-notice { margin: 0; padding: 16px; font-size: 14px; line-height: 1.55; text-align: left; background: #fdf0ee; border: 1px solid #f0b9b2; }
 .member-card-notice strong { display: block; margin-bottom: 4px; }
+.member-pass-stamp { display: inline-flex; align-items: center; gap: 8px; margin: 28px 0 6px; padding: 8px 16px; font: 600 30px/1 var(--font-pixel), monospace; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: 3px solid currentColor; transform: rotate(-5deg); }
+.member-pass-stamp[data-stamp="invalid"] { color: #b0372a; background: #fdf0ee; }
+.member-pass-town { position: relative; justify-self: stretch; height: 150px; margin: 14px -20px 0; }
+.member-pass-town img { position: absolute; bottom: 17px; }
+.member-pass-town .member-pass-cloud:nth-child(1) { top: 10px; bottom: auto; left: 22%; }
+.member-pass-town .member-pass-cloud:nth-child(2) { top: 2px; bottom: auto; right: 24%; }
+.member-pass-kujang { left: 6px; }
+.member-pass-tree:nth-of-type(6) { left: 70px; }
+.member-pass-tree:nth-of-type(7) { right: 106px; }
+.member-pass-tree:nth-of-type(8) { right: 2px; }
+.member-pass-gate { left: 50%; translate: -56% 0; }
+.member-pass-ahn { right: 4px; }
+.member-pass-town::before { content: ""; position: absolute; top: 40px; left: 50%; width: 6px; height: 6px; box-shadow: -96px 0 var(--green), -80px 26px var(--red), 70px -8px var(--yellow), 88px 18px var(--google-blue); }
+.member-pass-ground { position: absolute; inset: auto 0 0; height: 22px; background: repeating-linear-gradient(90deg, #d9e2dd 0 10px, transparent 0 22px) 0 15px / 100% 2px no-repeat, repeating-linear-gradient(90deg, #6fb24f 0 2px, transparent 0 8px) 0 2px / 100% 2px no-repeat, linear-gradient(#2f6b3a 0 2px, #4f9441 2px 9px, #243645 9px 10px, #778e8c 10px); }
+
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .member-pass:hover { transform: rotate(calc(var(--tx, 0) * -1.2deg)); }
+}
 
 /* The dashboard page: the card beside what to do with it at the door. */
 .member-card-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 32px; align-items: start; }
@@ -83,9 +115,4 @@
 @media (max-width: 900px) {
   .member-card-layout { grid-template-columns: minmax(0, 1fr); justify-items: center; }
   .member-card-side { width: 100%; max-width: 420px; }
-}
-@media (max-width: 400px) {
-  .member-card { padding-inline: 16px; box-shadow: 4px 4px 0 var(--ink); }
-  .member-card-stripe { margin-inline: -16px; }
-  .member-card-person { grid-template-columns: 1fr; }
 }

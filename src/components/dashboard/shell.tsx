@@ -89,7 +89,8 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
         <PixelIcon name={open ? "close" : "menu"} size={22} /><span>{open ? "Tutup" : "Menu"}</span>
       </button>
     </header>
-    <aside id="dash-sidebar" className="dash-sidebar" data-open={open} aria-label="Dashboard">
+    {/* Lenis takes wheel events unless an ancestor has data-lenis-prevent; this lets the nav, and on very short windows the whole sidebar, scroll. */}
+    <aside id="dash-sidebar" className="dash-sidebar" data-open={open} aria-label="Dashboard" data-lenis-prevent>
       <Link href="/" className="dash-brand" aria-label="GDGoC IPB — beranda"><BrandLogo preload /></Link>
       <nav className="dash-nav" aria-label="Navigasi dashboard">{groups.map((group) => <div key={group.title} className="dash-nav-group">
         <p className="dash-nav-heading" id={`nav-${group.title}`}>{group.title}</p>

@@ -81,6 +81,8 @@ const paths = {
 } satisfies Record<string, string[]>;
 
 export type PixelIconName = keyof typeof paths;
+/** The 24×24 path data, for drawing an icon on a canvas. */
+export const pixelIconPaths: Record<PixelIconName, string[]> = paths;
 
 export function PixelIcon({ name, size = 20, className }: { name: PixelIconName; size?: number; className?: string }) {
   return <svg className={className} aria-hidden="true" focusable="false" width={size} height={size} viewBox="0 0 24 24" fill="currentColor" shapeRendering="crispEdges">

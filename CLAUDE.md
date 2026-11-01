@@ -11,11 +11,12 @@ Do not credit or mention AI anywhere, unless a maintainer explicitly asks for it
 
 # Working on an issue
 
-The full rules are in `docs/CONTRIBUTING.md`; these three are the ones to check every time.
+The full rules are in `docs/CONTRIBUTING.md`; these four are the ones to check every time.
 
 - Post the approach on the issue before implementing: a short comment on what will change and where.
 - Commit per logical step on the branch, with `pnpm check` and `pnpm test` green before each commit.
 - Keep a pull request under about 500 changed lines, or split it into a stack of pull requests.
+- Put screenshots and other evidence on the `yorha/pr-evidence` branch under `issue-<N>/<slug>/` and embed them in the pull request by raw URL, never on a new branch; never force-push or merge `yorha/pr-evidence`. See "Evidence" in `docs/CONTRIBUTING.md`.
 
 # Releases
 

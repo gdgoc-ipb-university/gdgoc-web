@@ -1,6 +1,7 @@
 import { Arrow } from "./icons";
 import { Reveal } from "./reveal";
 import { communityLinks } from "@/lib/community";
+import { team } from "@/lib/team";
 import { techLeague } from "@/lib/tech-league";
 import Link from "next/link";
 import { BogorRun } from "./bogor-run";
@@ -43,6 +44,7 @@ export function JoinFooter() {
             <nav aria-label="Jelajahi komunitas">
               <p className="eyebrow">KENALI KAMI</p>
               <Link href="/tentang">Tentang komunitas</Link>
+              <Link href={team.path}>Tim {team.year}</Link>
               <Link href="/bergabung">Cara bergabung</Link>
               <Link href="/program">Program kami</Link>
               <Link href={techLeague.path}>Tech League</Link>

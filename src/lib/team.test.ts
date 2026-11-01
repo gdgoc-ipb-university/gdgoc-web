@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { siteUrl } from "./site";
+import { indexablePaths, siteUrl } from "./site";
 import { leaderInitial, team, teamJsonLd, type Leader } from "./team";
 
 describe("team page", () => {
@@ -7,6 +7,10 @@ describe("team page", () => {
     expect(team.leaders.map((leader) => leader.role)).toEqual(["Lead", "Co-Lead"]);
     expect(team.divisions.map((division) => division.name)).toEqual(["Program & Development", "Community & External", "Media & Creative", "Technical", "Secretary-Treasurer"]);
     for (const division of team.divisions) expect(Object.keys(division)).toEqual(["name", "purpose"]);
+  });
+
+  it("is listed in the sitemap", () => {
+    expect(indexablePaths).toContain(team.path);
   });
 
   it("keeps the copy free of em dashes", () => {

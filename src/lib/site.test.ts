@@ -7,7 +7,7 @@ describe("indexable pages", () => {
     for (const path of indexablePaths) expect(path).toMatch(/^\/[a-z0-9/-]*$/);
   });
 
-  it("includes the about and join pages", () => {
-    expect(indexablePaths).toEqual(expect.arrayContaining(["/tentang", "/bergabung"]));
+  it("includes the about, team and join pages", () => {
+    expect(indexablePaths).toEqual(expect.arrayContaining(["/tentang", "/tim", "/bergabung"]));
   });
 });

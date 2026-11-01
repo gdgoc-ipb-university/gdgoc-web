@@ -20,7 +20,7 @@ Versions are the ones in `package.json`.
 | Lint | ESLint with `eslint-config-next` | 9.39.5 |
 | Language and runtime | TypeScript on Node.js | ^5, 24.x |
 | Package manager | pnpm | 11.22.0 |
-| Hosting | Vercel, deploying `main` | |
+| Hosting | Vercel, deploying the `release` branch | |
 
 `docs/ARCHITECTURE.md` shows how these connect.
 
@@ -224,7 +224,7 @@ Google Search shows only part of the site's JSON-LD. It uses the `BreadcrumbList
 
 Live site: [www.gdgocipb.com](https://www.gdgocipb.com/). `gdgocipb.com` and `gdgoc-ipb-web.vercel.app` permanently redirect (308) to it, preserving the path, so sign-in always runs on the one origin Better Auth trusts.
 
-The source repository is `gdgoc-ipb-university/gdgoc-web`. The `gdgoc-ipb-web` Vercel project in `aldio-lisafrons-projects` is connected to it through Vercel's Git integration: every push to `main` deploys production. Vercel runs this build command:
+The source repository is `gdgoc-ipb-university/gdgoc-web`. The `gdgoc-ipb-web` Vercel project in `aldio-lisafrons-projects` is connected to it through Vercel's Git integration, with `release` as its production branch: every push to `release` deploys production. `main` is the integration branch. Pull requests merge there, and the staging VM at [gdgoc-ipb.yorhagarden.xyz](https://gdgoc-ipb.yorhagarden.xyz) follows it as the preview of the next release; a merge to `main` does not go live on its own ([ADR 0006](docs/decisions/0006-production-deploys-from-release.md)). Vercel runs this build command:
 
 ```sh
 pnpm exec convex deploy --cmd 'pnpm build'
@@ -232,7 +232,7 @@ pnpm exec convex deploy --cmd 'pnpm build'
 
 It deploys the Convex backend first, then runs `next build` with `NEXT_PUBLIC_CONVEX_URL` and `NEXT_PUBLIC_CONVEX_SITE_URL` set to the production deployment, so the backend always ships before the frontend that depends on it. Vercel stores `CONVEX_DEPLOY_KEY` (a production deploy key, Production environment only, secret) and `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com`. Auth secrets live only in Convex.
 
-Only production builds run. The project's Ignored Build Step skips other branches, because the deploy key is production-only and Google OAuth is not registered for preview URLs.
+Only production builds run. The project's Ignored Build Step skips every branch but `release`, including `main`, because the deploy key is production-only and Google OAuth is not registered for preview URLs.
 
 Node.js is pinned to 24.x, matching local validation and a [supported Vercel runtime](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions). `.vercel/` is ignored by Git, and `.vercelignore` excludes design sources and internal documentation from CLI uploads. To link a new checkout for CLI commands (environment variables, logs, inspection):
 
@@ -241,3 +241,12 @@ pnpm dlx --allow-build=esbuild vercel@59.23.2 link --yes --scope aldio-lisafrons
 ```
 
 See `docs/APRESIASI.md` for the backend environments and release checks.
+
+### Releasing
+
+1. Run **Actions → Release → Run workflow**. It opens a pull request from `main` into `release`, titled `chore(release): YYYY-MM-DD WIB`, that lists every commit, pull request and closed issue it ships. It stops with a notice when `main` has nothing new, and refuses when a release pull request is already open.
+2. Check those changes on staging, and note any Convex schema change, deleted or renamed function, or new environment variable in the pull request: the build deploys Convex production before the frontend.
+3. Merge the pull request with a **merge commit**, not squash. The "Protect release" ruleset allows only merge commits, requires resolved threads and the "Lint, typecheck and test" check (already on `main`'s tip), and blocks force pushes and deletion.
+4. After the Vercel deployment is ready, check the shipped changes on [www.gdgocipb.com](https://www.gdgocipb.com/).
+
+A hotfix takes the same path: fix it on `main` by pull request, then release. Org admins can bypass the ruleset only during an incident.

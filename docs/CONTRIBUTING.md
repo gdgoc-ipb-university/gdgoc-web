@@ -14,7 +14,7 @@ The [project board](https://github.com/orgs/gdgoc-ipb-university/projects/1) rea
 
 "Branches are `yorha/<kebab-name>`; commit and PR titles follow Conventional Commits with the Area as scope" ([board](https://github.com/orgs/gdgoc-ipb-university/projects/1)).
 
-- **Trunk.** Branch from `main` and merge back into `main`. There is no `release` branch, because every push to `main` deploys production. The change type goes in the branch slug (`yorha/fix-filter-scroll`), not in a `feature/` or `fix/` prefix.
+- **Trunk.** Branch from `main` and merge back into `main`. `main` is the integration branch, previewed on staging; production deploys from `release`, which only takes release pull requests (see [Releasing](#releasing)). The change type goes in the branch slug (`yorha/fix-filter-scroll`), not in a `feature/` or `fix/` prefix.
 - **Granularity.** One logical change per commit, roughly 5 to 100 lines: a schema change, the function that uses it, the page, its tests, the docs. A commit should build and pass the tests on its own.
 - **Frequency.** Commit when a step is finished, not at the end of the day. Several small commits on the branch are fine; the pull request is squashed into one commit on `main` ([ADR 0003](decisions/0003-squash-only-merges.md)).
 - **Message.** `type(scope): description`, for example `feat(anggota): filter dialog with a shared Select`.
@@ -39,7 +39,18 @@ The [project board](https://github.com/orgs/gdgoc-ipb-university/projects/1) rea
   - **Notes:** follow-ups, open questions, and performance comparisons or migration steps when they apply.
 - **Review.** "Human review only when asked for" ([board](https://github.com/orgs/gdgoc-ipb-university/projects/1)). There are no required reviewers; ask on the pull request when you want one.
 - **Merge.** CI ("Lint, typecheck and test") must pass on the pull request's own head commit, and `main` accepts squash merges only.
-- **Done.** "Done means shipped: `pnpm test`, `pnpm check`, `pnpm build` pass, docs are updated, and user-facing changes are checked on production" ([board](https://github.com/orgs/gdgoc-ipb-university/projects/1)).
+- **Done.** "Done means shipped: `pnpm test`, `pnpm check`, `pnpm build` pass, docs are updated, and user-facing changes are checked on production" ([board](https://github.com/orgs/gdgoc-ipb-university/projects/1)). The card moves to Done when the pull request merges to `main`; the production check follows the next release.
+
+## Releasing
+
+Production deploys from `release`, not `main` ([ADR 0006](decisions/0006-production-deploys-from-release.md)). A merge to `main` reaches the staging VM at https://gdgoc-ipb.yorhagarden.xyz and waits there for the next release.
+
+1. The maintainer runs **Actions → Release → Run workflow**. It opens a `main` → `release` pull request, `chore(release): YYYY-MM-DD WIB`, listing every commit, pull request and closed issue it ships.
+2. Check those changes on staging, and note in the release pull request any Convex schema change, deleted or renamed function, or new environment variable: the Vercel build deploys Convex production before the frontend.
+3. Merge it with a merge commit, never squash. The "Protect release" ruleset allows only merge commits and requires the same CI check as `main`.
+4. Check user-facing changes on https://www.gdgocipb.com once Vercel finishes.
+
+A hotfix is a normal pull request to `main` followed by a release. Org admins can bypass the `release` ruleset only during an incident. Never push to `release` directly.
 
 ## Documentation
 

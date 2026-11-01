@@ -32,7 +32,7 @@ describe("Tech Support request form", () => {
     const [matched, waiting] = within(list).getAllByRole("listitem");
     expect(matched.textContent).toContain("Mentor ditemukan");
     expect(matched.textContent).toContain("Mentor: Dika Aprilio Wibowo");
-    expect(matched.textContent).toContain("Tim Tim Dino");
+    expect(matched.textContent).toContain("Tim: Tim Dino");
     expect(waiting.textContent).toContain("Mentor sedang dicarikan.");
     expect(within(waiting).getByRole("link", { name: /Hology/ }).getAttribute("href")).toBe("https://hology.ub.ac.id");
     await accessible(container);

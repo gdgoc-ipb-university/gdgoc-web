@@ -97,7 +97,7 @@ export function TechSupportPage() {
   const open = rows?.filter((row) => row.status !== "closed").length ?? 0;
   return <>
     <div className="dash-intro"><p className="eyebrow">TECH SUPPORT</p><h1>Tech Support.</h1>
-      <p>Sedang bersiap ikut kompetisi di luar komunitas? Ceritakan lomba dan progresmu, lalu GDGoC IPB mencarikan mentor yang cocok. Permintaan dibalas paling lama {techSupportResponseDays} hari kerja. <Link href="/program/tech-support">Lihat alur dan mentornya</Link>.</p></div>
+      <p>Sedang bersiap ikut kompetisi di luar komunitas? Ceritakan lomba dan progresmu, lalu GDGoC IPB mencarikan mentor yang cocok. Permintaan dibalas paling lama {techSupportResponseDays} hari kerja. <Link className="text-link" href="/program/tech-support">Lihat alur dan mentornya</Link>.</p></div>
     {rows === undefined ? <LoadingPanel label="Memuat permintaanmu…" /> : <div className="dash-support-layout">
       <RequestForm disabled={open >= maxOpenRequests} />
       <section aria-labelledby="support-mine-title" className="dash-support-mine">
@@ -106,7 +106,7 @@ export function TechSupportPage() {
           : <ul className="dash-support-list">{rows.map((row) => <li key={row._id} className="app-panel">
             <span className="dash-badges"><TechSupportStatusBadge status={row.status} /></span>
             <h3><a href={row.competitionUrl} target="_blank" rel="noreferrer">{row.competition}<PixelIcon name="external-link" size={16} /></a></h3>
-            <p className="app-small">Tenggat {deadlineLabel(row.deadline)} · {row.participation === "team" ? `Tim ${row.teamName}` : "Sendiri"} · dikirim {dateLabel(row.submittedAt)}</p>
+            <p className="app-small">Tenggat {deadlineLabel(row.deadline)} · {row.participation === "team" ? `Tim: ${row.teamName}` : "Sendiri"} · dikirim {dateLabel(row.submittedAt)}</p>
             <p className="app-small">{row.helpKinds.join(", ")}</p>
             <p>{row.mentorName && row.status !== "new" ? <>Mentor: <strong>{row.mentorName}</strong>. Tim Tech Support akan menghubungimu untuk konsultasi pertama.</> : row.status === "closed" ? "Permintaan ini sudah ditutup." : "Mentor sedang dicarikan."}</p>
           </li>)}</ul>}

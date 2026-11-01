@@ -58,7 +58,7 @@ function HandleDialog({ request, onClose }: { request: Request; onClose: () => v
         <dt>Pemohon</dt><dd>{request.member.name}{request.member.memberType && ` · ${memberTagLabel(request.member.memberType, request.member.division)}`}{request.member.campus && ` · ${request.member.campus}`}</dd>
         {request.member.email && <><dt>Email</dt><dd className="dash-support-email">{request.member.email} <CopyIconButton text={request.member.email} label="Salin email" /></dd></>}
         <dt>Kompetisi</dt><dd><a href={request.competitionUrl} target="_blank" rel="noreferrer">{request.competition}</a>, tenggat {deadlineLabel(request.deadline)}</dd>
-        <dt>Ikut sebagai</dt><dd>{request.participation === "team" ? `Tim ${request.teamName}` : participationLabels.solo}</dd>
+        <dt>Ikut sebagai</dt><dd>{request.participation === "team" ? `Tim: ${request.teamName}` : participationLabels.solo}</dd>
         <dt>Bantuan</dt><dd>{request.helpKinds.join(", ")}</dd>
         <dt>Progres</dt><dd>{request.progress}</dd>
       </dl>
@@ -107,7 +107,7 @@ export function TechSupportQueue() {
         <thead><tr><th scope="col">Kompetisi</th><th scope="col">Pemohon</th><th scope="col">Masuk</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Aksi</span></th></tr></thead>
         <tbody>{rows.map((request) => <tr key={request._id} data-overdue={isOverdue(request, now) || undefined}>
           <td><a className="dash-support-competition" href={request.competitionUrl} target="_blank" rel="noreferrer"><strong>{request.competition}</strong><PixelIcon name="external-link" size={14} /></a>
-            <small className="app-small dash-support-clock">Tenggat {deadlineLabel(request.deadline)} · {request.participation === "team" ? `Tim ${request.teamName}` : "Sendiri"} · {request.helpKinds.join(", ")}</small></td>
+            <small className="app-small dash-support-clock">Tenggat {deadlineLabel(request.deadline)} · {request.participation === "team" ? `Tim: ${request.teamName}` : "Sendiri"} · {request.helpKinds.join(", ")}</small></td>
           <td>{request.member.name}<small className="app-small dash-support-clock">{request.member.campus}</small></td>
           <td>{dateLabel(request.submittedAt)}<ResponseClock request={request} now={now} /></td>
           <td><TechSupportStatusBadge status={request.status} />{request.mentorName && <small className="app-small dash-support-clock">Mentor: {request.mentorName}</small>}</td>

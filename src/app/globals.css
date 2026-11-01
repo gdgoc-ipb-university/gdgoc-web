@@ -339,7 +339,18 @@ summary:focus-visible {
 .about-page section > p + p { margin-top: 12px; }
 .about-page section > p a { color: var(--blue); text-decoration: underline; text-underline-offset: 3px; }
 .about-vision { max-width: 720px; font-size: 20px; line-height: 1.5; }
-.catalyst-points { display: grid; gap: 8px; margin: 0; padding-left: 20px; color: var(--muted); }
+.team-leaders { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.team-leaders li { display: flex; align-items: center; gap: 18px; padding: 20px; border: 1px solid var(--line); background: #fffefa; }
+.team-leaders li > span:last-child { display: grid; gap: 4px; }
+.team-leaders strong { font-size: 20px; }
+.team-leaders small { font: 500 12px/1.6 var(--font-mono), monospace; letter-spacing: 0.06em; text-transform: uppercase; color: var(--blue); }
+.team-avatar { display: grid; place-items: center; flex: none; width: 88px; height: 88px; background: var(--google-blue); color: #fff; font: 500 44px/1 var(--font-pixel), monospace; box-shadow: 4px 4px 0 var(--ink); object-fit: cover; }
+.team-leaders li:nth-child(2) .team-avatar { background: var(--green); }
+.team-links { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; }
+.team-links a { color: var(--blue); }
+.team-divisions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) { .team-leaders, .team-divisions { grid-template-columns: 1fr; } }
+.catalyst-points {display: grid; gap: 8px; margin: 0; padding-left: 20px; color: var(--muted); }
 .support-steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; border-left: 2px solid var(--line); }
 .support-steps li { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; padding: 12px 0 12px 18px; }
 .support-step-number { font-family: var(--font-mono), monospace; font-size: 13px; color: var(--blue); padding-top: 2px; }

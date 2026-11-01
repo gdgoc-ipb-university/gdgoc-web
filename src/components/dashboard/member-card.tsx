@@ -65,11 +65,11 @@ function fitText(g: CanvasRenderingContext2D, text: string, weight: string, size
   return `${cut}…`;
 }
 
-/** The name in at most two balanced lines, shrinking the font until the longer line fits. */
+/** The name in at most two balanced lines, shrinking the font until the longer line fits, tracked .02em as on the face. */
 function nameLines(g: CanvasRenderingContext2D, name: string, family: string, size: number, min: number, width: number) {
   const words = name.trim().split(/\s+/);
   for (let px = size; px >= min; px--) {
-    g.font = `400 ${px}px ${family}`;
+    g.font = `400 ${px}px ${family}`; g.letterSpacing = `${px * .02}px`;
     if (g.measureText(name).width <= width) return { px, lines: [name] };
     let best: string[] | null = null, widest = Infinity;
     for (let cut = 1; cut < words.length; cut++) {
@@ -110,8 +110,11 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   const art = Object.fromEntries(names.map((name, index) => [name, loaded[index]])) as Record<keyof typeof passArt, HTMLImageElement | null>;
   if (names.some((name) => !art[name])) throw new Error("art");
   const draw = (name: keyof typeof passArt, x: number, y: number, times = 1) => g.drawImage(art[name]!, x, y, passArt[name].width * times, passArt[name].height * times);
-  const text = (value: string, x: number, y: number, font: string, color: string, spacing = "0px") => {
-    g.font = font; g.fillStyle = color; g.letterSpacing = spacing; g.fillText(value, x, y); g.letterSpacing = "0px";
+  // `outline` is the width of a stroke in the text's own colour drawn under the fill, the face's outlined capitals.
+  const text = (value: string, x: number, y: number, font: string, color: string, spacing = "0px", outline = 0) => {
+    g.font = font; g.fillStyle = color; g.letterSpacing = spacing;
+    if (outline) { g.strokeStyle = color; g.lineWidth = outline; g.lineJoin = "miter"; g.strokeText(value, x, y); }
+    g.fillText(value, x, y); g.letterSpacing = "0px";
   };
   const icon = (name: "building" | "calendar" | "check" | "close", x: number, y: number, size: number, color: string) => {
     g.save(); g.translate(x, y); g.scale(size / 24, size / 24); g.fillStyle = color;
@@ -123,7 +126,8 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   const measure = document.createElement("canvas").getContext("2d");
   if (!measure) throw new Error("canvas");
   let g = measure;
-  const name = nameLines(g, card.name, vcr, 32, 22, content);
+  const name = nameLines(g, card.name.toUpperCase(), vcr, 32, 22, content);
+  g.letterSpacing = "0px";
   const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : "";
   g.font = `600 15px ${space}`;
   const tagWidth = g.measureText(tag).width;
@@ -160,8 +164,8 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   g.textAlign = "center";
   draw("mark", mid - 27, y, 54 / passArt.mark.width);
   y += 34 + 6;
-  text("GDGoC IPB University", mid, y + 16, `400 17px ${vcr}`, ink);
-  text(card.period, mid, y + 21 + 2 + 16, `400 15px ${vcr}`, muted, ".9px");
+  text("GDGoC IPB University", mid, y + 16, `600 17px ${space}`, ink);
+  text(card.period.toUpperCase(), mid, y + 21 + 2 + 16, `400 15px ${vcr}`, muted, ".9px", 15 * .05);
   y += 21 + 2 + 21 + 16;
   // The photo or pixel initial in a pixel frame with notched corners.
   g.fillStyle = ink; g.fillRect(mid - 39, y, 78, 78);
@@ -170,9 +174,9 @@ export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus"
   else { g.fillStyle = "#e6eddc"; g.fillRect(mid - 36, y + 3, 72, 72); text(card.name.trim().slice(0, 1).toUpperCase(), mid, y + 3 + 50, `400 38px ${pixel}`, ink); }
   y += 78 + 12;
   // The name, large, and the number.
-  name.lines.forEach((line, index) => text(line, mid, y + name.px * (1.08 * index + .85), `400 ${name.px}px ${vcr}`, ink));
+  name.lines.forEach((line, index) => text(line, mid, y + name.px * (1.08 * index + .85), `400 ${name.px}px ${vcr}`, ink, `${name.px * .02}px`, name.px * .08));
   y += nameHeight + 6;
-  text(card.number, mid, y + 20, `400 19px ${vcr}`, ink, "2.28px");
+  text(card.number.toUpperCase(), mid, y + 20, `400 19px ${vcr}`, ink, "2.28px", 19 * .08);
   y += 27;
   // The role bar in the division's colour, with the verified mark.
   if (tag) {

@@ -672,3 +672,7 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-support-detail dt { font-size: 12px; color: var(--muted); }
 .dash-support-detail dd { margin: 0 0 8px; white-space: pre-line; }
 @media (max-width: 960px) { .dash-support-layout { grid-template-columns: 1fr; } }
+.dash-support-handle { border: 0; padding: 0; margin: 0; min-width: 0; }
+.dash-support-email { display: flex; align-items: center; gap: 8px; }
+.dash-table tr[data-overdue] td:first-child { box-shadow: inset 3px 0 0 #c24032; }
+.dash-stats .app-small { font: 400 13px/1 var(--font-body), sans-serif; color: var(--muted); }

@@ -2,6 +2,28 @@
 
 GDGoC IPB — Komunitas Mahasiswa Bogor. Community profile with a geometric Three.js campus environment, Next.js App Router, and Lenis.
 
+## Tech stack
+
+Versions are the ones in `package.json`.
+
+| Part | Tool | Version |
+| --- | --- | --- |
+| Framework | Next.js App Router | 16.3.5 |
+| UI | React | 19.2.8 |
+| Backend and database | Convex | ^1.46.0 |
+| Sign-in | Better Auth with Google, through `@convex-dev/better-auth` | ~1.6.33, ^0.12.5 |
+| 3D campus | Three.js | 0.186.0 |
+| Smooth scrolling | Lenis | 1.3.26 |
+| Rich text | Tiptap | 3.31.3 |
+| Accessible components | react-aria-components | 1.21.1 |
+| Tests | Vitest, with `convex-test` and Testing Library | ^4.1.11 |
+| Lint | ESLint with `eslint-config-next` | 9.39.5 |
+| Language and runtime | TypeScript on Node.js | ^5, 24.x |
+| Package manager | pnpm | 11.22.0 |
+| Hosting | Vercel, deploying `main` | |
+
+`docs/ARCHITECTURE.md` shows how these connect.
+
 ## Run locally
 
 ```sh
@@ -22,6 +44,27 @@ pnpm start
 ```
 
 Node 24 and pnpm 11.22.0 are used; `.node-version` pins the major for fnm, nvm, mise and similar tools, matching Vercel. GitHub Actions runs `pnpm check` and `pnpm test` on every pull request and on pushes to `main` (`.github/workflows/ci.yml`); it needs no Convex or Vercel secrets because the suite runs against `convex-test`. The landing renders without a backend; only the Bogor Run leaderboard, loaded once the game scrolls into view, talks to Convex. The Apresiasi workspace uses Convex and Google OAuth; configure the variables in `.env.example` and follow `docs/APRESIASI.md`. The leaderboard adds no environment variables: its run tokens are signed with a key derived from `BETTER_AUTH_SECRET`, and without that secret the game plays unranked.
+
+Before you change anything, read `docs/CONTRIBUTING.md`: how work starts on an issue, commits, pull requests, and what never gets committed.
+
+## Environment variables
+
+`.env.example` lists them. The first group goes in `.env.local`; the second is set on each Convex deployment with `pnpm exec convex env set`, never in a `NEXT_PUBLIC_*` variable.
+
+| Name | Where it is set | Purpose | Required |
+| --- | --- | --- | --- |
+| `CONVEX_DEPLOYMENT` | `.env.local`, written by `pnpm exec convex dev` | The development deployment the Convex CLI pushes to | Locally |
+| `NEXT_PUBLIC_CONVEX_URL` | `.env.local`, written by `pnpm exec convex dev`; on Vercel, by `convex deploy` during the build | Convex client URL for queries and mutations | Yes |
+| `NEXT_PUBLIC_CONVEX_SITE_URL` | As above | Convex HTTP URL that the Better Auth handler forwards to | Yes |
+| `NEXT_PUBLIC_SITE_URL` | `.env.local`; Vercel | Origin for canonical URLs, the sitemap and Open Graph | Optional, falls back to `https://www.gdgocipb.com` |
+| `DEV_ALLOWED_ORIGINS` | `.env.local` | Comma-separated hostnames (for example a Cloudflare tunnel) allowed to reach `next dev` | Optional |
+| `BETTER_AUTH_SECRET` | Convex deployment | Signs sessions and Bogor Run tokens; unique per deployment | Yes for sign-in; without it the game plays unranked |
+| `SITE_URL` | Convex deployment | The one origin Better Auth trusts and redirects to | Yes for sign-in |
+| `GOOGLE_CLIENT_ID` | Convex deployment | Google OAuth web client | Yes for sign-in; until set, the sign-in button is disabled |
+| `GOOGLE_CLIENT_SECRET` | Convex deployment | Its secret | Yes for sign-in |
+| `APPRECIATION_ADMIN_EMAILS` | Convex deployment | Comma-separated verified emails of the owners | Optional; the Apresiasi review queue stays locked until set |
+
+Production also needs `CONVEX_DEPLOY_KEY` on Vercel (see Deployment).
 
 ## Apresiasi
 
@@ -122,7 +165,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `public/`: `brand/` (logo SVG, Open Graph image), `environments/` (fallback still of the 3D scene) and `games/bogor-run/` (SVG sprites and scenery, with their own README).
 - `design/`: generated direction images (`environments/`, `footer-directions/`), reference material, prompts, and the `.mjs` scripts that capture the scene still and the Open Graph image. `.vercelignore` keeps this out of CLI uploads.
-- `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow).
+- `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow), `CONTRIBUTING.md` (issues, commits and pull requests), `ARCHITECTURE.md` (how the services connect), and `decisions/` (one record per settled decision).
 - `.github/`: `ci.yml` (lint, typecheck and test), `project-board.yml`, issue forms (bug, feature, task) and the pull request template.
 - Root config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` (two projects: `backend` and `interface`), `vercel.json`, `pnpm-workspace.yaml`, `.env.example`.
 

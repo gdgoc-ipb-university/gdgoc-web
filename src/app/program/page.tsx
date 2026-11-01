@@ -10,6 +10,7 @@ import { communityLinks } from "@/lib/community";
 import { rangeLabel } from "@/lib/schedule";
 import { canonical } from "@/lib/site";
 import { techLeague } from "@/lib/tech-league";
+import { techSupport } from "@/lib/tech-support";
 
 export const metadata: Metadata = {
   title: "Program",
@@ -33,7 +34,8 @@ const programs = [
   {
     title: "Tech Support",
     audience: "Untuk member yang membutuhkan mentor untuk lomba.",
-    schedule: "Untuk sementara, minta mentoring lewat Instagram @gdgoc.ipb.",
+    schedule: `Sepanjang tahun. Permintaan dibalas paling lama ${techSupport.responseDays} hari kerja.`,
+    href: techSupport.path,
   },
   {
     title: "Study Jam",

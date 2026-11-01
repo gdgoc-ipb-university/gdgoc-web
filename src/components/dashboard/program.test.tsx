@@ -25,7 +25,7 @@ vi.mock("convex/react", () => ({
 }));
 const exportBevy = vi.fn(async () => [{ email: "budi@gmail.com", name: "Budi Santoso" }, { email: "citra@gmail.com", name: "Citra" }]);
 
-const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "admin", active: true, onboarded: true, reviewer: true, memberType: null, division: null, campus: "", studyProgram: "", doorHelper: false };
+const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "admin", active: true, onboarded: true, reviewer: true, memberType: null, division: null, campus: "", studyProgram: "", doorHelper: false, techSupportHandler: false };
 const show = (role: DashboardViewer["role"] = "admin") => render(<ViewerContext.Provider value={{ ...viewer, role }}><ProgramRoster slug="catalyst-2026" /></ViewerContext.Provider>);
 const bodyRows = () => within(screen.getByRole("table")).getAllByRole("row").slice(1);
 

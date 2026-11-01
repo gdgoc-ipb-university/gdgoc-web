@@ -5,7 +5,7 @@ import { components } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { authComponent, isOwner, isReviewer, reviewsByTag } from "./auth";
 import { logAccess, tagValue } from "./accessLog";
-import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
+import { dashboardAccess, handlesTechSupport, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
 import { divisions, validateStaffRole } from "../src/lib/onboarding";
@@ -22,6 +22,7 @@ export const viewer = query({
       id: access.user._id, name: access.profile?.fullName || access.user.name, email: access.user.email,
       role: access.role, active: access.active, onboarded: Boolean(access.profile?.completedAt),
       reviewer: isReviewer(access.user.email, access.user.emailVerified, access.profile),
+      techSupportHandler: handlesTechSupport(access.role, access.profile),
       memberType: access.profile?.memberType ?? null, division: access.profile?.division ?? null,
       campus: access.profile?.campus ?? "", studyProgram: access.profile?.studyProgram ?? "",
       // Runs the door of a gathering that is not over yet, so the sidebar offers Kehadiran (gatherings.ts).
@@ -41,6 +42,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     memberType: profile.memberType ?? null, division: profile.division ?? null,
     // The granted permission only; owners and admins review by role and are not flagged here.
     reviewer: Boolean(profile.appreciationReviewer),
+    // The granted Tech Support queue only; owners and admins handle it by role.
+    techSupportHandler: Boolean(profile.techSupportHandler),
     // Staff set or confirmed the community tag; a confirmed Media & Creative Core Team or BoD tag reviews Apresiasi too.
     tagConfirmed: Boolean(profile.tagConfirmedAt), reviewsByTag: !isActive(role, profile) ? false : reviewsByTag(profile),
     // The member card, once they have opened it, and whether staff blocked it (cards.setRevoked).
@@ -227,7 +230,7 @@ async function deleteAuthRows(ctx: MutationCtx, model: "session" | "account", us
 /**
  * Owners delete a member's account on request (`/privasi`): profile, Apresiasi, assignment submissions with their files
  * and review rows, pending uploads, Bogor Run rows, reviewer grants, the member card, check-ins and door helper grants,
- * and the sign-in account and sessions. Other people's
+ * Tech Support requests, and the sign-in account and sessions. Other people's
  * records keep the bare account ID they referenced (who reviewed, who changed access), which then resolves to no name.
  * `confirmName` must match the profile name, so a stray call cannot delete anyone. One accountDeletions row records the counts.
  */
@@ -241,7 +244,7 @@ export const deleteAccount = mutation({
     if (row.role === "owner") throw new ConvexError("Akun pemilik diatur lewat konfigurasi server dan tidak bisa dihapus dari sini.");
     if (confirmName.trim() !== profile.fullName.trim()) throw new ConvexError({ code: "VALIDATION", message: "Ketik nama anggota persis seperti tertulis untuk konfirmasi." });
 
-    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0 };
+    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0 };
     for (const doc of await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).collect()) {
       for (const review of await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", doc._id)).collect()) { await ctx.db.delete(review._id); counts.appreciationReviews++; }
       await ctx.db.delete(doc._id); counts.appreciations++;
@@ -275,6 +278,7 @@ export const deleteAccount = mutation({
       if (!gathering.helpers.includes(ownerId)) continue;
       await ctx.db.patch(gathering._id, { helpers: gathering.helpers.filter((id) => id !== ownerId) }); counts.helperGrants++;
     }
+    for (const request of await ctx.db.query("techSupportRequests").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(request._id); counts.techSupportRequests++; }
     await ctx.db.delete(profile._id);
     counts.sessions = await deleteAuthRows(ctx, "session", ownerId);
     counts.accounts = await deleteAuthRows(ctx, "account", ownerId);
@@ -340,6 +344,21 @@ export const setReviewer = mutation({
     if (args.reviewer && !row.active) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya peninjau.");
     await ctx.db.patch(profile._id, { appreciationReviewer: args.reviewer ? true : undefined, accessUpdatedBy: actor.user._id });
     await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "reviewer", from: args.reviewer ? "off" : "on", to: args.reviewer ? "on" : "off" });
+  },
+});
+
+/** Owners grant or revoke the Tech Support queue for an active member, like Apresiasi review. Owners and admins handle it by role. */
+export const setTechSupportHandler = mutation({
+  args: { ownerId: v.string(), handler: v.boolean() },
+  handler: async (ctx, args) => {
+    const actor = await requireMember(ctx);
+    if (actor.role !== "owner") throw new ConvexError({ code: "FORBIDDEN", message: "Hanya pemilik yang bisa mengatur pengelola Tech Support." });
+    const { profile, row } = await target(ctx, args.ownerId);
+    if (args.handler && row.role !== "member") throw new ConvexError("Admin dan pemilik sudah bisa mengelola antrean Tech Support.");
+    if (row.techSupportHandler === args.handler) return;
+    if (args.handler && !row.active) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya pengelola Tech Support.");
+    await ctx.db.patch(profile._id, { techSupportHandler: args.handler ? true : undefined, accessUpdatedBy: actor.user._id });
+    await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "techSupportHandler", from: args.handler ? "off" : "on", to: args.handler ? "on" : "off" });
   },
 });
 

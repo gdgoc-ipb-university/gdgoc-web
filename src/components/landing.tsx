@@ -9,6 +9,7 @@ import { JoinFooter } from "@/components/join-footer";
 import { catalyst } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
 import { techLeague } from "@/lib/tech-league";
+import { techSupport } from "@/lib/tech-support";
 
 const paths = [
   {
@@ -37,8 +38,9 @@ const paths = [
     title: "Tech Support",
     label: "CARI MASUKAN DARI MENTOR",
     text: "Butuh masukan untuk lomba, pitch deck, atau proyekmu? Ceritakan kebutuhanmu agar kami bisa mencarikan mentor yang sesuai",
-    cta: "Tanya alur mentoring",
+    cta: "Lihat alur mentoring",
     icon: "message-text" as PixelIconName,
+    href: techSupport.path,
   },
 ];
 

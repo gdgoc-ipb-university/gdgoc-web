@@ -13,6 +13,8 @@ let answer: unknown;
 let authLoading = false;
 const query = vi.fn();
 const checkIn = vi.fn();
+// next/font runs at build time; in tests it only has to name the font.
+vi.mock("next/font/local", () => ({ default: () => ({ className: "font-vcr", variable: "font-vcr", style: { fontFamily: "'vcr'" } }) }));
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isLoading: authLoading, isAuthenticated: false }),
   useQuery: (_ref: unknown, args: unknown) => { query(args); return args === "skip" ? undefined : answer; },
@@ -42,6 +44,10 @@ describe("member card check", () => {
     for (const text of ["Rania Putri", "Core Team · Technical", "Terverifikasi", "1 Juli 2026 – 1 Juli 2027"]) expect(screen.getByText(text)).toBeTruthy();
     expect(screen.getByText(/^Diperiksa .+ WIB$/)).toBeTruthy();
     expect(container.textContent).not.toMatch(/IPB University ·|2627-|Buka/);
+    // The pass carries only what decision 5 allows, and the stamp.
+    const pass = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
+    expect(pass.querySelector(".member-pass-avatar, .member-pass-number, .member-pass-code")).toBeNull();
+    expect(pass.querySelector(".member-pass-stamp")?.getAttribute("data-stamp")).toBe("valid");
     expect(screen.queryByRole("link")).toBeNull();
     await accessible(container);
   });
@@ -51,6 +57,9 @@ describe("member card check", () => {
     show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu tidak berlaku");
     expect(screen.queryByText(/Rania/)).toBeNull();
+    const pass = screen.getByRole("article", { name: "Kartu anggota" });
+    expect(pass.querySelector("h2, .member-pass-role, .member-pass-facts")).toBeNull();
+    expect(pass.querySelector(".member-pass-stamp")?.getAttribute("data-stamp")).toBe("invalid");
   });
 
   it("shows staff the whole card, why it is not valid, and a link to the member's page", async () => {
@@ -58,7 +67,9 @@ describe("member card check", () => {
     const { container } = show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu tidak berlaku");
     expect(screen.getByText("Kartu diblokir pengurus.")).toBeTruthy();
-    expect(screen.getByRole("article", { name: "Kartu anggota Rania Putri" }).textContent).toContain("2627-0042");
+    const pass = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
+    expect(pass.textContent).toContain("2627-0042");
+    expect(pass.querySelector(".member-pass-stamp")?.getAttribute("data-stamp")).toBe("invalid");
     expect(screen.getByRole("link", { name: "Buka halaman anggota" }).getAttribute("href")).toBe("/dashboard/anggota/u1");
     await accessible(container);
   });

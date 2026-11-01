@@ -102,15 +102,21 @@
 .card-check-warning { display: grid; gap: 12px; padding: 14px; background: #fff7e0; border: 1px solid #e6c463; }
 .card-check-buttons { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 
-/* The QR alone on white for the door: as large as the screen allows, with the name underneath. */
-.member-qr-overlay { position: fixed; inset: 0; z-index: 80; background: #fff; display: grid; }
+/* The door view: the pass's styling, full screen, with the QR as large as the screen allows and nothing over it. */
+.member-qr-overlay { position: fixed; inset: 0; z-index: 80; background: #fffcf3; display: grid; }
 .member-qr-modal { display: grid; outline: none; }
-.member-qr-dialog { display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 18px; min-height: 100dvh; padding: 18px 18px max(24px, env(safe-area-inset-bottom)); outline: none; color: #000; }
-.member-qr-close { justify-self: end; }
-.member-qr-dialog .member-card-qr { align-self: center; width: min(92vw, 72dvh, 520px); max-width: none; }
-.member-qr-dialog p { margin: 0; text-align: center; }
-.member-qr-name { font: 600 clamp(26px, 7vw, 40px)/1.1 var(--font-pixel), monospace; overflow-wrap: anywhere; }
-.member-qr-number { font: 500 15px/1.4 var(--font-mono), monospace; letter-spacing: .06em; }
+.member-qr-dialog { display: grid; grid-template-rows: auto 1fr auto auto; justify-items: center; gap: 16px; min-height: 100dvh; padding-top: 12px; outline: none; color: var(--ink); overflow: hidden; }
+.member-qr-top { display: flex; justify-content: space-between; align-items: center; justify-self: stretch; gap: 12px; padding: 0 12px 0 18px; }
+.member-qr-dialog p { margin: 0; }
+.member-qr-org { display: flex; align-items: center; gap: 10px; }
+.member-qr-org > span { display: grid; font: 600 16px/1.25 var(--font-space), sans-serif; }
+.member-qr-org > span > span { font: 500 12px/1.4 var(--font-mono), monospace; letter-spacing: .08em; color: var(--muted); }
+.member-qr-org .member-pass-mark { width: 46px; margin: 0; }
+.member-qr-dialog .member-card-qr { align-self: center; width: min(92vw, 56dvh, 520px); }
+.member-qr-id { display: grid; justify-items: center; gap: 6px; padding-inline: 18px; text-align: center; }
+.member-qr-name { font: 600 clamp(28px, 8vw, 44px)/1.05 var(--font-pixel), monospace; text-wrap: balance; overflow-wrap: anywhere; }
+.member-qr-number { font: 500 18px/1.4 var(--font-mono), monospace; letter-spacing: .14em; }
+.member-qr-dialog .member-pass-town { justify-self: center; width: min(100%, 560px); margin: 0; }
 
 @media (max-width: 900px) {
   .member-card-layout { grid-template-columns: minmax(0, 1fr); justify-items: center; }

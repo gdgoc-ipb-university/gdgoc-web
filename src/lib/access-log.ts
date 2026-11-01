@@ -1,7 +1,7 @@
 import { memberTagLabel, type MemberType } from "./onboarding";
 
 export type AccessEntry = {
-  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail";
+  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail" | "card";
   from: string; to: string; actor: string | null; target: string | null; assignment: { title: string | null } | null;
   cohort?: { name: string | null; roles: { key: string; name: string }[] } | null;
 };
@@ -32,5 +32,6 @@ export function accessSentence(entry: AccessEntry) {
     case "enrolmentRole": return `${actor} mengubah peran ${participant} di ${cohort} dari ${role(entry.from)} menjadi ${role(entry.to)}.`;
     case "enrolmentStatus": return entry.to === "withdrawn" ? `${actor} mencatat ${participant} mengundurkan diri dari ${cohort}.` : `${actor} mengaktifkan kembali ${participant} sebagai peserta ${cohort}.`;
     case "enrolmentEmail": return `${actor} memperbaiki email pendaftaran ${participant} di ${cohort}.`;
+    case "card": return entry.to === "revoked" ? `${actor} memblokir kartu anggota ${target}.` : `${actor} membuka blokir kartu anggota ${target}.`;
   }
 }

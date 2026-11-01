@@ -4,7 +4,8 @@ import betterAuthTest from "@convex-dev/better-auth/test";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { api, components } from "./_generated/api";
 import schema from "./schema";
-import { chapterPeriod, emptyAppreciation, validateAppreciation } from "../src/lib/appreciation";
+import { emptyAppreciation, validateAppreciation } from "../src/lib/appreciation";
+import { chapterPeriod } from "../src/lib/chapter";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 12, cursor: null };

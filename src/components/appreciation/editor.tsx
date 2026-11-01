@@ -5,7 +5,8 @@ import { useEffect, useRef, useState, useSyncExternalStore, type ReactNode } fro
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
-import { achievementLevels, chapterPeriod, fieldLimits, memberTypes, participationTypes, todayInWib, validateAppreciation, type AppreciationField, type AppreciationValues, type FieldErrors } from "@/lib/appreciation";
+import { chapterPeriod } from "@/lib/chapter";
+import { achievementLevels, fieldLimits, memberTypes, participationTypes, todayInWib, validateAppreciation, type AppreciationField, type AppreciationValues, type FieldErrors } from "@/lib/appreciation";
 import { DraftSession, readableError } from "@/lib/draft-session";
 import { Arrow } from "../icons";
 import { LoadingPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";

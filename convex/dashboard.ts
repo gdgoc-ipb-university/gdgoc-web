@@ -218,7 +218,7 @@ async function deleteAuthRows(ctx: MutationCtx, model: "session" | "account", us
 
 /**
  * Owners delete a member's account on request (`/privasi`): profile, Apresiasi, assignment submissions with their files
- * and review rows, pending uploads, Bogor Run rows, reviewer grants, and the sign-in account and sessions. Other people's
+ * and review rows, pending uploads, Bogor Run rows, reviewer grants, the member card, and the sign-in account and sessions. Other people's
  * records keep the bare account ID they referenced (who reviewed, who changed access), which then resolves to no name.
  * `confirmName` must match the profile name, so a stray call cannot delete anyone. One accountDeletions row records the counts.
  */
@@ -232,7 +232,7 @@ export const deleteAccount = mutation({
     if (row.role === "owner") throw new ConvexError("Akun pemilik diatur lewat konfigurasi server dan tidak bisa dihapus dari sini.");
     if (confirmName.trim() !== profile.fullName.trim()) throw new ConvexError({ code: "VALIDATION", message: "Ketik nama anggota persis seperti tertulis untuk konfirmasi." });
 
-    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0 };
+    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0 };
     for (const doc of await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).collect()) {
       for (const review of await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", doc._id)).collect()) { await ctx.db.delete(review._id); counts.appreciationReviews++; }
       await ctx.db.delete(doc._id); counts.appreciations++;
@@ -259,6 +259,8 @@ export const deleteAccount = mutation({
     }
     for (const id of enrolments.keys()) { await ctx.db.delete(id); counts.enrolments++; }
     for (const grant of await ctx.db.query("cohortMentors").withIndex("by_owner_cohort", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(grant._id); counts.mentorGrants++; }
+    // The card goes; its chapter year's counter does not, so its number is never given out again.
+    for (const card of await ctx.db.query("memberCards").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(card._id); counts.cards++; }
     await ctx.db.delete(profile._id);
     counts.sessions = await deleteAuthRows(ctx, "session", ownerId);
     counts.accounts = await deleteAuthRows(ctx, "account", ownerId);

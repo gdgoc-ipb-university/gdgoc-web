@@ -1,35 +1,76 @@
 /* The member card (E10, #113): the dashboard card page and the page a scanned QR opens. */
-.member-card { position: relative; display: grid; gap: 18px; width: 100%; max-width: 420px; padding: 0 22px 22px; background: #fff; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); overflow: hidden; }
-.member-card-stripe { display: grid; grid-template-columns: repeat(4, 1fr); height: 8px; margin-inline: -22px; }
+/*
+ * The face is an ID (#135): ID-1 proportions (85.6 × 54 mm) from 600 px wide, portrait below so the QR keeps its size.
+ * The guilloche is two offset rosettes of fine rings; the QR sits on its own white panel above it, never under a tint.
+ */
+:root {
+  --card-guilloche: repeating-radial-gradient(circle at 0 100%, transparent 0 7px, rgb(66 133 244 / .09) 7px 8px),
+    repeating-radial-gradient(circle at 100% 0, transparent 0 7px, rgb(52 168 83 / .08) 7px 8px);
+}
+.member-card { container: member-card / inline-size; position: relative; display: grid; width: 100%; max-width: 640px; color: var(--ink); background: #fff; border: 1px solid var(--ink); box-shadow: 6px 6px 0 var(--ink); overflow: hidden; transition: transform .25s ease-out; }
+.member-card-head { display: flex; justify-content: space-between; align-items: stretch; min-height: 64px; background: #fff; }
+.member-card-head img { align-self: center; width: min(58%, 250px); height: auto; margin: 12px 16px; }
+.member-card-year { display: grid; align-content: center; justify-items: end; gap: 4px; margin: 0; padding: 10px 16px; color: #fff; background: var(--ink); }
+.member-card-year span { font: 500 9px/1.2 var(--font-mono), monospace; letter-spacing: .14em; text-transform: uppercase; color: #c9d3de; }
+.member-card-year strong { font: 600 22px/1 var(--font-pixel), monospace; }
+.member-card-stripe { display: grid; grid-template-columns: repeat(4, 1fr); height: 6px; }
 .member-card-stripe span:nth-child(1) { background: var(--google-blue); }
 .member-card-stripe span:nth-child(2) { background: var(--red); }
 .member-card-stripe span:nth-child(3) { background: var(--yellow); }
 .member-card-stripe span:nth-child(4) { background: var(--green); }
-.member-card-head { display: grid; gap: 10px; }
-.member-card-head img { width: min(100%, 280px); height: auto; }
-.member-card-head p { margin: 0; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.member-card-body { position: relative; display: grid; gap: 18px; padding: 20px 18px 20px 24px; background: var(--card-guilloche), var(--paper); box-shadow: inset 6px 0 0 var(--accent, var(--ink)); }
+.member-card-body > * { position: relative; z-index: 1; min-width: 0; }
+.member-card-body::after { content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: 0; background: linear-gradient(105deg, transparent 30%, rgb(255 255 255 / .7) 45%, rgb(198 218 252 / .5) 50%, rgb(254 239 195 / .5) 55%, transparent 70%) calc(50% + var(--tx, 0) * 60%) 0 / 250% 100% no-repeat; transition: opacity .25s; }
 .member-card-person { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 16px; align-items: center; }
-.member-card-photo { display: grid; place-items: center; object-fit: cover; border: 1px solid var(--ink); background: #e6eddc; font: 400 44px/1 var(--font-pixel), monospace; }
+.member-card-portrait { position: relative; align-self: start; }
+.member-card-portrait .member-card-photo { display: grid; place-items: center; width: 88px; height: 88px; object-fit: cover; border: 1px solid var(--ink); background: #e6eddc; font: 400 44px/1 var(--font-pixel), monospace; }
+.member-card-seal { position: absolute; right: -10px; bottom: -10px; width: 28px; height: 28px; border: 1px solid var(--ink); background: radial-gradient(circle at 35% 30%, rgb(255 255 255 / .9) 0 3px, transparent 7px), conic-gradient(from calc(var(--tx, 0) * 90deg), #c6dafc, #fad2cf, #feefc3, #ceead6, #c6dafc); }
+.member-card-seal::after { content: ""; position: absolute; inset: 8px; border: 1px solid rgb(23 45 67 / .45); transform: rotate(45deg); }
 .member-card-person h2 { margin: 0 0 6px; font: 600 26px/1.08 var(--font-pixel), monospace; letter-spacing: -.02em; overflow-wrap: anywhere; }
 .member-card-person p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--muted); overflow-wrap: anywhere; }
-.member-card-person .member-card-tag { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin-top: 8px; color: var(--ink); font-weight: 500; }
+.member-card-person .member-card-tag { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-top: 10px; }
+.member-card-chip { display: inline-flex; align-items: center; gap: 7px; padding: 2px 8px 2px 6px; font-size: 13px; font-weight: 500; line-height: 1.45; color: var(--ink); background: #fff; border: 1px solid var(--ink); }
+.member-card-chip::before { content: ""; flex: none; width: 9px; height: 9px; background: var(--accent, var(--ink)); }
 .member-card-verified { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 5px; font: 500 10px/1.4 var(--font-mono), monospace; letter-spacing: .04em; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: 1px solid #9fceaa; }
-.member-card-facts { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 22px; margin: 0; padding-block: 14px; border-block: 1px dashed #c3ccc0; }
-.member-card-facts > div { display: contents; }
-.member-card-facts dt { font: 500 10px/1.8 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.member-card-facts dd { margin: 0; font: 500 14px/1.5 var(--font-mono), monospace; overflow-wrap: anywhere; }
-.member-card-qr { display: block; width: 100%; max-width: 280px; height: auto; margin-inline: auto; image-rendering: pixelated; }
+.member-card-facts { display: flex; flex-wrap: wrap; gap: 12px 28px; align-self: end; margin: 0; padding-top: 14px; border-top: 1px solid rgb(23 45 67 / .2); }
+.member-card-facts dt { font: 500 9px/1.6 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.member-card-facts dd { margin: 2px 0 0; font: 500 13px/1.4 var(--font-mono), monospace; white-space: nowrap; }
+.member-card-facts .member-card-number { font-size: 21px; font-weight: 600; line-height: 1.2; letter-spacing: .1em; }
+.member-card-code { justify-self: center; width: 100%; max-width: 282px; }
+.member-card-qr { display: block; width: 100%; height: auto; background: #fff; border: 1px solid var(--ink); image-rendering: pixelated; }
 .member-card-notice { margin: 0; padding: 16px; font-size: 14px; line-height: 1.55; background: #fdf0ee; border: 1px solid #f0b9b2; }
 .member-card-notice strong { display: block; margin-bottom: 4px; }
+.member-card-void { position: absolute; top: 50%; left: 50%; z-index: 2; margin: 0; padding: 6px 14px; font: 600 26px/1 var(--font-pixel), monospace; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; color: #b0372a; background: rgb(253 240 238 / .92); border: 3px solid #b0372a; transform: translate(-50%, -50%) rotate(-10deg); pointer-events: none; }
+.member-card[data-invalid] .member-card-seal { background: #d9dfd7; }
+
+@container member-card (min-width: 600px) {
+  .member-card-body { min-height: calc(100cqi / 1.586 - 70px); grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 1fr; }
+  .member-card-body:has(> .member-card-code) { grid-template-columns: minmax(0, 1fr) 282px; column-gap: 22px; }
+  .member-card-code { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+  .member-card-facts { grid-column: 1; }
+}
+@container member-card (max-width: 380px) {
+  .member-card-head img { width: min(56%, 200px); margin-inline: 12px; }
+  .member-card-year { padding-inline: 12px; }
+  .member-card-year strong { font-size: 19px; }
+  .member-card-body { padding: 18px 14px 18px 20px; }
+  .member-card-person { gap: 14px; }
+  .member-card-person h2 { font-size: 22px; }
+  .member-card-portrait .member-card-photo { width: 72px; height: 72px; font-size: 36px; }
+}
+@media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  .member-card:hover { transform: perspective(1100px) rotateX(calc(var(--ty, 0) * -2.5deg)) rotateY(calc(var(--tx, 0) * 2.5deg)); }
+  .member-card:hover .member-card-body::after { opacity: 1; }
+}
 
 /* The dashboard page: the card beside what to do with it at the door. */
-.member-card-layout { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 32px; align-items: start; }
+.member-card-layout { display: grid; gap: 32px; max-width: 980px; }
 .member-card-actions h2 { margin-block: 0 8px; font-size: 22px; }
 .member-card-actions h3 { margin-block: 26px 4px; font-size: 16px; }
 .member-card-actions p { margin-block: 0 14px; }
 .member-card-buttons { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px; }
 .member-card-actions .button { gap: 12px; }
-.member-card-side { display: grid; gap: 24px; min-width: 0; }
+.member-card-side { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 24px; align-items: start; min-width: 0; }
 .member-card-history h2 { margin-block: 0 12px; font-size: 22px; }
 .member-card-history ul { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; }
 .member-card-history li { display: grid; gap: 2px; padding-block: 12px; border-top: 1px solid #e8ece4; }
@@ -79,13 +120,3 @@
 .member-qr-dialog p { margin: 0; text-align: center; }
 .member-qr-name { font: 600 clamp(26px, 7vw, 40px)/1.1 var(--font-pixel), monospace; overflow-wrap: anywhere; }
 .member-qr-number { font: 500 15px/1.4 var(--font-mono), monospace; letter-spacing: .06em; }
-
-@media (max-width: 900px) {
-  .member-card-layout { grid-template-columns: minmax(0, 1fr); justify-items: center; }
-  .member-card-side { width: 100%; max-width: 420px; }
-}
-@media (max-width: 400px) {
-  .member-card { padding-inline: 16px; box-shadow: 4px 4px 0 var(--ink); }
-  .member-card-stripe { margin-inline: -16px; }
-  .member-card-person { grid-template-columns: 1fr; }
-}

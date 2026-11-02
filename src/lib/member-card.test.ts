@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chapterPeriod, inChapterPeriod } from "./chapter";
-import { cardNumber, cardPath, cardPrefix, cardTokenPattern, divisionAccent, divisionAccents, photoAt } from "./member-card";
+import { cardNumber, cardPath, cardPrefix, cardTokenPattern, divisionAccent, divisionAccents, nameFit, photoAt } from "./member-card";
 import { divisions } from "./onboarding";
 
 /** WCAG contrast of a hex colour against white. */
@@ -35,6 +35,20 @@ describe("member card helpers", () => {
     for (const colour of colours) expect(contrastWithWhite(colour), colour).toBeGreaterThanOrEqual(4.5);
     expect(divisionAccent("Technical")).toBe("#1967d2");
     for (const division of ["Secretary Treasurer", null, undefined, "", "Unknown", "constructor"]) expect(divisionAccent(division), String(division)).toBe("#172d43");
+  });
+
+  it("sets the name at 54 px, wrapped word by word onto a second line when it must, shrinking only past two lines", () => {
+    expect(nameFit("Rania Putri")).toEqual({ px: 54, lines: ["RANIA PUTRI"] });
+    // 17 characters at 54 px fit the 568 px column: .61 em × 54 × 17 = 560.
+    expect(nameFit("Rania Putri Maharani")).toEqual({ px: 54, lines: ["RANIA PUTRI", "MAHARANI"] });
+    expect(nameFit("Muhammad Rizky Ramadhan Saputra")).toEqual({ px: 54, lines: ["MUHAMMAD RIZKY", "RAMADHAN SAPUTRA"] });
+    // As the Figma preview wraps it: the first line takes as many words as fit.
+    expect(nameFit("Adela Belinda Vista")).toEqual({ px: 54, lines: ["ADELA BELINDA", "VISTA"] });
+    const long = nameFit("Raden Mas Muhammad Rizky Ramadhan Saputra Wijayakusuma");
+    expect(long.lines).toHaveLength(2);
+    expect(long.px).toBeLessThan(54);
+    for (const line of long.lines) expect(line.length * .61 * long.px).toBeLessThanOrEqual(568);
+    expect(nameFit("Wolfeschlegelsteinhausenbergerdorff")).toEqual({ px: 30, lines: ["WOLFESCHLEGELSTEINHAUSENBERGERDORFF"] });
   });
 
   it("holds the chapter year from 00:00 WIB on its first day to the end of its last day", () => {

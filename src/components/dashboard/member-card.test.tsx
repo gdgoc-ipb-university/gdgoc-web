@@ -24,48 +24,97 @@ vi.mock("convex/react", () => ({
 afterEach(() => { cleanup(); mine = card; ensure.mockClear(); reissue.mockClear(); });
 
 describe("member card page", () => {
-  it("opens the card on load and shows its facts as text, with a labelled QR, accessibly", async () => {
+  it("opens the card on load and shows both sides, with the facts as text and a labelled QR, accessibly", async () => {
     const { container } = render(<MemberCardPage />);
     await waitFor(() => expect(ensure).toHaveBeenCalledTimes(1));
-    const face = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
-    for (const text of ["Rania Putri", "IPB University · Ilmu Komputer", "Core Team · Technical", "Terverifikasi", "2627-0042", "1 Juli 2026 – 1 Juli 2027"]) {
-      expect(within(face).getByText(text)).toBeTruthy();
-    }
-    expect(within(face).getByRole("img", { name: /QR kartu anggota Rania Putri/ })).toBeTruthy();
+    const card = screen.getByRole("group", { name: "Kartu anggota Rania Putri" });
+    const front = within(card).getByRole("figure", { name: "Bagian depan" }), back = within(card).getByRole("figure", { name: "Bagian belakang" });
+    expect(front.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    for (const text of ["Rania Putri", "Core Team · Technical", "2627-0042", "2026/27"]) expect(within(front).getByText(text)).toBeTruthy();
+    // The role bar holds the role line only, even for a confirmed tag.
+    expect(front.querySelector(".cr80-role")?.textContent).toBe("Core Team · Technical");
+    expect(within(card).queryByText(/Terverifikasi/i)).toBeNull();
+    for (const text of ["IPB University · Ilmu Komputer", "2627-0042", "1 Juli 2026 – 1 Juli 2027"]) expect(within(back).getByText(text)).toBeTruthy();
+    expect(within(back).getByRole("img", { name: /QR kartu anggota Rania Putri/ })).toBeTruthy();
+    expect(within(front).queryByRole("img", { name: /QR/ })).toBeNull();
+    expect(within(back).queryByText(/Tunjukkan QR/)).toBeNull();
     // No photo: the pixel initial stands in.
-    expect(face.querySelector(".account-avatar")?.textContent).toBe("R");
+    expect(front.querySelector(".account-avatar")?.textContent).toBe("R");
+    // No strap any more: the punch slot is drawn on both sides and stays empty.
+    expect(container.querySelector("img[src*='lanyard']")).toBeNull();
+    expect([...card.querySelectorAll(".cr80-slot")].map((slot) => slot.childNodes.length)).toEqual([0, 0]);
     const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] }, rules: { "color-contrast": { enabled: false } } });
     expect(result.violations.map(({ id, nodes }) => ({ id, elements: nodes.map((node) => node.html) }))).toEqual([]);
   });
 
-  it("keeps the QR plain black on white on an opaque plate that the landmark strip stays under", () => {
+  it("keeps the QR plain black on white on an opaque plate that the landmark strip stays clear of", () => {
     render(<MemberCardPage />);
-    const face = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
-    expect((face.parentElement as HTMLElement).style.getPropertyValue("--accent")).toBe("#1967d2");
-    const qr = within(face).getByRole("img", { name: /QR kartu anggota/ });
+    const front = screen.getByRole("figure", { name: "Bagian depan" }), back = screen.getByRole("figure", { name: "Bagian belakang" });
+    expect((front.querySelector(".cr80") as HTMLElement).style.getPropertyValue("--accent")).toBe("#1967d2");
+    const qr = within(back).getByRole("img", { name: /QR kartu anggota/ });
     expect(qr.getAttribute("class")).toBe("member-card-qr");
     expect(qr.getAttribute("style")).toBeNull();
     expect([...qr.querySelectorAll("rect, path")].map((shape) => shape.getAttribute("fill"))).toEqual(["#fff", "#000"]);
-    // The strip comes after the plate and may rise behind it, never inside it or over it.
-    const plate = qr.parentElement as HTMLElement, town = face.querySelector(".member-pass-town") as HTMLElement;
-    expect(plate.className).toBe("member-pass-code");
+    // The strip comes after the plate's column, never inside it or around it.
+    const plate = qr.parentElement as HTMLElement, town = back.querySelector(".cr80-town") as HTMLElement;
+    expect(plate.className).toBe("cr80-plate");
     expect(plate.compareDocumentPosition(town) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(plate.contains(town) || town.contains(plate)).toBe(false);
-    const rules = readFileSync("src/components/member-card.css", "utf8").match(/[^{}]*(member-card-qr|member-pass-code)[^{}]*\{[^}]*\}/g) ?? [];
+    const css = readFileSync("src/components/member-card.css", "utf8");
+    const rules = css.match(/[^{}]*(member-card-qr|cr80-plate)[^{}]*\{[^}]*\}/g) ?? [];
     expect(rules.length).toBeGreaterThan(1);
     for (const rule of rules) expect(rule).not.toMatch(/gradient|url\(|opacity|filter|mix-blend/);
     expect(rules.some((rule) => /^\s*\.member-card-qr \{[^}]*background: #fff;/.test(rule))).toBe(true);
-    expect(rules.some((rule) => /^\s*\.member-pass-code \{[^}]*position: relative; z-index: 1;/.test(rule))).toBe(true);
+    expect(rules.some((rule) => /(^|\*\/)\s*\.cr80-plate \{[^}]*background: #fff;/.test(rule))).toBe(true);
+    // The column, plate included, sits above the strip; the back's strip starts below the column's 856 px.
+    expect(css).toMatch(/\.cr80-column \{ position: absolute; inset: 0; z-index: 1;/);
   });
 
-  it("shows the QR full screen, with the name, number and chapter year", async () => {
+  it("draws each side at CR80 proportions, scaled from the Figma trim of 638 px, on the Figma background", () => {
+    const css = readFileSync("src/components/member-card.css", "utf8");
+    expect(css).toMatch(/\.cr80 \{[^}]*--u: calc\(100cqi \/ 638\);[^}]*aspect-ratio: 638 \/ 1011;/);
+    expect(css).toMatch(/\.cr80::before \{[^}]*url\(\/cards\/card-background\.webp\) 0 0 \/ 100% 100%;/);
+    // A lossless WebP at trim size.
+    const background = readFileSync("public/cards/card-background.webp");
+    expect(background.subarray(12, 16).toString()).toBe("VP8L");
+    const bits = background.readUInt32LE(21);
+    expect([(bits & 0x3fff) + 1, (bits >> 14 & 0x3fff) + 1]).toEqual([638, 1011]);
+    // The QR plate is 322 trim px with its border and padding, so the code with its quiet zone is 300 px: 25.4 mm printed.
+    expect(css).toMatch(/\.cr80-plate \{[^}]*width: calc\(322 \* var\(--u\)\); padding: calc\(8 \* var\(--u\)\);[^}]*border: calc\(3 \* var\(--u\)\)/);
+  });
+
+  it("draws the front's landmarks oversized behind the content, and the ticket scene alone on the back", () => {
+    render(<MemberCardPage />);
+    const front = screen.getByRole("figure", { name: "Bagian depan" }), back = screen.getByRole("figure", { name: "Bagian belakang" });
+    const art = (figure: HTMLElement) => [...figure.querySelectorAll(".cr80-town img")].map((image) => image.getAttribute("src")?.replace(/^.*\/|\.svg$/g, ""));
+    expect(art(front)).toEqual(["tugu-kujang", "gedung-ahn", "tree", "tree", "tree"]);
+    expect(art(back)).toEqual(["tiket-masuk-program"]);
+    // The scene ships without Figma's frame: no background rect, no white or grey panel behind the art.
+    const ticket = readFileSync("public/cards/tiket-masuk-program.svg", "utf8");
+    expect(ticket).toMatch(/viewBox="0 0 798 618"/);
+    expect(ticket).not.toMatch(/<rect|fill="(#fff|#ffffff|white|#f5f5f5)"|fill-opacity/i);
+    const kujang = front.querySelector(".cr80-town-art") as HTMLElement;
+    expect([kujang.style.getPropertyValue("--x"), kujang.style.getPropertyValue("--w")]).toEqual(["-129", "320"]);
+    // The strip comes after the column in the DOM; the column's z-index keeps the role bar and name on top of it.
+    const column = front.querySelector(".cr80-column") as HTMLElement, town = front.querySelector(".cr80-town") as HTMLElement;
+    expect(column.compareDocumentPosition(town) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(readFileSync("src/components/member-card.css", "utf8")).not.toMatch(/\.cr80-town[^{]*\{[^}]*z-index/);
+    // Pieces sit at the Figma page's tops; the front stands on grass and road, the back's printer on its own shadow.
+    const top = (element: Element | null) => (element as HTMLElement).style.getPropertyValue("--top");
+    expect([".cr80-id", ".cr80-role"].map((selector) => top(front.querySelector(selector)))).toEqual(["333", "801"]);
+    // Photo, name and number are one group, as Figma's "ID", so a two-line name pushes the number down.
+    expect([...(front.querySelector(".cr80-id") as HTMLElement).children].map((child) => child.className)).toEqual(["cr80-photo", "cr80-name", "cr80-number"]);
+    expect([".cr80-plate", ".cr80-column > .cr80-number", ".cr80-facts"].map((selector) => top(back.querySelector(selector)))).toEqual(["270", "608", "665"]);
+    expect([front, back].map((side) => side.querySelector(".cr80-ground") !== null)).toEqual([true, false]);
+  });
+
+  it("shows the back full screen for the door, with the name, number and chapter year", async () => {
     render(<MemberCardPage />);
     await userEvent.click(screen.getByRole("button", { name: "Tampilkan QR" }));
     const dialog = screen.getByRole("dialog", { name: "QR kartu anggota" });
-    expect(within(dialog).getByRole("img", { name: "QR kartu anggota Rania Putri" })).toBeTruthy();
-    expect(within(dialog).getByText("Rania Putri")).toBeTruthy();
-    expect(within(dialog).getByText("2627-0042")).toBeTruthy();
-    expect(within(dialog).getByText("Kartu anggota · 2026/27")).toBeTruthy();
+    expect(within(dialog).getByRole("img", { name: "QR kartu anggota Rania Putri" }).parentElement?.className).toBe("member-qr-plate");
+    for (const text of ["Rania Putri", "2627-0042", "GDGoC IPB University", "2026/27"]) expect(within(dialog).getByText(text)).toBeTruthy();
+    expect(dialog.querySelector(".cr80-town[data-side='back'] img")?.getAttribute("src")).toBe("/cards/tiket-masuk-program.svg");
     await userEvent.click(within(dialog).getByRole("button", { name: "Tutup" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -84,7 +133,7 @@ describe("member card page", () => {
   it("shows a blocked card without its QR or actions", () => {
     mine = { ...card, status: "revoked", revokedAt: 2 };
     render(<MemberCardPage />);
-    expect(screen.getByText("Kartu diblokir")).toBeTruthy();
+    expect(within(screen.getByRole("figure", { name: "Bagian belakang" })).getByText("Kartu diblokir")).toBeTruthy();
     expect(screen.queryByRole("img", { name: /QR/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Tampilkan QR" })).toBeNull();
   });

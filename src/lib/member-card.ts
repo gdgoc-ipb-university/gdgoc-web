@@ -50,3 +50,33 @@ export const divisionAccents: Record<(typeof divisions)[number], string> = {
 export function divisionAccent(division: string | null | undefined) {
   return division && Object.hasOwn(divisionAccents, division) ? divisionAccents[division as keyof typeof divisionAccents] : "#172d43";
 }
+
+/**
+ * The printed card (#142): CR80, 54 × 85.6 mm portrait, and its trim size in pixels at 300 dpi, the unit of every
+ * measure on the "ID Card" page of the GDGOC 26/27 Figma file. The web draws the trim at any width and scales by
+ * width / 638; the saved image draws it at 1:1.
+ */
+export const cr80 = { width: 638, height: 1011, dpi: 300 };
+
+/** VCR OSD Mono is monospaced: every glyph advances .59 em, and the name is tracked .02 em. */
+const nameAdvance = .59 + .02;
+
+/**
+ * The name's size in trim pixels and its lines, wrapped word by word across the 568 px column as Figma and the browser
+ * wrap it: 54 px on one or two lines, shrinking only when two lines are not enough. Below 30 px it stays at 30 px on
+ * one line and the face wraps anywhere.
+ */
+export function nameFit(name: string, width = 568, size = 54, min = 30) {
+  const text = name.trim().toUpperCase(), words = text.split(/\s+/);
+  for (let px = size; px >= min; px--) {
+    const fits = (line: string) => line.length * nameAdvance * px <= width;
+    const lines: string[] = [];
+    for (const word of words) {
+      const last = lines.at(-1);
+      if (last !== undefined && fits(`${last} ${word}`)) lines[lines.length - 1] = `${last} ${word}`;
+      else lines.push(word);
+    }
+    if (lines.length <= 2 && lines.every(fits)) return { px, lines };
+  }
+  return { px: min, lines: [text] };
+}

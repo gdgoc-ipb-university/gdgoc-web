@@ -41,7 +41,9 @@ describe("member card check", () => {
     answer = { viewer: "guest", status: "valid", card: { name: "Rania Putri", memberType: "core", division: "Technical", tagConfirmed: true, period: "2026/27" } };
     const { container } = show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu anggota aktif");
-    for (const text of ["Rania Putri", "Core Team · Technical", "Terverifikasi", "2026/27"]) expect(screen.getByText(text)).toBeTruthy();
+    for (const text of ["Rania Putri", "Core Team · Technical", "2026/27"]) expect(screen.getByText(text)).toBeTruthy();
+    // The role bar holds the role only; a confirmed tag is not marked on the card.
+    expect(screen.queryByText(/Terverifikasi/i)).toBeNull();
     expect(screen.getByText(/^Diperiksa .+ WIB$/)).toBeTruthy();
     expect(container.textContent).not.toMatch(/IPB University ·|2627-|Berlaku|Buka/);
     // Only the front, with only what decision 5 allows, and the stamp.

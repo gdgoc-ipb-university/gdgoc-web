@@ -25,9 +25,10 @@ export type CardFace = {
 
 /**
  * The card's art in `public/cards/` (#135): the landmarks and brackets mark from the Design System page of the GDGOC
- * 26/27 Figma file, cropped to their pixels, and the cloud and tree drawn to match. The background is the "ID Card"
- * page's render of its pixel fade and 4% grid on the paper, cropped to the trim (#142). Sizes are the art's own
- * pixels; the "ID Card" page scales them. The saved image loads the same files.
+ * 26/27 Figma file, cropped to their pixels, and the cloud and tree drawn to match. From the "ID Card" page (#142): the
+ * background, its render of a pixel fade and 4% grid on the paper cropped to the trim, and the back's "Tiket masuk
+ * program" scene, a ticket printing, with Figma's frame removed. Sizes are the art's own pixels; the "ID Card" page
+ * scales them. The saved image loads the same files.
  */
 export const passArt = {
   background: { src: "/cards/card-background.webp", width: 638, height: 1011 },
@@ -37,6 +38,7 @@ export const passArt = {
   kujang: { src: "/cards/tugu-kujang.svg", width: 69, height: 119 },
   gate: { src: "/cards/gerbang-ipb-dramaga.svg", width: 123, height: 88 },
   ahn: { src: "/cards/gedung-ahn.svg", width: 123, height: 106 },
+  ticket: { src: "/cards/tiket-masuk-program.svg", width: 798, height: 618 },
 };
 
 /** The QR as SVG, drawn here and never by an outside service: the link in it is the card. */
@@ -74,15 +76,15 @@ export const townLayout = {
     top: 433,
     art: [["kujang", -129, 0, 320], ["ahn", 397, 44, 567], ["tree", 140, 484, 40], ["tree", 405, 484, 40], ["tree", 611, 484, 40]],
   },
-  // The back's illustration is being redesigned: change it here, and the back, the door view and the saved image follow.
+  // The ticket scene centred, its base on the grass and under it. The back, the door view and the saved image follow this.
   back: {
-    top: 810,
-    art: [["kujang", 1, 0, 89.7], ["gate", 239, 40.6, 159.9], ["ahn", 511, 17.2, 159.9], ["tree", 115, 107, 40], ["tree", 471, 107, 40]],
+    top: 785,
+    art: [["ticket", 199, 0, 240]],
   },
 } as const satisfies Record<string, { top: number; art: readonly (readonly [keyof typeof passArt, number, number, number])[] }>;
 
 /**
- * The Bogor landmarks along the bottom of a side, standing on grass, then the road. It scales with its own width, so
+ * The art along the bottom of a side, standing on grass, then the road. It scales with its own width, so
  * the door view can draw the back's strip on its own.
  */
 export function PassTown({ side }: { side: keyof typeof townLayout }) {
@@ -95,8 +97,8 @@ export function PassTown({ side }: { side: keyof typeof townLayout }) {
 }
 
 /**
- * The back's illustration, on the back and in the door view. It is being redesigned (#142): swap it here, with its
- * layout in `townLayout.back`, which the saved image draws too.
+ * The back's illustration, on the back and in the door view: the "Tiket masuk program" scene on grass and road. Its
+ * layout is `townLayout.back`, which the saved image draws too, so a new illustration is changed in one place.
  */
 export const BackIllustration = () => <PassTown side="back" />;
 
@@ -132,7 +134,7 @@ export function MemberCardFront({ card, stamp }: { card: Partial<CardFace>; stam
       {card.photo !== undefined && card.name && <span className="cr80-photo"><CardPhoto name={card.name} photo={card.photo} size={200} /></span>}
       {card.name && name && <h2 className="cr80-name" style={{ "--size": name.px } as CSSProperties}>{card.name}</h2>}
       {card.number && <p className="cr80-number">{card.number}</p>}
-      {tag && <p className="cr80-role"><span>{tag}</span>{card.tagConfirmed && <span className="cr80-verified"><PixelIcon name="check" size={16} />Terverifikasi</span>}</p>}
+      {tag && <p className="cr80-role">{tag}</p>}
       {stamp && <p className="cr80-stamp" data-stamp={stamp} aria-hidden="true"><PixelIcon name={stamp === "valid" ? "check" : "close"} size={26} />{stamp === "valid" ? "Aktif" : "Tidak berlaku"}</p>}
     </div>
     <PassTown side="front" />

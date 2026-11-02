@@ -37,9 +37,7 @@
 .cr80-name { width: 100%; margin: 0; font: 400 calc(var(--size, 54) * var(--u))/.98 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .02em; text-wrap: balance; overflow-wrap: anywhere; }
 .cr80 .cr80-number { font: 400 calc(38 * var(--u))/.98 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; }
 .cr80[data-side="back"] .cr80-number { font-size: calc(42 * var(--u)); }
-.cr80 .cr80-role { display: grid; justify-items: center; align-self: stretch; padding: calc(14 * var(--u)) calc(20 * var(--u)); font: 700 calc(26 * var(--u))/1.3 var(--font-space), sans-serif; color: #fff; background: var(--accent, var(--ink)); }
-.cr80-verified { display: inline-flex; align-items: center; gap: calc(8 * var(--u)); font: 500 calc(16 * var(--u))/1.4 var(--font-mono), monospace; letter-spacing: .1em; text-transform: uppercase; }
-.cr80-verified svg { width: calc(18 * var(--u)); height: calc(18 * var(--u)); }
+.cr80 .cr80-role { align-self: stretch; padding: calc(14 * var(--u)) calc(20 * var(--u)); font: 700 calc(26 * var(--u))/1.3 var(--font-space), sans-serif; color: #fff; background: var(--accent, var(--ink)); }
 .cr80 .cr80-stamp { display: inline-flex; align-items: center; gap: calc(12 * var(--u)); margin-top: calc(18 * var(--u)); padding: calc(10 * var(--u)) calc(24 * var(--u)); font: 400 calc(44 * var(--u))/1 var(--font-vcr), var(--font-pixel), monospace; text-transform: uppercase; color: #13652d; background: #e5f3e6; border: calc(5 * var(--u)) solid currentColor; transform: rotate(-5deg); }
 .cr80-stamp[data-stamp="invalid"] { color: #b0372a; background: #fdf0ee; }
 .cr80-stamp svg { width: calc(40 * var(--u)); height: calc(40 * var(--u)); }

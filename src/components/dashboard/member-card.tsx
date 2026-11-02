@@ -14,7 +14,7 @@ import { qrMatrix } from "@/lib/qr";
 import { siteUrl } from "@/lib/site";
 import { PixelIcon, pixelIconPaths } from "../pixel-icons";
 import { LoadingPanel } from "../appreciation/shared";
-import { MemberCard, PassArt, PassTown, QrCode, passArt, passFont, periodLabel } from "../member-card-face";
+import { BackIllustration, MemberCard, PassArt, QrCode, passArt, passFont, periodLabel } from "../member-card-face";
 import { ConfirmDialog } from "./data-table";
 
 type Card = NonNullable<FunctionReturnType<typeof api.cards.mine>>;
@@ -46,7 +46,7 @@ function DoorQr({ card, open, onClose }: { card: Card; open: boolean; onClose: (
           <div className="member-qr-plate"><QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}`} /></div>
           <div className="member-qr-id"><p className="member-qr-number">{card.number}</p><p className="member-qr-name">{card.name}</p></div>
         </div>
-        <PassTown side="back" />
+        <BackIllustration />
       </Dialog>
     </Modal>
   </ModalOverlay>;

@@ -31,9 +31,10 @@ describe("member card page", () => {
     const front = within(card).getByRole("figure", { name: "Bagian depan" }), back = within(card).getByRole("figure", { name: "Bagian belakang" });
     expect(front.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     for (const text of ["Rania Putri", "Core Team · Technical", "Terverifikasi", "2627-0042", "2026/27"]) expect(within(front).getByText(text)).toBeTruthy();
-    for (const text of ["IPB University · Ilmu Komputer", "2627-0042", "1 Juli 2026 – 1 Juli 2027", "Tunjukkan QR ini di pintu masuk"]) expect(within(back).getByText(text)).toBeTruthy();
+    for (const text of ["IPB University · Ilmu Komputer", "2627-0042", "1 Juli 2026 – 1 Juli 2027"]) expect(within(back).getByText(text)).toBeTruthy();
     expect(within(back).getByRole("img", { name: /QR kartu anggota Rania Putri/ })).toBeTruthy();
     expect(within(front).queryByRole("img", { name: /QR/ })).toBeNull();
+    expect(within(back).queryByText(/Tunjukkan QR/)).toBeNull();
     // No photo: the pixel initial stands in.
     expect(front.querySelector(".account-avatar")?.textContent).toBe("R");
     // No strap any more: the punch slot is drawn on both sides and stays empty.
@@ -61,16 +62,36 @@ describe("member card page", () => {
     expect(rules.length).toBeGreaterThan(1);
     for (const rule of rules) expect(rule).not.toMatch(/gradient|url\(|opacity|filter|mix-blend/);
     expect(rules.some((rule) => /^\s*\.member-card-qr \{[^}]*background: #fff;/.test(rule))).toBe(true);
-    expect(rules.some((rule) => /^\s*\.cr80-plate \{[^}]*background: #fff;/.test(rule))).toBe(true);
+    expect(rules.some((rule) => /(^|\*\/)\s*\.cr80-plate \{[^}]*background: #fff;/.test(rule))).toBe(true);
     // The column, plate included, sits above the strip; the back's strip starts below the column's 856 px.
     expect(css).toMatch(/\.cr80-column \{ position: relative; z-index: 1;/);
   });
 
-  it("draws each side at CR80 proportions, scaled from the Figma trim of 638 px", () => {
+  it("draws each side at CR80 proportions, scaled from the Figma trim of 638 px, on the Figma background", () => {
     const css = readFileSync("src/components/member-card.css", "utf8");
     expect(css).toMatch(/\.cr80 \{[^}]*--u: calc\(100cqi \/ 638\);[^}]*aspect-ratio: 638 \/ 1011;/);
+    expect(css).toMatch(/\.cr80::before \{[^}]*url\(\/cards\/card-background\.webp\) 0 0 \/ 100% 100%;/);
+    // A lossless WebP at trim size.
+    const background = readFileSync("public/cards/card-background.webp");
+    expect(background.subarray(12, 16).toString()).toBe("VP8L");
+    const bits = background.readUInt32LE(21);
+    expect([(bits & 0x3fff) + 1, (bits >> 14 & 0x3fff) + 1]).toEqual([638, 1011]);
     // The QR plate is 392 trim px with its border and padding, so the code with its quiet zone is 370 px: 31 mm printed.
     expect(css).toMatch(/\.cr80-plate \{[^}]*width: calc\(392 \* var\(--u\)\); padding: calc\(8 \* var\(--u\)\);[^}]*border: calc\(3 \* var\(--u\)\)/);
+  });
+
+  it("draws the front's landmarks oversized behind the content, without the gate", () => {
+    render(<MemberCardPage />);
+    const front = screen.getByRole("figure", { name: "Bagian depan" }), back = screen.getByRole("figure", { name: "Bagian belakang" });
+    const art = (figure: HTMLElement) => [...figure.querySelectorAll(".cr80-town img")].map((image) => image.getAttribute("src")?.replace(/^.*\/|\.svg$/g, ""));
+    expect(art(front)).toEqual(["tugu-kujang", "gedung-ahn", "tree", "tree", "tree"]);
+    expect(art(back)).toEqual(["tugu-kujang", "gerbang-ipb-dramaga", "gedung-ahn", "tree", "tree"]);
+    const kujang = front.querySelector(".cr80-town-art") as HTMLElement;
+    expect([kujang.style.getPropertyValue("--x"), kujang.style.getPropertyValue("--w")]).toEqual(["-129", "320"]);
+    // The strip comes after the column in the DOM; the column's z-index keeps the role bar and name on top of it.
+    const column = front.querySelector(".cr80-column") as HTMLElement, town = front.querySelector(".cr80-town") as HTMLElement;
+    expect(column.compareDocumentPosition(town) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(readFileSync("src/components/member-card.css", "utf8")).not.toMatch(/\.cr80-town[^{]*\{[^}]*z-index/);
   });
 
   it("shows the back full screen for the door, with the name, number and chapter year", async () => {

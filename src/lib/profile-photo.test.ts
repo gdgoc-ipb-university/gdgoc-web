@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageFacts, photoLimits, photoProblem } from "./profile-photo";
+import { clampCrop, cropPlacement, imageFacts, initialCrop, maxZoom, photoLimits, photoProblem } from "./profile-photo";
 
 /** The first bytes of real files, cut after the size: enough for the reader, and small enough to write by hand. */
 function pngHead(width: number, height: number) {
@@ -52,5 +52,27 @@ describe("profile photo files", () => {
     expect(photoProblem(200_000, null, "image/jpeg")).toContain("JPG, PNG, atau WebP");
     expect(photoProblem(photoLimits.maxBytes + 1, jpeg(800, 800))).toContain("5 MB");
     expect(photoProblem(200_000, jpeg(399, 1200))).toBe("Foto terlalu kecil (399 × 1200 piksel). Pakai foto minimal 400 × 400 piksel agar tetap tajam saat kartu dicetak.");
+  });
+});
+
+describe("profile photo crop", () => {
+  const phone = { width: 3024, height: 4032 };
+
+  it("zooms up to 4× while at least 400 source pixels fill the square", () => {
+    expect(maxZoom(phone)).toBe(4);
+    expect(maxZoom({ width: 1000, height: 800 })).toBe(2);
+    expect(maxZoom({ width: 400, height: 400 })).toBe(1);
+  });
+
+  it("keeps the square inside the image and the zoom in range", () => {
+    expect(initialCrop(phone)).toEqual({ zoom: 1, x: 1512, y: 2016 });
+    expect(clampCrop(phone, { zoom: 1, x: 0, y: 0 })).toEqual({ zoom: 1, x: 1512, y: 1512 });
+    expect(clampCrop(phone, { zoom: 9, x: 99999, y: -5 })).toEqual({ zoom: 4, x: 3024 - 378, y: 378 });
+    expect(clampCrop({ width: 1000, height: 800 }, { zoom: .5, x: 500, y: 400 })).toEqual({ zoom: 1, x: 500, y: 400 });
+  });
+
+  it("places the image so the crop fills the box", () => {
+    expect(cropPlacement({ width: 1000, height: 800 }, { zoom: 1, x: 500, y: 400 }, 200)).toEqual({ scale: .25, width: 250, height: 200, left: -25, top: 0 });
+    expect(cropPlacement({ width: 1000, height: 800 }, { zoom: 2, x: 800, y: 200 }, 200)).toEqual({ scale: .5, width: 500, height: 400, left: -300, top: 0 });
   });
 });

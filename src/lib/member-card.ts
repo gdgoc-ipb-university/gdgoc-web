@@ -62,20 +62,21 @@ export const cr80 = { width: 638, height: 1011, dpi: 300 };
 const nameAdvance = .59 + .02;
 
 /**
- * The name's size in trim pixels and its lines: 54 px on one line, or on two balanced lines, shrinking until the longer
- * line fits the 568 px column. Below 30 px it stays at 30 px on two lines and the face wraps anywhere.
+ * The name's size in trim pixels and its lines, wrapped word by word across the 568 px column as Figma and the browser
+ * wrap it: 54 px on one or two lines, shrinking only when two lines are not enough. Below 30 px it stays at 30 px on
+ * one line and the face wraps anywhere.
  */
 export function nameFit(name: string, width = 568, size = 54, min = 30) {
   const text = name.trim().toUpperCase(), words = text.split(/\s+/);
   for (let px = size; px >= min; px--) {
     const fits = (line: string) => line.length * nameAdvance * px <= width;
-    if (fits(text)) return { px, lines: [text] };
-    let best: string[] | null = null;
-    for (let cut = 1; cut < words.length; cut++) {
-      const lines = [words.slice(0, cut).join(" "), words.slice(cut).join(" ")];
-      if (lines.every(fits) && (!best || Math.max(...lines.map((line) => line.length)) < Math.max(...best.map((line) => line.length)))) best = lines;
+    const lines: string[] = [];
+    for (const word of words) {
+      const last = lines.at(-1);
+      if (last !== undefined && fits(`${last} ${word}`)) lines[lines.length - 1] = `${last} ${word}`;
+      else lines.push(word);
     }
-    if (best) return { px, lines: best };
+    if (lines.length <= 2 && lines.every(fits)) return { px, lines };
   }
   return { px: min, lines: [text] };
 }

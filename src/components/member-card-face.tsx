@@ -66,21 +66,35 @@ export const PassArt = ({ name, className }: { name: keyof typeof passArt; class
 
 /**
  * Where the art sits on each side, in trim pixels from the "ID Card" page (#142): x, y from the top of the strip, and
- * width. The strip runs from `top` to the bottom of the card, behind the content, and the card's edges crop it. Shared
- * with the door view and the saved image.
+ * width. The strip runs from `top` to the bottom of the card, behind the content, and the card's edges crop it; with
+ * `ground` it stands on grass and a road. Shared with the door view and the saved image.
  */
 export const townLayout = {
   // Tugu Kujang and Gedung AHN oversized and cut by the edges, trees on the grass.
   front: {
-    top: 433,
-    art: [["kujang", -129, 0, 320], ["ahn", 397, 44, 567], ["tree", 140, 484, 40], ["tree", 405, 484, 40], ["tree", 611, 484, 40]],
+    top: 525, ground: true,
+    art: [["kujang", -129, 0, 320], ["ahn", 397, 43, 567], ["tree", 140, 392, 40], ["tree", 405, 392, 40], ["tree", 611, 392, 40]],
   },
-  // The ticket scene centred, its base on the grass and under it. The back, the door view and the saved image follow this.
+  // The ticket printer alone on its own shadow, centred over the bottom fade. The back, the door view and the saved image follow this.
   back: {
-    top: 785,
+    top: 811, ground: false,
     art: [["ticket", 199, 0, 240]],
   },
-} as const satisfies Record<string, { top: number; art: readonly (readonly [keyof typeof passArt, number, number, number])[] }>;
+} as const satisfies Record<string, { top: number; ground: boolean; art: readonly (readonly [keyof typeof passArt, number, number, number])[] }>;
+
+/**
+ * Where each piece of content starts on a side, in trim pixels from the "ID Card" page (#142): the top of its line box
+ * at the line heights in `member-card.css`. On the front, `id` is Figma's "ID" group (photo, name and number, 12 px
+ * apart), which grows down when the name takes two lines; without a photo the name starts where it would have been.
+ * Shared with the saved image.
+ */
+export const faceLayout = {
+  front: { mark: 93, org: 164, year: 212, id: 333, name: 545, role: 801 },
+  back: { mark: 93, org: 160, year: 211, plate: 270, number: 608, facts: 665 },
+} as const;
+
+/** The style that places a piece of content at `top` trim pixels. */
+const at = (top: number) => ({ "--top": top }) as CSSProperties;
 
 /**
  * The art along the bottom of a side, standing on grass, then the road. It scales with its own width, so
@@ -91,22 +105,23 @@ export function PassTown({ side }: { side: keyof typeof townLayout }) {
     {townLayout[side].art.map(([name, x, y, width], index) => <span key={index} className="cr80-town-art" style={{ "--x": x, "--y": y, "--w": width } as CSSProperties}>
       <PassArt name={name} className="cr80-art" />
     </span>)}
-    <span className="cr80-ground" />
+    {townLayout[side].ground && <span className="cr80-ground" />}
   </div>;
 }
 
 /**
- * The back's illustration, on the back and in the door view: the "Tiket masuk program" scene on grass and road. Its
+ * The back's illustration, on the back and in the door view: the "Tiket masuk program" printer on its shadow. Its
  * layout is `townLayout.back`, which the saved image draws too, so a new illustration is changed in one place.
  */
 export const BackIllustration = () => <PassTown side="back" />;
 
 /** The brackets mark, the chapter's name and the chapter year at the top of each side. */
-function CardHead({ period }: { period?: string }) {
+function CardHead({ side, period }: { side: keyof typeof faceLayout; period?: string }) {
+  const layout = faceLayout[side];
   return <header className="cr80-head">
-    <PassArt name="mark" className="cr80-mark" />
-    <p className="cr80-org">GDGoC IPB University</p>
-    {period && <p className="cr80-year">{period}</p>}
+    <span className="cr80-mark" style={at(layout.mark)}><PassArt name="mark" className="cr80-art" /></span>
+    <p className="cr80-org" style={at(layout.org)}>GDGoC IPB University</p>
+    {period && <p className="cr80-year" style={at(layout.year)}>{period}</p>}
   </header>;
 }
 
@@ -121,20 +136,22 @@ function CardSky() {
 /**
  * The front of the card (#142). It shows the fields it is given: the holder's own card and staff get everything, a
  * guest only the name, tag and chapter year (epic #113, decision 5), and an invalid card for a guest nothing. The scan
- * page adds an "Aktif" or "Tidak berlaku" stamp under the role bar.
+ * page adds an "Aktif" or "Tidak berlaku" stamp under the name and number.
  */
 export function MemberCardFront({ card, stamp }: { card: Partial<CardFace>; stamp?: "valid" | "invalid" }) {
   const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : null;
-  const name = card.name ? nameFit(card.name) : null;
+  const name = card.name ? nameFit(card.name) : null, photo = card.photo !== undefined;
   return <div className={`cr80 ${vcr.variable}`} data-side="front" style={{ "--accent": divisionAccent(card.division) } as CSSProperties}>
     <CardSky />
     <div className="cr80-column">
-      <CardHead period={card.period} />
-      {card.photo !== undefined && card.name && <span className="cr80-photo"><CardPhoto name={card.name} photo={card.photo} size={200} /></span>}
-      {card.name && name && <h2 className="cr80-name" style={{ "--size": name.px } as CSSProperties}>{card.name}</h2>}
-      {card.number && <p className="cr80-number">{card.number}</p>}
-      {tag && <p className="cr80-role">{tag}</p>}
-      {stamp && <p className="cr80-stamp" data-stamp={stamp} aria-hidden="true"><PixelIcon name={stamp === "valid" ? "check" : "close"} size={26} />{stamp === "valid" ? "Aktif" : "Tidak berlaku"}</p>}
+      <CardHead side="front" period={card.period} />
+      <div className="cr80-id" style={at(photo ? faceLayout.front.id : faceLayout.front.name)}>
+        {photo && card.name && <span className="cr80-photo"><CardPhoto name={card.name} photo={card.photo ?? null} size={200} /></span>}
+        {card.name && name && <h2 className="cr80-name" style={{ "--size": name.px } as CSSProperties}>{card.name}</h2>}
+        {card.number && <p className="cr80-number">{card.number}</p>}
+        {stamp && <p className="cr80-stamp" data-stamp={stamp} aria-hidden="true"><PixelIcon name={stamp === "valid" ? "check" : "close"} size={26} />{stamp === "valid" ? "Aktif" : "Tidak berlaku"}</p>}
+      </div>
+      {tag && <p className="cr80-role" style={at(faceLayout.front.role)}>{tag}</p>}
     </div>
     <PassTown side="front" />
   </div>;
@@ -149,10 +166,10 @@ export function MemberCardBack({ card, children }: { card: Partial<CardFace>; ch
   return <div className={`cr80 ${vcr.variable}`} data-side="back">
     <CardSky />
     <div className="cr80-column">
-      <CardHead period={card.period} />
-      <div className="cr80-plate">{children}</div>
-      {card.number && <p className="cr80-number">{card.number}</p>}
-      {(campus || card.period) && <ul className="cr80-facts">
+      <CardHead side="back" period={card.period} />
+      <div className="cr80-plate" style={at(faceLayout.back.plate)}>{children}</div>
+      {card.number && <p className="cr80-number" style={at(faceLayout.back.number)}>{card.number}</p>}
+      {(campus || card.period) && <ul className="cr80-facts" style={at(faceLayout.back.facts)}>
         {campus && <li><PixelIcon name="building" size={20} /><span>{campus}</span></li>}
         {card.period && <li><PixelIcon name="calendar" size={20} /><span className="cr80-label">Berlaku</span><span>{periodLabel(card.period)}</span></li>}
       </ul>}

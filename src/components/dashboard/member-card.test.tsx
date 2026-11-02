@@ -83,12 +83,16 @@ describe("member card page", () => {
     expect(css).toMatch(/\.cr80-plate \{[^}]*width: calc\(392 \* var\(--u\)\); padding: calc\(8 \* var\(--u\)\);[^}]*border: calc\(3 \* var\(--u\)\)/);
   });
 
-  it("draws the front's landmarks oversized behind the content, without the gate", () => {
+  it("draws the front's landmarks oversized behind the content, and the ticket scene alone on the back", () => {
     render(<MemberCardPage />);
     const front = screen.getByRole("figure", { name: "Bagian depan" }), back = screen.getByRole("figure", { name: "Bagian belakang" });
     const art = (figure: HTMLElement) => [...figure.querySelectorAll(".cr80-town img")].map((image) => image.getAttribute("src")?.replace(/^.*\/|\.svg$/g, ""));
     expect(art(front)).toEqual(["tugu-kujang", "gedung-ahn", "tree", "tree", "tree"]);
-    expect(art(back)).toEqual(["tugu-kujang", "gerbang-ipb-dramaga", "gedung-ahn", "tree", "tree"]);
+    expect(art(back)).toEqual(["tiket-masuk-program"]);
+    // The scene ships without Figma's frame: no background rect, no white or grey panel behind the art.
+    const ticket = readFileSync("public/cards/tiket-masuk-program.svg", "utf8");
+    expect(ticket).toMatch(/viewBox="0 0 798 618"/);
+    expect(ticket).not.toMatch(/<rect|fill="(#fff|#ffffff|white|#f5f5f5)"|fill-opacity/i);
     const kujang = front.querySelector(".cr80-town-art") as HTMLElement;
     expect([kujang.style.getPropertyValue("--x"), kujang.style.getPropertyValue("--w")]).toEqual(["-129", "320"]);
     // The strip comes after the column in the DOM; the column's z-index keeps the role bar and name on top of it.
@@ -103,7 +107,7 @@ describe("member card page", () => {
     const dialog = screen.getByRole("dialog", { name: "QR kartu anggota" });
     expect(within(dialog).getByRole("img", { name: "QR kartu anggota Rania Putri" }).parentElement?.className).toBe("member-qr-plate");
     for (const text of ["Rania Putri", "2627-0042", "GDGoC IPB University", "2026/27"]) expect(within(dialog).getByText(text)).toBeTruthy();
-    expect(dialog.querySelector(".cr80-town[data-side='back']")).toBeTruthy();
+    expect(dialog.querySelector(".cr80-town[data-side='back'] img")?.getAttribute("src")).toBe("/cards/tiket-masuk-program.svg");
     await userEvent.click(within(dialog).getByRole("button", { name: "Tutup" }));
     expect(screen.queryByRole("dialog")).toBeNull();
   });

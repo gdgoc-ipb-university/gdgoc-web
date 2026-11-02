@@ -41,3 +41,4 @@ Never force-push this branch, and never open a pull request from it.
 | `issue-135/direction-a` | #135 member card, campus credential attempt | #136 (superseded) |
 | `issue-135/lanyard-pass` | #135 member card, lanyard pass | #138, #140 |
 | `issue-142/cr80` | #142 member card as a two-sided CR80 badge | #143, #144 |
+| `issue-146/profile-photo` | #146 members upload their own profile photo (generated placeholder portrait) | #147 and its stack |

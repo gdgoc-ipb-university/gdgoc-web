@@ -67,7 +67,7 @@ describe("member card page", () => {
     expect(rules.some((rule) => /^\s*\.member-card-qr \{[^}]*background: #fff;/.test(rule))).toBe(true);
     expect(rules.some((rule) => /(^|\*\/)\s*\.cr80-plate \{[^}]*background: #fff;/.test(rule))).toBe(true);
     // The column, plate included, sits above the strip; the back's strip starts below the column's 856 px.
-    expect(css).toMatch(/\.cr80-column \{ position: relative; z-index: 1;/);
+    expect(css).toMatch(/\.cr80-column \{ position: absolute; inset: 0; z-index: 1;/);
   });
 
   it("draws each side at CR80 proportions, scaled from the Figma trim of 638 px, on the Figma background", () => {
@@ -79,8 +79,8 @@ describe("member card page", () => {
     expect(background.subarray(12, 16).toString()).toBe("VP8L");
     const bits = background.readUInt32LE(21);
     expect([(bits & 0x3fff) + 1, (bits >> 14 & 0x3fff) + 1]).toEqual([638, 1011]);
-    // The QR plate is 392 trim px with its border and padding, so the code with its quiet zone is 370 px: 31 mm printed.
-    expect(css).toMatch(/\.cr80-plate \{[^}]*width: calc\(392 \* var\(--u\)\); padding: calc\(8 \* var\(--u\)\);[^}]*border: calc\(3 \* var\(--u\)\)/);
+    // The QR plate is 322 trim px with its border and padding, so the code with its quiet zone is 300 px: 25.4 mm printed.
+    expect(css).toMatch(/\.cr80-plate \{[^}]*width: calc\(322 \* var\(--u\)\); padding: calc\(8 \* var\(--u\)\);[^}]*border: calc\(3 \* var\(--u\)\)/);
   });
 
   it("draws the front's landmarks oversized behind the content, and the ticket scene alone on the back", () => {
@@ -99,6 +99,13 @@ describe("member card page", () => {
     const column = front.querySelector(".cr80-column") as HTMLElement, town = front.querySelector(".cr80-town") as HTMLElement;
     expect(column.compareDocumentPosition(town) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(readFileSync("src/components/member-card.css", "utf8")).not.toMatch(/\.cr80-town[^{]*\{[^}]*z-index/);
+    // Pieces sit at the Figma page's tops; the front stands on grass and road, the back's printer on its own shadow.
+    const top = (element: Element | null) => (element as HTMLElement).style.getPropertyValue("--top");
+    expect([".cr80-id", ".cr80-role"].map((selector) => top(front.querySelector(selector)))).toEqual(["333", "801"]);
+    // Photo, name and number are one group, as Figma's "ID", so a two-line name pushes the number down.
+    expect([...(front.querySelector(".cr80-id") as HTMLElement).children].map((child) => child.className)).toEqual(["cr80-photo", "cr80-name", "cr80-number"]);
+    expect([".cr80-plate", ".cr80-column > .cr80-number", ".cr80-facts"].map((selector) => top(back.querySelector(selector)))).toEqual(["270", "608", "665"]);
+    expect([front, back].map((side) => side.querySelector(".cr80-ground") !== null)).toEqual([true, false]);
   });
 
   it("shows the back full screen for the door, with the name, number and chapter year", async () => {

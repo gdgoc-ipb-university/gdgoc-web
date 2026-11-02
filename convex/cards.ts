@@ -4,6 +4,7 @@ import type { Doc } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { logAccess } from "./accessLog";
+import { photoUrl } from "./photos";
 import { newNonce } from "./bogorRunToken";
 import { chapterPeriod, inChapterPeriod } from "../src/lib/chapter";
 import { runsToday } from "../src/lib/gathering";
@@ -43,11 +44,14 @@ export function cardStatus(card: Doc<"memberCards"> | null, { profile, user }: H
   return "valid";
 }
 
-/** Everything the card shows: for its holder, and for staff checking the person in front of them. Never the email. */
-function fullCard(card: Doc<"memberCards">, { profile, user }: Holder, status: CardStatus) {
+/**
+ * Everything the card shows: for its holder, and for staff checking the person in front of them. Never the email. The
+ * photo is the uploaded one, else the Google one (photos.photoUrl).
+ */
+async function fullCard(ctx: QueryCtx, card: Doc<"memberCards">, { profile, user }: Holder, status: CardStatus) {
   return {
     status, ownerId: card.ownerId, number: card.number, token: card.token, period: card.period, issuedAt: card.issuedAt,
-    revokedAt: card.revokedAt ?? null, name: profile?.fullName ?? "", photo: user?.image ?? null,
+    revokedAt: card.revokedAt ?? null, name: profile?.fullName ?? "", photo: await photoUrl(ctx, profile, user?.image),
     campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "",
     memberType: profile?.memberType ?? null, division: profile?.division ?? null, tagConfirmed: Boolean(profile?.tagConfirmedAt),
   };
@@ -61,7 +65,7 @@ export const mine = query({
     const card = await cardOf(ctx, user._id);
     if (!card) return null;
     const holder = { profile, user };
-    return fullCard(card, holder, cardStatus(card, holder, Date.now()));
+    return fullCard(ctx, card, holder, cardStatus(card, holder, Date.now()));
   },
 });
 
@@ -117,8 +121,8 @@ export const verify = query({
         inAudience: Boolean(memberType && gathering.audience.includes(memberType)),
       };
     }));
-    if (staff || doors.length) return { viewer: staff ? "staff" as const : "helper" as const, status, card: card && fullCard(card, holder, status), gatherings };
-    if (card && access?.profile?.completedAt && access.user._id === card.ownerId) return { viewer: "self" as const, status, card: fullCard(card, holder, status) };
+    if (staff || doors.length) return { viewer: staff ? "staff" as const : "helper" as const, status, card: card && await fullCard(ctx, card, holder, status), gatherings };
+    if (card && access?.profile?.completedAt && access.user._id === card.ownerId) return { viewer: "self" as const, status, card: await fullCard(ctx, card, holder, status) };
     if (status !== "valid" || !card || !holder.profile) return { viewer: "guest" as const, status: "invalid" as const, card: null };
     const { profile } = holder;
     return {

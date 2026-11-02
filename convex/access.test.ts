@@ -154,6 +154,7 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.setReviewer", api.assignments.setReviewer, STAFF, (ids) => ({ id: ids.assignment, ownerId: ids.member, reviewer: true })],
   ["bogorRun.setHidden", api.bogorRun.setHidden, STAFF, (ids) => ({ entryId: ids.entry, hidden: true })],
   ["cards.setRevoked", api.cards.setRevoked, STAFF, (ids) => ({ ownerId: ids.member, revoked: true })],
+  ["photos.removeFor", api.photos.removeFor, STAFF, (ids) => ({ ownerId: ids.member })],
   ["gatherings.create", api.gatherings.create, STAFF, (ids) => ({ values: ids.gatheringValues })],
   ["gatherings.update", api.gatherings.update, STAFF, (ids) => ({ id: ids.draftGathering, values: { ...ids.gatheringValues, title: "Rapat" } })],
   ["gatherings.setStatus", api.gatherings.setStatus, STAFF, (ids) => ({ id: ids.draftGathering, status: "open" })],
@@ -193,6 +194,7 @@ const OPEN: Record<string, string> = {
   "cards.mine": "own card, active members", "cards.ensure": "own card, active members", "cards.reissue": "own card, active members",
   "cards.verify": "public: a scanned card, with more for its holder, staff and door helpers (cards.test.ts, gatherings.test.ts)",
   "gatherings.mine": "own check-ins, active members",
+  "photos.uploadUrl": "own photo, active members", "photos.set": "own photo, active members (photos.test.ts)", "photos.remove": "own photo, active members",
   "techSupport.mine": "own requests, active members", "techSupport.submit": "own request, active members (techSupport.test.ts)",
 };
 

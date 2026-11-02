@@ -12,7 +12,7 @@ import { cardPath } from "@/lib/member-card";
 import { siteUrl } from "@/lib/site";
 import { PixelIcon } from "../pixel-icons";
 import { LoadingPanel } from "../appreciation/shared";
-import { MemberCard, PassArt, PassTown, QrCode, passFont } from "../member-card-face";
+import { BackIllustration, MemberCard, PassArt, QrCode, passFont } from "../member-card-face";
 import { cardImagePng } from "./card-image";
 import { ConfirmDialog } from "./data-table";
 
@@ -45,7 +45,7 @@ function DoorQr({ card, open, onClose }: { card: Card; open: boolean; onClose: (
           <div className="member-qr-plate"><QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}`} /></div>
           <div className="member-qr-id"><p className="member-qr-number">{card.number}</p><p className="member-qr-name">{card.name}</p></div>
         </div>
-        <PassTown side="back" />
+        <BackIllustration />
       </Dialog>
     </Modal>
   </ModalOverlay>;

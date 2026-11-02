@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import Image from "next/image";
 import { useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { chapterPeriod } from "@/lib/chapter";
-import { divisionAccent, nameFit, photoAt } from "@/lib/member-card";
+import { cr80, divisionAccent, nameFit, photoAt } from "@/lib/member-card";
 import { memberTagLabel, type MemberType } from "@/lib/onboarding";
 import { qrMatrix, qrPath } from "@/lib/qr";
 import { PixelIcon } from "./pixel-icons";
@@ -25,10 +25,12 @@ export type CardFace = {
 
 /**
  * The card's art in `public/cards/` (#135): the landmarks and brackets mark from the Design System page of the GDGOC
- * 26/27 Figma file, cropped to their pixels, and the cloud and tree drawn to match. Sizes are the art's own pixels; the
- * "ID Card" page scales them. The saved image loads the same files.
+ * 26/27 Figma file, cropped to their pixels, and the cloud and tree drawn to match. The background is the "ID Card"
+ * page's render of its pixel fade and 4% grid on the paper, cropped to the trim (#142). Sizes are the art's own
+ * pixels; the "ID Card" page scales them. The saved image loads the same files.
  */
 export const passArt = {
+  background: { src: "/cards/card-background.webp", width: 638, height: 1011 },
   mark: { src: "/cards/gdgoc-mark.svg", width: 76.7, height: 47.7 },
   cloud: { src: "/cards/cloud.svg", width: 20, height: 5 },
   tree: { src: "/cards/tree.svg", width: 10, height: 12 },
@@ -63,13 +65,16 @@ export const PassArt = ({ name, className }: { name: keyof typeof passArt; class
 
 /**
  * Where the art sits on each side, in trim pixels from the "ID Card" page (#142): x, y from the top of the strip, and
- * width. The front strip starts 763 px down the card, the back's 810 px. Shared with the saved image.
+ * width. The strip runs from `top` to the bottom of the card, behind the content, and the card's edges crop it. Shared
+ * with the door view and the saved image.
  */
 export const townLayout = {
+  // Tugu Kujang and Gedung AHN oversized and cut by the edges, trees on the grass.
   front: {
-    top: 763,
-    art: [["kujang", 5, 0, 117], ["gate", 202, 35, 234], ["ahn", 439, 1, 234], ["tree", 140, 154, 40], ["tree", 405, 154, 40], ["tree", 611, 154, 40]],
+    top: 433,
+    art: [["kujang", -129, 0, 320], ["ahn", 397, 44, 567], ["tree", 140, 484, 40], ["tree", 405, 484, 40], ["tree", 611, 484, 40]],
   },
+  // The back's illustration is being redesigned: change it here, and the back, the door view and the saved image follow.
   back: {
     top: 810,
     art: [["kujang", 1, 0, 89.7], ["gate", 239, 40.6, 159.9], ["ahn", 511, 17.2, 159.9], ["tree", 115, 107, 40], ["tree", 471, 107, 40]],
@@ -77,17 +82,23 @@ export const townLayout = {
 } as const satisfies Record<string, { top: number; art: readonly (readonly [keyof typeof passArt, number, number, number])[] }>;
 
 /**
- * The Bogor skyline along the bottom of a side: Tugu Kujang, the IPB Dramaga gate and Gedung AHN standing on grass,
- * then the road. It scales with its own width, so the door view can draw the back's strip on its own.
+ * The Bogor landmarks along the bottom of a side, standing on grass, then the road. It scales with its own width, so
+ * the door view can draw the back's strip on its own.
  */
 export function PassTown({ side }: { side: keyof typeof townLayout }) {
-  return <div className="cr80-town" data-side={side} aria-hidden="true">
+  return <div className="cr80-town" data-side={side} style={{ "--h": cr80.height - townLayout[side].top } as CSSProperties} aria-hidden="true">
     {townLayout[side].art.map(([name, x, y, width], index) => <span key={index} className="cr80-town-art" style={{ "--x": x, "--y": y, "--w": width } as CSSProperties}>
       <PassArt name={name} className="cr80-art" />
     </span>)}
     <span className="cr80-ground" />
   </div>;
 }
+
+/**
+ * The back's illustration, on the back and in the door view. It is being redesigned (#142): swap it here, with its
+ * layout in `townLayout.back`, which the saved image draws too.
+ */
+export const BackIllustration = () => <PassTown side="back" />;
 
 /** The brackets mark, the chapter's name and the chapter year at the top of each side. */
 function CardHead({ period }: { period?: string }) {
@@ -130,7 +141,7 @@ export function MemberCardFront({ card, stamp }: { card: Partial<CardFace>; stam
 
 /**
  * The back of the card (#142): the QR, or a notice in its place, on an opaque white plate that no art reaches, then the
- * number, campus, validity and the door hint.
+ * number, campus and validity.
  */
 export function MemberCardBack({ card, children }: { card: Partial<CardFace>; children: ReactNode }) {
   const campus = [card.campus, card.studyProgram].filter(Boolean).join(" · ");
@@ -144,9 +155,8 @@ export function MemberCardBack({ card, children }: { card: Partial<CardFace>; ch
         {campus && <li><PixelIcon name="building" size={20} /><span>{campus}</span></li>}
         {card.period && <li><PixelIcon name="calendar" size={20} /><span className="cr80-label">Berlaku</span><span>{periodLabel(card.period)}</span></li>}
       </ul>}
-      <p className="cr80-hint">Tunjukkan QR ini di pintu masuk</p>
     </div>
-    <PassTown side="back" />
+    <BackIllustration />
   </div>;
 }
 

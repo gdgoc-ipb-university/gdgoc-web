@@ -5,6 +5,8 @@
  * side keeps the printed proportions at any width. The QR sits on its own white plate, never over art or tint.
  */
 .cr80 { container: cr80 / inline-size; --u: calc(100cqi / 638); position: relative; display: block; width: 100%; aspect-ratio: 638 / 1011; overflow: hidden; color: var(--ink); background: #faf9f2; border-radius: 5.88% / 3.71%; box-shadow: 0 0 0 1px var(--ink), 6px 6px 0 1px var(--ink); }
+/* The pixel fade and 4% grid from the Figma render, on both sides; on its own layer so the photo is not pixelated. */
+.cr80::before { content: ""; position: absolute; inset: 0; background: url(/cards/card-background.webp) 0 0 / 100% 100%; image-rendering: pixelated; }
 /* The punch slot stays empty on print; here a faint outline says the card hangs from it. */
 .cr80-slot { position: absolute; top: calc(47 * var(--u)); left: 50%; width: calc(154 * var(--u)); height: calc(35 * var(--u)); translate: -50% 0; background: #f2f1e8; border: calc(3 * var(--u)) solid #d9dfd7; border-radius: 999px; }
 .cr80-sky { position: absolute; inset: 0; pointer-events: none; }
@@ -27,13 +29,13 @@
 .cr80[data-side="back"] .cr80-mark { width: calc(77 * var(--u)); }
 .cr80 .cr80-org { font: 500 calc(30 * var(--u))/1.25 var(--font-space), sans-serif; }
 .cr80[data-side="back"] .cr80-org { font-size: calc(26 * var(--u)); }
-.cr80 .cr80-year { font: 400 calc(24 * var(--u))/1.2 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; color: var(--muted); }
+.cr80 .cr80-year { font: 700 calc(24 * var(--u))/1.2 var(--font-pixel), monospace; letter-spacing: .06em; color: var(--muted); }
 .cr80[data-side="back"] .cr80-year { font-size: calc(22 * var(--u)); }
 
 .cr80-photo { flex: none; box-sizing: border-box; width: calc(200 * var(--u)); height: calc(200 * var(--u)); background: #e6eddc; border: calc(4 * var(--u)) solid var(--ink); box-shadow: calc(6 * var(--u)) calc(6 * var(--u)) 0 var(--ink); }
 .cr80-photo .member-card-photo { display: grid; place-items: center; width: 100%; height: 100%; object-fit: cover; border: 0; background: #e6eddc; font: 400 calc(110 * var(--u))/1 var(--font-pixel), monospace; }
-.cr80-name { width: 100%; margin: 0; font: 400 calc(var(--size, 54) * var(--u))/1.2 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .02em; text-wrap: balance; overflow-wrap: anywhere; }
-.cr80 .cr80-number { font: 400 calc(38 * var(--u))/1.2 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; }
+.cr80-name { width: 100%; margin: 0; font: 400 calc(var(--size, 54) * var(--u))/.98 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .02em; text-wrap: balance; overflow-wrap: anywhere; }
+.cr80 .cr80-number { font: 400 calc(38 * var(--u))/.98 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; }
 .cr80[data-side="back"] .cr80-number { font-size: calc(42 * var(--u)); }
 .cr80 .cr80-role { display: grid; justify-items: center; align-self: stretch; padding: calc(14 * var(--u)) calc(20 * var(--u)); font: 700 calc(26 * var(--u))/1.3 var(--font-space), sans-serif; color: #fff; background: var(--accent, var(--ink)); }
 .cr80-verified { display: inline-flex; align-items: center; gap: calc(8 * var(--u)); font: 500 calc(16 * var(--u))/1.4 var(--font-mono), monospace; letter-spacing: .1em; text-transform: uppercase; }
@@ -42,6 +44,7 @@
 .cr80-stamp[data-stamp="invalid"] { color: #b0372a; background: #fdf0ee; }
 .cr80-stamp svg { width: calc(40 * var(--u)); height: calc(40 * var(--u)); }
 
+/* Figma's 11 px padding includes its 3 px inside stroke: 8 px of white between the border and the 370 px code. */
 .cr80-plate { flex: none; box-sizing: border-box; width: calc(392 * var(--u)); padding: calc(8 * var(--u)); background: #fff; border: calc(3 * var(--u)) solid var(--ink); }
 .member-card-qr { display: block; width: 100%; height: auto; background: #fff; image-rendering: pixelated; }
 .member-card-notice { display: grid; align-content: center; aspect-ratio: 1; margin: 0; padding: calc(20 * var(--u)); font-size: max(12px, calc(24 * var(--u))); line-height: 1.5; text-align: left; background: #fdf0ee; }
@@ -54,19 +57,16 @@
 .cr80-facts svg { flex: none; width: calc(22 * var(--u)); height: calc(22 * var(--u)); }
 .cr80-label { font: 500 calc(15 * var(--u))/1.4 var(--font-mono), monospace; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 .cr80-label + span { font: 500 calc(19 * var(--u))/1.3 var(--font-mono), monospace; }
-.cr80 .cr80-hint { font: 500 calc(18 * var(--u))/1.5 var(--font-body), sans-serif; color: var(--muted); }
 
 /* The landmark strip, with its own unit so the door view can draw it at any width. */
-.cr80-town { container: cr80-town / inline-size; --t: calc(100cqi / 638); position: absolute; inset: auto 0 0; aspect-ratio: 638 / 248; pointer-events: none; }
-.cr80-town[data-side="back"] { aspect-ratio: 638 / 201; }
+.cr80-town { container: cr80-town / inline-size; --t: calc(100cqi / 638); position: absolute; inset: auto 0 0; aspect-ratio: 638 / var(--h); pointer-events: none; }
 .cr80-town-art { position: absolute; top: calc(var(--y) * var(--t)); left: calc(var(--x) * var(--t)); width: calc(var(--w) * var(--t)); }
 .cr80-art { display: block; width: 100%; height: auto; image-rendering: pixelated; }
 /* Grass 14 px, then the road with 36 × 6 px dashes every 72 px. */
 .cr80-ground { position: absolute; inset: auto 0 0; height: calc(46 * var(--t)); background: repeating-linear-gradient(90deg, #fff 0 calc(36 * var(--t)), transparent 0 calc(72 * var(--t))) calc(-15 * var(--t)) calc(27 * var(--t)) / calc(100% + 15 * var(--t)) calc(6 * var(--t)) no-repeat, linear-gradient(#4c9a45 0 calc(14 * var(--t)), #5d6870 0); }
 
-/* VCR OSD Mono titling is set in capitals, with an outline in its own colour drawn behind the fill to give it weight. */
-.cr80-year, .cr80-name, .cr80-number, .cr80-stamp, .member-qr-year, .member-qr-name, .member-qr-number { text-transform: uppercase; -webkit-text-stroke: .08em currentColor; paint-order: stroke fill; }
-.cr80-year, .member-qr-year { -webkit-text-stroke-width: .05em; }
+/* VCR OSD Mono titling (name, number, stamp) is set in capitals at Figma's automatic line height (.98 em), with an outline in its own colour drawn behind the fill to give it weight. */
+.cr80-name, .cr80-number, .cr80-stamp, .member-qr-name, .member-qr-number { text-transform: uppercase; -webkit-text-stroke: .08em currentColor; paint-order: stroke fill; }
 
 /* Both sides, labelled: side by side where two fit, front then back on a phone. */
 .cr80-pair { display: flex; flex-wrap: wrap; gap: 28px 32px; }
@@ -117,7 +117,7 @@
 .card-check-buttons { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
 
 /* The door view: the back of the card full screen, with the QR as large as the screen allows and nothing over it. */
-.member-qr-overlay { position: fixed; inset: 0; z-index: 80; background: #faf9f2; display: grid; }
+.member-qr-overlay { position: fixed; inset: 0; z-index: 80; display: grid; background: #faf9f2 url(/cards/card-background.webp) center top / cover no-repeat; image-rendering: pixelated; }
 .member-qr-modal { display: grid; outline: none; }
 .member-qr-dialog { position: relative; display: grid; grid-template-rows: auto 1fr auto; justify-items: center; gap: 14px; min-height: 100dvh; padding-top: 20px; outline: none; color: var(--ink); overflow: hidden; }
 .member-qr-dialog p { margin: 0; }
@@ -125,7 +125,7 @@
 .member-qr-org { display: grid; justify-items: center; gap: 6px; text-align: center; }
 .member-qr-org .cr80-mark { width: 52px; }
 .member-qr-chapter { font: 500 19px/1.25 var(--font-space), sans-serif; }
-.member-qr-year { font: 400 16px/1.2 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; color: var(--muted); }
+.member-qr-year { font: 700 16px/1.2 var(--font-pixel), monospace; letter-spacing: .06em; color: var(--muted); }
 .member-qr-main { display: grid; justify-items: center; align-content: center; gap: 16px; }
 .member-qr-plate { box-sizing: border-box; width: min(92vw, 52dvh, 520px); padding: 8px; background: #fff; border: 3px solid var(--ink); }
 .member-qr-id { display: grid; justify-items: center; gap: 4px; padding-inline: 18px; text-align: center; }

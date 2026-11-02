@@ -30,7 +30,10 @@ describe("member card page", () => {
     const card = screen.getByRole("group", { name: "Kartu anggota Rania Putri" });
     const front = within(card).getByRole("figure", { name: "Bagian depan" }), back = within(card).getByRole("figure", { name: "Bagian belakang" });
     expect(front.compareDocumentPosition(back) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    for (const text of ["Rania Putri", "Core Team · Technical", "Terverifikasi", "2627-0042", "2026/27"]) expect(within(front).getByText(text)).toBeTruthy();
+    for (const text of ["Rania Putri", "Core Team · Technical", "2627-0042", "2026/27"]) expect(within(front).getByText(text)).toBeTruthy();
+    // The role bar holds the role line only, even for a confirmed tag.
+    expect(front.querySelector(".cr80-role")?.textContent).toBe("Core Team · Technical");
+    expect(within(card).queryByText(/Terverifikasi/i)).toBeNull();
     for (const text of ["IPB University · Ilmu Komputer", "2627-0042", "1 Juli 2026 – 1 Juli 2027"]) expect(within(back).getByText(text)).toBeTruthy();
     expect(within(back).getByRole("img", { name: /QR kartu anggota Rania Putri/ })).toBeTruthy();
     expect(within(front).queryByRole("img", { name: /QR/ })).toBeNull();

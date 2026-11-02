@@ -133,7 +133,7 @@ export function MemberCardFront({ card, stamp }: { card: Partial<CardFace>; stam
       {card.photo !== undefined && card.name && <span className="cr80-photo"><CardPhoto name={card.name} photo={card.photo} size={200} /></span>}
       {card.name && name && <h2 className="cr80-name" style={{ "--size": name.px } as CSSProperties}>{card.name}</h2>}
       {card.number && <p className="cr80-number">{card.number}</p>}
-      {tag && <p className="cr80-role"><span>{tag}</span>{card.tagConfirmed && <span className="cr80-verified"><PixelIcon name="check" size={16} />Terverifikasi</span>}</p>}
+      {tag && <p className="cr80-role">{tag}</p>}
       {stamp && <p className="cr80-stamp" data-stamp={stamp} aria-hidden="true"><PixelIcon name={stamp === "valid" ? "check" : "close"} size={26} />{stamp === "valid" ? "Aktif" : "Tidak berlaku"}</p>}
     </div>
     <PassTown side="front" />

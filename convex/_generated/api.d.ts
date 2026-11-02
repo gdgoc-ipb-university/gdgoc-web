@@ -22,6 +22,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as gatherings from "../gatherings.js";
 import type * as http from "../http.js";
 import type * as members from "../members.js";
+import type * as photos from "../photos.js";
 import type * as techSupport from "../techSupport.js";
 
 import type {
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   gatherings: typeof gatherings;
   http: typeof http;
   members: typeof members;
+  photos: typeof photos;
   techSupport: typeof techSupport;
 }>;
 

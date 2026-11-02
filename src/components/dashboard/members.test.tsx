@@ -9,7 +9,7 @@ import { MembersPage } from "./members";
 import { ViewerContext, type DashboardViewer } from "./viewer";
 
 // The members page against a fake Convex: the list is cut and sorted the way `dashboard.members` does it.
-type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; techSupportHandler?: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null };
+type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; techSupportHandler?: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null; photo?: string | null; photoUploaded?: boolean };
 const names = ["Adi", "Bima", "Citra", "Dewi", "Eka", "Fajar", "Gita", "Hana", "Indra", "Joko", "Kiki", "Lina", "Mira", "Nadia", "Oki", "Putri", "Qori", "Rania", "Sari", "Tono", "Umar", "Vina", "Wati", "Xena", "Yusuf", "Zahra", "Agus", "Bayu", "Cahya", "Dina"];
 const rows: Row[] = names.map((fullName, index) => ({
   ownerId: `u${index}`, fullName, email: `${fullName.toLowerCase()}@example.com`, campus: "IPB University", studyProgram: "Ilmu Komputer",
@@ -18,11 +18,13 @@ const rows: Row[] = names.map((fullName, index) => ({
 rows[1] = { ...rows[1], memberType: "core", division: "Technical" };
 rows[2] = { ...rows[2], active: false };
 rows[29] = { ...rows[29], card: { number: "2627-0030", revoked: false } };
+rows[28] = { ...rows[28], photo: "https://example.convex.cloud/api/storage/cahya", photoUploaded: true };
 
 const setActive = vi.fn(async () => null);
 const setCardRevoked = vi.fn(async () => null);
 const setTechSupportHandler = vi.fn(async () => null);
-const mutations: Record<string, ReturnType<typeof vi.fn>> = { "dashboard:setActive": setActive, "cards:setRevoked": setCardRevoked, "dashboard:setTechSupportHandler": setTechSupportHandler };
+const removePhoto = vi.fn(async () => null);
+const mutations: Record<string, ReturnType<typeof vi.fn>> = { "dashboard:setActive": setActive, "cards:setRevoked": setCardRevoked, "dashboard:setTechSupportHandler": setTechSupportHandler, "photos:removeFor": removePhoto };
 // Like Convex, the same arguments return the same object, so results can be compared by reference.
 const results = new Map<string, unknown>();
 vi.mock("convex/react", () => ({
@@ -53,7 +55,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const viewer = (role: DashboardViewer["role"]): DashboardViewer => ({ id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role, active: true, onboarded: true, reviewer: true, memberType: null, division: null, campus: "", studyProgram: "", doorHelper: false, techSupportHandler: false });
+const viewer = (role: DashboardViewer["role"]): DashboardViewer => ({ id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role, active: true, onboarded: true, reviewer: true, memberType: null, division: null, campus: "", studyProgram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false });
 function show(role: DashboardViewer["role"] = "owner") {
   return render(<ViewerContext.Provider value={viewer(role)}><MembersPage /></ViewerContext.Provider>);
 }
@@ -175,6 +177,23 @@ describe("members table", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await user.click(screen.getByRole("button", { name: "Kelola Cahya" }));
     expect(within(screen.getByRole("menu", { name: "Kelola Cahya" })).queryByRole("menuitem", { name: "Blokir kartu" })).toBeNull();
+  });
+
+  it("shows a member's photo in their row and lets staff remove an uploaded one, after asking", async () => {
+    const user = userEvent.setup();
+    show("admin");
+    const row = screen.getByRole("link", { name: "Cahya" }).closest("tr") as HTMLElement;
+    expect(row.querySelector("img.account-avatar")?.getAttribute("src")).toBe("https://example.convex.cloud/api/storage/cahya");
+    await user.click(screen.getByRole("button", { name: "Kelola Cahya" }));
+    await user.click(screen.getByRole("menuitem", { name: "Hapus foto profil" }));
+    const dialog = await screen.findByRole("alertdialog", { name: "Hapus foto profil?" });
+    expect(dialog.textContent).toContain("foto Google atau inisial");
+    await user.click(within(dialog).getByRole("button", { name: "Ya, hapus foto profil" }));
+    expect(removePhoto).toHaveBeenCalledWith({ ownerId: "u28" });
+    // A member who never uploaded one has nothing to remove.
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    await user.click(screen.getByRole("button", { name: "Kelola Dina" }));
+    expect(within(screen.getByRole("menu", { name: "Kelola Dina" })).queryByRole("menuitem", { name: "Hapus foto profil" })).toBeNull();
   });
 
   it("offers admins no access changes, and links every row to the member's page", async () => {

@@ -8,6 +8,7 @@ import { logAccess, tagValue } from "./accessLog";
 import { dashboardAccess, handlesTechSupport, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
+import { clearPhoto, photoUrl } from "./photos";
 import { divisions, validateStaffRole } from "../src/lib/onboarding";
 import { normalizeEmail } from "../src/lib/cohort";
 import { assignmentMaxScore, isLate, isStaleReview } from "../src/lib/assignment";
@@ -25,6 +26,8 @@ export const viewer = query({
       techSupportHandler: handlesTechSupport(access.role, access.profile),
       memberType: access.profile?.memberType ?? null, division: access.profile?.division ?? null,
       campus: access.profile?.campus ?? "", studyProgram: access.profile?.studyProgram ?? "",
+      // The uploaded photo, else the Google one (photos.photoUrl); `photoUploaded` offers "Hapus foto".
+      photo: await photoUrl(ctx, access.profile, access.user.image), photoUploaded: Boolean(access.profile?.photoStorageId),
       // Runs the door of a gathering that is not over yet, so the sidebar offers Kehadiran (gatherings.ts).
       doorHelper: (await Promise.all((["draft", "open"] as const).map((status) => ctx.db.query("gatherings").withIndex("by_status", (q) => q.eq("status", status)).collect())))
         .flat().some((gathering) => gathering.helpers.includes(access.user._id)),
@@ -48,6 +51,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     tagConfirmed: Boolean(profile.tagConfirmedAt), reviewsByTag: !isActive(role, profile) ? false : reviewsByTag(profile),
     // The member card, once they have opened it, and whether staff blocked it (cards.setRevoked).
     card: card ? { number: card.number, revoked: Boolean(card.revokedAt) } : null,
+    // Their photo, and whether they uploaded it, which staff can remove (photos.removeFor).
+    photo: await photoUrl(ctx, profile, user?.image), photoUploaded: Boolean(profile.photoStorageId),
   };
 }
 
@@ -230,7 +235,7 @@ async function deleteAuthRows(ctx: MutationCtx, model: "session" | "account", us
 /**
  * Owners delete a member's account on request (`/privasi`): profile, Apresiasi, assignment submissions with their files
  * and review rows, pending uploads, Bogor Run rows, reviewer grants, the member card, check-ins and door helper grants,
- * Tech Support requests, and the sign-in account and sessions. Other people's
+ * Tech Support requests, the uploaded photo and its file, and the sign-in account and sessions. Other people's
  * records keep the bare account ID they referenced (who reviewed, who changed access), which then resolves to no name.
  * `confirmName` must match the profile name, so a stray call cannot delete anyone. One accountDeletions row records the counts.
  */
@@ -244,7 +249,7 @@ export const deleteAccount = mutation({
     if (row.role === "owner") throw new ConvexError("Akun pemilik diatur lewat konfigurasi server dan tidak bisa dihapus dari sini.");
     if (confirmName.trim() !== profile.fullName.trim()) throw new ConvexError({ code: "VALIDATION", message: "Ketik nama anggota persis seperti tertulis untuk konfirmasi." });
 
-    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0 };
+    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0 };
     for (const doc of await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).collect()) {
       for (const review of await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", doc._id)).collect()) { await ctx.db.delete(review._id); counts.appreciationReviews++; }
       await ctx.db.delete(doc._id); counts.appreciations++;
@@ -279,6 +284,7 @@ export const deleteAccount = mutation({
       await ctx.db.patch(gathering._id, { helpers: gathering.helpers.filter((id) => id !== ownerId) }); counts.helperGrants++;
     }
     for (const request of await ctx.db.query("techSupportRequests").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(request._id); counts.techSupportRequests++; }
+    if (await clearPhoto(ctx, profile)) counts.photos++;
     await ctx.db.delete(profile._id);
     counts.sessions = await deleteAuthRows(ctx, "session", ownerId);
     counts.accounts = await deleteAuthRows(ctx, "account", ownerId);

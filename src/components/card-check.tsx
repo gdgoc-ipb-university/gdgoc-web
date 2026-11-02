@@ -8,7 +8,7 @@ import { api } from "../../convex/_generated/api";
 import { readableError } from "@/lib/draft-session";
 import { clockLabel } from "@/lib/gathering";
 import { cardStatusLabels } from "@/lib/member-card";
-import { MemberCardFace } from "./member-card-face";
+import { MemberCard } from "./member-card-face";
 import { PixelIcon } from "./pixel-icons";
 
 const clock = new Intl.DateTimeFormat("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" });
@@ -73,10 +73,13 @@ function DoorCheckIn({ token, name, doors }: { token: string; name: string; door
   </section>;
 }
 
+/** The back's plate on the scan page: the page never shows the QR again, so a screenshot of a check is not a card. */
+const hiddenQr = <p className="member-card-notice" data-quiet><strong>QR tidak ditampilkan</strong>Halaman pemeriksaan tidak menampilkan QR kartu.</p>;
+
 /**
- * What a scanned member card shows (`/k/<token>`, E10 #116). Guests see whether the card is valid, and the pass with only
- * the holder's name, community tag and chapter year; staff, door helpers and the holder see the whole pass. Either way
- * the pass carries an "Aktif" or "Tidak berlaku" stamp where the QR would be (#135).
+ * What a scanned member card shows (`/k/<token>`, E10 #116). Guests see whether the card is valid, and only the front of
+ * the card with the holder's name, community tag and chapter year; staff, door helpers and the holder see both sides,
+ * the back without its QR. Either way the front carries an "Aktif" or "Tidak berlaku" stamp under the role bar (#142).
  */
 export function CardCheck({ token }: { token: string }) {
   const auth = useConvexAuth();
@@ -91,11 +94,11 @@ export function CardCheckView({ result }: { result: Result }) {
       <Verdict valid={false} title="Kartu tidak berlaku">
         <p>QR ini tidak terhubung ke kartu anggota yang aktif. Kartunya mungkin sudah diganti, diblokir, atau dari tahun chapter sebelumnya.</p>
       </Verdict>
-      <div className="card-check-card"><MemberCardFace card={{}} stamp="invalid" /></div>
+      <div className="card-check-card"><MemberCard card={{}} stamp="invalid" /></div>
     </>;
     return <>
       <Verdict valid title="Kartu anggota aktif"><p className="card-check-note">Anggota GDGoC IPB University. Cocokkan nama dengan orang yang menunjukkan kartu.</p></Verdict>
-      <div className="card-check-card"><MemberCardFace card={result.card} stamp="valid" /></div>
+      <div className="card-check-card"><MemberCard card={result.card} stamp="valid" /></div>
     </>;
   }
 
@@ -108,7 +111,7 @@ export function CardCheckView({ result }: { result: Result }) {
       {result.viewer === "self" && <p>Ini kartumu. Pengurus yang memindai QR-nya melihat kartu lengkap untuk mencatat kehadiranmu.</p>}
     </Verdict>
     {valid && doors.length > 0 && <DoorCheckIn token={card.token} name={card.name} doors={doors} />}
-    <div className="card-check-card"><MemberCardFace card={card} stamp={valid ? "valid" : "invalid"} /></div>
+    <div className="card-check-card"><MemberCard card={card} stamp={valid ? "valid" : "invalid"} back={hiddenQr} /></div>
     {result.viewer !== "helper" && <p className="card-check-links">
       {result.viewer === "staff"
         ? <Link className="button button-blue" href={`/dashboard/anggota/${card.ownerId}`}>Buka halaman anggota</Link>

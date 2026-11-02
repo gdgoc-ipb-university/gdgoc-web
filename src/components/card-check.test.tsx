@@ -41,13 +41,14 @@ describe("member card check", () => {
     answer = { viewer: "guest", status: "valid", card: { name: "Rania Putri", memberType: "core", division: "Technical", tagConfirmed: true, period: "2026/27" } };
     const { container } = show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu anggota aktif");
-    for (const text of ["Rania Putri", "Core Team · Technical", "Terverifikasi", "1 Juli 2026 – 1 Juli 2027"]) expect(screen.getByText(text)).toBeTruthy();
+    for (const text of ["Rania Putri", "Core Team · Technical", "Terverifikasi", "2026/27"]) expect(screen.getByText(text)).toBeTruthy();
     expect(screen.getByText(/^Diperiksa .+ WIB$/)).toBeTruthy();
-    expect(container.textContent).not.toMatch(/IPB University ·|2627-|Buka/);
-    // The pass carries only what decision 5 allows, and the stamp.
-    const pass = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
-    expect(pass.querySelector(".member-pass-avatar, .member-pass-number, .member-pass-code")).toBeNull();
-    expect(pass.querySelector(".member-pass-stamp")?.getAttribute("data-stamp")).toBe("valid");
+    expect(container.textContent).not.toMatch(/IPB University ·|2627-|Berlaku|Buka/);
+    // Only the front, with only what decision 5 allows, and the stamp.
+    const card = screen.getByRole("group", { name: "Kartu anggota Rania Putri" });
+    expect(within(card).getAllByRole("figure").map((figure) => figure.querySelector("figcaption")?.textContent)).toEqual(["Bagian depan"]);
+    expect(card.querySelector(".cr80-photo, .cr80-number, .cr80-plate, .cr80-facts, [data-side='back']")).toBeNull();
+    expect(card.querySelector(".cr80-stamp")?.getAttribute("data-stamp")).toBe("valid");
     expect(screen.queryByRole("link")).toBeNull();
     await accessible(container);
   });
@@ -57,9 +58,10 @@ describe("member card check", () => {
     show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu tidak berlaku");
     expect(screen.queryByText(/Rania/)).toBeNull();
-    const pass = screen.getByRole("article", { name: "Kartu anggota" });
-    expect(pass.querySelector("h2, .member-pass-role, .member-pass-facts")).toBeNull();
-    expect(pass.querySelector(".member-pass-stamp")?.getAttribute("data-stamp")).toBe("invalid");
+    const card = screen.getByRole("group", { name: "Kartu anggota" });
+    expect(within(card).getAllByRole("figure")).toHaveLength(1);
+    expect(card.querySelector("h2, .cr80-year, .cr80-role, .cr80-facts, [data-side='back']")).toBeNull();
+    expect(card.querySelector(".cr80-stamp")?.getAttribute("data-stamp")).toBe("invalid");
   });
 
   it("shows staff the whole card, why it is not valid, and a link to the member's page", async () => {
@@ -67,9 +69,14 @@ describe("member card check", () => {
     const { container } = show();
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kartu tidak berlaku");
     expect(screen.getByText("Kartu diblokir pengurus.")).toBeTruthy();
-    const pass = screen.getByRole("article", { name: "Kartu anggota Rania Putri" });
-    expect(pass.textContent).toContain("2627-0042");
-    expect(pass.querySelector(".member-pass-stamp")?.getAttribute("data-stamp")).toBe("invalid");
+    const card = screen.getByRole("group", { name: "Kartu anggota Rania Putri" });
+    const front = within(card).getByRole("figure", { name: "Bagian depan" }), back = within(card).getByRole("figure", { name: "Bagian belakang" });
+    expect(front.textContent).toContain("2627-0042");
+    expect(front.querySelector(".cr80-stamp")?.getAttribute("data-stamp")).toBe("invalid");
+    expect(back.textContent).toContain("IPB University · Ilmu Komputer");
+    // The scan page never shows the QR again.
+    expect(within(back).getByText("QR tidak ditampilkan")).toBeTruthy();
+    expect(screen.queryByRole("img", { name: /QR/ })).toBeNull();
     expect(screen.getByRole("link", { name: "Buka halaman anggota" }).getAttribute("href")).toBe("/dashboard/anggota/u1");
     await accessible(container);
   });

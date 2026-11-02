@@ -14,7 +14,7 @@ import { qrMatrix } from "@/lib/qr";
 import { siteUrl } from "@/lib/site";
 import { PixelIcon, pixelIconPaths } from "../pixel-icons";
 import { LoadingPanel } from "../appreciation/shared";
-import { MemberCardFace, PassArt, PassTown, QrCode, passArt, passFont, periodLabel } from "../member-card-face";
+import { MemberCard, PassArt, PassTown, QrCode, passArt, passFont, periodLabel } from "../member-card-face";
 import { ConfirmDialog } from "./data-table";
 
 type Card = NonNullable<FunctionReturnType<typeof api.cards.mine>>;
@@ -31,19 +31,22 @@ function useWakeLock(active: boolean) {
   }, [active]);
 }
 
+/** The back of the card full screen for the door (#142): the head, the QR on its plate, the number and name, and the strip. */
 function DoorQr({ card, open, onClose }: { card: Card; open: boolean; onClose: () => void }) {
   useWakeLock(open);
   return <ModalOverlay className="member-qr-overlay" isOpen={open} onOpenChange={(next) => { if (!next) onClose(); }} isDismissable>
     <Modal className="member-qr-modal">
       <Dialog className={`member-qr-dialog ${passFont.className}`}>
-        <div className="member-qr-top">
-          <p className="member-qr-org"><PassArt name="mark" className="member-pass-mark" scale={0.6} /><span><strong>GDGoC IPB University</strong><span>Kartu anggota · {card.period}</span></span></p>
-          <Button className="icon-button member-qr-close" aria-label="Tutup" onPress={onClose}><PixelIcon name="close" size={24} /></Button>
+        <Button className="icon-button member-qr-close" aria-label="Tutup" onPress={onClose}><PixelIcon name="close" size={24} /></Button>
+        <header className="member-qr-org">
+          <PassArt name="mark" className="cr80-mark" /><Heading slot="title" className="sr-only">QR kartu anggota</Heading>
+          <p className="member-qr-chapter">GDGoC IPB University</p><p className="member-qr-year">{card.period}</p>
+        </header>
+        <div className="member-qr-main">
+          <div className="member-qr-plate"><QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}`} /></div>
+          <div className="member-qr-id"><p className="member-qr-number">{card.number}</p><p className="member-qr-name">{card.name}</p></div>
         </div>
-        <Heading slot="title" className="sr-only">QR kartu anggota</Heading>
-        <QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}`} />
-        <div className="member-qr-id"><p className="member-qr-name">{card.name}</p><p className="member-qr-number">{card.number}</p></div>
-        <PassTown />
+        <PassTown side="back" />
       </Dialog>
     </Modal>
   </ModalOverlay>;
@@ -312,11 +315,9 @@ export function MemberCardPage() {
   return <>
     {intro}
     <div className="member-card-layout">
-      <MemberCardFace card={card}>
-        {revoked
-          ? <p className="member-card-notice" role="status"><strong>Kartu diblokir</strong>Pengurus memblokir kartu ini, jadi QR-nya tidak berlaku. Hubungi admin GDGoC IPB lewat <a href={communityLinks.instagram} target="_blank" rel="noreferrer">Instagram @gdgoc.ipb</a>.</p>
-          : <QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}. Pengurus memindainya untuk mencatat kehadiran.`} />}
-      </MemberCardFace>
+      <MemberCard card={card} back={revoked
+        ? <p className="member-card-notice" role="status"><strong>Kartu diblokir</strong>Pengurus memblokir kartu ini, jadi QR-nya tidak berlaku. Hubungi admin GDGoC IPB lewat <a href={communityLinks.instagram} target="_blank" rel="noreferrer">Instagram @gdgoc.ipb</a>.</p>
+        : <QrCode className="member-card-qr" value={cardUrl(card.token)} label={`QR kartu anggota ${card.name}. Pengurus memindainya untuk mencatat kehadiran.`} />} />
       <div className="member-card-side">{!revoked && <CardActions card={card} />}<CheckInHistory /></div>
     </div>
   </>;

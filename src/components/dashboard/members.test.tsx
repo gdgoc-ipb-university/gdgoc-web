@@ -53,7 +53,7 @@ vi.mock("next/navigation", () => ({
   },
 }));
 
-const viewer = (role: DashboardViewer["role"]): DashboardViewer => ({ id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role, active: true, onboarded: true, reviewer: true, memberType: null, division: null, campus: "", studyProgram: "", doorHelper: false, techSupportHandler: false });
+const viewer = (role: DashboardViewer["role"]): DashboardViewer => ({ id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role, active: true, onboarded: true, reviewer: true, memberType: null, division: null, campus: "", studyProgram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false });
 function show(role: DashboardViewer["role"] = "owner") {
   return render(<ViewerContext.Provider value={viewer(role)}><MembersPage /></ViewerContext.Provider>);
 }

@@ -21,6 +21,8 @@ export const accessChange = v.union(
   v.literal("gatheringHelper"),
   // An owner granted or revoked the Tech Support queue ("on"/"off").
   v.literal("techSupportHandler"),
+  // Staff removed a member's uploaded profile photo ("uploaded"/"removed").
+  v.literal("photo"),
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
@@ -44,8 +46,11 @@ export default defineSchema({
     tagConfirmedAt: v.optional(v.number()), tagConfirmedBy: v.optional(v.string()),
     // The Tech Support queue granted by an owner, like `appreciationReviewer`; owners and admins handle it by role.
     techSupportHandler: v.optional(v.boolean()),
+    // The member's own photo for the dashboard and the printed card (#146), ahead of the Google photo (photos.ts).
+    photoStorageId: v.optional(v.id("_storage")), photoUploadedAt: v.optional(v.number()),
   }).index("by_owner", ["ownerId"])
     .index("by_completed", ["completedAt"])
+    .index("by_photo", ["photoStorageId"])
     .searchIndex("search_name", { searchField: "fullName" }),
   appreciations: defineTable({
     ownerId: v.string(), ownerName: v.string(), ownerEmail: v.string(), clientId: v.string(),
@@ -217,6 +222,8 @@ export default defineSchema({
       cards: v.optional(v.number()), checkIns: v.optional(v.number()), helperGrants: v.optional(v.number()),
       // Added with Tech Support requests.
       techSupportRequests: v.optional(v.number()),
+      // Added with uploaded profile photos.
+      photos: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

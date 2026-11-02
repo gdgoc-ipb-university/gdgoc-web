@@ -7,6 +7,7 @@ import { requireMember, requireStaff, type DashboardRole } from "./access";
 import { memberType } from "./schema";
 import { logAccess } from "./accessLog";
 import { enrolledRoles, mentoredRoles, mentors } from "./cohorts";
+import { storedFileInUse } from "./photos";
 import { inCohortRoles } from "../src/lib/cohort";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
@@ -580,11 +581,11 @@ export const cleanupUploads = internalMutation({
   handler: async (ctx) => {
     const cutoff = Date.now() - pendingFileLifetime;
     await removeFiles(ctx, await ctx.db.query("submissionFiles").withIndex("by_submission", (q) => q.eq("submissionId", undefined).lt("createdAt", cutoff)).take(200));
-    // Uploads that were never registered (closed tab, failed request). Assignment
-    // submissions are the only feature that stores files; extend this check if that changes.
+    // Uploads that were never registered (closed tab, failed request): assignment files and profile photos are the
+    // only features that store files (storedFileInUse); extend that check if another one does.
     const uploads = await ctx.db.system.query("_storage").withIndex("by_creation_time", (q) => q.gt("_creationTime", cutoff - 2 * pendingFileLifetime).lt("_creationTime", cutoff)).take(500);
     for (const upload of uploads) {
-      if (!(await ctx.db.query("submissionFiles").withIndex("by_storage", (q) => q.eq("storageId", upload._id)).unique())) await ctx.storage.delete(upload._id);
+      if (!(await storedFileInUse(ctx, upload._id))) await ctx.storage.delete(upload._id);
     }
   },
 });

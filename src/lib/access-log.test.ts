@@ -60,6 +60,10 @@ describe("access log sentences", () => {
     ]);
   });
 
+  it("describes staff removing a profile photo", () => {
+    expect(accessSentence(entry("photo", "uploaded", "removed"))).toBe("Aldio Lisafron menghapus foto profil Rania Putri.");
+  });
+
   it("reads stored community tags", () => {
     expect([tagLabel("member"), tagLabel("core:Media & Creative"), tagLabel("bod"), tagLabel("unknown")]).toEqual(["Member", "Core Team · Media & Creative", "BoD", "Member"]);
   });

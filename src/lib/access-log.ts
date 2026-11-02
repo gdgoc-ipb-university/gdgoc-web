@@ -1,7 +1,7 @@
 import { memberTagLabel, type MemberType } from "./onboarding";
 
 export type AccessEntry = {
-  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail" | "card" | "gatheringHelper" | "techSupportHandler";
+  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail" | "card" | "gatheringHelper" | "techSupportHandler" | "photo";
   from: string; to: string; actor: string | null; target: string | null; assignment: { title: string | null } | null;
   cohort?: { name: string | null; roles: { key: string; name: string }[] } | null;
   gathering?: { title: string | null } | null;
@@ -38,6 +38,7 @@ export function accessSentence(entry: AccessEntry) {
       return entry.to === "on" ? `${actor} menunjuk ${target} sebagai penjaga pintu ${gathering}.` : `${actor} mencabut ${target} dari penjaga pintu ${gathering}.`;
     }
     case "techSupportHandler": return entry.to === "on" ? `${actor} memberi ${target} akses antrean Tech Support.` : `${actor} mencabut akses antrean Tech Support dari ${target}.`;
+    case "photo": return `${actor} menghapus foto profil ${target}.`;
     case "card": return entry.to === "revoked" ? `${actor} memblokir kartu anggota ${target}.` : `${actor} membuka blokir kartu anggota ${target}.`;
   }
 }

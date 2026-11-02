@@ -27,6 +27,8 @@ export function qrPlacement(modules: number) {
 }
 
 const ink = "#172d43", muted = "#596775", paper = "#faf9f2", line = "#d9dfd7";
+/** VCR OSD Mono at Figma's automatic line height, its ascent plus descent. */
+const vcrLine = .98;
 
 /** The family a CSS font variable resolves to, so the saved image uses the site's fonts. */
 function fontOf(variable: string, fallback: string) {
@@ -51,7 +53,7 @@ export async function drawCardImage(card: CardImage) {
   const pixel = fontOf("--font-pixel", "monospace"), vcr = `${passFont.family}, ${pixel}`, space = fontOf("--font-space", "sans-serif"), body = fontOf("--font-body", "sans-serif"), mono = fontOf("--font-mono", "monospace");
   // Load each face first, as some are not preloaded. Only the first family: Next's local() fallback faces can fail to
   // load, which would end the wait early. A face that still fails only falls back.
-  await Promise.all([`400 54px ${passFont.family}`, `400 110px ${pixel}`, `500 30px ${space}`, `700 26px ${space}`, `400 17px ${body}`, `500 18px ${body}`, `500 19px ${mono}`]
+  await Promise.all([`400 54px ${passFont.family}`, `400 110px ${pixel}`, `700 24px ${pixel}`, `500 30px ${space}`, `700 26px ${space}`, `400 17px ${body}`, `500 18px ${body}`, `500 19px ${mono}`]
     .map((font) => document.fonts.load(font.replace(/,.*$/, "")).catch(() => [])));
   const names = Object.keys(passArt) as (keyof typeof passArt)[];
   const [photo, ...loaded] = await Promise.all([loadImage(photoAt(card.photo, 400), "anonymous"), ...names.map((name) => loadImage(passArt[name].src))]);
@@ -78,20 +80,29 @@ export async function drawCardImage(card: CardImage) {
   };
   const mid = cr80.width / 2;
 
-  /** What both sides share: paper, clouds, confetti, the head, and the strip on grass and road. Returns where the head ends. */
+  /**
+   * The landmarks of a side, then grass and road, from `townLayout`. The back's illustration is being redesigned, and
+   * `BackIllustration` on the page reads the same layout, so a new one changes both.
+   */
+  const town = (which: "front" | "back") => {
+    const { top, art: pieces } = townLayout[which];
+    for (const [name, x, y, w] of pieces) draw(name, x, top + y, w);
+    g.fillStyle = "#4c9a45"; g.fillRect(0, 965, cr80.width, 14);
+    g.fillStyle = "#5d6870"; g.fillRect(0, 979, cr80.width, 32);
+    g.fillStyle = "#fff"; for (let x = -15; x < cr80.width; x += 72) g.fillRect(x, 992, 36, 6);
+  };
+
+  /** What both sides share: paper and background, clouds, confetti, the landmarks behind the content, and the head. Returns where the head ends. */
   const side = (which: "front" | "back") => {
     g.fillStyle = paper; g.fillRect(0, 0, cr80.width, cr80.height);
+    draw("background", 0, 0, cr80.width);
     const clouds = which === "front" ? [[27, 69], [491, 77]] : [[491, 69]];
     for (const [x, y] of clouds) draw("cloud", x, y, 120);
     const confetti = which === "front"
       ? [[75, 115, "#ea4335"], [117, 157, "#fbbc05"], [61, 180, "#4285f4"], [565, 107, "#4285f4"], [593, 197, "#34a853"], [563, 229, "#fbbc05"]] as const
       : [[75, 115, "#ea4335"], [61, 178, "#4285f4"], [569, 115, "#34a853"], [585, 178, "#fbbc05"]] as const;
     for (const [x, y, color] of confetti) { g.fillStyle = color; g.fillRect(x, y, 12, 12); }
-    const town = townLayout[which];
-    for (const [name, x, y, w] of town.art) draw(name, x, town.top + y, w);
-    g.fillStyle = "#4c9a45"; g.fillRect(0, 965, cr80.width, 14);
-    g.fillStyle = "#5d6870"; g.fillRect(0, 979, cr80.width, 32);
-    g.fillStyle = "#fff"; for (let x = -15; x < cr80.width; x += 72) g.fillRect(x, 992, 36, 6);
+    town(which);
     // The head: mark, chapter name and year, 12 px apart on the front and 8 px on the back.
     const [markWidth, org, year, gap] = which === "front" ? [92, 30, 24, 12] : [77, 26, 22, 8];
     let y = 93;
@@ -100,7 +111,7 @@ export async function drawCardImage(card: CardImage) {
     g.textAlign = "center";
     text("GDGoC IPB University", mid, y, org * 1.25, `500 ${org}px ${space}`, ink);
     y += org * 1.25 + gap;
-    text(card.period.toUpperCase(), mid, y, year * 1.2, `400 ${year}px ${vcr}`, muted, year * .06, year * .05);
+    text(card.period.toUpperCase(), mid, y, year * 1.2, `700 ${year}px ${pixel}`, muted, year * .06);
     return y + year * 1.2;
   };
 
@@ -117,10 +128,10 @@ export async function drawCardImage(card: CardImage) {
     } else text(card.name.trim().slice(0, 1).toUpperCase(), mid, y + 4, 192, `400 110px ${pixel}`, ink);
     y += 200 + 12;
     const name = nameFit(card.name);
-    for (const lineText of name.lines) { text(lineText, mid, y, name.px * 1.2, `400 ${name.px}px ${vcr}`, ink, name.px * .02, name.px * .08); y += name.px * 1.2; }
+    for (const lineText of name.lines) { text(lineText, mid, y, name.px * vcrLine, `400 ${name.px}px ${vcr}`, ink, name.px * .02, name.px * .08); y += name.px * vcrLine; }
     y += 12;
-    text(card.number.toUpperCase(), mid, y, 38 * 1.2, `400 38px ${vcr}`, ink, 38 * .06, 38 * .08);
-    y += 38 * 1.2 + 12;
+    text(card.number.toUpperCase(), mid, y, 38 * vcrLine, `400 38px ${vcr}`, ink, 38 * .06, 38 * .08);
+    y += 38 * vcrLine + 12;
     // The role bar in the division's colour, with the verified mark under the role.
     const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : "";
     if (!tag) return;
@@ -141,15 +152,15 @@ export async function drawCardImage(card: CardImage) {
   const back = () => {
     // Whole pixels from here, so the modules land on the pixel grid.
     let y = Math.round(side("back") - 5 + 16);
-    // The plate: 3 px ink border, white, and the QR on whole pixels per module with its quiet zone.
+    // The 392 px plate: a 3 px ink border, then white (Figma's 11 px padding includes the border), and the QR on whole pixels per module with its quiet zone.
     g.fillStyle = ink; g.fillRect(123, y, 392, 392);
     g.fillStyle = "#fff"; g.fillRect(126, y + 3, 386, 386);
     const matrix = qrMatrix(card.url), qr = qrPlacement(matrix.length), qx = 134 + qr.offset, qy = y + 11 + qr.offset;
     g.fillStyle = "#000";
     matrix.forEach((cells, my) => cells.forEach((dark, mx) => { if (dark) g.fillRect(qx + mx * qr.cell, qy + my * qr.cell, qr.cell, qr.cell); }));
     y += 392 + 16;
-    text(card.number.toUpperCase(), mid, y, 42 * 1.2, `400 42px ${vcr}`, ink, 42 * .06, 42 * .08);
-    y += 42 * 1.2 + 16;
+    text(card.number.toUpperCase(), mid, y, 42 * vcrLine, `400 42px ${vcr}`, ink, 42 * .06, 42 * .08);
+    y += 42 * vcrLine + 16;
     // Campus, a 2 px rule, then validity, each with its icon, in a 520 px block.
     g.textAlign = "left";
     const campus = [card.campus, card.studyProgram].filter(Boolean).join(" · ");
@@ -166,9 +177,7 @@ export async function drawCardImage(card: CardImage) {
     icon("calendar", 59, y + (row - 22) / 2, 22, ink);
     text("BERLAKU", 97, y, row, `500 15px ${mono}`, muted, 1.8);
     text(periodLabel(card.period), 97 + labelWidth + 16, y, row, `500 19px ${mono}`, ink);
-    y += row + 16;
     g.textAlign = "center";
-    text("Tunjukkan QR ini di pintu masuk", mid, y, 18 * 1.5, `500 18px ${body}`, muted);
   };
 
   g.fillStyle = "#fff"; g.fillRect(0, 0, canvas.width, canvas.height);

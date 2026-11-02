@@ -33,11 +33,9 @@ export type CardFace = {
 export const passArt = {
   background: { src: "/cards/card-background.webp", width: 638, height: 1011 },
   mark: { src: "/cards/gdgoc-mark.svg", width: 76.7, height: 47.7 },
-  lanyard: { src: "/cards/lanyard.svg", width: 24, height: 32 },
   cloud: { src: "/cards/cloud.svg", width: 20, height: 5 },
   tree: { src: "/cards/tree.svg", width: 10, height: 12 },
   kujang: { src: "/cards/tugu-kujang.svg", width: 69, height: 119 },
-  gate: { src: "/cards/gerbang-ipb-dramaga.svg", width: 123, height: 88 },
   ahn: { src: "/cards/gedung-ahn.svg", width: 123, height: 106 },
   ticket: { src: "/cards/tiket-masuk-program.svg", width: 798, height: 618 },
 };

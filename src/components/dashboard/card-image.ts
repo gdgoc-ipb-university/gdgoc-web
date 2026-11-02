@@ -7,7 +7,7 @@ import { passArt, passFont, periodLabel, townLayout } from "../member-card-face"
 
 export type CardImage = {
   name: string; photo: string | null; campus: string; studyProgram: string; number: string; period: string;
-  memberType: MemberType | null; division: string | null; tagConfirmed: boolean; url: string;
+  memberType: MemberType | null; division: string | null; url: string;
 };
 
 /**
@@ -73,7 +73,7 @@ export async function drawCardImage(card: CardImage) {
     g.fillText(value, x, top + lineHeight / 2); g.letterSpacing = "0px";
   };
   const width = (value: string, font: string, spacing = 0) => { g.font = font; g.letterSpacing = `${spacing}px`; const result = g.measureText(value).width; g.letterSpacing = "0px"; return result; };
-  const icon = (name: "building" | "calendar" | "check", x: number, y: number, size: number, color: string) => {
+  const icon = (name: "building" | "calendar", x: number, y: number, size: number, color: string) => {
     g.save(); g.translate(x, y); g.scale(size / 24, size / 24); g.fillStyle = color;
     for (const path of pixelIconPaths[name]) g.fill(new Path2D(path));
     g.restore();
@@ -81,8 +81,8 @@ export async function drawCardImage(card: CardImage) {
   const mid = cr80.width / 2;
 
   /**
-   * The landmarks of a side, then grass and road, from `townLayout`. The back's illustration is being redesigned, and
-   * `BackIllustration` on the page reads the same layout, so a new one changes both.
+   * The art of a side, then grass and road over it, from `townLayout`. `BackIllustration` on the page reads the same
+   * layout, so a new back illustration changes both.
    */
   const town = (which: "front" | "back") => {
     const { top, art: pieces } = townLayout[which];
@@ -92,7 +92,7 @@ export async function drawCardImage(card: CardImage) {
     g.fillStyle = "#fff"; for (let x = -15; x < cr80.width; x += 72) g.fillRect(x, 992, 36, 6);
   };
 
-  /** What both sides share: paper and background, clouds, confetti, the landmarks behind the content, and the head. Returns where the head ends. */
+  /** What both sides share: paper and background, clouds, confetti, the art behind the content, and the head. Returns where the head ends. */
   const side = (which: "front" | "back") => {
     g.fillStyle = paper; g.fillRect(0, 0, cr80.width, cr80.height);
     draw("background", 0, 0, cr80.width);
@@ -132,21 +132,13 @@ export async function drawCardImage(card: CardImage) {
     y += 12;
     text(card.number.toUpperCase(), mid, y, 38 * vcrLine, `400 38px ${vcr}`, ink, 38 * .06, 38 * .08);
     y += 38 * vcrLine + 12;
-    // The role bar in the division's colour, with the verified mark under the role.
+    // The role bar in the division's colour, with the role line only.
     const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : "";
     if (!tag) return;
-    const barHeight = 14 + 26 * 1.3 + (card.tagConfirmed ? 16 * 1.4 : 0) + 14;
-    g.fillStyle = divisionAccent(card.division); g.fillRect(35, y, 568, barHeight);
+    g.fillStyle = divisionAccent(card.division); g.fillRect(35, y, 568, 14 + 26 * 1.3 + 14);
     let size = 26;
     while (size > 18 && width(tag, `700 ${size}px ${space}`) > 528) size--;
     text(tag, mid, y + 14, 26 * 1.3, `700 ${size}px ${space}`, "#fff");
-    if (card.tagConfirmed) {
-      const label = "TERVERIFIKASI", labelWidth = width(label, `500 16px ${mono}`, 1.6), x = mid - (18 + 8 + labelWidth) / 2, top = y + 14 + 26 * 1.3;
-      icon("check", x, top + (16 * 1.4 - 18) / 2, 18, "#fff");
-      g.textAlign = "left";
-      text(label, x + 26, top, 16 * 1.4, `500 16px ${mono}`, "#fff", 1.6);
-      g.textAlign = "center";
-    }
   };
 
   const back = () => {

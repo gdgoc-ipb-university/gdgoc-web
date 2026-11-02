@@ -17,6 +17,7 @@ import { PixelIcon, type PixelIconName } from "../pixel-icons";
 import { Select } from "../select";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { StaffOnly } from "./assignments";
+import { MemberAvatar } from "../member-avatar";
 import { ConfirmDialog, DashboardDialog, DialogContent, DialogFooter, IconLink, Pagination, SortHeader, useKeptResult } from "./data-table";
 import { ActiveFilters, FilterButton, MemberFilterDialog } from "./member-filters";
 import { isStaff, useDashboardViewer, type DashboardViewer } from "./viewer";
@@ -128,7 +129,7 @@ function MemberTableRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) 
   const self = row.ownerId === viewer.id;
   return <tr data-active={row.active}>
     <th scope="row" className="dash-table-member"><div className="dash-table-person">
-      <span className="account-avatar" aria-hidden="true">{initial(row.fullName)}</span>
+      <MemberAvatar name={row.fullName} photo={row.photo} size={34} />
       <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small title={row.email}>{row.email}</small></span>
     </div></th>
     <td><span className="dash-table-stack">{row.campus || "—"}{row.studyProgram && <small>{row.studyProgram}</small>}</span></td>
@@ -141,8 +142,6 @@ function MemberTableRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) 
     </div></td>
   </tr>;
 }
-
-export const initial = (name: string) => name.trim().slice(0, 1).toUpperCase();
 
 export function AccessBadges({ row }: { row: Pick<Row, "role" | "reviewer" | "reviewsByTag" | "techSupportHandler"> }) {
   return <span className="dash-badges"><span className="dash-role" data-role={row.role}>{roleLabels[row.role]}</span>
@@ -208,6 +207,7 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
   const setActive = useMutation(api.dashboard.setActive);
   const setMemberType = useMutation(api.dashboard.setMemberType);
   const setCardRevoked = useMutation(api.cards.setRevoked);
+  const removePhoto = useMutation(api.photos.removeFor);
   const [pending, setPending] = useState<Action | null>(null);
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -239,6 +239,12 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
   if (!self && row.card && (row.role === "member" || (owner && row.role === "admin"))) actions.push(row.card.revoked
     ? { key: "unblock-card", group: "status", icon: "id-card", label: "Buka blokir kartu", confirm: `Buka blokir kartu anggota ${row.fullName}? QR-nya kembali berlaku.`, run: () => setCardRevoked({ ownerId: row.ownerId, revoked: false }) }
     : { key: "block-card", group: "status", icon: "id-card", label: "Blokir kartu", danger: true, confirm: `Blokir kartu anggota ${row.fullName}? QR-nya langsung tidak berlaku sampai blokir dibuka. Akunnya tetap aktif.`, run: () => setCardRevoked({ ownerId: row.ownerId, revoked: true }) });
+  // An uploaded photo that is not a clear face, along the same hierarchy (photos.removeFor).
+  if (!self && row.photoUploaded && (row.role === "member" || (owner && row.role === "admin"))) actions.push({
+    key: "remove-photo", group: "status", icon: "image", label: "Hapus foto profil", danger: true,
+    confirm: `Hapus foto profil ${row.fullName}? Fotonya dihapus permanen dan kartunya kembali memakai foto Google atau inisial sampai ia mengunggah foto baru.`,
+    run: () => removePhoto({ ownerId: row.ownerId }),
+  });
 
   async function confirm() {
     if (!pending) return;

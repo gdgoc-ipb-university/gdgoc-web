@@ -157,6 +157,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-photo-progress { display: grid; gap: 6px; width: min(100%, 260px); font-size: 13px; }
 .dash-photo-progress progress { width: 100%; height: 10px; accent-color: var(--blue); }
 .dash-photo-crop-side .field-error { margin: 0; }
+.account-avatar-photo { display: block; object-fit: cover; padding: 0; }
 .dash-facts { margin: 8px 0 18px; }
 .dash-facts > div { display: grid; gap: 3px; padding-block: 11px; border-bottom: 1px solid #e8ece4; }
 .dash-facts dt { font-size: 11px; color: var(--muted); }

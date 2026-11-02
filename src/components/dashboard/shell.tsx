@@ -13,6 +13,7 @@ import { AccountBar, AppreciationFooter, GoogleMark, LoadingPanel } from "../app
 import { BrandLogo } from "../brand-logo";
 import { Header } from "../header";
 import { Arrow, PixelDino } from "../icons";
+import { MemberAvatar } from "../member-avatar";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
 import { RolePrompt } from "./profile";
 import { ViewerContext, isReviewer, isStaff, type DashboardViewer } from "./viewer";
@@ -99,7 +100,7 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
         })}</ul>
       </div>)}</nav>
       <div className="dash-account">
-        <div className="dash-account-identity"><span className="account-avatar" aria-hidden="true">{viewer.name.trim().slice(0, 1).toUpperCase()}</span><div><strong>{viewer.name}</strong><span>{viewer.email}</span></div></div>
+        <div className="dash-account-identity"><MemberAvatar name={viewer.name} photo={viewer.photo} /><div><strong>{viewer.name}</strong><span>{viewer.email}</span></div></div>
         <div className="dash-account-badges"><span className="dash-role" data-role={viewer.role}>{roleLabels[viewer.role]}</span>{viewer.memberType && <span className="dash-role" data-role={viewer.memberType}>{viewer.memberType === "core" && viewer.division ? viewer.division : memberTypeLabels[viewer.memberType]}</span>}</div>
         <Link className="dash-account-link" href="/" onClick={() => setOpen(false)}><PixelIcon name="arrow-left" size={18} />Ke beranda situs</Link>
         <SignOutButton />

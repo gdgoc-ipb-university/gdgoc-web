@@ -1,8 +1,8 @@
 import jsQR from "jsqr";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { cr80 } from "@/lib/member-card";
 import { qrMatrix } from "@/lib/qr";
-import { qrPlacement, sheet, sheetSize } from "./card-image";
+import { loadPhoto, qrPlacement, sheet, sheetSize } from "./card-image";
 
 // next/font runs at build time; in tests it only has to name the font.
 vi.mock("next/font/local", () => ({ default: () => ({ className: "font-vcr", variable: "font-vcr", style: { fontFamily: "'vcr'" } }) }));
@@ -36,5 +36,33 @@ describe("saved card image", () => {
       for (let py = edges[y]; py < edges[y + 1]; py++) for (let px = edges[x]; px < edges[x + 1]; px++) pixels.set([0, 0, 0, 255], ((pad + py) * size + pad + px) * 4);
     }));
     expect(jsQR(pixels, size, size)?.data).toBe(link);
+  });
+
+  describe("the photo", () => {
+    // jsdom has no object URLs and does not decode images.
+    afterEach(() => {
+      vi.unstubAllGlobals();
+      for (const [target, key] of [[URL, "createObjectURL"], [URL, "revokeObjectURL"], [HTMLImageElement.prototype, "decode"]] as const) Reflect.deleteProperty(target, key);
+    });
+
+    it("is fetched to a blob without credentials, so the canvas is never tainted, and its object URL is let go", async () => {
+      const fetch = vi.fn(async () => new Response(new Blob([new Uint8Array(8)], { type: "image/jpeg" })));
+      const create = vi.fn(() => "blob:photo"), revoke = vi.fn();
+      vi.stubGlobal("fetch", fetch);
+      Object.assign(URL, { createObjectURL: create, revokeObjectURL: revoke });
+      Object.defineProperty(HTMLImageElement.prototype, "decode", { configurable: true, value: () => Promise.resolve() });
+      const image = await loadPhoto("https://example.convex.cloud/api/storage/photo");
+      expect(fetch).toHaveBeenCalledWith("https://example.convex.cloud/api/storage/photo", expect.objectContaining({ mode: "cors", credentials: "omit" }));
+      expect(image?.src).toBe("blob:photo");
+      expect(revoke).toHaveBeenCalledWith("blob:photo");
+    });
+
+    it("falls back to the initial when there is none or it does not load", async () => {
+      expect(await loadPhoto(null)).toBeNull();
+      vi.stubGlobal("fetch", vi.fn(async () => new Response("", { status: 404 })));
+      expect(await loadPhoto("https://example.com/missing.jpg")).toBeNull();
+      vi.stubGlobal("fetch", vi.fn(async () => { throw new TypeError("Failed to fetch"); }));
+      expect(await loadPhoto("https://example.com/no-cors.jpg")).toBeNull();
+    });
   });
 });

@@ -146,7 +146,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 ### `src/components/`: UI
 
-- Top level: landing sections (`landing.tsx`, `hero.tsx`, `header.tsx`, `join-footer.tsx`), the 3D scene and preloader (`campus-environment.tsx`, `scene-preloader.tsx`, `dino-playground.tsx`), the Bogor Run game (`bogor-run.tsx`), providers (`experience-provider.tsx`, `member-provider.tsx`), the FAQ and JSON-LD blocks, a shared `select.tsx`, the member card face shared by the dashboard and the scan page (`member-card-face.tsx`) and icon sets.
+- Top level: landing sections (`landing.tsx`, `hero.tsx`, `header.tsx`, `join-footer.tsx`), the 3D scene and preloader (`campus-environment.tsx`, `scene-preloader.tsx`, `dino-playground.tsx`), the Bogor Run game (`bogor-run.tsx`), providers (`experience-provider.tsx`, `member-provider.tsx`), the FAQ and JSON-LD blocks, a shared `select.tsx`, the member card face shared by the dashboard and the scan page (`member-card-face.tsx`), the member avatar (`member-avatar.tsx`: the uploaded photo, the Google one, or the pixel initial), and icon sets.
 - `dashboard/`, `appreciation/`, `onboarding/`, `rai/`: one folder per feature area.
 - Tests sit beside the component as `*.test.tsx` and run in jsdom.
 

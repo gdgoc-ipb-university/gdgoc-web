@@ -34,13 +34,26 @@ function fontOf(variable: string, fallback: string) {
   return `${getComputedStyle(document.body).getPropertyValue(variable).trim() || fallback}, ${fallback}`;
 }
 
-/** An image, or null when it does not load; a photo without CORS would taint the canvas, so it falls back to the initial. */
-async function loadImage(src: string | null, crossOrigin?: "anonymous") {
+/** An image, or null when it does not load. */
+async function loadImage(src: string | null) {
   if (!src) return null;
   const image = new window.Image();
-  if (crossOrigin) image.crossOrigin = crossOrigin;
   image.src = src;
   return image.decode().then(() => image, () => null);
+}
+
+/**
+ * The member's photo (uploaded on Convex storage, or Google's), fetched to a blob first so the canvas is never tainted
+ * by another origin, and so a photo that does not load falls back to the initial instead of failing the save.
+ */
+export async function loadPhoto(src: string | null) {
+  if (!src) return null;
+  try {
+    const response = await fetch(src, { mode: "cors", credentials: "omit", referrerPolicy: "no-referrer" });
+    if (!response.ok) return null;
+    const url = URL.createObjectURL(await response.blob());
+    try { return await loadImage(url); } finally { URL.revokeObjectURL(url); }
+  } catch { return null; }
 }
 
 /**
@@ -55,7 +68,7 @@ export async function drawCardImage(card: CardImage) {
   await Promise.all([`400 54px ${passFont.family}`, `400 110px ${pixel}`, `700 24px ${pixel}`, `500 30px ${space}`, `700 26px ${space}`, `400 17px ${body}`, `500 18px ${body}`, `500 19px ${mono}`]
     .map((font) => document.fonts.load(font.replace(/,.*$/, "")).catch(() => [])));
   const names = Object.keys(passArt) as (keyof typeof passArt)[];
-  const [photo, ...loaded] = await Promise.all([loadImage(photoAt(card.photo, 400), "anonymous"), ...names.map((name) => loadImage(passArt[name].src))]);
+  const [photo, ...loaded] = await Promise.all([loadPhoto(photoAt(card.photo, 400)), ...names.map((name) => loadImage(passArt[name].src))]);
   const art = Object.fromEntries(names.map((name, index) => [name, loaded[index]])) as Record<keyof typeof passArt, HTMLImageElement | null>;
   if (names.some((name) => !art[name])) throw new Error("art");
 

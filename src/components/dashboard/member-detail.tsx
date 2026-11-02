@@ -12,7 +12,8 @@ import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
 import { StaffOnly } from "./assignments";
 import { AccessLogList } from "./access-log";
-import { AccessBadges, ActiveBadge, CommunityBadge, MemberActions, initial, useMembersListHref } from "./members";
+import { MemberAvatar } from "../member-avatar";
+import { AccessBadges, ActiveBadge, CommunityBadge, MemberActions, useMembersListHref } from "./members";
 import { AssignmentStatusBadge, ScoreBadge, SubmissionBadge } from "./shared";
 import { CopyIconButton } from "./data-table";
 import { isStaff, useDashboardViewer } from "./viewer";
@@ -29,7 +30,7 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
   return <>
     {back}
     <header className="dash-member-header">
-      <span className="account-avatar dash-member-avatar" aria-hidden="true">{initial(member.fullName)}</span>
+      <MemberAvatar name={member.fullName} photo={member.photo} size={64} className="dash-member-avatar" />
       <div className="dash-member-heading"><p className="eyebrow">ADMIN · ANGGOTA</p><h1>{member.fullName}{member.ownerId === viewer.id && <span className="app-small"> (kamu)</span>}</h1>
         <div className="dash-badges"><AccessBadges row={member} /><ActiveBadge active={member.active} /></div></div>
       <div className="dash-member-header-actions"><MemberActions row={member} viewer={viewer} labelled /></div>

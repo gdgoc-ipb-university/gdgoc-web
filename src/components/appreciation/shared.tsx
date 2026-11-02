@@ -9,6 +9,7 @@ import { documentLinks, isDocumentUrl, statusLabels } from "@/lib/appreciation";
 import { chapterPeriod } from "@/lib/chapter";
 import { readableError } from "@/lib/draft-session";
 import { Arrow, PixelSpark } from "../icons";
+import { MemberAvatar } from "../member-avatar";
 import { communityLinks } from "@/lib/community";
 
 export function Trophy() {
@@ -37,7 +38,7 @@ export function GoogleMark() {
 }
 
 /** Identity and sign-out, for dashboard states without the sidebar (e.g. a deactivated account). */
-export function AccountBar({ viewer }: { viewer: { name: string; email: string } }) {
+export function AccountBar({ viewer }: { viewer: { name: string; email: string; photo?: string | null } }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   async function signOut() {
@@ -49,7 +50,7 @@ export function AccountBar({ viewer }: { viewer: { name: string; email: string }
     } catch (error) { setError(readableError(error)); }
     finally { setBusy(false); }
   }
-  return <div className="account-bar"><div className="account-identity"><span className="account-avatar" aria-hidden="true">{viewer.name.trim().slice(0, 1).toUpperCase()}</span><div><strong>{viewer.name}</strong><span>{viewer.email}</span></div></div>
+  return <div className="account-bar"><div className="account-identity"><MemberAvatar name={viewer.name} photo={viewer.photo} /><div><strong>{viewer.name}</strong><span>{viewer.email}</span></div></div>
     <div className="account-actions"><button className="text-button" disabled={busy} onClick={signOut}>{busy ? "Sebentar…" : "Keluar"}</button></div>
     {error && <p className="field-error" role="alert">{error}</p>}
   </div>;

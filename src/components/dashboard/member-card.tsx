@@ -8,13 +8,12 @@ import { api } from "../../../convex/_generated/api";
 import { communityLinks } from "@/lib/community";
 import { readableError } from "@/lib/draft-session";
 import { clockLabel, gatheringTimeLabel } from "@/lib/gathering";
-import { cardPath, divisionAccent, photoAt } from "@/lib/member-card";
-import { memberTagLabel } from "@/lib/onboarding";
-import { qrMatrix } from "@/lib/qr";
+import { cardPath } from "@/lib/member-card";
 import { siteUrl } from "@/lib/site";
-import { PixelIcon, pixelIconPaths } from "../pixel-icons";
+import { PixelIcon } from "../pixel-icons";
 import { LoadingPanel } from "../appreciation/shared";
-import { MemberCard, PassArt, PassTown, QrCode, passArt, passFont, periodLabel } from "../member-card-face";
+import { MemberCard, PassArt, PassTown, QrCode, passFont } from "../member-card-face";
+import { cardImagePng } from "./card-image";
 import { ConfirmDialog } from "./data-table";
 
 type Card = NonNullable<FunctionReturnType<typeof api.cards.mine>>;
@@ -52,208 +51,8 @@ function DoorQr({ card, open, onClose }: { card: Card; open: boolean; onClose: (
   </ModalOverlay>;
 }
 
-/** The family a CSS font variable resolves to, so the saved image uses the site's fonts. */
-function fontOf(variable: string, fallback: string) {
-  return `${getComputedStyle(document.body).getPropertyValue(variable).trim() || fallback}, ${fallback}`;
-}
-
-/** Shrinks a line until it fits, then cuts it with an ellipsis. */
-function fitText(g: CanvasRenderingContext2D, text: string, weight: string, size: number, min: number, family: string, width: number) {
-  for (let px = size; px >= min; px--) {
-    g.font = `${weight} ${px}px ${family}`;
-    if (g.measureText(text).width <= width) return text;
-  }
-  let cut = text;
-  while (cut.length > 1 && g.measureText(`${cut}…`).width > width) cut = cut.slice(0, -1);
-  return `${cut}…`;
-}
-
-/** The name in at most two balanced lines, shrinking the font until the longer line fits, tracked .02em as on the face. */
-function nameLines(g: CanvasRenderingContext2D, name: string, family: string, size: number, min: number, width: number) {
-  const words = name.trim().split(/\s+/);
-  for (let px = size; px >= min; px--) {
-    g.font = `400 ${px}px ${family}`; g.letterSpacing = `${px * .02}px`;
-    if (g.measureText(name).width <= width) return { px, lines: [name] };
-    let best: string[] | null = null, widest = Infinity;
-    for (let cut = 1; cut < words.length; cut++) {
-      const lines = [words.slice(0, cut).join(" "), words.slice(cut).join(" ")], longest = Math.max(...lines.map((line) => g.measureText(line).width));
-      if (longest <= width && longest < widest) { best = lines; widest = longest; }
-    }
-    if (best) return { px, lines: best };
-  }
-  return { px: min, lines: [fitText(g, name, "400", min, min, family, width)] };
-}
-
-/** An image, or null when it does not load; a photo without CORS would taint the canvas, so it falls back to the initial. */
-async function loadImage(src: string | null, crossOrigin?: "anonymous") {
-  if (!src) return null;
-  const image = new window.Image();
-  if (crossOrigin) image.crossOrigin = crossOrigin;
-  image.src = src;
-  return image.decode().then(() => image, () => null);
-}
-
-const ink = "#172d43", muted = "#596775", cream = "#fffcf3";
-
-/**
- * The pass drawn for a saved image, for a poor connection at the venue (#135): the same layout as the face at 380 px,
- * drawn at 2× with the strap and landmark strip loaded from the same SVGs. The QR is drawn on whole device pixels, so
- * every module edge stays sharp.
- */
-export async function drawCardImage(card: Pick<Card, "name" | "photo" | "campus" | "studyProgram" | "memberType" | "division" | "tagConfirmed" | "number" | "period" | "token">) {
-  const scale = 2, margin = 16, width = 380, inner = width - 2, content = inner - 40, shadow = 6;
-  // The titling falls back to Pixelify Sans for glyphs VCR OSD Mono lacks, as on the face.
-  const pixel = fontOf("--font-pixel", "monospace"), vcr = `${passFont.family}, ${pixel}`, space = fontOf("--font-space", "sans-serif"), body = fontOf("--font-body", "sans-serif"), mono = fontOf("--font-mono", "monospace");
-  // Load each face first, as the mono one is not preloaded. Only the first family: Next's local() fallback faces can fail
-  // to load, which would end the wait early. A face that still fails only falls back.
-  await Promise.all([`400 32px ${passFont.family}`, `600 36px ${pixel}`, `600 15px ${space}`, `400 13px ${body}`, `500 13px ${mono}`]
-    .map((font) => document.fonts.load(font.replace(/,.*$/, "")).catch(() => [])));
-  const names = Object.keys(passArt) as (keyof typeof passArt)[];
-  const [photo, ...loaded] = await Promise.all([loadImage(photoAt(card.photo, 144), "anonymous"), ...names.map((name) => loadImage(passArt[name].src))]);
-  const art = Object.fromEntries(names.map((name, index) => [name, loaded[index]])) as Record<keyof typeof passArt, HTMLImageElement | null>;
-  if (names.some((name) => !art[name])) throw new Error("art");
-  const draw = (name: keyof typeof passArt, x: number, y: number, times = 1) => g.drawImage(art[name]!, x, y, passArt[name].width * times, passArt[name].height * times);
-  // `outline` is the width of a stroke in the text's own colour drawn under the fill, the face's outlined capitals.
-  const text = (value: string, x: number, y: number, font: string, color: string, spacing = "0px", outline = 0) => {
-    g.font = font; g.fillStyle = color; g.letterSpacing = spacing;
-    if (outline) { g.strokeStyle = color; g.lineWidth = outline; g.lineJoin = "miter"; g.strokeText(value, x, y); }
-    g.fillText(value, x, y); g.letterSpacing = "0px";
-  };
-  const icon = (name: "building" | "calendar" | "check" | "close", x: number, y: number, size: number, color: string) => {
-    g.save(); g.translate(x, y); g.scale(size / 24, size / 24); g.fillStyle = color;
-    for (const path of pixelIconPaths[name]) g.fill(new Path2D(path));
-    g.restore();
-  };
-
-  // Measure first, so the canvas is as tall as the pass.
-  const measure = document.createElement("canvas").getContext("2d");
-  if (!measure) throw new Error("canvas");
-  let g = measure;
-  const name = nameLines(g, card.name.toUpperCase(), vcr, 32, 22, content);
-  g.letterSpacing = "0px";
-  const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : "";
-  g.font = `600 15px ${space}`;
-  const tagWidth = g.measureText(tag).width;
-  g.font = `500 11px ${mono}`; g.letterSpacing = ".44px";
-  const verifiedWidth = card.tagConfirmed ? 12 + 16 + 4 + g.measureText("TERVERIFIKASI").width : 0;
-  g.letterSpacing = "0px";
-  const roleRows = tag && tagWidth + (verifiedWidth ? 12 + verifiedWidth : 0) > content - 26 ? 2 : 1;
-  const campus = [card.campus, card.studyProgram].filter(Boolean).join(" · ");
-  const matrix = qrMatrix(cardUrl(card.token)), cell = Math.floor(280 * scale / matrix.length), qr = cell * matrix.length / scale;
-  const top = margin + 72, nameHeight = name.lines.length * name.px * 1.08;
-  const heights = { head: 40 + 34 + 6 + 21 + 2 + 21, avatar: 16 + 78, name: 12 + nameHeight, number: 6 + 27, role: tag ? 18 + 20 * roleRows + 20 : 0, facts: 14 + (campus ? 37 : 0) + 37, qr: 18 + qr + 2, town: 316 - 120 };
-  const height = 1 + Object.values(heights).reduce((sum, value) => sum + value, 0) + 1;
-
-  const canvas = document.createElement("canvas");
-  canvas.width = (margin * 2 + width + shadow) * scale; canvas.height = (top + height + shadow + 44) * scale;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("canvas");
-  g = context;
-  g.scale(scale, scale);
-  g.fillStyle = "#faf9f2"; g.fillRect(0, 0, canvas.width, canvas.height);
-  const left = margin, x0 = left + 1, y0 = top + 1, mid = x0 + inner / 2;
-  g.fillStyle = ink; g.fillRect(left + shadow, top + shadow, width, height); g.fillRect(left, top, width, height);
-  g.fillStyle = cream; g.fillRect(x0, y0, inner, height - 2);
-  // The punched slot, the sky's clouds and confetti.
-  g.fillStyle = ink; g.fillRect(mid - 23, y0 + 10, 46, 14);
-  g.fillStyle = "#c9c4b0"; g.fillRect(mid - 21, y0 + 12, 42, 10);
-  g.fillStyle = "#e3e0d2"; g.fillRect(mid - 21, y0 + 15, 42, 7);
-  draw("cloud", x0 + 12, y0 + 28, 3); draw("cloud", x0 + inner - 70, y0 + 58, 3);
-  for (const [dx, dy, color] of [[70, 18, "#ea4335"], [84, 42, "#fbbc05"], [26, 64, "#4285f4"], [inner - 66, 30, "#4285f4"], [inner - 30, 92, "#34a853"], [inner - 42, 104, "#fbbc05"]] as const) {
-    g.fillStyle = color; g.fillRect(x0 + dx, y0 + dy, 6, 6);
-  }
-  // The head: brackets mark, chapter name and year.
-  let y = y0 + 40;
-  g.textAlign = "center";
-  draw("mark", mid - 27, y, 54 / passArt.mark.width);
-  y += 34 + 6;
-  text("GDGoC IPB University", mid, y + 16, `600 17px ${space}`, ink);
-  text(card.period.toUpperCase(), mid, y + 21 + 2 + 16, `400 15px ${vcr}`, muted, ".9px", 15 * .05);
-  y += 21 + 2 + 21 + 16;
-  // The photo or pixel initial in a pixel frame with notched corners.
-  g.fillStyle = ink; g.fillRect(mid - 39, y, 78, 78);
-  g.fillStyle = cream; for (const [cx, cy] of [[0, 0], [75, 0], [0, 75], [75, 75]]) g.fillRect(mid - 39 + cx, y + cy, 3, 3);
-  if (photo) g.drawImage(photo, mid - 36, y + 3, 72, 72);
-  else { g.fillStyle = "#e6eddc"; g.fillRect(mid - 36, y + 3, 72, 72); text(card.name.trim().slice(0, 1).toUpperCase(), mid, y + 3 + 50, `400 38px ${pixel}`, ink); }
-  y += 78 + 12;
-  // The name, large, and the number.
-  name.lines.forEach((line, index) => text(line, mid, y + name.px * (1.08 * index + .85), `400 ${name.px}px ${vcr}`, ink, `${name.px * .02}px`, name.px * .08));
-  y += nameHeight + 6;
-  text(card.number.toUpperCase(), mid, y + 20, `400 19px ${vcr}`, ink, "2.28px", 19 * .08);
-  y += 27;
-  // The role bar in the division's colour, with the verified mark.
-  if (tag) {
-    y += 18;
-    const barHeight = 20 * roleRows + 18, x = x0 + 20;
-    g.fillStyle = ink; g.fillRect(x + 3, y + 3, content, barHeight); g.fillRect(x, y, content, barHeight);
-    g.fillStyle = divisionAccent(card.division); g.fillRect(x + 1, y + 1, content - 2, barHeight - 2);
-    const rowWidth = roleRows === 1 ? tagWidth + (verifiedWidth ? 12 + verifiedWidth : 0) : tagWidth;
-    let tx = mid - rowWidth / 2;
-    g.textAlign = "left";
-    text(tag, tx, y + 23, `600 15px ${space}`, "#fff");
-    if (verifiedWidth) {
-      const vy = roleRows === 1 ? y : y + 20;
-      tx = roleRows === 1 ? tx + tagWidth + 12 : mid - verifiedWidth / 2;
-      g.fillStyle = "rgb(255 255 255 / .55)"; g.fillRect(tx, vy + 11, 1, 16);
-      icon("check", tx + 12, vy + 11, 16, "#fff");
-      text("TERVERIFIKASI", tx + 32, vy + 23, `500 11px ${mono}`, "#fff", ".44px");
-    }
-    g.textAlign = "center";
-    y += barHeight + 2;
-  }
-  // Campus and validity, each on a row with its icon.
-  y += 14;
-  g.textAlign = "left";
-  const row = (name: "building" | "calendar", draw: (x: number) => void) => {
-    icon(name, x0 + 22, y + 9.5, 18, ink); draw(x0 + 22 + 18 + 10);
-    g.fillStyle = "rgb(23 45 67 / .2)"; g.fillRect(x0 + 20, y + 36, content, 1);
-    y += 37;
-  };
-  if (campus) row("building", (x) => text(fitText(g, campus, "400", 13, 10, body, content - 32), x, y + 23, g.font, ink));
-  row("calendar", (x) => {
-    text("BERLAKU", x, y + 22, `500 10px ${mono}`, muted, "1px");
-    g.font = `500 10px ${mono}`; g.letterSpacing = "1px";
-    const labelWidth = g.measureText("BERLAKU").width + 10;
-    g.letterSpacing = "0px";
-    text(fitText(g, periodLabel(card.period), "500", 13, 10, mono, content - 32 - labelWidth), x + labelWidth, y + 23, g.font, ink);
-  });
-  g.textAlign = "center";
-  // The landmark strip at 2x, rising 120 px behind the QR's plate and clipped to the card, as on the face.
-  y += 18;
-  const town = y + qr + 2 - 120, base = town + 316 - 17, ground = town + 316 - 22;
-  g.save();
-  g.beginPath(); g.rect(x0, y0, inner, height - 2); g.clip();
-  draw("cloud", x0 + 4, town + 66, 3); draw("cloud", x0 + inner - 64, town + 34, 3);
-  for (const [dx, dy, color] of [[-150, 34, "#34a853"], [-132, 62, "#ea4335"], [128, 12, "#fbbc05"], [150, 44, "#4285f4"]] as const) {
-    g.fillStyle = color; g.fillRect(mid + dx, town + 120 + dy, 6, 6);
-  }
-  draw("kujang", mid - 220, base - passArt.kujang.height * 2, 2);
-  draw("ahn", x0 + Math.min(inner / 2 + 33, inner - 170), base - passArt.ahn.height * 2, 2);
-  draw("gate", mid - passArt.gate.width, base - passArt.gate.height * 2, 2);
-  draw("tree", mid - 152, base - 48, 4); draw("tree", mid + 100, base - 48, 4); draw("tree", x0 + inner - 2 - 30, base - 36, 3);
-  for (const [from, to, color] of [[0, 2, "#2f6b3a"], [2, 9, "#4f9441"], [9, 10, ink], [10, 22, "#778e8c"]] as const) { g.fillStyle = color; g.fillRect(x0, ground + from, inner, to - from); }
-  g.fillStyle = "#6fb24f"; for (let x = 0; x < inner; x += 8) g.fillRect(x0 + x, ground + 2, 2, 2);
-  g.fillStyle = "#d9e2dd"; for (let x = 0; x < inner; x += 22) g.fillRect(x0 + x, ground + 15, Math.min(10, inner - x), 2);
-  g.restore();
-  // The QR over it: an ink frame, then white with the quiet zone, then the modules, all on whole device pixels.
-  const qx = Math.round((mid - qr / 2) * scale), qy = Math.round((y + 1) * scale), size = cell * matrix.length;
-  g.setTransform(1, 0, 0, 1, 0, 0);
-  g.fillStyle = ink; g.fillRect(qx - scale, qy - scale, size + scale * 2, size + scale * 2);
-  g.fillStyle = "#fff"; g.fillRect(qx, qy, size, size);
-  g.fillStyle = "#000";
-  matrix.forEach((cells, my) => cells.forEach((dark, mx) => { if (dark) g.fillRect(qx + mx * cell, qy + my * cell, cell, cell); }));
-  g.setTransform(scale, 0, 0, scale, 0, 0);
-  // The strap and clip last, over the card's top edge into the slot.
-  draw("lanyard", mid - 36, margin, 3);
-  g.textAlign = "left";
-  text(fitText(g, "Gambar ini tidak berlaku lagi jika QR diganti.", "400", 12, 9, body, width), left, top + height + shadow + 28, g.font, muted);
-  return canvas;
-}
-
 async function saveCardImage(card: Card) {
-  const canvas = await drawCardImage(card);
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
-  if (!blob) throw new Error("png");
+  const blob = await cardImagePng({ ...card, url: cardUrl(card.token) });
   const link = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `kartu-anggota-${card.number}.png` });
   link.click();
   setTimeout(() => URL.revokeObjectURL(link.href), 1000);
@@ -277,7 +76,7 @@ function CardActions({ card }: { card: Card }) {
       </Button>
     </div>
     {saveError && <p className="field-error" role="alert">{saveError}</p>}
-    <p className="app-small">Sinyal di tempat acara lemah? Simpan kartu sebagai gambar. Gambar itu tetap berlaku sampai kamu mengganti QR.</p>
+    <p className="app-small">Sinyal di tempat acara lemah? Simpan kartu sebagai gambar. Gambarnya memuat kedua sisi kartu, siap dicetak seukuran kartu ID (54 × 85,6 mm), dan tetap berlaku sampai kamu mengganti QR.</p>
     <h3>QR tersebar?</h3>
     <p className="app-small">Kalau QR-mu difoto atau dibagikan ke orang lain, ganti QR. QR lama langsung tidak berlaku. Nomor anggotamu tetap sama.</p>
     <Button className="button button-quiet" onPress={() => { setError(""); setConfirm(true); }}><PixelIcon name="redo" size={18} />Ganti QR</Button>

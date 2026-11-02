@@ -3,7 +3,7 @@ import { memberTagLabel, type MemberType } from "@/lib/onboarding";
 import { withDpi } from "@/lib/png";
 import { qrMatrix } from "@/lib/qr";
 import { pixelIconPaths } from "../pixel-icons";
-import { passArt, passFont, periodLabel, townLayout } from "../member-card-face";
+import { faceLayout, passArt, passFont, periodLabel, townLayout } from "../member-card-face";
 
 export type CardImage = {
   name: string; photo: string | null; campus: string; studyProgram: string; number: string; period: string;
@@ -18,12 +18,11 @@ export const sheet = { margin: 59, gap: 118, mark: 30, markGap: 8, caption: 44 }
 export const sheetSize = { width: sheet.margin * 2 + cr80.width * 2 + sheet.gap, height: sheet.margin * 2 + cr80.height + sheet.caption };
 
 /**
- * The QR on the back: the 370 px plate interior from the Figma page, cut down to whole pixels per module so no module
- * edge is anti-aliased, and centred in it. A card link is 41 modules with its quiet zone: 9 px each, 369 px, 31.2 mm.
+ * The QR on the back: 300 px with its quiet zone, 25.4 mm printed, as on the Figma page. A card link is 41 modules, so
+ * a module is 7.3 px: each edge is rounded to a whole pixel, giving modules of 7 or 8 px and no anti-aliased edge.
  */
-export function qrPlacement(modules: number) {
-  const cell = Math.floor(370 / modules), size = cell * modules;
-  return { cell, size, offset: Math.floor((370 - size) / 2) };
+export function qrPlacement(modules: number, size = 300) {
+  return { size, edges: Array.from({ length: modules + 1 }, (_, index) => Math.round(index * size / modules)) };
 }
 
 const ink = "#172d43", muted = "#596775", paper = "#faf9f2", line = "#d9dfd7";
@@ -85,38 +84,37 @@ export async function drawCardImage(card: CardImage) {
    * layout, so a new back illustration changes both.
    */
   const town = (which: "front" | "back") => {
-    const { top, art: pieces } = townLayout[which];
+    const { top, ground, art: pieces } = townLayout[which];
     for (const [name, x, y, w] of pieces) draw(name, x, top + y, w);
+    if (!ground) return;
     g.fillStyle = "#4c9a45"; g.fillRect(0, 965, cr80.width, 14);
     g.fillStyle = "#5d6870"; g.fillRect(0, 979, cr80.width, 32);
     g.fillStyle = "#fff"; for (let x = -15; x < cr80.width; x += 72) g.fillRect(x, 992, 36, 6);
   };
 
-  /** What both sides share: paper and background, clouds, confetti, the art behind the content, and the head. Returns where the head ends. */
+  /** What both sides share: paper and background, clouds, confetti, the art behind the content, and the head. */
   const side = (which: "front" | "back") => {
+    const layout = faceLayout[which];
     g.fillStyle = paper; g.fillRect(0, 0, cr80.width, cr80.height);
     draw("background", 0, 0, cr80.width);
-    const clouds = which === "front" ? [[27, 69], [491, 77]] : [[491, 69]];
+    const clouds = which === "front" ? [[27, 69], [491, 77]] : [[27, 69], [491, 69]];
     for (const [x, y] of clouds) draw("cloud", x, y, 120);
     const confetti = which === "front"
       ? [[75, 115, "#ea4335"], [117, 157, "#fbbc05"], [61, 180, "#4285f4"], [565, 107, "#4285f4"], [593, 197, "#34a853"], [563, 229, "#fbbc05"]] as const
       : [[75, 115, "#ea4335"], [61, 178, "#4285f4"], [569, 115, "#34a853"], [585, 178, "#fbbc05"]] as const;
     for (const [x, y, color] of confetti) { g.fillStyle = color; g.fillRect(x, y, 12, 12); }
     town(which);
-    // The head: mark, chapter name and year, 12 px apart on the front and 8 px on the back.
-    const [markWidth, org, year, gap] = which === "front" ? [92, 30, 24, 12] : [77, 26, 22, 8];
-    let y = 93;
-    draw("mark", mid - markWidth / 2, y, markWidth);
-    y += markWidth * passArt.mark.height / passArt.mark.width + gap;
+    // The head: mark, chapter name and year.
+    draw("mark", mid - 46, layout.mark, 92);
     g.textAlign = "center";
-    text("GDGoC IPB University", mid, y, org * 1.25, `500 ${org}px ${space}`, ink);
-    y += org * 1.25 + gap;
-    text(card.period.toUpperCase(), mid, y, year * 1.2, `700 ${year}px ${pixel}`, muted, year * .06);
-    return y + year * 1.2;
+    text("GDGoC IPB University", mid, layout.org, 30 * 1.4, `500 30px ${body}`, ink);
+    text(card.period.toUpperCase(), mid, layout.year, 24 * 1.2, `700 24px ${pixel}`, muted, 24 * .06);
   };
 
   const front = () => {
-    let y = side("front") + 12;
+    side("front");
+    // Photo, name and number in one group, 12 px apart, as Figma's "ID": a two-line name pushes the number down.
+    let y = faceLayout.front.id;
     // The photo or pixel initial in a 4 px ink frame with a hard shadow.
     g.fillStyle = ink; g.fillRect(mid - 100 + 6, y + 6, 200, 200); g.fillRect(mid - 100, y, 200, 200);
     g.fillStyle = "#e6eddc"; g.fillRect(mid - 96, y + 4, 192, 192);
@@ -131,28 +129,31 @@ export async function drawCardImage(card: CardImage) {
     for (const lineText of name.lines) { text(lineText, mid, y, name.px * vcrLine, `400 ${name.px}px ${vcr}`, ink, name.px * .02, name.px * .08); y += name.px * vcrLine; }
     y += 12;
     text(card.number.toUpperCase(), mid, y, 38 * vcrLine, `400 38px ${vcr}`, ink, 38 * .06, 38 * .08);
-    y += 38 * vcrLine + 12;
-    // The role bar in the division's colour, with the role line only.
-    const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : "";
+    // The role bar near the bottom, over the landmarks: the division's colour, the role line only, and a hard shadow
+    // cut at the column's right edge.
+    const tag = card.memberType ? memberTagLabel(card.memberType, card.division) : "", top = faceLayout.front.role;
     if (!tag) return;
-    g.fillStyle = divisionAccent(card.division); g.fillRect(35, y, 568, 14 + 26 * 1.3 + 14);
+    g.fillStyle = ink; g.fillRect(35 + 6, top + 6, 568 - 6, 61);
+    g.fillStyle = divisionAccent(card.division); g.fillRect(35, top, 568, 61);
     let size = 26;
     while (size > 18 && width(tag, `700 ${size}px ${space}`) > 528) size--;
-    text(tag, mid, y + 14, 26 * 1.3, `700 ${size}px ${space}`, "#fff");
+    text(tag, mid, top + (61 - 26 * 1.3) / 2, 26 * 1.3, `700 ${size}px ${space}`, "#fff");
   };
 
   const back = () => {
-    // Whole pixels from here, so the modules land on the pixel grid.
-    let y = Math.round(side("back") - 5 + 16);
-    // The 392 px plate: a 3 px ink border, then white (Figma's 11 px padding includes the border), and the QR on whole pixels per module with its quiet zone.
-    g.fillStyle = ink; g.fillRect(123, y, 392, 392);
-    g.fillStyle = "#fff"; g.fillRect(126, y + 3, 386, 386);
-    const matrix = qrMatrix(card.url), qr = qrPlacement(matrix.length), qx = 134 + qr.offset, qy = y + 11 + qr.offset;
+    const layout = faceLayout.back;
+    side("back");
+    // The 322 px plate: a 3 px ink border, 8 px of white, and the 300 px QR with its quiet zone, every module edge on a
+    // whole pixel.
+    g.fillStyle = ink; g.fillRect(158, layout.plate, 322, 322);
+    g.fillStyle = "#fff"; g.fillRect(161, layout.plate + 3, 316, 316);
+    const matrix = qrMatrix(card.url), { edges } = qrPlacement(matrix.length), qx = 169, qy = layout.plate + 11;
     g.fillStyle = "#000";
-    matrix.forEach((cells, my) => cells.forEach((dark, mx) => { if (dark) g.fillRect(qx + mx * qr.cell, qy + my * qr.cell, qr.cell, qr.cell); }));
-    y += 392 + 16;
-    text(card.number.toUpperCase(), mid, y, 42 * vcrLine, `400 42px ${vcr}`, ink, 42 * .06, 42 * .08);
-    y += 42 * vcrLine + 16;
+    matrix.forEach((cells, my) => cells.forEach((dark, mx) => {
+      if (dark) g.fillRect(qx + edges[mx], qy + edges[my], edges[mx + 1] - edges[mx], edges[my + 1] - edges[my]);
+    }));
+    text(card.number.toUpperCase(), mid, layout.number, 42 * vcrLine, `400 42px ${vcr}`, ink, 42 * .06, 42 * .08);
+    let y = layout.facts;
     // Campus, a 2 px rule, then validity, each with its icon, in a 520 px block.
     g.textAlign = "left";
     const campus = [card.campus, card.studyProgram].filter(Boolean).join(" · ");

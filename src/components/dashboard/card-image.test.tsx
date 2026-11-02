@@ -21,17 +21,19 @@ describe("saved card image", () => {
     expect(sheet.markGap * 2 + sheet.mark * 2).toBeLessThanOrEqual(sheet.gap);
   });
 
-  it("draws the QR on whole pixels per module, at least 31 mm with its quiet zone, and it decodes at that size", () => {
-    const matrix = qrMatrix(link), place = qrPlacement(matrix.length);
-    expect(Number.isInteger(place.cell)).toBe(true);
-    expect(place.size).toBeGreaterThanOrEqual(366);
-    expect(mm(place.size)).toBeGreaterThanOrEqual(31);
-    expect(place.offset * 2 + place.size).toBeLessThanOrEqual(370);
-    // The 386 px white plate interior around it, as printed, read back by a decoder.
-    const size = 386, pad = 8 + place.offset, pixels = new Uint8ClampedArray(size * size * 4).fill(255);
+  it("draws the QR 300 px with its quiet zone, 25.4 mm, every module edge on a whole pixel, and it decodes at that size", () => {
+    const matrix = qrMatrix(link), place = qrPlacement(matrix.length), { edges } = place;
+    expect(place.size).toBe(300);
+    // 25 mm is the floor for the printed code with its quiet zone.
+    expect(mm(place.size)).toBeGreaterThanOrEqual(25);
+    expect([edges[0], edges.at(-1)]).toEqual([0, 300]);
+    const widths = edges.slice(1).map((edge, index) => edge - edges[index]);
+    expect(widths.every((width) => Number.isInteger(width) && (width === 7 || width === 8))).toBe(true);
+    // The 316 px white plate interior around it, as printed, read back by a decoder.
+    const size = 316, pad = 8, pixels = new Uint8ClampedArray(size * size * 4).fill(255);
     matrix.forEach((row, y) => row.forEach((dark, x) => {
       if (!dark) return;
-      for (let dy = 0; dy < place.cell; dy++) for (let dx = 0; dx < place.cell; dx++) pixels.set([0, 0, 0, 255], ((pad + y * place.cell + dy) * size + pad + x * place.cell + dx) * 4);
+      for (let py = edges[y]; py < edges[y + 1]; py++) for (let px = edges[x]; px < edges[x + 1]; px++) pixels.set([0, 0, 0, 255], ((pad + py) * size + pad + px) * 4);
     }));
     expect(jsQR(pixels, size, size)?.data).toBe(link);
   });

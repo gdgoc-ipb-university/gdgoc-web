@@ -37,11 +37,13 @@ describe("member card helpers", () => {
     for (const division of ["Secretary Treasurer", null, undefined, "", "Unknown", "constructor"]) expect(divisionAccent(division), String(division)).toBe("#172d43");
   });
 
-  it("sets the name at 54 px, on two balanced lines when it must, shrinking until the longer line fits", () => {
+  it("sets the name at 54 px, wrapped word by word onto a second line when it must, shrinking only past two lines", () => {
     expect(nameFit("Rania Putri")).toEqual({ px: 54, lines: ["RANIA PUTRI"] });
     // 17 characters at 54 px fit the 568 px column: .61 em × 54 × 17 = 560.
     expect(nameFit("Rania Putri Maharani")).toEqual({ px: 54, lines: ["RANIA PUTRI", "MAHARANI"] });
     expect(nameFit("Muhammad Rizky Ramadhan Saputra")).toEqual({ px: 54, lines: ["MUHAMMAD RIZKY", "RAMADHAN SAPUTRA"] });
+    // As the Figma preview wraps it: the first line takes as many words as fit.
+    expect(nameFit("Adela Belinda Vista")).toEqual({ px: 54, lines: ["ADELA BELINDA", "VISTA"] });
     const long = nameFit("Raden Mas Muhammad Rizky Ramadhan Saputra Wijayakusuma");
     expect(long.lines).toHaveLength(2);
     expect(long.px).toBeLessThan(54);

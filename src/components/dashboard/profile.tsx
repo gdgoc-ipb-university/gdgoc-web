@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { roleLabels } from "@/lib/assignment";
@@ -50,7 +50,8 @@ export function RolePrompt() {
   </section>;
 }
 
-export function ProfilePage() {
+/** `photo` is the "Foto profil" panel, passed in by the route so the shell, which imports `RolePrompt`, does not load the card. */
+export function ProfilePage({ photo }: { photo?: ReactNode }) {
   const viewer = useDashboardViewer();
   const saveRole = useMutation(api.members.saveRole);
   const stats = useQuery(api.assignments.list);
@@ -60,6 +61,7 @@ export function ProfilePage() {
   ];
   return <>
     <div className="dash-intro"><p className="eyebrow">AKUN</p><h1>Profil.</h1><p>Nama, kampus, dan program studi berasal dari perkenalanmu. Hubungi admin jika perlu mengoreksinya.</p></div>
+    {photo}
     <div className="dash-profile-grid">
       <section className="app-panel" aria-labelledby="profile-facts"><h2 id="profile-facts">{viewer.name}</h2>
         <dl className="dash-facts">{facts.map(([term, detail]) => <div key={term}><dt>{term}</dt><dd>{detail}</dd></div>)}</dl>

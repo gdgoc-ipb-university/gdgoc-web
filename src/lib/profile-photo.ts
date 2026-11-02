@@ -72,3 +72,29 @@ export function sizeProblem(width: number, height: number) {
   }
   return null;
 }
+
+/** A square crop of a source image: `zoom` 1 is the largest square that fits, and `x`, `y` its centre in source pixels. */
+export type Crop = { zoom: number; x: number; y: number };
+type Size = { width: number; height: number };
+
+/** How far the crop zooms in: up to 4×, and never so far that fewer than `minEdge` source pixels fill the square. */
+export const maxZoom = ({ width, height }: Size) => Math.max(1, Math.min(4, Math.min(width, height) / photoLimits.minEdge));
+
+/** The side of the crop square in source pixels. */
+export const cropSide = (source: Size, zoom: number) => Math.min(source.width, source.height) / zoom;
+
+/** The crop with its zoom in range and the square inside the image. */
+export function clampCrop(source: Size, crop: Crop): Crop {
+  const zoom = Math.min(maxZoom(source), Math.max(1, crop.zoom)), half = cropSide(source, zoom) / 2;
+  const within = (value: number, length: number) => Math.min(length - half, Math.max(half, value));
+  return { zoom, x: within(crop.x, source.width), y: within(crop.y, source.height) };
+}
+
+/** The centred crop a new photo starts with. */
+export const initialCrop = (source: Size): Crop => ({ zoom: 1, x: source.width / 2, y: source.height / 2 });
+
+/** Where the whole image sits, in CSS pixels, so that the crop fills a square box of `box` pixels. */
+export function cropPlacement(source: Size, crop: Crop, box: number) {
+  const scale = box / cropSide(source, crop.zoom);
+  return { scale, width: source.width * scale, height: source.height * scale, left: box / 2 - crop.x * scale, top: box / 2 - crop.y * scale };
+}

@@ -48,12 +48,12 @@ export function QrCode({ value, label, className }: { value: string; label: stri
   </svg>;
 }
 
-/** The Google profile photo, or the pixel initial when there is none or it fails to load. */
+/** The member's photo (uploaded, else Google, #146), or the pixel initial when there is none or it fails to load. */
 export function CardPhoto({ name, photo, size }: { name: string; photo: string | null; size: number }) {
-  const [failed, setFailed] = useState(false);
   const src = photoAt(photo, size * 2);
-  if (!src || failed) return <span className="account-avatar member-card-photo" aria-hidden="true">{name.trim().slice(0, 1).toUpperCase()}</span>;
-  return <Image className="member-card-photo" src={src} alt={`Foto profil ${name}`} width={size} height={size} referrerPolicy="no-referrer" unoptimized onError={() => setFailed(true)} />;
+  const [failed, setFailed] = useState<string | null>(null);
+  if (!src || failed === src) return <span className="account-avatar member-card-photo" aria-hidden="true">{name.trim().slice(0, 1).toUpperCase()}</span>;
+  return <Image className="member-card-photo" src={src} alt={`Foto profil ${name}`} width={size} height={size} referrerPolicy="no-referrer" unoptimized onError={() => setFailed(src)} />;
 }
 
 export function periodLabel(period: string) {

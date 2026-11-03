@@ -133,7 +133,7 @@ A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), m
 | Path | Purpose |
 | --- | --- |
 | `page.tsx`, `layout.tsx` | The landing and the root layout |
-| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts and their rosters), `kartu` (the member card), `kehadiran` (gatherings and check-in), `tech-support` (mentor requests and the handlers' queue), `profil` (profile and photo) |
+| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts with their rosters and role mentors), `kartu` (the member card), `kehadiran` (gatherings and check-in), `tech-support` (mentor requests and the handlers' queue), `profil` (profile and photo) |
 | `onboarding/` | Five-screen first-visit flow |
 | `tentang/`, `tim/`, `bergabung/`, `program/` (the hub, `catalyst/`, `tech-league/`, `tech-support/`), `privasi/` | Public pages, each listed in `indexablePaths` |
 | `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |

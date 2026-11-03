@@ -136,6 +136,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["techSupport.queue", api.techSupport.queue, HANDLERS, () => ({})],
   ["assignments.list", api.assignments.list, MEMBERS, () => ({})],
   ["assignments.reviewing", api.assignments.reviewing, MEMBERS, () => ({})],
+  ["cohorts.mentoring", api.cohorts.mentoring, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
   ["bogorRun.board", api.bogorRun.board, MEMBERS, () => ({ period: "all" })],
 ];
@@ -167,6 +168,7 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.setRole", api.cohorts.setRole, STAFF, (ids) => ({ id: ids.enrolment, role: "hipster" })],
   ["cohorts.setStatus", api.cohorts.setStatus, STAFF, (ids) => ({ id: ids.enrolment, status: "withdrawn" })],
   ["cohorts.setEmail", api.cohorts.setEmail, STAFF, (ids) => ({ id: ids.enrolment, email: "peserta.baru@example.com" })],
+  ["cohorts.setMentor", api.cohorts.setMentor, STAFF, (ids) => ({ cohortId: ids.cohort, ownerId: ids.member, role: "hipster", mentor: true })],
   ["cohorts.update", api.cohorts.update, STAFF, (ids) => ({ id: ids.cohort, values: { slug: "catalyst-2026", name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker" }, { key: "hipster", name: "Hipster" }, { key: "hustler", name: "Hustler" }] }, status: "active" })],
   ["assignments.review", api.assignments.review, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, score: 80, feedback: "Bagus." })],
   ["assignments.requestRevision", api.assignments.requestRevision, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, note: "Perbaiki bagian dua." })],

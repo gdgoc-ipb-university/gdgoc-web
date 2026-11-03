@@ -34,7 +34,7 @@ export function AssignmentDetail({ id }: { id: string }) {
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canReview ? "Kelola tugas" : "Semua tugas"}</Link>
     <article className="dash-assignment" aria-labelledby="assignment-title">
-      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{data.canReview && <AudienceBadge audience={assignmentAudience(assignment)} />}{!data.canReview && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
+      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{data.canReview && <AudienceBadge audience={assignmentAudience(assignment)} cohort={data.cohort} cohortRoles={assignment.cohortRoles} />}{!data.canReview && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
@@ -42,7 +42,7 @@ export function AssignmentDetail({ id }: { id: string }) {
         <ol className="dash-rubric-list">{assignment.rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{criterion.max} poin</b></li>)}</ol></div>}
     </article>
     {data.canManage ? <><StaffControls assignment={assignment} /><AssignmentReviewers assignment={assignment} reviewers={data.reviewers} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
-      : data.canReview ? <><p className="app-notice">Kamu ditunjuk sebagai penilai tugas ini. Kamu bisa menilai kiriman dan meminta revisi, tetapi tidak bisa mengubah atau menutup tugas. Email member tidak ditampilkan.</p><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
+      : data.canReview ? <><p className="app-notice">{data.cohort ? `Kamu menilai tugas ini sebagai mentor ${data.cohort.name} atau penilai yang ditunjuk.` : "Kamu ditunjuk sebagai penilai tugas ini."} Kamu bisa menilai kiriman dan meminta revisi, tetapi tidak bisa mengubah atau menutup tugas. Email member tidak ditampilkan.</p><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
       : <MemberSubmission data={data} now={now} />}
   </>;
 }
@@ -127,7 +127,7 @@ function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
     try { await action(); } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
   const change = (status: Doc<"assignments">["status"]) => run(() => setStatus({ id: assignment._id, revision: assignment.revision, status }));
-  const hint = { draft: "Draft hanya terlihat oleh admin.", published: "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
+  const hint = { draft: "Draft hanya terlihat oleh admin.", published: assignment.cohortId ? "Peserta aktif dari peran sasaran bisa melihat dan mengumpulkan tugas ini." : "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
   return <section className="dash-controls" aria-label="Kelola tugas">
     <p className="app-small">{hint}</p>
     <div className="app-inline-actions">
@@ -196,9 +196,13 @@ function ExportButton({ assignment }: { assignment: Doc<"assignments"> }) {
   </span>;
 }
 
-/** Active members who have not submitted, with a copyable "Nama — email" list for a reminder. Staff only, so emails are fine here. */
+/**
+ * Who has not submitted, with a copyable "Nama — email" list for a reminder. Emails come for staff only. A cohort task counts
+ * its participants from the roster, so someone who has not signed in yet shows as "Belum masuk".
+ */
 function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
   const data = useQuery(api.assignments.missing, { id: assignment._id });
+  const who = assignment.cohortId ? "peserta" : "member";
   const [copied, setCopied] = useState<"idle" | "copied" | "failed">("idle");
   async function copy() {
     if (!data) return;
@@ -208,13 +212,13 @@ function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
   }
   return <section className="dash-missing" aria-labelledby="missing-title">
     <div className="app-section-heading"><div><p className="eyebrow">BELUM MENGUMPULKAN</p><h2 id="missing-title">Siapa yang belum</h2></div>
-      {data && <span className="app-small">{data.missing.length} dari {data.active} member sasaran belum mengirim</span>}</div>
-    {!data ? <LoadingPanel label="Memeriksa member…" /> : !data.missing.length ? <p className="app-small">{data.active ? "Semua member sasaran sudah mengirim tugas ini." : "Belum ada member aktif di kelompok sasaran tugas ini."}</p>
-      : <><ul className="dash-missing-list">{data.missing.map((row) => <li key={row.ownerId}><strong>{row.name}</strong><span className="app-small">{[row.email, row.campus].filter(Boolean).join(" · ")}</span></li>)}</ul>
+      {data && <span className="app-small">{data.missing.length} dari {data.active} {who} sasaran belum mengirim</span>}</div>
+    {!data ? <LoadingPanel label="Memeriksa member…" /> : !data.missing.length ? <p className="app-small">{data.active ? `Semua ${who} sasaran sudah mengirim tugas ini.` : `Belum ada ${who} aktif di sasaran tugas ini.`}</p>
+      : <><ul className="dash-missing-list">{data.missing.map((row) => <li key={row.key}><strong>{row.name}</strong>{row.unclaimed && <span className="dash-enrolment" data-status="unclaimed">Belum masuk</span>}<span className="app-small">{[row.email, row.campus].filter(Boolean).join(" · ")}</span></li>)}</ul>
         <div className="app-inline-actions"><button type="button" className="text-button" onClick={() => void copy()}><PixelIcon name={copied === "copied" ? "check" : "copy"} size={16} />{copied === "copied" ? "Daftar tersalin" : data.missing.some((row) => row.email) ? "Salin daftar nama dan email" : "Salin daftar nama"}</button>
           <span className="sr-only" role="status">{copied === "copied" ? "Daftar member yang belum mengumpulkan tersalin." : ""}</span>
           {copied === "failed" && <small role="alert">Tidak bisa menyalin otomatis. Pilih dan salin daftar di atas.</small>}</div>
-        <p className="app-small">Admin dan pemilik tidak dihitung. Member nonaktif tidak ditampilkan.</p></>}
+        <p className="app-small">{assignment.cohortId ? "Dihitung dari daftar peserta aktif peran sasaran. Peserta yang belum masuk ke dashboard belum bisa mengirim; ingatkan mereka masuk dengan email yang terdaftar." : "Admin dan pemilik tidak dihitung. Member nonaktif tidak ditampilkan."}</p></>}
   </section>;
 }
 

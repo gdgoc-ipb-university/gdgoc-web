@@ -64,6 +64,14 @@ describe("access log sentences", () => {
     expect(accessSentence(entry("photo", "uploaded", "removed"))).toBe("Aldio Lisafron menghapus foto profil Rania Putri.");
   });
 
+  it("describes mentors added to and removed from a cohort role", () => {
+    const cohort = { name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker" }] };
+    expect([entry("cohortMentor", "off", "hacker", { cohort }), entry("cohortMentor", "hacker", "off", { cohort })].map(accessSentence)).toEqual([
+      "Aldio Lisafron menjadikan Rania Putri mentor Hacker di GDGoC Catalyst 2026/27.",
+      "Aldio Lisafron mencabut Rania Putri dari mentor Hacker di GDGoC Catalyst 2026/27.",
+    ]);
+  });
+
   it("reads stored community tags", () => {
     expect([tagLabel("member"), tagLabel("core:Media & Creative"), tagLabel("bod"), tagLabel("unknown")]).toEqual(["Member", "Core Team · Media & Creative", "BoD", "Member"]);
   });

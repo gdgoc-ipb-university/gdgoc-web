@@ -471,6 +471,21 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-my-team { margin-bottom: 10px; }
 .dash-my-team .dash-mentee-list { margin-top: 10px; }
 
+/* A participant's program on the overview (#106) */
+.dash-catalyst { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 22px 36px; margin-bottom: 26px; padding: 28px; }
+.dash-catalyst-role { grid-column: 1 / -1; display: flex; align-items: center; gap: 14px; padding-bottom: 20px; border-bottom: 1px dashed var(--line); }
+.dash-catalyst-role > span { display: grid; gap: 2px; }
+.dash-catalyst-role strong { font-size: 20px; }
+.dash-catalyst h3 { font-size: 14px; margin: 0 0 10px; }
+.dash-catalyst p { margin: 0; }
+.dash-catalyst .dash-mentee-list { margin-top: 10px; grid-template-columns: 1fr; }
+.dash-catalyst .dash-member-activity { margin: 0; }
+.dash-catalyst .dash-member-activity li > div { gap: 4px; }
+@media (max-width: 760px) {
+  .dash-catalyst { grid-template-columns: 1fr; padding: 20px; }
+  .dash-catalyst .dash-member-activity li { flex-direction: column; align-items: flex-start; }
+}
+
 /* Cohort mentors (#105) */
 .dash-mentors { margin-top: 40px; }
 .dash-mentor-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; margin-bottom: 18px; }

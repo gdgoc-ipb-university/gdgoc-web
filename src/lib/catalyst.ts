@@ -12,10 +12,11 @@ export const catalyst = {
   description:
     "GDGoC Catalyst: bootcamp Software Development gratis untuk siswa SMK dan mahasiswa, dengan peran Hacker, Hipster, dan Hustler. Pendaftaran 2–22 November 2026.",
   track: "Software Development",
+  /** `key` matches the cohort's role key (`catalystCohort`), so the dashboard shows the same icon as this page. */
   roles: [
-    { name: "Hacker", focus: "Pengembangan teknologi", text: "Membangun produk tim dari sisi teknologi." },
-    { name: "Hipster", focus: "Desain UI/UX", text: "Merancang alur dan tampilan produk tim." },
-    { name: "Hustler", focus: "Pengelolaan proyek", text: "Menjaga arah, prioritas, dan jalannya proyek tim." },
+    { key: "hacker", name: "Hacker", icon: "code", focus: "Pengembangan teknologi", text: "Membangun produk tim dari sisi teknologi." },
+    { key: "hipster", name: "Hipster", icon: "brush", focus: "Desain UI/UX", text: "Merancang alur dan tampilan produk tim." },
+    { key: "hustler", name: "Hustler", icon: "clipboard-note", focus: "Pengelolaan proyek", text: "Menjaga arah, prioritas, dan jalannya proyek tim." },
   ],
   oprec: { opensAt: "2026-11-02", closesAt: "2026-11-22" },
   announcedAt: "2026-11-29",

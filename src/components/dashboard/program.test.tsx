@@ -16,11 +16,18 @@ const rows = [
   row("e2", "citra@gmail.com", "Citra", "hipster"),
   row("e3", "dina@gmail.com", "Dina", "hustler", { status: "withdrawn" }),
 ];
-const roster = { cohort, rows };
+const mentors = [{ _id: "m1", ownerId: "u9", role: "hacker", name: "Raka Mentor", active: true }];
+const roster = { cohort, rows, mentors };
+const members = { rows: [
+  { ownerId: "u9", fullName: "Raka Mentor", campus: "IPB University", role: "member", active: true },
+  { ownerId: "u8", fullName: "Rani Mentor", campus: "IPB University", role: "member", active: true },
+  { ownerId: "u7", fullName: "Rafi Admin", campus: "IPB University", role: "admin", active: true },
+] };
 const importEnrolments = vi.fn(async (args: { rows: unknown[] }) => ({ added: args.rows.length - 1, updated: 1, unchanged: 0, linked: 0 }));
+const setMentor = vi.fn(async () => null);
 vi.mock("convex/react", () => ({
-  useQuery: (ref: FunctionReference<"query">) => getFunctionName(ref) === "cohorts:roster" ? roster : undefined,
-  useMutation: (ref: FunctionReference<"mutation">) => getFunctionName(ref) === "cohorts:importEnrolments" ? importEnrolments : vi.fn(async () => null),
+  useQuery: (ref: FunctionReference<"query">, args: unknown) => args === "skip" ? undefined : ({ "cohorts:roster": roster, "dashboard:members": members } as Record<string, unknown>)[getFunctionName(ref)],
+  useMutation: (ref: FunctionReference<"mutation">) => ({ "cohorts:importEnrolments": importEnrolments, "cohorts:setMentor": setMentor } as Record<string, unknown>)[getFunctionName(ref)] ?? vi.fn(async () => null),
   useConvex: () => ({ query: exportBevy }),
 }));
 const exportBevy = vi.fn(async () => [{ email: "budi@gmail.com", name: "Budi Santoso" }, { email: "citra@gmail.com", name: "Citra" }]);
@@ -29,7 +36,7 @@ const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya
 const show = (role: DashboardViewer["role"] = "admin") => render(<ViewerContext.Provider value={{ ...viewer, role }}><ProgramRoster slug="catalyst-2026" /></ViewerContext.Provider>);
 const bodyRows = () => within(screen.getByRole("table")).getAllByRole("row").slice(1);
 
-afterEach(() => { cleanup(); importEnrolments.mockClear(); });
+afterEach(() => { cleanup(); importEnrolments.mockClear(); setMentor.mockClear(); });
 
 describe("program roster", () => {
   it("lists participants with role and sign-in status as an accessible table, and searches by name or email", async () => {
@@ -46,6 +53,21 @@ describe("program roster", () => {
     expect(result.violations.map(({ id, nodes }) => ({ id, elements: nodes.map((node) => node.html) }))).toEqual([]);
     await userEvent.type(screen.getByRole("searchbox", { name: "Cari nama atau email peserta" }), "citra@");
     expect(bodyRows()).toHaveLength(1);
+  });
+
+  it("lists each role's mentors, adds an active member as a mentor of the chosen role, and removes one", async () => {
+    show();
+    const section = screen.getByRole("region", { name: "Mentor per peran" });
+    expect(within(section).getByRole("heading", { name: "Hacker" }).parentElement!.textContent).toContain("Raka Mentor");
+    expect(within(section).getAllByText("Belum ada mentor.")).toHaveLength(2);
+    await userEvent.type(within(section).getByRole("searchbox", { name: "Tambah mentor" }), "Ra");
+    // Raka already mentors Hacker and admins review everything, so only Rani is offered.
+    const offered = within(section).getAllByRole("button", { name: "Jadikan mentor Hacker" });
+    expect(offered).toHaveLength(1);
+    await userEvent.click(offered[0]);
+    expect(setMentor).toHaveBeenCalledWith({ cohortId: "c1", ownerId: "u8", role: "hacker", mentor: true });
+    await userEvent.click(within(section).getByRole("button", { name: "Hapus Raka Mentor dari mentor Hacker" }));
+    expect(setMentor).toHaveBeenLastCalledWith({ cohortId: "c1", ownerId: "u9", role: "hacker", mentor: false });
   });
 
   it("imports pasted cells: guesses the columns and roles, shows what changes and what is skipped, then sends only the changes", async () => {

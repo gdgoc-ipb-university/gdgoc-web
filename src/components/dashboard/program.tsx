@@ -61,7 +61,7 @@ export function ProgramRoster({ slug }: { slug: string }) {
   if (!isStaff(viewer)) return <StaffOnly />;
   if (data === undefined) return <LoadingPanel label="Memuat peserta…" />;
   if (data === null) return <>{back}<div className="app-empty"><h1>Program tidak ditemukan.</h1><p>Periksa kembali link-nya.</p></div></>;
-  const { cohort, rows } = data;
+  const { cohort, rows, mentors } = data;
   const needle = search.trim().toLowerCase();
   const shown = rows
     .filter((row) => (role === "all" || row.role === role) && (status === "all" || statusOf(row) === status))
@@ -107,6 +107,8 @@ export function ProgramRoster({ slug }: { slug: string }) {
         </table>
       </div>}
 
+    <CohortMentors cohort={cohort} mentors={mentors} />
+
     <DashboardDialog open={exporting} onClose={() => setExporting(false)} title="CSV untuk Bevy">
       <BevyExport cohort={cohort} count={active.length} onDone={() => setExporting(false)} />
     </DashboardDialog>
@@ -150,6 +152,47 @@ function BevyExport({ cohort, count, onDone }: { cohort: Roster["cohort"]; count
       <button className="dash-dialog-button" data-primary type="button" disabled={busy} onClick={() => void download()}>{busy ? "Menyiapkan CSV…" : "Unduh CSV"}</button>
     </DialogFooter>
   </>;
+}
+
+/**
+ * Staff add and remove each role's mentors by account, like an assignment's reviewers. A mentor reviews every task of
+ * the cohort that includes their role and sees that role's participants by name, without emails.
+ */
+function CohortMentors({ cohort, mentors }: { cohort: Roster["cohort"]; mentors: Roster["mentors"] }) {
+  const setMentor = useMutation(api.cohorts.setMentor);
+  const [role, setRole] = useState(cohort.roles[0]?.key ?? "");
+  const [search, setSearch] = useState("");
+  const term = search.trim();
+  const found = useQuery(api.dashboard.members, term.length >= 2 ? { search: term, filters: {}, page: 1, pageSize: 6 } : "skip");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  async function change(ownerId: string, key: string, mentor: boolean) {
+    setBusy(true); setError("");
+    try { await setMentor({ cohortId: cohort._id, ownerId, role: key, mentor }); if (mentor) setSearch(""); }
+    catch (cause) { setError(readableError(cause)); }
+    finally { setBusy(false); }
+  }
+  const candidates = (found?.rows ?? []).filter((row) => row.role === "member" && row.active && !mentors.some((mentor) => mentor.ownerId === row.ownerId && mentor.role === role));
+  return <section className="dash-reviewers dash-mentors" aria-labelledby="mentors-title">
+    <div className="app-section-heading"><div><p className="eyebrow">MENTOR</p><h2 id="mentors-title">Mentor per peran</h2></div><span className="app-small">Admin dan pemilik selalu bisa menilai.</span></div>
+    <p className="app-small">Mentor menilai dan meminta revisi untuk semua tugas {cohort.name} yang mencakup perannya, tanpa ditambahkan ke tiap tugas, dan melihat nama peserta perannya. Email peserta tidak ditampilkan.</p>
+    <div className="dash-mentor-roles">{cohort.roles.map((item) => {
+      const list = mentors.filter((mentor) => mentor.role === item.key).sort((a, b) => a.name.localeCompare(b.name, "id"));
+      return <div key={item.key}><h3>{item.name}</h3>
+        {list.length ? <ul className="dash-reviewer-list">{list.map((mentor) => <li key={mentor._id}><span>{mentor.name}{!mentor.active && <small className="app-small"> · nonaktif</small>}</span>
+          <button type="button" className="text-button text-danger" disabled={busy} onClick={() => void change(mentor.ownerId, item.key, false)} aria-label={`Hapus ${mentor.name} dari mentor ${item.name}`}>Hapus</button></li>)}</ul>
+          : <p className="app-small">Belum ada mentor.</p>}
+      </div>;
+    })}</div>
+    <div className="dash-mentor-add">
+      <Select id="mentor-role" label="Peran" value={role} onChange={setRole} disabled={busy} options={cohort.roles.map((item) => ({ value: item.key, label: item.name }))} />
+      <div className="app-field"><label htmlFor="mentor-search">Tambah mentor</label><input id="mentor-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cari nama member" autoComplete="off" /></div>
+    </div>
+    {term.length >= 2 && (found === undefined ? <p className="app-small" role="status">Mencari…</p> : !candidates.length ? <p className="app-small">Tidak ada member aktif yang cocok.</p>
+      : <ul className="dash-reviewer-list">{candidates.map((row) => <li key={row.ownerId}><span>{row.fullName}<small className="app-small"> · {row.campus}</small></span>
+        <button type="button" className="text-button" disabled={busy} onClick={() => void change(row.ownerId, role, true)}>Jadikan mentor {roleName(cohort.roles, role)}</button></li>)}</ul>)}
+    {error && <p className="field-error" role="alert">{error}</p>}
+  </section>;
 }
 
 type Pending = { key: string; label: string; icon: PixelIconName; danger?: boolean };

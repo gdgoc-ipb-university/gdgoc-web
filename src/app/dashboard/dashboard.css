@@ -457,6 +457,18 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-reviewer-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; max-width: 560px; }
 .dash-reviewer-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: white; border: 1px solid #dfe5dc; }
 
+/* Cohort mentors (#105) */
+.dash-mentors { margin-top: 40px; }
+.dash-mentor-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; margin-bottom: 18px; }
+.dash-mentor-roles h3 { font-size: 14px; margin: 0 0 8px; }
+.dash-mentor-add { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 12px; align-items: end; max-width: 560px; }
+@media (max-width: 640px) { .dash-mentor-add { grid-template-columns: 1fr; } }
+.dash-target-options { display: flex; flex-wrap: wrap; gap: 4px 24px; padding-bottom: 6px; border-bottom: 1px dashed var(--line); margin-bottom: 4px; }
+.dash-mentees { margin-bottom: 10px; }
+.dash-mentees summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; cursor: pointer; font-size: 14px; }
+.dash-mentees summary .app-small { margin-left: auto; }
+.dash-mentee-list { list-style: none; padding: 0; margin: 14px 0 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px 18px; font-size: 13px; }
+
 /* Member detail */
 .dash-member-activity { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 8px; }
 .dash-member-activity li { display: flex; justify-content: space-between; align-items: center; gap: 8px 20px; padding: 12px 14px; background: white; border: 1px solid #dfe5dc; }

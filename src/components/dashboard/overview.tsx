@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePaginatedQuery, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { assignmentPath } from "@/lib/assignment";
+import { catalyst } from "@/lib/catalyst";
 import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
 import { PixelIcon } from "../pixel-icons";
@@ -16,8 +17,41 @@ export function DashboardOverview() {
   return <>
     <div className="dash-intro"><p className="eyebrow"><span className="status-dot" /> DASHBOARD GDGOC IPB</p><h1>Halo, {firstName}.</h1>
       <p>{isStaff(viewer) ? "Pantau tugas yang sedang berjalan, kiriman member, dan akses komunitas dari satu tempat." : "Tugas yang sedang dibuka dan kirimanmu ada di sini. Kerjakan pelan-pelan, kumpulkan sebelum tenggat."}</p></div>
+    <ProgramOverview />
     {isStaff(viewer) ? <StaffOverview /> : <MemberOverview />}
   </>;
+}
+
+/**
+ * A participant's program (#106): the cohort and their role, their team once staff form one, and the open tasks for their
+ * role. Nothing for anyone not enrolled. The next session joins this once sessions exist (#109).
+ */
+function ProgramOverview() {
+  const programs = useQuery(api.cohorts.mine);
+  const now = useNow();
+  if (!programs?.length) return null;
+  return programs.map((program) => {
+    const icon = catalyst.roles.find((role) => role.key === program.role.key)?.icon;
+    return <section key={program._id} aria-labelledby={`program-${program._id}`}>
+      <div className="app-section-heading"><div><p className="eyebrow">PROGRAM</p><h2 id={`program-${program._id}`}>{program.cohort.name}</h2></div></div>
+      <div className="app-panel dash-catalyst">
+        <div className="dash-catalyst-role">{icon && <PixelIcon name={icon} size={28} />}<span><span className="app-small">Peranmu</span><strong>{program.role.name}</strong></span></div>
+        <div><h3>Tim</h3>
+          {!program.team ? <p className="app-small">Tim belum dibentuk. Timmu muncul di sini setelah panitia membentuknya.</p> : <>
+            <p><strong>{program.team.name}</strong></p>
+            {program.team.teammates.length ? <ul className="dash-mentee-list">{program.team.teammates.map((mate, index) => <li key={index}>{mate.name} <span className="app-small">· {mate.role}</span></li>)}</ul>
+              : <p className="app-small">Belum ada rekan setim lain.</p>}
+          </>}
+        </div>
+        <div><h3>Tugas yang dibuka</h3>
+          {program.tasks.length ? <ul className="dash-member-activity">{program.tasks.map((task) => <li key={task._id}>
+            <div><Link href={assignmentPath(task)}>{task.title}</Link><DueLabel dueAt={task.dueAt} now={now} open /></div>
+            {task.revisionRequestedAt !== null ? <span className="app-status dash-status" data-status="revision">Revisi diminta</span> : <SubmissionBadge submittedAt={task.submittedAt} late={task.late} />}
+          </li>)}</ul> : <p className="app-small">Belum ada tugas yang dibuka untuk peranmu.</p>}
+        </div>
+      </div>
+    </section>;
+  });
 }
 
 function MemberOverview() {

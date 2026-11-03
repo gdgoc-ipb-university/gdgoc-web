@@ -8,6 +8,7 @@ import { logAccess } from "./accessLog";
 import { cohortRole, cohortStatus } from "./schema";
 import { catalystCohort, inCohortRoles, normalizeCohort, normalizeEmail, normalizeTeamName, teamNameProblem, validateCohort, type CohortValues } from "../src/lib/cohort";
 import { importBatch, importLimits, isEmail } from "../src/lib/enrolment-import";
+import { isLate } from "../src/lib/assignment";
 
 const cohortInput = v.object({ slug: v.string(), name: v.string(), roles: v.array(cohortRole), attendanceTarget: v.optional(v.number()) });
 
@@ -431,12 +432,57 @@ export const myTeams = query({
     const result = await Promise.all(mine.map(async (row) => {
       const [team, cohort] = await Promise.all([ctx.db.get(row.teamId!), ctx.db.get(row.cohortId)]);
       if (!team || !cohort) return null;
-      const others = (await ctx.db.query("enrolments").withIndex("by_team", (q) => q.eq("teamId", team._id)).collect()).filter((item) => item._id !== row._id && item.status === "active");
-      const teammates = await Promise.all(others.map(async (item) => {
-        const profile = item.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", item.ownerId!)).unique() : null;
-        return { name: profile?.fullName || item.name, role: cohort.roles.find((role) => role.key === item.role)?.name ?? item.role };
+      return { _id: team._id, name: team.name, cohort: cohort.name, teammates: await teammatesOf(ctx, row, team._id, cohort) };
+    }));
+    return result.filter((item) => item !== null);
+  },
+});
+
+/** A participant's other active teammates by name (profile, else the form) and role name, sorted by name. */
+async function teammatesOf(ctx: QueryCtx, row: Doc<"enrolments">, teamId: Id<"teams">, cohort: Doc<"cohorts">) {
+  const others = (await ctx.db.query("enrolments").withIndex("by_team", (q) => q.eq("teamId", teamId)).collect()).filter((item) => item._id !== row._id && item.status === "active");
+  const teammates = await Promise.all(others.map(async (item) => {
+    const profile = item.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", item.ownerId!)).unique() : null;
+    return { name: profile?.fullName || item.name, role: roleName(cohort, item.role) };
+  }));
+  return teammates.sort((a, b) => a.name.localeCompare(b.name, "id"));
+}
+
+function roleName(cohort: Doc<"cohorts">, key: string) {
+  return cohort.roles.find((role) => role.key === key)?.name ?? key;
+}
+
+// ——— Participant overview (#106) ———
+
+/**
+ * The signed-in participant's own program view for the dashboard overview: for each active enrolment in a cohort that has
+ * not ended, the cohort, their role, their team and teammates' names once staff assign one, and the open tasks for their
+ * role with whether they submitted. No emails and nothing of other roles; empty for anyone not enrolled. Sessions and
+ * attendance join this once they exist (#109).
+ */
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const { user } = await requireMember(ctx);
+    const rows = (await ctx.db.query("enrolments").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).collect()).filter((row) => row.status === "active");
+    const result = await Promise.all(rows.map(async (row) => {
+      const cohort = await ctx.db.get(row.cohortId);
+      if (!cohort || cohort.status === "ended") return null;
+      const team = row.teamId ? await ctx.db.get(row.teamId) : null;
+      const open = (await ctx.db.query("assignments").withIndex("by_cohort", (q) => q.eq("cohortId", cohort._id)).collect())
+        .filter((assignment) => assignment.status === "published" && inCohortRoles(assignment, row.role))
+        .sort((a, b) => a.dueAt - b.dueAt);
+      const tasks = await Promise.all(open.map(async (assignment) => {
+        const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
+        return {
+          _id: assignment._id, slug: assignment.slug, title: assignment.title, dueAt: assignment.dueAt,
+          submittedAt: mine?.submittedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false, revisionRequestedAt: mine?.revisionRequestedAt ?? null,
+        };
       }));
-      return { _id: team._id, name: team.name, cohort: cohort.name, teammates: teammates.sort((a, b) => a.name.localeCompare(b.name, "id")) };
+      return {
+        _id: row._id, cohort: { name: cohort.name, slug: cohort.slug }, role: { key: row.role, name: roleName(cohort, row.role) },
+        team: team && { name: team.name, teammates: await teammatesOf(ctx, row, team._id, cohort) }, tasks,
+      };
     }));
     return result.filter((item) => item !== null);
   },

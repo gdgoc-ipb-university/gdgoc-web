@@ -390,14 +390,20 @@ describe("dashboard roles and member management", () => {
     const oldest = await owner.query(api.dashboard.members, { ...everyone, sort: "joined-asc", pageSize: 2 });
     expect(oldest.rows.map((row) => row.fullName)).toEqual(["Pemilik", "Dewi"]);
   });
-  it("lets staff correct a member's community role and filter the core team", async () => {
+  it("lets staff assign Core Team with a division, which members cannot do for themselves, and filter the core team", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com");
+    const admin = await account(t, "admin@example.com");
     const member = await account(t, "member@example.com");
-    await expect(member.mutation(api.dashboard.setMemberType, { ownerId: owner.id, memberType: "core", division: "Technical" })).rejects.toThrow("hanya untuk admin");
-    await expect(owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "" })).rejects.toThrow("Pilih divisimu");
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    for (const ownerId of [owner.id, member.id]) {
+      await expect(member.mutation(api.dashboard.setMemberType, { ownerId, memberType: "core", division: "Technical" })).rejects.toThrow("hanya untuk admin");
+    }
+    await expect(owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "" })).rejects.toThrow("Pilih divisi untuk Core Team");
+    await admin.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "Media & Creative" });
+    expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "core", division: "Media & Creative", tagConfirmed: true });
     await owner.mutation(api.dashboard.setMemberType, { ownerId: member.id, memberType: "core", division: "Community & External" });
-    expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "core", division: "Community & External" });
+    expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "core", division: "Community & External", tagConfirmed: true });
     const core = await owner.query(api.dashboard.members, { ...everyone, filters: { community: ["core" as const] } });
     expect(core.rows.map((row) => [row.email, row.division])).toEqual([["member@example.com", "Community & External"]]);
     expect((await owner.query(api.dashboard.stats)).core).toBe(1);

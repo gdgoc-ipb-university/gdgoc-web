@@ -7,7 +7,8 @@ import { api, components } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
-const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer", memberType: "member" as const, division: "" };
+const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer" };
+const steps = [1, 2, 4, 5] as const;
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 async function member(t: ReturnType<typeof setup>, email = "onboarding@example.com", verified = true, expiresAt = Date.now() + 3600000) {
   const user = await t.mutation(components.betterAuth.adapter.create, {
@@ -17,6 +18,11 @@ async function member(t: ReturnType<typeof setup>, email = "onboarding@example.c
     input: { model: "session", data: { userId: user._id, token: crypto.randomUUID(), expiresAt, createdAt: Date.now(), updatedAt: Date.now() } },
   });
   return t.withIdentity({ subject: user._id, sessionId: session._id, email });
+}
+
+/** Saves every onboarding screen in order. */
+async function onboard(account: Awaited<ReturnType<typeof member>>) {
+  for (const [index, step] of steps.entries()) await account.mutation(api.members.saveStep, { step, revision: index, values });
 }
 
 describe("first-time member onboarding", () => {
@@ -50,7 +56,7 @@ describe("first-time member onboarding", () => {
     await expect(owner.mutation(api.members.saveStep, { step: 2, revision: 1, values: { ...values, campus: "", studyProgram: "" } })).rejects.toThrow("Lengkapi");
     await expect(owner.mutation(api.members.saveStep, { step: 2, revision: 1, values: { ...values, studyProgram: "x".repeat(151) } })).rejects.toThrow("Lengkapi");
     const saved = await owner.mutation(api.members.saveStep, { step: 2, revision: 1, values: { ...values, campus: "Kampus di luar saran", studyProgram: "Program studi baru" } });
-    expect(saved).toMatchObject({ nextStep: 3, campus: "Kampus di luar saran", studyProgram: "Program studi baru" });
+    expect(saved).toMatchObject({ nextStep: 4, campus: "Kampus di luar saran", studyProgram: "Program studi baru" });
   });
 
   it("makes retries safe and rejects stale edits from another tab", async () => {
@@ -64,34 +70,64 @@ describe("first-time member onboarding", () => {
   it("finishes without claiming external membership and prefills only new appreciation drafts", async () => {
     const owner = await member(setup());
     const oldDraft = await owner.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
-    for (const step of [1, 2, 3, 4, 5] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    await onboard(owner);
     const completed = await owner.query(api.members.profile);
     expect(completed?.completedAt).toEqual(expect.any(Number));
     expect(completed).not.toHaveProperty("whatsappJoined");
     expect(completed).not.toHaveProperty("gdgJoined");
-    const retried = await owner.mutation(api.members.saveStep, { step: 5, revision: 4, values });
+    const retried = await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
     expect(retried.completedAt).toBe(completed?.completedAt);
     const newDraft = await owner.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
     expect((await owner.query(api.appreciations.get, { id: newDraft })).values).toMatchObject({ fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram, memberType: "Member" });
     expect((await owner.query(api.appreciations.get, { id: oldDraft })).values).toMatchObject({ fullName: "Nama Google", campus: "", studyProgram: "" });
   });
-  it("records member or core team with a division at the role step", async () => {
+  it("registers a new account as Member with no division", async () => {
+    const owner = await member(setup());
+    await onboard(owner);
+    const profile = await owner.query(api.members.profile);
+    expect(profile).toMatchObject({ memberType: "member", nextStep: 5 });
+    expect(profile).not.toHaveProperty("division");
+    expect(profile).not.toHaveProperty("tagConfirmedAt");
+  });
+
+  it("resumes a profile saved on the removed role screen at the WhatsApp screen", async () => {
     const t = setup(); const owner = await member(t);
-    await owner.mutation(api.members.saveStep, { step: 1, revision: 0, values });
-    await owner.mutation(api.members.saveStep, { step: 2, revision: 1, values });
-    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "" } })).rejects.toThrow("Lengkapi");
-    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "core", division: "Divisi Karangan" } })).rejects.toThrow("Lengkapi");
-    const saved = await owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "core", division: "Technical" } });
-    expect(saved).toMatchObject({ memberType: "core", division: "Technical", nextStep: 4 });
-    // A tab loaded before the role step still saves later screens without clearing the role.
-    const later = await owner.mutation(api.members.saveStep, { step: 4, revision: 3, values: { fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram } });
-    expect(later).toMatchObject({ memberType: "core", division: "Technical", nextStep: 5 });
+    for (const step of [1, 2] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    const profile = (await owner.query(api.members.profile))!;
+    // Saved before the role screen was removed: waiting on screen 3.
+    await t.run((ctx) => ctx.db.patch(profile._id, { nextStep: 3 }));
+    await expect(owner.mutation(api.members.saveStep, { step: 5, revision: 2, values })).rejects.toThrow("langkah sebelumnya");
+    expect(await owner.mutation(api.members.saveStep, { step: 4, revision: 2, values })).toMatchObject({ nextStep: 5 });
+    expect(await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values })).toMatchObject({ memberType: "member", completedAt: expect.any(Number) });
+  });
+
+  it("rejects a community tag sent with any onboarding screen", async () => {
+    const owner = await member(setup());
+    const tags = [{ memberType: "core", division: "Technical" }, { memberType: "bod", division: "" }, { memberType: "member", division: "Media & Creative" }];
+    // The removed role screen, and every remaining one with tag fields added, as an old tab or a hand-made call would send.
+    for (const tag of tags) await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 0, values: { ...values, ...tag } } as never)).rejects.toThrow();
+    for (const [index, step] of steps.entries()) {
+      for (const tag of tags) await expect(owner.mutation(api.members.saveStep, { step, revision: index, values: { ...values, ...tag } } as never)).rejects.toThrow();
+      await owner.mutation(api.members.saveStep, { step, revision: index, values });
+    }
+    const profile = await owner.query(api.members.profile);
+    expect(profile).toMatchObject({ memberType: "member" });
+    expect(profile).not.toHaveProperty("division");
+  });
+
+  it("never downgrades a tag staff assigned before onboarding finished", async () => {
+    const t = setup(); const owner = await member(t);
+    for (const [index, step] of ([1, 2, 4] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
+    const profile = (await owner.query(api.members.profile))!;
+    await t.run((ctx) => ctx.db.patch(profile._id, { memberType: "core", division: "Media & Creative", tagConfirmedAt: Date.now(), tagConfirmedBy: "staff" }));
+    await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
+    expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "core", division: "Media & Creative", tagConfirmedAt: expect.any(Number), completedAt: expect.any(Number) });
   });
 
   it("gives an untagged account the Member tag and never any other", async () => {
     const t = setup(); const owner = await member(t);
     await expect(owner.mutation(api.members.registerAsMember)).rejects.toThrow("Selesaikan perkenalan");
-    for (const step of [1, 2, 3, 4, 5] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    await onboard(owner);
     const profile = (await owner.query(api.members.profile))!;
     // Onboarded before community tags existed.
     await t.run((ctx) => ctx.db.patch(profile._id, { memberType: undefined }));

@@ -34,6 +34,12 @@ describe("assignment rules", () => {
       title: "Isi judul tugas.", description: "Jelaskan apa yang perlu dikerjakan.", dueAt: "Pilih tanggal dan jam tenggat.",
     });
     expect(validateAssignment({ title: "Tugas", slug: "", description: "Kerjakan.", dueAt: "2026-10-01T23:59", maxScore: "100" })).toEqual({});
+    // A cohort task needs a role instead of a community tag.
+    const cohortTask = { title: "Tugas", slug: "", description: "Kerjakan.", dueAt: "2026-10-01T23:59", maxScore: "100", audience: [], cohortId: "c1" };
+    expect(validateAssignment({ ...cohortTask, cohortRoles: [] })).toEqual({ cohortRoles: "Pilih setidaknya satu peran." });
+    expect(validateAssignment({ ...cohortTask, cohortRoles: ["hacker"] })).toEqual({});
+    expect(normalizeAssignment({ ...cohortTask, cohortRoles: ["hacker", "hacker"] })).toMatchObject({ cohortId: "c1", cohortRoles: ["hacker"] });
+    expect(validateAssignment({ ...cohortTask, cohortId: null, cohortRoles: ["hacker"] })).toEqual({ audience: "Pilih setidaknya satu kelompok." });
   });
 
   it("derives the maximum from a rubric and rejects incomplete criteria", () => {

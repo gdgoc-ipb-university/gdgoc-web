@@ -4,7 +4,7 @@ export type CohortRole = { key: string; name: string };
 export type CohortValues = { slug: string; name: string; roles: CohortRole[]; attendanceTarget?: number };
 export type CohortErrors = Partial<Record<"slug" | "name" | "roles" | "attendanceTarget", string>>;
 
-export const cohortLimits = { name: 120, roles: 8, roleName: 40, roleKey: 32 } as const;
+export const cohortLimits = { name: 120, roles: 8, roleName: 40, roleKey: 32, teamName: 60 } as const;
 const roleKeyPattern = /^[a-z][a-z0-9-]*$/;
 
 /** GDGoC Catalyst 2026/27 (#32): one track, three roles, a 70% attendance commitment. `cohorts.seedCatalyst` creates it. */
@@ -48,6 +48,29 @@ export function validateCohort(values: CohortValues): CohortErrors {
 /** Whether an assignment for these roles (absent or empty means every role) is given to a participant with this role. */
 export function inCohortRoles(assignment: { cohortRoles?: string[] }, role: string) {
   return !assignment.cohortRoles?.length || assignment.cohortRoles.includes(role);
+}
+
+/** The roles a cohort task is for, in words: "Semua peran" or e.g. "Hacker · Hipster". */
+export function cohortRolesLabel(roles: CohortRole[], cohortRoles: string[] | undefined) {
+  const chosen = roles.filter((role) => inCohortRoles({ cohortRoles }, role.key));
+  return chosen.length === roles.length ? "Semua peran" : chosen.map((role) => role.name).join(" · ");
+}
+
+/** A team name as stored: spaces collapsed and trimmed. */
+export function normalizeTeamName(name: string) {
+  return name.replace(/\s+/g, " ").trim();
+}
+
+export function teamNameProblem(name: string) {
+  if (!name) return "Isi nama tim.";
+  if (name.length > cohortLimits.teamName) return `Nama tim maksimal ${cohortLimits.teamName} karakter.`;
+  return null;
+}
+
+/** How many of a team's members have each role, in the cohort's role order, e.g. "Hacker 2 · Hipster 1"; roles nobody has are left out. */
+export function roleMix(roles: CohortRole[], memberRoles: string[]) {
+  return roles.map((role) => [role.name, memberRoles.filter((key) => key === role.key).length] as const)
+    .filter(([, count]) => count > 0).map(([name, count]) => `${name} ${count}`).join(" · ");
 }
 
 /** A cohort's roster in the dashboard. */

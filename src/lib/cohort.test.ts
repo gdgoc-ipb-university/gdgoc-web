@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { catalystCohort, inCohortRoles, normalizeCohort, normalizeEmail, validateCohort } from "./cohort";
+import { catalystCohort, cohortRolesLabel, inCohortRoles, normalizeTeamName, roleMix, teamNameProblem, normalizeCohort, normalizeEmail, validateCohort } from "./cohort";
 
 describe("cohorts", () => {
   it("compares emails trimmed and lowercased", () => {
@@ -34,5 +34,21 @@ describe("cohorts", () => {
     expect(inCohortRoles({ cohortRoles: [] }, "hustler")).toBe(true);
     expect(inCohortRoles({ cohortRoles: ["hacker", "hipster"] }, "hipster")).toBe(true);
     expect(inCohortRoles({ cohortRoles: ["hacker"] }, "hustler")).toBe(false);
+  });
+
+  it("names a task's roles, or every role", () => {
+    expect(cohortRolesLabel(catalystCohort.roles, undefined)).toBe("Semua peran");
+    expect(cohortRolesLabel(catalystCohort.roles, ["hacker", "hipster", "hustler"])).toBe("Semua peran");
+    expect(cohortRolesLabel(catalystCohort.roles, ["hustler", "hacker"])).toBe("Hacker · Hustler");
+  });
+
+  it("tidies and checks team names", () => {
+    expect(normalizeTeamName("  Tim   Satu ")).toBe("Tim Satu");
+    expect([teamNameProblem(""), teamNameProblem("x".repeat(61)), teamNameProblem("Tim Satu")]).toEqual(["Isi nama tim.", "Nama tim maksimal 60 karakter.", null]);
+  });
+
+  it("counts a team's roles in the cohort's order, leaving out roles nobody has", () => {
+    expect(roleMix(catalystCohort.roles, ["hustler", "hacker", "hacker"])).toBe("Hacker 2 · Hustler 1");
+    expect(roleMix(catalystCohort.roles, [])).toBe("");
   });
 });

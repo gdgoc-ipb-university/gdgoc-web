@@ -30,12 +30,10 @@ const enrol = (t: Test, cohortId: Id<"cohorts">, email: string, role: string, ex
   t.run((ctx) => ctx.db.insert("enrolments", { cohortId, email, name: email.split("@")[0], role, status: "active", importedAt: Date.now(), importedBy: "test", ...extra }));
 const mentor = (t: Test, cohortId: Id<"cohorts">, ownerId: string, role: string) =>
   t.run((ctx) => ctx.db.insert("cohortMentors", { cohortId, ownerId, role, addedBy: "test", addedAt: Date.now() }));
-/** A published assignment for one cohort, created by staff and then scoped like the editor in #105 will. */
-async function cohortTask(t: Test, owner: Awaited<ReturnType<typeof account>>, cohortId: Id<"cohorts">, title: string, cohortRoles?: string[]) {
-  const dueAt = new Date(Date.now() + 48 * hour).toISOString().slice(0, 16);
-  const id = await owner.mutation(api.assignments.create, { values: { title, description: "Kerjakan.", dueAt }, publish: true });
-  await t.run((ctx) => ctx.db.patch(id, { cohortId, ...(cohortRoles ? { cohortRoles } : {}) }));
-  return id;
+const dueAt = () => new Date(Date.now() + 48 * hour).toISOString().slice(0, 16);
+/** A published assignment for one cohort, from the editor's "Untuk" (every role when none are given). */
+async function cohortTask(owner: Awaited<ReturnType<typeof account>>, cohortId: Id<"cohorts">, title: string, cohortRoles = ["hacker", "hipster", "hustler"]) {
+  return owner.mutation(api.assignments.create, { values: { title, description: "Kerjakan.", dueAt: dueAt(), cohortId, cohortRoles }, publish: true });
 }
 
 async function world() {
@@ -50,8 +48,8 @@ async function world() {
   await enrol(t, cohort, "hustler@example.com", "hustler");
   await mentor(t, cohort, hackerMentor.id, "hacker");
   for (const caller of [hacker, hustler]) await caller.mutation(api.cohorts.claimMine, {});
-  const hackerTask = await cohortTask(t, owner, cohort, "Tugas Hacker", ["hacker"]);
-  const allTask = await cohortTask(t, owner, cohort, "Tugas semua peran");
+  const hackerTask = await cohortTask(owner, cohort, "Tugas Hacker", ["hacker"]);
+  const allTask = await cohortTask(owner, cohort, "Tugas semua peran");
   return { t, owner, hacker, hustler, outsider, hackerMentor, cohort, hackerTask, allTask };
 }
 const titles = async (caller: { query: Test["query"] }) => (await caller.query(api.assignments.list, {})).map((item) => item.title).sort();
@@ -159,6 +157,17 @@ describe("cohorts", () => {
     const all = await owner.query(api.assignments.missing, { id: allTask });
     expect(all).toMatchObject({ active: 2, submitted: 1 });
     expect(all.missing.map((row) => row.name)).toEqual(["Nama hustler"]);
+  });
+
+  it("counts participants who have not signed in as missing, with their email for staff only", async () => {
+    const { t, owner, hackerMentor, cohort, hackerTask } = await world();
+    await enrol(t, cohort, "belum@example.com", "hacker");
+    await enrol(t, cohort, "keluar@example.com", "hacker", { status: "withdrawn" });
+    const staff = await owner.query(api.assignments.missing, { id: hackerTask });
+    expect(staff).toMatchObject({ active: 2, submitted: 0 });
+    expect(staff.missing.map((row) => [row.name, row.email, row.unclaimed])).toEqual([["belum", "belum@example.com", true], ["Nama hacker", "hacker@example.com", false]]);
+    const mentorView = await hackerMentor.query(api.assignments.missing, { id: hackerTask });
+    expect(mentorView.missing.map((row) => [row.name, row.email])).toEqual([["belum", ""], ["Nama hacker", ""]]);
   });
 
   it("deletes an account's enrolments, unclaimed ones for its email, and mentor grants", async () => {
@@ -292,5 +301,174 @@ describe("roster and import (#104)", () => {
   it("returns null for an unknown cohort", async () => {
     const { owner } = await staffWithCohort();
     expect(await owner.query(api.cohorts.roster, { slug: "tidak-ada" })).toBeNull();
+  });
+});
+
+describe("role tasks and mentors (#105)", () => {
+  it("targets a cohort and its roles from the editor, checked against the cohort", async () => {
+    const { t, owner, cohort, hackerTask, allTask } = await world();
+    const stored = async (id: Id<"assignments">) => t.run(async (ctx) => { const doc = (await ctx.db.get(id))!; return [doc.cohortId ?? null, doc.cohortRoles ?? null]; });
+    expect(await stored(hackerTask)).toEqual([cohort, ["hacker"]]);
+    // Every role is stored as none, which means all of them.
+    expect(await stored(allTask)).toEqual([cohort, null]);
+    const values = { title: "Tugas", description: "Kerjakan.", dueAt: dueAt(), cohortId: cohort };
+    await expect(owner.mutation(api.assignments.create, { values: { ...values, cohortRoles: [] }, publish: false })).rejects.toThrow("Lengkapi");
+    await expect(owner.mutation(api.assignments.create, { values: { ...values, cohortRoles: ["designer"] }, publish: false })).rejects.toThrow("tidak ada di GDGoC Catalyst");
+
+    // An edit without a target (a tab from before cohorts) keeps it; null moves the task back to community tags.
+    const revision = async () => t.run(async (ctx) => (await ctx.db.get(hackerTask))!.revision);
+    await owner.mutation(api.assignments.update, { id: hackerTask, revision: await revision(), values: { title: "Tugas Hacker", description: "Kerjakan lagi.", dueAt: dueAt() } });
+    expect(await stored(hackerTask)).toEqual([cohort, ["hacker"]]);
+    await owner.mutation(api.assignments.update, { id: hackerTask, revision: await revision(), values: { title: "Tugas Hacker", description: "Kerjakan lagi.", dueAt: dueAt(), cohortId: cohort, cohortRoles: ["hacker", "hipster"] } });
+    expect(await stored(hackerTask)).toEqual([cohort, ["hacker", "hipster"]]);
+    await owner.mutation(api.assignments.update, { id: hackerTask, revision: await revision(), values: { title: "Tugas Hacker", description: "Kerjakan lagi.", dueAt: dueAt(), audience: ["member"], cohortId: null } });
+    expect(await stored(hackerTask)).toEqual([null, null]);
+
+    // Staff see the target on the list.
+    const listed = (await owner.query(api.assignments.adminList, { paginationOpts: page })).page.find((item) => item._id === allTask);
+    expect(listed?.cohort).toMatchObject({ name: "GDGoC Catalyst 2026/27" });
+  });
+
+  it("shows a Hacker task only to Hackers, staff and Hacker mentors, who score it and ask for revisions without being added", async () => {
+    const { t, owner, hacker, hustler, outsider, hackerMentor, cohort, hackerTask } = await world();
+    const hipster = await account(t, "hipster@example.com");
+    await enrol(t, cohort, "hipster@example.com", "hipster");
+    await hipster.mutation(api.cohorts.claimMine, {});
+    const hipsterMentor = await account(t, "mentor-hipster@example.com");
+    await mentor(t, cohort, hipsterMentor.id, "hipster");
+
+    for (const caller of [hustler, hipster, outsider, hipsterMentor]) expect(await caller.query(api.assignments.get, { id: hackerTask })).toBeNull();
+    expect(await hacker.query(api.assignments.get, { id: hackerTask })).toMatchObject({ canReview: false });
+    expect(await owner.query(api.assignments.get, { id: hackerTask })).toMatchObject({ canManage: true });
+    expect(await hackerMentor.query(api.assignments.get, { id: hackerTask })).toMatchObject({ canReview: true, canManage: false, cohort: { name: "GDGoC Catalyst 2026/27" } });
+    expect(await t.run(async (ctx) => (await ctx.db.get(hackerTask))!.reviewers ?? [])).toEqual([]);
+
+    await hacker.mutation(api.assignments.submit, { assignmentId: hackerTask, revision: 0, answer: "Selesai", fileIds: [] });
+    const [submission] = (await hackerMentor.query(api.assignments.submissions, { id: hackerTask, paginationOpts: page })).page;
+    await hackerMentor.mutation(api.assignments.requestRevision, { submissionId: submission._id, submissionRevision: submission.revision, note: "Tambahkan README." });
+    expect(await hacker.query(api.assignments.get, { id: hackerTask })).toMatchObject({ submission: { feedback: "Tambahkan README.", revisionRequestedAt: expect.any(Number) } });
+    await hacker.mutation(api.assignments.submit, { assignmentId: hackerTask, revision: 1, answer: "Sudah ada README.", fileIds: [] });
+    await hackerMentor.mutation(api.assignments.review, { submissionId: submission._id, submissionRevision: 2, score: 85, feedback: "Lengkap." });
+    expect(await hacker.query(api.assignments.get, { id: hackerTask })).toMatchObject({ submission: { score: 85, reviewerName: "Nama mentor-hacker" } });
+
+    // A Hacker mentor can neither see nor score a Hipster task.
+    const hipsterTask = await cohortTask(owner, cohort, "Tugas Hipster", ["hipster"]);
+    await hipster.mutation(api.assignments.submit, { assignmentId: hipsterTask, revision: 0, answer: "Desain", fileIds: [] });
+    const hipsterSubmission = await t.run(async (ctx) => (await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", hipsterTask).eq("ownerId", hipster.id)).unique())!);
+    expect(await hackerMentor.query(api.assignments.get, { id: hipsterTask })).toBeNull();
+    expect((await hackerMentor.query(api.assignments.reviewing, {})).map((item) => item.title)).not.toContain("Tugas Hipster");
+    await expect(hackerMentor.query(api.assignments.submissions, { id: hipsterTask, paginationOpts: page })).rejects.toThrow("penilai tugas ini");
+    await expect(hackerMentor.query(api.assignments.missing, { id: hipsterTask })).rejects.toThrow("penilai tugas ini");
+    await expect(hackerMentor.mutation(api.assignments.review, { submissionId: hipsterSubmission._id, submissionRevision: 1, score: 10, feedback: "" })).rejects.toThrow("penilai tugas ini");
+    await expect(hackerMentor.mutation(api.assignments.requestRevision, { submissionId: hipsterSubmission._id, submissionRevision: 1, note: "Ulang." })).rejects.toThrow("penilai tugas ini");
+    expect((await hipsterMentor.query(api.assignments.submissions, { id: hipsterTask, paginationOpts: page })).page).toHaveLength(1);
+  });
+
+  it("lets staff add and remove a role's mentors by account, with the access log, and lists them on the roster", async () => {
+    const { t, owner, hacker, outsider, hackerMentor, cohort } = await world();
+    const set = (ownerId: string, role: string, on = true) => owner.mutation(api.cohorts.setMentor, { cohortId: cohort, ownerId, role, mentor: on });
+    await set(outsider.id, "hustler");
+    await set(outsider.id, "hustler"); // again: nothing changes
+    expect((await owner.query(api.cohorts.roster, { slug: "catalyst-2026" }))!.mentors.map((row) => [row.name, row.role]).sort()).toEqual([["Nama member", "hustler"], ["Nama mentor-hacker", "hacker"]]);
+    expect((await outsider.query(api.assignments.reviewing, {})).map((item) => item.title)).toEqual(["Tugas semua peran"]);
+
+    await expect(set(outsider.id, "designer")).rejects.toThrow("tidak ada di");
+    await expect(set(hacker.id, "hustler")).rejects.toThrow("tidak bisa menjadi mentornya");
+    await expect(set(owner.id, "hacker")).rejects.toThrow("sudah bisa menilai");
+    await expect(set("nobody", "hacker")).rejects.toThrow("tidak ditemukan");
+    await owner.mutation(api.dashboard.setActive, { ownerId: hackerMentor.id, active: false });
+    await expect(set(hackerMentor.id, "hipster")).rejects.toThrow("Aktifkan kembali");
+
+    await set(outsider.id, "hustler", false);
+    expect((await outsider.query(api.assignments.reviewing, {}))).toEqual([]);
+    const log = await t.run((ctx) => ctx.db.query("accessLog").collect());
+    expect(log.filter((row) => row.change === "cohortMentor").map((row) => [row.targetId, row.from, row.to, row.cohortId])).toEqual([[outsider.id, "off", "hustler", cohort], [outsider.id, "hustler", "off", cohort]]);
+  });
+
+  it("shows a mentor their roles' active participants by name only", async () => {
+    const { t, hacker, outsider, hackerMentor, cohort } = await world();
+    await enrol(t, cohort, "belum@example.com", "hacker");
+    await enrol(t, cohort, "keluar@example.com", "hacker", { status: "withdrawn" });
+    expect(await hackerMentor.query(api.cohorts.mentoring, {})).toEqual([
+      { _id: cohort, name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker", participants: ["belum", "Nama hacker"] }] },
+    ]);
+    expect(await outsider.query(api.cohorts.mentoring, {})).toEqual([]);
+    expect(await hacker.query(api.cohorts.mentoring, {})).toEqual([]);
+  });
+});
+
+describe("teams (#107)", () => {
+  async function teams() {
+    const w = await world();
+    const { t, owner, cohort } = w;
+    const hipster = await account(t, "hipster@example.com");
+    await enrol(t, cohort, "hipster@example.com", "hipster");
+    await hipster.mutation(api.cohorts.claimMine, {});
+    const unclaimed = await enrol(t, cohort, "belum@example.com", "hustler");
+    const rows = await t.run((ctx) => ctx.db.query("enrolments").collect());
+    const idOf = (email: string) => rows.find((row) => row.email === email)!._id;
+    const create = (name: string) => owner.mutation(api.cohorts.createTeam, { cohortId: cohort, name });
+    return { ...w, hipster, unclaimed, idOf, create };
+  }
+
+  it("creates and renames teams with names unique in the cohort, ignoring case", async () => {
+    const { owner, create } = await teams();
+    const one = await create("  Tim   Satu ");
+    await create("Tim Dua");
+    await expect(create("tim satu")).rejects.toThrow("sudah dipakai");
+    await expect(create(" ")).rejects.toThrow("Isi nama tim");
+    await owner.mutation(api.cohorts.renameTeam, { id: one, name: "TIM SATU" }); // its own name in other case is fine
+    await expect(owner.mutation(api.cohorts.renameTeam, { id: one, name: "Tim Dua" })).rejects.toThrow("sudah dipakai");
+    // Another cohort may reuse a name.
+    const intake = await owner.mutation(api.cohorts.create, { values: { slug: "intake", name: "Intake", roles: [{ key: "member", name: "Member" }] } });
+    await owner.mutation(api.cohorts.createTeam, { cohortId: intake, name: "Tim Dua" });
+    expect((await owner.query(api.cohorts.roster, { slug: "catalyst-2026" }))!.teams.map((team) => team.name)).toEqual(["Tim Dua", "TIM SATU"]);
+  });
+
+  it("keeps each participant in one team, refuses other cohorts and withdrawn participants, and shows the team on the roster", async () => {
+    const { t, owner, idOf, unclaimed, create } = await teams();
+    const one = await create("Tim 1");
+    const two = await create("Tim 2");
+    const set = (email: string, teamId: Id<"teams"> | null) => owner.mutation(api.cohorts.setTeam, { id: idOf(email), teamId });
+    await set("hacker@example.com", one);
+    await set("hacker@example.com", two); // moves, never in both
+    await owner.mutation(api.cohorts.setTeam, { id: unclaimed, teamId: one }); // not signed in yet is fine
+    const roster = (await owner.query(api.cohorts.roster, { slug: "catalyst-2026" }))!;
+    expect(Object.fromEntries(roster.rows.map((row) => [row.email, row.teamId]))).toMatchObject({ "hacker@example.com": two, "belum@example.com": one, "hipster@example.com": null });
+    await set("hacker@example.com", null);
+    expect(await t.run(async (ctx) => (await ctx.db.get(idOf("hacker@example.com")))!.teamId ?? null)).toBeNull();
+
+    const intake = await owner.mutation(api.cohorts.create, { values: { slug: "intake", name: "Intake", roles: [{ key: "member", name: "Member" }] } });
+    const elsewhere = await owner.mutation(api.cohorts.createTeam, { cohortId: intake, name: "Tim Lain" });
+    await expect(set("hacker@example.com", elsewhere)).rejects.toThrow("bukan tim GDGoC Catalyst");
+    await owner.mutation(api.cohorts.setStatus, { id: idOf("hipster@example.com"), status: "withdrawn" });
+    await expect(set("hipster@example.com", one)).rejects.toThrow("Aktifkan kembali");
+  });
+
+  it("deletes a team by clearing its participants' team", async () => {
+    const { t, owner, idOf, create } = await teams();
+    const one = await create("Tim 1");
+    await owner.mutation(api.cohorts.setTeam, { id: idOf("hacker@example.com"), teamId: one });
+    await owner.mutation(api.cohorts.setTeam, { id: idOf("hustler@example.com"), teamId: one });
+    await owner.mutation(api.cohorts.deleteTeam, { id: one });
+    const left = await t.run(async (ctx) => ({ teams: await ctx.db.query("teams").collect(), members: await ctx.db.query("enrolments").withIndex("by_team", (q) => q.eq("teamId", one)).collect() }));
+    expect(left).toEqual({ teams: [], members: [] });
+    await expect(owner.mutation(api.cohorts.setTeam, { id: idOf("hacker@example.com"), teamId: one })).rejects.toThrow("Tim tidak ditemukan");
+  });
+
+  it("shows a participant their team and active teammates by name and role only", async () => {
+    const { owner, hacker, hustler, hipster, outsider, idOf, unclaimed, create } = await teams();
+    const one = await create("Tim Kopi");
+    for (const id of [idOf("hacker@example.com"), idOf("hustler@example.com"), idOf("hipster@example.com"), unclaimed]) await owner.mutation(api.cohorts.setTeam, { id, teamId: one });
+    expect(await hacker.query(api.cohorts.myTeams, {})).toEqual([{ _id: one, name: "Tim Kopi", cohort: "GDGoC Catalyst 2026/27", teammates: [
+      { name: "belum", role: "Hustler" }, { name: "Nama hipster", role: "Hipster" }, { name: "Nama hustler", role: "Hustler" },
+    ] }]);
+    expect(JSON.stringify(await hacker.query(api.cohorts.myTeams, {}))).not.toContain("@");
+    // A withdrawn teammate drops out; a withdrawn participant sees no team.
+    await owner.mutation(api.cohorts.setStatus, { id: idOf("hustler@example.com"), status: "withdrawn" });
+    expect((await hacker.query(api.cohorts.myTeams, {}))[0].teammates.map((row) => row.name)).toEqual(["belum", "Nama hipster"]);
+    expect(await hustler.query(api.cohorts.myTeams, {})).toEqual([]);
+    expect(await outsider.query(api.cohorts.myTeams, {})).toEqual([]);
+    expect((await hipster.query(api.cohorts.myTeams, {}))[0].name).toBe("Tim Kopi");
   });
 });

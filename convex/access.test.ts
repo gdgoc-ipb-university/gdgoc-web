@@ -68,6 +68,7 @@ async function fixture() {
     await ctx.db.insert("cohortMentors", { cohortId: cohort, ownerId: mentor.id, role: "hacker", addedBy: "test", addedAt: Date.now() });
     return id;
   });
+  const team = await t.run((ctx) => ctx.db.insert("teams", { cohortId: cohort, name: "Tim 1", createdBy: "test", createdAt: Date.now(), updatedAt: Date.now() }));
   await participant.mutation(api.cohorts.claimMine, {});
   await t.run(async (ctx) => {
     const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", mediaSelf.id)).unique();
@@ -107,7 +108,7 @@ async function fixture() {
     return { submission, appreciation, entry, draftRevision: (await ctx.db.get(draft))!.revision };
   });
   const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, participant, mentor, handler, admin, owner };
-  return { t, callers, ids: { member: member.id, request, gathering, draftGathering, gatheringValues, checkIn, cohort, enrolment, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
+  return { t, callers, ids: { member: member.id, request, gathering, draftGathering, gatheringValues, checkIn, cohort, enrolment, team, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 type Ids = Fixture["ids"];
@@ -136,6 +137,8 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["techSupport.queue", api.techSupport.queue, HANDLERS, () => ({})],
   ["assignments.list", api.assignments.list, MEMBERS, () => ({})],
   ["assignments.reviewing", api.assignments.reviewing, MEMBERS, () => ({})],
+  ["cohorts.mentoring", api.cohorts.mentoring, MEMBERS, () => ({})],
+  ["cohorts.myTeams", api.cohorts.myTeams, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
   ["bogorRun.board", api.bogorRun.board, MEMBERS, () => ({ period: "all" })],
 ];
@@ -167,6 +170,11 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.setRole", api.cohorts.setRole, STAFF, (ids) => ({ id: ids.enrolment, role: "hipster" })],
   ["cohorts.setStatus", api.cohorts.setStatus, STAFF, (ids) => ({ id: ids.enrolment, status: "withdrawn" })],
   ["cohorts.setEmail", api.cohorts.setEmail, STAFF, (ids) => ({ id: ids.enrolment, email: "peserta.baru@example.com" })],
+  ["cohorts.setMentor", api.cohorts.setMentor, STAFF, (ids) => ({ cohortId: ids.cohort, ownerId: ids.member, role: "hipster", mentor: true })],
+  ["cohorts.createTeam", api.cohorts.createTeam, STAFF, (ids) => ({ cohortId: ids.cohort, name: "Tim 2" })],
+  ["cohorts.renameTeam", api.cohorts.renameTeam, STAFF, (ids) => ({ id: ids.team, name: "Tim Satu" })],
+  ["cohorts.deleteTeam", api.cohorts.deleteTeam, STAFF, (ids) => ({ id: ids.team })],
+  ["cohorts.setTeam", api.cohorts.setTeam, STAFF, (ids) => ({ id: ids.enrolment, teamId: ids.team })],
   ["cohorts.update", api.cohorts.update, STAFF, (ids) => ({ id: ids.cohort, values: { slug: "catalyst-2026", name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker" }, { key: "hipster", name: "Hipster" }, { key: "hustler", name: "Hustler" }] }, status: "active" })],
   ["assignments.review", api.assignments.review, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, score: 80, feedback: "Bagus." })],
   ["assignments.requestRevision", api.assignments.requestRevision, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, note: "Perbaiki bagian dua." })],

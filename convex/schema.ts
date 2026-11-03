@@ -23,6 +23,8 @@ export const accessChange = v.union(
   v.literal("techSupportHandler"),
   // Staff removed a member's uploaded profile photo ("uploaded"/"removed").
   v.literal("photo"),
+  // Staff made a member a mentor of one cohort role or removed them ("off" → role key, role key → "off").
+  v.literal("cohortMentor"),
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
@@ -152,12 +154,18 @@ export default defineSchema({
     cohortId: v.id("cohorts"), email: v.string(), name: v.string(), role: v.string(),
     ownerId: v.optional(v.string()), claimedAt: v.optional(v.number()),
     status: v.union(v.literal("active"), v.literal("withdrawn")),
+    // The participant's team in this cohort (#107), so they are in at most one. Deleting the team clears it.
+    teamId: v.optional(v.id("teams")),
     importedAt: v.number(), importedBy: v.string(), withdrawnAt: v.optional(v.number()), withdrawnBy: v.optional(v.string()),
   })
     .index("by_cohort_email", ["cohortId", "email"])
     .index("by_email", ["email"])
     .index("by_owner", ["ownerId"])
-    .index("by_cohort_role", ["cohortId", "role"]),
+    .index("by_cohort_role", ["cohortId", "role"])
+    .index("by_team", ["teamId"]),
+  // A team of participants within one cohort, formed after session 1 (#107). Members are the enrolments with its `teamId`.
+  teams: defineTable({ cohortId: v.id("cohorts"), name: v.string(), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number() })
+    .index("by_cohort", ["cohortId"]),
   // A member who mentors one role of a cohort and so reviews that role's assignments without being added to each.
   cohortMentors: defineTable({ cohortId: v.id("cohorts"), ownerId: v.string(), role: v.string(), addedBy: v.string(), addedAt: v.number() })
     .index("by_owner_cohort", ["ownerId", "cohortId"])

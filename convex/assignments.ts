@@ -13,10 +13,11 @@ import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 
 // `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
-// An update without `audience` keeps the current one.
+// An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
 const assignmentInput = v.object({
   title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()),
   rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))), audience: v.optional(v.array(memberType)),
+  cohortId: v.optional(v.union(v.id("cohorts"), v.null())), cohortRoles: v.optional(v.array(v.string())),
 });
 
 function notFound(): never { throw new ConvexError({ code: "NOT_FOUND", message: "Tugas tidak ditemukan." }); }
@@ -25,13 +26,36 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"] }) {
+function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
   const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "", rubric: values.rubric ?? [] };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
   const clean = normalizeAssignment(input);
   const rubric = clean.rubric!.length ? parseRubric(clean.rubric!) : undefined;
-  return { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! };
+  return {
+    values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
+    cohortRoles: clean.cohortRoles ?? [],
+  };
+}
+
+/**
+ * The cohort and roles a task is for, checked against the cohort. Choosing every role is stored as no roles, which means
+ * all of them, including a role added later. Without a cohort the task goes to its community tags.
+ */
+async function cohortTarget(ctx: MutationCtx, cohortId: Id<"cohorts"> | null | undefined, roles: string[]) {
+  if (!cohortId) return { cohortId: undefined, cohortRoles: undefined };
+  const cohort = await ctx.db.get(cohortId);
+  if (!cohort) throw new ConvexError({ code: "VALIDATION", message: "Program tidak ditemukan.", fields: { cohortId: "Program tidak ditemukan." } });
+  const keys = cohort.roles.map((role) => role.key);
+  const unknown = roles.find((role) => !keys.includes(role));
+  if (unknown) throw new ConvexError({ code: "VALIDATION", message: `Peran “${unknown}” tidak ada di ${cohort.name}.`, fields: { cohortRoles: "Muat ulang untuk memakai peran terbaru." } });
+  return { cohortId, cohortRoles: keys.every((key) => roles.includes(key)) ? undefined : keys.filter((key) => roles.includes(key)) };
+}
+
+/** The cohort a task is for, with its roles, so its badge can say "Untuk GDGoC Catalyst 2026/27 · Hacker"; null for a community task. */
+async function cohortOf(ctx: QueryCtx, assignment: Doc<"assignments">) {
+  const cohort = assignment.cohortId ? await ctx.db.get(assignment.cohortId) : null;
+  return cohort && { name: cohort.name, slug: cohort.slug, roles: cohort.roles };
 }
 
 type Reach = { role: DashboardRole; profile: Doc<"memberProfiles"> | null; enrolled: Map<Id<"cohorts">, string> };
@@ -159,7 +183,7 @@ export const adminList = query({
       page: await Promise.all(result.page.map(async (assignment) => {
         const submissions = await submissionsOf(ctx, assignment._id);
         return {
-          ...assignment, submissionCount: submissions.length, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
+          ...assignment, cohort: await cohortOf(ctx, assignment), submissionCount: submissions.length, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
           reviewedCount: submissions.filter((item) => item.reviewedAt !== undefined && !isStaleReview(item) && !item.revisionRequestedAt).length,
         };
       })),
@@ -181,10 +205,10 @@ export const create = mutation({
   handler: async (ctx, { values, publish }) => {
     const { user } = await requireStaff(ctx);
     const now = Date.now();
-    const clean = cleanAssignment(values);
+    const { values: clean, cohortRoles } = cleanAssignment(values);
     const slug = await availableSlug(ctx, clean.slug);
     const id = await ctx.db.insert("assignments", {
-      ...clean, slug, status: publish ? "published" : "draft", revision: 0,
+      ...clean, ...(await cohortTarget(ctx, values.cohortId, cohortRoles)), slug, status: publish ? "published" : "draft", revision: 0,
       createdBy: user._id, createdAt: now, updatedAt: now, ...(publish ? { publishedAt: now } : {}),
     });
     await claimSlug(ctx, id, slug);
@@ -198,14 +222,16 @@ export const update = mutation({
     await requireStaff(ctx);
     const doc = await ctx.db.get(args.id);
     if (!doc) notFound();
-    const clean = cleanAssignment(args.values);
+    const { values: clean, cohortRoles } = cleanAssignment(args.values);
     // Keep the current slug unless a different one was requested.
     const slug = args.values.slug === undefined && doc.slug ? doc.slug : await availableSlug(ctx, clean.slug, doc._id);
-    // A tab from before audiences sends none; it must not move the assignment to the default.
-    const values = { ...clean, slug, audience: args.values.audience === undefined ? assignmentAudience(doc) : clean.audience };
+    // A tab from before audiences or cohorts sends none; it must not move the assignment to the default.
+    const target = args.values.cohortId === undefined ? { cohortId: doc.cohortId, cohortRoles: doc.cohortRoles } : await cohortTarget(ctx, args.values.cohortId, cohortRoles);
+    const values = { ...clean, slug, audience: args.values.audience === undefined ? assignmentAudience(doc) : clean.audience, ...target };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)) return doc.slug;
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)
+        && doc.cohortId === values.cohortId && JSON.stringify(doc.cohortRoles ?? null) === JSON.stringify(values.cohortRoles ?? null)) return doc.slug;
       conflict();
     }
     await ctx.db.patch(doc._id, { ...values, revision: doc.revision + 1, updatedAt: Date.now() });
@@ -283,7 +309,12 @@ export const exportPage = query({
   },
 });
 
-/** Active, onboarded members of the assignment's audience without a submission. Staff and this assignment's reviewers are not expected to submit, so they are left out of both counts. */
+/**
+ * Who is expected to submit and has not. A community task expects active, onboarded members of its audience. A cohort task
+ * counts from the roster: its roles' active participants, including those who have not signed in yet (`unclaimed`, shown
+ * as "Belum masuk"). Staff and this assignment's reviewers are not expected to submit, so they are left out of both counts.
+ * Emails are for staff only.
+ */
 export const missing = query({
   args: { id: v.id("assignments") },
   handler: async (ctx, { id }) => {
@@ -291,20 +322,28 @@ export const missing = query({
     // This assignment's reviewers judge it rather than submit to it.
     const reviewers = new Set(assignment.reviewers ?? []);
     const submitted = new Set((await submissionsOf(ctx, id)).map((item) => item.ownerId));
-    // A cohort assignment expects its participants (claimed, active, in its roles), not a community tag. Unclaimed ones are added in #105.
-    const cohortId = assignment.cohortId;
-    const participants = cohortId && new Set((await ctx.db.query("enrolments").withIndex("by_cohort_email", (q) => q.eq("cohortId", cohortId)).collect())
-      .filter((row) => row.status === "active" && row.ownerId && inCohortRoles(assignment, row.role)).map((row) => row.ownerId!));
-    const expected = (profile: Doc<"memberProfiles">) => participants ? participants.has(profile.ownerId) : inAudience(assignment, profile.memberType);
-    const profiles = await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
-    const missing: { ownerId: string; name: string; email: string; campus: string }[] = [];
+    const missing: { key: string; name: string; email: string; campus: string; unclaimed: boolean }[] = [];
     let active = 0;
-    for (const profile of profiles) {
-      if (profile.deactivatedAt || profile.role === "admin" || reviewers.has(profile.ownerId) || !expected(profile)) continue;
-      const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
-      if (isOwner(user?.email ?? "", Boolean(user?.emailVerified))) continue;
-      active++;
-      if (!submitted.has(profile.ownerId)) missing.push({ ownerId: profile.ownerId, name: profile.fullName, email: staff ? user?.email ?? "" : "", campus: profile.campus });
+    const cohortId = assignment.cohortId;
+    if (cohortId) {
+      const rows = (await ctx.db.query("enrolments").withIndex("by_cohort_email", (q) => q.eq("cohortId", cohortId)).collect())
+        .filter((row) => row.status === "active" && inCohortRoles(assignment, row.role) && !(row.ownerId && reviewers.has(row.ownerId)));
+      for (const row of rows) {
+        const profile = row.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", row.ownerId!)).unique() : null;
+        if (profile?.deactivatedAt) continue;
+        active++;
+        if (row.ownerId && submitted.has(row.ownerId)) continue;
+        missing.push({ key: row._id, name: profile?.fullName || row.name, email: staff ? row.email : "", campus: profile?.campus ?? "", unclaimed: !row.ownerId });
+      }
+    } else {
+      const profiles = await ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0)).collect();
+      for (const profile of profiles) {
+        if (profile.deactivatedAt || profile.role === "admin" || reviewers.has(profile.ownerId) || !inAudience(assignment, profile.memberType)) continue;
+        const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
+        if (isOwner(user?.email ?? "", Boolean(user?.emailVerified))) continue;
+        active++;
+        if (!submitted.has(profile.ownerId)) missing.push({ key: profile.ownerId, name: profile.fullName, email: staff ? user?.email ?? "" : "", campus: profile.campus, unclaimed: false });
+      }
     }
     missing.sort((a, b) => a.name.localeCompare(b.name, "id"));
     return { active, submitted: active - missing.length, missing };
@@ -416,7 +455,7 @@ export const reviewing = query({
     return Promise.all(mine.map(async (assignment) => {
       const submissions = await submissionsOf(ctx, assignment._id);
       const waiting = submissions.filter((item) => item.reviewedAt === undefined || isStaleReview(item)).length;
-      return { _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status, dueAt: assignment.dueAt, submissionCount: submissions.length, waiting };
+      return { _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status, dueAt: assignment.dueAt, cohort: await cohortOf(ctx, assignment), cohortRoles: assignment.cohortRoles, submissionCount: submissions.length, waiting };
     }));
   },
 });
@@ -458,7 +497,7 @@ export const get = query({
     const submission = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
     const files = await ctx.db.query("submissionFiles").withIndex("by_owner_assignment", (q) => q.eq("ownerId", user._id).eq("assignmentId", assignment._id)).collect();
     return {
-      assignment, canManage, canReview: reviews,
+      assignment, canManage, canReview: reviews, cohort: reviews ? await cohortOf(ctx, assignment) : null,
       // Staff see who reviews this assignment; reviewers do not need the list.
       reviewers: canManage ? await Promise.all((assignment.reviewers ?? []).map(async (ownerId) => ({ ownerId, name: (await nameOf(ctx, ownerId)).name }))) : [],
       submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt), ...(await reviewView(ctx, submission)) },

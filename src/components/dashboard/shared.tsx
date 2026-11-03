@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { assignmentStatusLabels, audienceLabel, fileSizeLabel, scoreLabel, type AudienceGroup } from "@/lib/assignment";
+import { cohortRolesLabel, type CohortRole } from "@/lib/cohort";
 import { dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
@@ -37,8 +38,9 @@ export function AssignmentStatusBadge({ status }: { status: keyof typeof assignm
   return <span className="app-status dash-status" data-status={status}>{assignmentStatusLabels[status]}</span>;
 }
 
-export function AudienceBadge({ audience }: { audience: readonly AudienceGroup[] }) {
-  return <span className="app-status dash-audience">Untuk {audienceLabel(audience)}</span>;
+/** Who a task is for: its community tags, or a cohort's roles ("Untuk GDGoC Catalyst 2026/27 · Hacker"). */
+export function AudienceBadge({ audience, cohort, cohortRoles }: { audience: readonly AudienceGroup[]; cohort?: { name: string; roles: CohortRole[] } | null; cohortRoles?: string[] }) {
+  return <span className="app-status dash-audience">Untuk {cohort ? `${cohort.name} · ${cohortRolesLabel(cohort.roles, cohortRoles)}` : audienceLabel(audience)}</span>;
 }
 
 export function SubmissionBadge({ submittedAt, late }: { submittedAt: number | null; late: boolean }) {

@@ -30,7 +30,8 @@ export type RubricScore = RubricCriterion & { points: number };
 /** A criterion as typed in the form. */
 export type RubricInput = { name: string; max: string };
 // `maxScore` and the rubric maxes are the form's text; they become numbers on the server. With a rubric, maxScore is the sum of its maxes.
-export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[] };
+// A cohort task (`cohortId`) goes to the participants of `cohortRoles` instead of `audience`; null targets community tags again.
+export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[]; cohortId?: string | null; cohortRoles?: string[] };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
 
 /** The community tags an assignment can be given to, in display order. Ticking all three gives it to everyone. Staff are never in an audience. */
@@ -127,6 +128,7 @@ export function normalizeAssignment(values: AssignmentValues): AssignmentValues 
     title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(),
     maxScore: total !== null ? String(total) : (values.maxScore ?? "").trim() || String(defaultMaxScore), rubric,
     audience: audienceGroups.filter((group) => (values.audience ?? defaultAudience).includes(group)),
+    ...(values.cohortId === undefined ? {} : { cohortId: values.cohortId, cohortRoles: values.cohortId ? [...new Set(values.cohortRoles ?? [])] : [] }),
   };
 }
 
@@ -145,7 +147,8 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   else if (rubric.some((criterion) => criterion.name.length > assignmentLimits.rubricName)) errors.rubric = `Nama kriteria maksimal ${assignmentLimits.rubricName} karakter.`;
   else if (rubric.length && rubricTotal(rubric) === null) errors.rubric = "Poin maksimal tiap kriteria harus bilangan bulat, minimal 1.";
   else if (rubric.length && rubricTotal(rubric)! > assignmentLimits.maxScore) errors.rubric = `Jumlah poin seluruh kriteria maksimal ${assignmentLimits.maxScore}.`;
-  if (!v.audience!.length) errors.audience = "Pilih setidaknya satu kelompok.";
+  if (v.cohortId) { if (!v.cohortRoles!.length) errors.cohortRoles = "Pilih setidaknya satu peran."; }
+  else if (!v.audience!.length) errors.audience = "Pilih setidaknya satu kelompok.";
   if (errors.rubric && rubric.length) delete errors.maxScore; // the total is derived, so the rubric message is the one to fix
   return errors;
 }

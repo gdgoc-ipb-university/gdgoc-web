@@ -8,11 +8,13 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, assignmentPath, audienceGroups, audienceLabels, defaultAudience, defaultMaxScore, maxSlugLength, normalizeAssignment, rubricTotal, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues, type AudienceGroup, type RubricInput } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
+import type { CohortRole } from "@/lib/cohort";
 import { LoadingPanel } from "../appreciation/shared";
 import { Arrow, PixelSpark } from "../icons";
 import { AssignmentStatusBadge, AudienceBadge, CopyLinkButton, DueLabel, ScoreBadge, SubmissionBadge, useNow } from "./shared";
 import { isStaff, useDashboardViewer } from "./viewer";
 import { PixelIcon } from "../pixel-icons";
+import { Select } from "../select";
 
 export function AssignmentsPage() {
   const viewer = useDashboardViewer();
@@ -25,10 +27,35 @@ function ReviewingAssignments() {
   if (!reviewing?.length) return null;
   return <section aria-labelledby="reviewing-title"><div className="app-section-heading"><div><p className="eyebrow">PENILAI</p><h2 id="reviewing-title">Tugas yang kamu nilai</h2></div></div>
     <div className="dash-card-grid">{reviewing.map((item) => <article className="app-record" key={item._id}>
-      <div className="app-record-top"><AssignmentStatusBadge status={item.status} /><span className="app-small">{item.submissionCount} kiriman{item.waiting ? ` · ${item.waiting} menunggu dinilai` : ""}</span></div>
+      <div className="app-record-top"><AssignmentStatusBadge status={item.status} />{item.cohort && <AudienceBadge audience={[]} cohort={item.cohort} cohortRoles={item.cohortRoles} />}<span className="app-small">{item.submissionCount} kiriman{item.waiting ? ` · ${item.waiting} menunggu dinilai` : ""}</span></div>
       <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3>
       <div className="app-record-bottom"><Link className="text-button" href={assignmentPath(item)}>Nilai kiriman <Arrow /></Link></div>
     </article>)}</div>
+  </section>;
+}
+
+/** A participant's team in each cohort: its name and their active teammates' names and roles (#107). Nothing outside a team. */
+function MyTeams() {
+  const teams = useQuery(api.cohorts.myTeams);
+  if (!teams?.length) return null;
+  return <section aria-labelledby="my-team-title"><div className="app-section-heading"><div><p className="eyebrow">TIM</p><h2 id="my-team-title">Tim kamu</h2></div></div>
+    {teams.map((team) => <div className="app-panel dash-my-team" key={team._id}>
+      <div className="dash-team-head"><h3>{team.name}</h3><span className="app-small">{team.cohort}</span></div>
+      {team.teammates.length ? <ul className="dash-mentee-list">{team.teammates.map((mate, index) => <li key={index}>{mate.name} <span className="app-small">· {mate.role}</span></li>)}</ul>
+        : <p className="app-small">Belum ada rekan setim lain.</p>}
+    </div>)}
+  </section>;
+}
+
+/** A mentor's roles with their active participants, by name only (#32, decision 5). Nothing for anyone else. */
+function MentoredParticipants() {
+  const mentoring = useQuery(api.cohorts.mentoring);
+  if (!mentoring?.length) return null;
+  return <section aria-labelledby="mentoring-title"><div className="app-section-heading"><div><p className="eyebrow">MENTOR</p><h2 id="mentoring-title">Peserta yang kamu dampingi</h2></div></div>
+    {mentoring.flatMap((cohort) => cohort.roles.map((role) => <details className="app-panel dash-mentees" key={`${cohort._id}-${role.key}`} open={mentoring.length === 1 && cohort.roles.length === 1}>
+      <summary><strong>{role.name}</strong><span>{cohort.name}</span><span className="app-small">{role.participants.length} peserta aktif</span></summary>
+      {role.participants.length ? <ul className="dash-mentee-list">{role.participants.map((name, index) => <li key={index}>{name}</li>)}</ul> : <p className="app-small">Belum ada peserta aktif di peran ini.</p>}
+    </details>))}
   </section>;
 }
 
@@ -41,7 +68,9 @@ function MemberAssignments() {
   ] as const;
   return <>
     <div className="dash-intro"><p className="eyebrow">TUGAS MEMBER</p><h1>Tugas.</h1><p>Buka tugas untuk membaca instruksi, menulis jawaban, dan melampirkan file hasil kerjamu.</p></div>
+    <MyTeams />
     <ReviewingAssignments />
+    <MentoredParticipants />
     {!assignments ? <LoadingPanel label="Memuat tugas…" /> : groups.map((group) => {
       const items = assignments.filter((item) => item.status === group.key);
       if (!items.length && !group.empty) return null;
@@ -63,7 +92,7 @@ function StaffAssignments() {
     <div className="dash-intro dash-intro-action"><div><p className="eyebrow">ADMIN · TUGAS</p><h1>Kelola tugas.</h1><p>Draft hanya terlihat oleh admin. Tugas yang dibuka bisa dikerjakan member aktif dari kelompok sasarannya.</p></div><Link className="button button-blue" href="/dashboard/tugas/baru">Buat tugas <PixelIcon name="plus" size={18} /></Link></div>
     {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat tugas…" /> : !list.results.length ? <div className="app-empty"><PixelSpark /><h2>Belum ada tugas.</h2><p>Mulai dari judul, instruksi, dan tenggat. Kamu bisa menyimpannya sebagai draft sebelum dibuka.</p><Link className="text-button" href="/dashboard/tugas/baru">Buat tugas pertama <Arrow /></Link></div>
       : <div className="dash-card-grid">{list.results.map((item) => <article className="app-record" key={item._id}>
-        <div className="app-record-top"><AssignmentStatusBadge status={item.status} /><AudienceBadge audience={assignmentAudience(item)} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}{item.submissionCount ? ` · ${item.reviewedCount} dinilai` : ""}</span></div>
+        <div className="app-record-top"><AssignmentStatusBadge status={item.status} /><AudienceBadge audience={assignmentAudience(item)} cohort={item.cohort} cohortRoles={item.cohortRoles} /><span className="app-small">{item.submissionCount} kiriman{item.lateCount ? ` · ${item.lateCount} terlambat` : ""}{item.submissionCount ? ` · ${item.reviewedCount} dinilai` : ""}</span></div>
         <h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><p className="dash-summary">{item.description.slice(0, 220)}</p>
         <div className="app-record-bottom"><DueLabel dueAt={item.dueAt} now={now} open={item.status === "published"} /><span className="dash-card-actions"><CopyLinkButton path={assignmentPath(item)} /><Link className="text-button" href={assignmentPath(item)}>Kelola<Arrow /></Link></span></div>
       </article>)}</div>}
@@ -73,6 +102,11 @@ function StaffAssignments() {
 }
 
 type SaveAssignment = (values: AssignmentValues, publish: boolean) => Promise<void>;
+
+/** The form's values as the mutations take them: the cohort is an ID once chosen. */
+function assignmentInput(values: AssignmentValues) {
+  return { ...values, cohortId: values.cohortId as Id<"cohorts"> | null | undefined };
+}
 
 export function AssignmentForm({ initial, onSave, onCancel, creating, assignmentId }: { initial: AssignmentValues; onSave: SaveAssignment; onCancel: () => void; creating: boolean; assignmentId?: Id<"assignments"> }) {
   const [values, setValues] = useState(initial);
@@ -88,7 +122,9 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   const dueField = useRef<HTMLInputElement>(null);
   const maxScoreField = useRef<HTMLInputElement>(null);
   const audienceField = useRef<HTMLInputElement>(null);
-  function update(field: Exclude<keyof AssignmentValues, "rubric" | "audience">, value: string) {
+  const rolesField = useRef<HTMLInputElement>(null);
+  const cohorts = useQuery(api.cohorts.list);
+  function update(field: Exclude<keyof AssignmentValues, "rubric" | "audience" | "cohortId" | "cohortRoles">, value: string) {
     setValues((current) => ({ ...current, [field]: value, ...(field === "title" && !slugEdited ? { slug: slugify(value) } : {}) }));
     setErrors((current) => ({ ...current, [field]: undefined }));
   }
@@ -106,11 +142,22 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
     });
     setErrors((current) => ({ ...current, audience: undefined }));
   }
+  // A program task picks a cohort, then its roles: one, several, or all (every role starts ticked).
+  const cohort = cohorts?.find((item) => item._id === values.cohortId);
+  function target(cohortId: string | null) {
+    const roles = cohorts?.find((item) => item._id === cohortId)?.roles ?? [];
+    setValues((current) => ({ ...current, cohortId, cohortRoles: roles.map((role) => role.key) }));
+    setErrors((current) => ({ ...current, audience: undefined, cohortRoles: undefined }));
+  }
+  function toggleRole(roles: CohortRole[], key: string, on: boolean) {
+    setValues((current) => ({ ...current, cohortRoles: roles.map((role) => role.key).filter((item) => item === key ? on : (current.cohortRoles ?? []).includes(item)) }));
+    setErrors((current) => ({ ...current, cohortRoles: undefined }));
+  }
   async function save(publish: boolean) {
     const found = validateAssignment(values);
     setErrors(found); setError("");
-    const first = (["title", "description", "dueAt", "maxScore", "audience"] as const).find((field) => found[field]);
-    if (first) { ({ title: titleField, description: descriptionField, dueAt: dueField, maxScore: maxScoreField, audience: audienceField })[first].current?.focus(); return; }
+    const first = (["title", "description", "audience", "cohortRoles", "dueAt", "maxScore"] as const).find((field) => found[field]);
+    if (first) { ({ title: titleField, description: descriptionField, dueAt: dueField, maxScore: maxScoreField, audience: audienceField, cohortRoles: rolesField })[first].current?.focus(); return; }
     setBusy(true);
     try { await onSave(normalizeAssignment(values), publish); }
     catch (cause) { setError(readableError(cause)); setBusy(false); }
@@ -129,11 +176,23 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
         <p className="field-hint" id="slug-hint" aria-live="polite">{previewSlug && previewSlug !== requestedSlug ? <>Slug ini sudah dipakai tugas lain, jadi akan disimpan sebagai <b>{previewSlug}</b>. </> : null}Terisi otomatis dari judul, huruf kecil dan tanda hubung. Link lama tetap diarahkan jika slug diubah.{slugEdited && <> <button type="button" className="text-button dash-inline-button" onClick={() => { setSlugEdited(false); setValues((current) => ({ ...current, slug: slugify(current.title) })); }}>Samakan dengan judul</button></>}</p>
       </div>
       <div className="app-field"><label htmlFor="description">Instruksi <span className="field-required" aria-hidden="true">*</span></label><textarea data-lenis-prevent id="description" ref={descriptionField} required rows={10} maxLength={assignmentLimits.description} value={values.description} onChange={(event) => update("description", event.target.value)} aria-invalid={Boolean(errors.description)} aria-describedby={described("description", "description-hint")} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." /><p className="field-hint" id="description-hint">Ditampilkan apa adanya, termasuk baris baru. {values.description.length}/{assignmentLimits.description} karakter.</p>{errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
-      <fieldset className="dash-audience-editor" aria-describedby={described("audience", "audience-hint")}>
+      <fieldset className="dash-audience-editor" aria-describedby={described(values.cohortId ? "cohortRoles" : "audience", "audience-hint")}>
         <legend>Untuk siapa <span className="field-required" aria-hidden="true">*</span></legend>
-        <p className="field-hint" id="audience-hint">Hanya member dengan tag komunitas yang dicentang yang bisa melihat dan mengumpulkan tugas ini. Centang ketiganya untuk semua member. Admin dan pemilik selalu bisa melihat semua tugas.</p>
-        <div className="dash-audience-options">{audienceGroups.map((group, index) => <label className="dash-audience-option" key={group}><input ref={index === 0 ? audienceField : undefined} type="checkbox" checked={audience.includes(group)} onChange={(event) => toggleAudience(group, event.target.checked)} aria-invalid={Boolean(errors.audience)} />{audienceLabels[group]}</label>)}</div>
-        {errors.audience && <p className="field-error" id="audience-error">{errors.audience}</p>}
+        {cohorts && cohorts.length > 0 && <div className="dash-target-options" role="radiogroup" aria-label="Jenis sasaran">
+          <label className="dash-audience-option"><input type="radio" name="target" checked={!values.cohortId} onChange={() => target(null)} />Tag komunitas</label>
+          <label className="dash-audience-option"><input type="radio" name="target" checked={Boolean(values.cohortId)} onChange={() => target(values.cohortId || cohorts[0]._id)} />Peserta program</label>
+        </div>}
+        {!values.cohortId ? <>
+          <p className="field-hint" id="audience-hint">Hanya member dengan tag komunitas yang dicentang yang bisa melihat dan mengumpulkan tugas ini. Centang ketiganya untuk semua member. Admin dan pemilik selalu bisa melihat semua tugas.</p>
+          <div className="dash-audience-options">{audienceGroups.map((group, index) => <label className="dash-audience-option" key={group}><input ref={index === 0 ? audienceField : undefined} type="checkbox" checked={audience.includes(group)} onChange={(event) => toggleAudience(group, event.target.checked)} aria-invalid={Boolean(errors.audience)} />{audienceLabels[group]}</label>)}</div>
+          {errors.audience && <p className="field-error" id="audience-error">{errors.audience}</p>}
+        </> : <>
+          <p className="field-hint" id="audience-hint">Hanya peserta aktif dengan peran yang dicentang, mentor peran itu, dan admin yang bisa melihat tugas ini. Centang semua peran untuk seluruh peserta. Tag komunitas tidak dipakai.</p>
+          {cohorts && cohorts.length > 1 && <Select id="cohort" label="Program" value={values.cohortId} onChange={(id) => target(id)} options={cohorts.map((item) => ({ value: item._id as string, label: item.name }))} />}
+          {cohort ? <div className="dash-audience-options" role="group" aria-label={`Peran di ${cohort.name}`}>{cohort.roles.map((role, index) => <label className="dash-audience-option" key={role.key}><input ref={index === 0 ? rolesField : undefined} type="checkbox" checked={(values.cohortRoles ?? []).includes(role.key)} onChange={(event) => toggleRole(cohort.roles, role.key, event.target.checked)} aria-invalid={Boolean(errors.cohortRoles)} />{role.name}</label>)}</div>
+            : <p className="app-small" role="status">Memuat program…</p>}
+          {errors.cohortRoles && <p className="field-error" id="cohortRoles-error">{errors.cohortRoles}</p>}
+        </>}
       </fieldset>
       <div className="app-field-grid">
       <div className="app-field dash-due-field"><label htmlFor="dueAt">Tenggat (WIB) <span className="field-required" aria-hidden="true">*</span></label><input id="dueAt" ref={dueField} type="datetime-local" required value={values.dueAt} onChange={(event) => update("dueAt", event.target.value)} aria-invalid={Boolean(errors.dueAt)} aria-describedby={described("dueAt", "due-hint")} /><p className="field-hint" id="due-hint">Kiriman setelah tenggat tetap diterima dan ditandai terlambat, sampai pengumpulan ditutup.</p>{errors.dueAt && <p className="field-error" id="dueAt-error">{errors.dueAt}</p>}</div>
@@ -163,14 +222,14 @@ export function NewAssignmentPage() {
   const viewer = useDashboardViewer();
   const router = useRouter();
   const create = useMutation(api.assignments.create);
-  const [initial] = useState<AssignmentValues>(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()), maxScore: String(defaultMaxScore), rubric: [], audience: defaultAudience }));
+  const [initial] = useState<AssignmentValues>(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()), maxScore: String(defaultMaxScore), rubric: [], audience: defaultAudience, cohortId: null, cohortRoles: [] }));
   if (!isStaff(viewer)) return <StaffOnly />;
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />Kelola tugas</Link>
     <div className="dash-intro"><p className="eyebrow">ADMIN · TUGAS BARU</p><h1>Buat tugas.</h1><p>Tulis instruksi yang bisa dikerjakan tanpa perlu bertanya lagi, lalu tentukan tenggatnya.</p></div>
     <AssignmentForm creating initial={initial} onCancel={() => router.push("/dashboard/tugas")} onSave={async (values, publish) => {
       // The detail page swaps the ID for the saved slug.
-      const id = await create({ values, publish });
+      const id = await create({ values: assignmentInput(values), publish });
       router.push(`/dashboard/tugas/${id}`);
     }} />
   </>;
@@ -185,23 +244,25 @@ export function EditAssignmentPage({ id }: { id: string }) {
   if (!isStaff(viewer)) return <StaffOnly />;
   if (data === undefined) return <LoadingPanel label="Memuat tugas…" />;
   if (!data) return <MissingAssignment />;
-  return <EditAssignment assignment={data.assignment} />;
+  return <EditAssignment assignment={data.assignment} cohortRoles={data.cohort?.roles ?? []} />;
 }
 
-function EditAssignment({ assignment }: { assignment: Doc<"assignments"> }) {
+function EditAssignment({ assignment, cohortRoles }: { assignment: Doc<"assignments">; cohortRoles: CohortRole[] }) {
   const router = useRouter();
   const update = useMutation(api.assignments.update);
   const [initial] = useState<AssignmentValues>(() => ({
     title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt),
     maxScore: String(assignmentMaxScore(assignment)), rubric: (assignment.rubric ?? []).map((criterion) => ({ name: criterion.name, max: String(criterion.max) })),
     audience: assignmentAudience(assignment),
+    // Stored without roles means every role, which the form shows ticked.
+    cohortId: assignment.cohortId ?? null, cohortRoles: assignment.cohortRoles?.length ? assignment.cohortRoles : cohortRoles.map((role) => role.key),
   }));
   const back = assignmentPath(assignment);
   return <>
     <Link className="text-button app-back" href={back}><PixelIcon name="arrow-left" size={24} />Kembali ke tugas</Link>
     <div className="dash-intro"><p className="eyebrow">ADMIN · UBAH TUGAS</p><h1>Ubah tugas.</h1><p>Perubahan langsung terlihat oleh member. Mengubah tenggat juga memperbarui tanda terlambat pada kiriman. Member yang dikeluarkan dari sasaran tidak lagi melihat tugas ini, tetapi kirimannya tetap tersimpan.</p></div>
     <AssignmentForm creating={false} assignmentId={assignment._id} initial={initial} onCancel={() => router.push(back)} onSave={async (values) => {
-      const slug = await update({ id: assignment._id, revision: assignment.revision, values });
+      const slug = await update({ id: assignment._id, revision: assignment.revision, values: assignmentInput(values) });
       router.push(`/dashboard/tugas/${slug ?? values.slug}`);
     }} />
   </>;

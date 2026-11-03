@@ -1,7 +1,7 @@
 import { memberTagLabel, type MemberType } from "./onboarding";
 
 export type AccessEntry = {
-  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail" | "card" | "gatheringHelper" | "techSupportHandler" | "photo";
+  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail" | "card" | "gatheringHelper" | "techSupportHandler" | "photo" | "cohortMentor";
   from: string; to: string; actor: string | null; target: string | null; assignment: { title: string | null } | null;
   cohort?: { name: string | null; roles: { key: string; name: string }[] } | null;
   gathering?: { title: string | null } | null;
@@ -33,6 +33,7 @@ export function accessSentence(entry: AccessEntry) {
     case "enrolmentRole": return `${actor} mengubah peran ${participant} di ${cohort} dari ${role(entry.from)} menjadi ${role(entry.to)}.`;
     case "enrolmentStatus": return entry.to === "withdrawn" ? `${actor} mencatat ${participant} mengundurkan diri dari ${cohort}.` : `${actor} mengaktifkan kembali ${participant} sebagai peserta ${cohort}.`;
     case "enrolmentEmail": return `${actor} memperbaiki email pendaftaran ${participant} di ${cohort}.`;
+    case "cohortMentor": return entry.to === "off" ? `${actor} mencabut ${target} dari mentor ${role(entry.from)} di ${cohort}.` : `${actor} menjadikan ${target} mentor ${role(entry.to)} di ${cohort}.`;
     case "gatheringHelper": {
       const gathering = entry.gathering?.title ? `kegiatan “${entry.gathering.title}”` : "kegiatan yang sudah dihapus";
       return entry.to === "on" ? `${actor} menunjuk ${target} sebagai penjaga pintu ${gathering}.` : `${actor} mencabut ${target} dari penjaga pintu ${gathering}.`;

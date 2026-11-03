@@ -23,6 +23,8 @@ export const accessChange = v.union(
   v.literal("techSupportHandler"),
   // Staff removed a member's uploaded profile photo ("uploaded"/"removed").
   v.literal("photo"),
+  // Staff made a member a mentor of one cohort role or removed them ("off" → role key, role key → "off").
+  v.literal("cohortMentor"),
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));

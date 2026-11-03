@@ -88,7 +88,7 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   const dueField = useRef<HTMLInputElement>(null);
   const maxScoreField = useRef<HTMLInputElement>(null);
   const audienceField = useRef<HTMLInputElement>(null);
-  function update(field: Exclude<keyof AssignmentValues, "rubric" | "audience">, value: string) {
+  function update(field: Exclude<keyof AssignmentValues, "rubric" | "audience" | "cohortId" | "cohortRoles">, value: string) {
     setValues((current) => ({ ...current, [field]: value, ...(field === "title" && !slugEdited ? { slug: slugify(value) } : {}) }));
     setErrors((current) => ({ ...current, [field]: undefined }));
   }
@@ -170,7 +170,7 @@ export function NewAssignmentPage() {
     <div className="dash-intro"><p className="eyebrow">ADMIN · TUGAS BARU</p><h1>Buat tugas.</h1><p>Tulis instruksi yang bisa dikerjakan tanpa perlu bertanya lagi, lalu tentukan tenggatnya.</p></div>
     <AssignmentForm creating initial={initial} onCancel={() => router.push("/dashboard/tugas")} onSave={async (values, publish) => {
       // The detail page swaps the ID for the saved slug.
-      const id = await create({ values, publish });
+      const id = await create({ values: { ...values, cohortId: values.cohortId as Id<"cohorts"> | null | undefined }, publish });
       router.push(`/dashboard/tugas/${id}`);
     }} />
   </>;
@@ -201,7 +201,7 @@ function EditAssignment({ assignment }: { assignment: Doc<"assignments"> }) {
     <Link className="text-button app-back" href={back}><PixelIcon name="arrow-left" size={24} />Kembali ke tugas</Link>
     <div className="dash-intro"><p className="eyebrow">ADMIN · UBAH TUGAS</p><h1>Ubah tugas.</h1><p>Perubahan langsung terlihat oleh member. Mengubah tenggat juga memperbarui tanda terlambat pada kiriman. Member yang dikeluarkan dari sasaran tidak lagi melihat tugas ini, tetapi kirimannya tetap tersimpan.</p></div>
     <AssignmentForm creating={false} assignmentId={assignment._id} initial={initial} onCancel={() => router.push(back)} onSave={async (values) => {
-      const slug = await update({ id: assignment._id, revision: assignment.revision, values });
+      const slug = await update({ id: assignment._id, revision: assignment.revision, values: { ...values, cohortId: values.cohortId as Id<"cohorts"> | null | undefined } });
       router.push(`/dashboard/tugas/${slug ?? values.slug}`);
     }} />
   </>;

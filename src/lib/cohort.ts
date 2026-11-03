@@ -50,5 +50,11 @@ export function inCohortRoles(assignment: { cohortRoles?: string[] }, role: stri
   return !assignment.cohortRoles?.length || assignment.cohortRoles.includes(role);
 }
 
+/** The roles a cohort task is for, in words: "Semua peran" or e.g. "Hacker · Hipster". */
+export function cohortRolesLabel(roles: CohortRole[], cohortRoles: string[] | undefined) {
+  const chosen = roles.filter((role) => inCohortRoles({ cohortRoles }, role.key));
+  return chosen.length === roles.length ? "Semua peran" : chosen.map((role) => role.name).join(" · ");
+}
+
 /** A cohort's roster in the dashboard. */
 export const programPath = (slug: string) => `/dashboard/program/${encodeURIComponent(slug)}`;

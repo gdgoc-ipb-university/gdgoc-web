@@ -2,7 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { components } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
-import { authComponent } from "./auth";
+import { authComponent, isOwner } from "./auth";
 import { requireMember, requireStaff } from "./access";
 import { logAccess } from "./accessLog";
 import { cohortRole, cohortStatus } from "./schema";
@@ -146,8 +146,16 @@ export const roster = query({
     const cohort = await ctx.db.query("cohorts").withIndex("by_slug", (q) => q.eq("slug", slug)).first();
     if (!cohort) return null;
     const rows = await ctx.db.query("enrolments").withIndex("by_cohort_email", (q) => q.eq("cohortId", cohort._id)).collect();
+    const mentorRows = await ctx.db.query("cohortMentors").withIndex("by_cohort_role", (q) => q.eq("cohortId", cohort._id)).collect();
     return {
       cohort: { _id: cohort._id, slug: cohort.slug, name: cohort.name, status: cohort.status, roles: cohort.roles },
+      mentors: await Promise.all(mentorRows.map(async (row) => {
+        const [profile, user] = await Promise.all([
+          ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", row.ownerId)).unique(),
+          authComponent.getAnyUserById(ctx, row.ownerId),
+        ]);
+        return { _id: row._id, ownerId: row.ownerId, role: row.role, name: profile?.fullName || user?.name || "Member", active: !profile?.deactivatedAt };
+      })),
       rows: await Promise.all(rows.map(async (row) => {
         const profile = row.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", row.ownerId!)).unique() : null;
         return {
@@ -276,5 +284,70 @@ export const myInvitation = query({
     const cohort = row && await ctx.db.get(row.cohortId);
     if (!row || !cohort) return null;
     return { cohort: cohort.name, role: cohort.roles.find((role) => role.key === row.role)?.name ?? row.role };
+  },
+});
+
+// ——— Mentors (#105) ———
+
+export const maxMentors = 10;
+
+/**
+ * Staff add or remove a mentor of one role, like `assignments.setReviewer`: an active, onboarded member who is not staff
+ * and not a participant of this cohort. A mentor reviews every task of the cohort that includes their role and sees that
+ * role's participants by name. Both changes go to the access log.
+ */
+export const setMentor = mutation({
+  args: { cohortId: v.id("cohorts"), ownerId: v.string(), role: v.string(), mentor: v.boolean() },
+  handler: async (ctx, args) => {
+    const { user } = await requireStaff(ctx);
+    const cohort = await ctx.db.get(args.cohortId);
+    if (!cohort) notFound();
+    if (!cohort.roles.some((role) => role.key === args.role)) invalid(`Peran “${args.role}” tidak ada di ${cohort.name}.`);
+    const rows = await ctx.db.query("cohortMentors").withIndex("by_cohort_role", (q) => q.eq("cohortId", cohort._id).eq("role", args.role)).collect();
+    const existing = rows.find((row) => row.ownerId === args.ownerId);
+    const log = (from: string, to: string) => logAccess(ctx, { actorId: user._id, targetId: args.ownerId, change: "cohortMentor", from, to, cohortId: cohort._id });
+    if (!args.mentor) {
+      if (!existing) return;
+      await ctx.db.delete(existing._id);
+      await log(args.role, "off");
+      return;
+    }
+    if (existing) return;
+    const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId)).unique();
+    if (!profile?.completedAt) throw new ConvexError({ code: "NOT_FOUND", message: "Member tidak ditemukan." });
+    if (profile.deactivatedAt) invalid("Aktifkan kembali akun ini sebelum menjadikannya mentor.");
+    const account = await authComponent.getAnyUserById(ctx, args.ownerId);
+    if (profile.role === "admin" || isOwner(account?.email ?? "", Boolean(account?.emailVerified))) invalid("Admin dan pemilik sudah bisa menilai semua tugas.");
+    const enrolled = await ctx.db.query("enrolments").withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId)).collect();
+    if (enrolled.some((row) => row.cohortId === cohort._id && row.status === "active")) invalid(`Peserta ${cohort.name} tidak bisa menjadi mentornya.`);
+    if (rows.length >= maxMentors) invalid(`Maksimal ${maxMentors} mentor per peran.`);
+    await ctx.db.insert("cohortMentors", { cohortId: cohort._id, ownerId: args.ownerId, role: args.role, addedBy: user._id, addedAt: Date.now() });
+    await log("off", args.role);
+  },
+});
+
+/**
+ * The roles the signed-in member mentors, each with its active participants by name only (#32, decision 5): no emails, no
+ * campus. Empty for anyone who mentors nothing.
+ */
+export const mentoring = query({
+  args: {},
+  handler: async (ctx) => {
+    const { user } = await requireMember(ctx);
+    const mentored = await mentoredRoles(ctx, user._id);
+    const result = await Promise.all([...mentored].map(async ([cohortId, keys]) => {
+      const cohort = await ctx.db.get(cohortId);
+      if (!cohort) return null;
+      const roles = await Promise.all(cohort.roles.filter((role) => keys.has(role.key)).map(async (role) => {
+        const rows = await ctx.db.query("enrolments").withIndex("by_cohort_role", (q) => q.eq("cohortId", cohortId).eq("role", role.key)).collect();
+        const names = await Promise.all(rows.filter((row) => row.status === "active").map(async (row) => {
+          const profile = row.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", row.ownerId!)).unique() : null;
+          return profile?.fullName || row.name;
+        }));
+        return { key: role.key, name: role.name, participants: names.sort((a, b) => a.localeCompare(b, "id")) };
+      }));
+      return { _id: cohort._id, name: cohort.name, roles };
+    }));
+    return result.filter((item) => item !== null);
   },
 });

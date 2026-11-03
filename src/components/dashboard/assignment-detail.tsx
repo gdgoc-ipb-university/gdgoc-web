@@ -210,7 +210,7 @@ function MissingList({ assignment }: { assignment: Doc<"assignments"> }) {
     <div className="app-section-heading"><div><p className="eyebrow">BELUM MENGUMPULKAN</p><h2 id="missing-title">Siapa yang belum</h2></div>
       {data && <span className="app-small">{data.missing.length} dari {data.active} member sasaran belum mengirim</span>}</div>
     {!data ? <LoadingPanel label="Memeriksa member…" /> : !data.missing.length ? <p className="app-small">{data.active ? "Semua member sasaran sudah mengirim tugas ini." : "Belum ada member aktif di kelompok sasaran tugas ini."}</p>
-      : <><ul className="dash-missing-list">{data.missing.map((row) => <li key={row.ownerId}><strong>{row.name}</strong><span className="app-small">{[row.email, row.campus].filter(Boolean).join(" · ")}</span></li>)}</ul>
+      : <><ul className="dash-missing-list">{data.missing.map((row) => <li key={row.key}><strong>{row.name}</strong><span className="app-small">{[row.email, row.campus].filter(Boolean).join(" · ")}</span></li>)}</ul>
         <div className="app-inline-actions"><button type="button" className="text-button" onClick={() => void copy()}><PixelIcon name={copied === "copied" ? "check" : "copy"} size={16} />{copied === "copied" ? "Daftar tersalin" : data.missing.some((row) => row.email) ? "Salin daftar nama dan email" : "Salin daftar nama"}</button>
           <span className="sr-only" role="status">{copied === "copied" ? "Daftar member yang belum mengumpulkan tersalin." : ""}</span>
           {copied === "failed" && <small role="alert">Tidak bisa menyalin otomatis. Pilih dan salin daftar di atas.</small>}</div>

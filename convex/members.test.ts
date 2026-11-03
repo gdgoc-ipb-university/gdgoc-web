@@ -1,6 +1,7 @@
 /// <reference types="vite/client" />
 import { convexTest } from "convex-test";
 import betterAuthTest from "@convex-dev/better-auth/test";
+import { makeFunctionReference } from "convex/server";
 import { describe, expect, it } from "vitest";
 import { api, components } from "./_generated/api";
 import schema from "./schema";
@@ -87,26 +88,22 @@ describe("first-time member onboarding", () => {
     expect(later).toMatchObject({ memberType: "core", division: "Technical", nextStep: 5 });
   });
 
-  it("lets onboarded members set their role later, dropping the division for members", async () => {
+  it("gives an untagged account the Member tag and never any other", async () => {
     const t = setup(); const owner = await member(t);
-    await expect(owner.mutation(api.members.saveRole, { memberType: "member", division: "" })).rejects.toThrow("Selesaikan perkenalan");
+    await expect(owner.mutation(api.members.registerAsMember)).rejects.toThrow("Selesaikan perkenalan");
     for (const step of [1, 2, 3, 4, 5] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
-    await expect(owner.mutation(api.members.saveRole, { memberType: "core", division: "" })).rejects.toThrow("Lengkapi");
-    await owner.mutation(api.members.saveRole, { memberType: "core", division: "Media & Creative" });
-    expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "core", division: "Media & Creative" });
-    await owner.mutation(api.members.saveRole, { memberType: "member", division: "Media & Creative" });
-    expect(await owner.query(api.members.profile)).not.toHaveProperty("division");
-  });
-
-  it("never lets members declare or drop BoD themselves", async () => {
-    const t = setup(); const owner = await member(t);
-    for (const step of [1, 2] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
-    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, memberType: "bod", division: "" } })).rejects.toThrow("Lengkapi");
-    for (const step of [3, 4, 5] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
-    await expect(owner.mutation(api.members.saveRole, { memberType: "bod", division: "" })).rejects.toThrow("Lengkapi");
     const profile = (await owner.query(api.members.profile))!;
+    // Onboarded before community tags existed.
+    await t.run((ctx) => ctx.db.patch(profile._id, { memberType: undefined }));
+    await owner.mutation(api.members.registerAsMember);
+    expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "member" });
+    expect(await owner.query(api.members.profile)).not.toHaveProperty("division");
+    // A tag already set, by staff or self-declared earlier, stays as it is.
     await t.run((ctx) => ctx.db.patch(profile._id, { memberType: "bod", division: "Technical" }));
-    await expect(owner.mutation(api.members.saveRole, { memberType: "member", division: "" })).rejects.toThrow("diatur oleh admin");
+    await owner.mutation(api.members.registerAsMember);
+    expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "bod", division: "Technical" });
+    // The old self-service role mutation is gone.
+    await expect(owner.mutation(makeFunctionReference<"mutation">("members:saveRole"), { memberType: "core", division: "Technical" })).rejects.toThrow();
     expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "bod", division: "Technical" });
   });
 });

@@ -2,8 +2,7 @@ import { ConvexError, v } from "convex/values";
 import { authComponent } from "./auth";
 import { mutation, query } from "./_generated/server";
 import { memberType } from "./schema";
-import { logAccess, tagValue } from "./accessLog";
-import { finalStep, normalizeOnboarding, roleStep, validateOnboarding, validateRole, type OnboardingStep } from "../src/lib/onboarding";
+import { finalStep, normalizeOnboarding, roleStep, validateOnboarding, type OnboardingStep } from "../src/lib/onboarding";
 
 export const profile = query({
   args: {},
@@ -51,22 +50,17 @@ export const saveStep = mutation({
   },
 });
 
-/** Sets the member's own community role after onboarding (one-time prompt and profile page). */
-export const saveRole = mutation({
-  args: { memberType, division: v.string() },
-  handler: async (ctx, args) => {
+/**
+ * Gives an account onboarded before community tags existed the Member tag. It never sets another tag: Core Team, BoD
+ * and divisions come from staff only (dashboard.setMemberType), and a tag already set is left as it is.
+ */
+export const registerAsMember = mutation({
+  args: {},
+  handler: async (ctx) => {
     const user = await authComponent.safeGetAuthUser(ctx);
     if (!user?.emailVerified) throw new ConvexError("Masuk kembali dengan akun Google untuk melanjutkan.");
     const existing = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     if (!existing?.completedAt) throw new ConvexError("Selesaikan perkenalan terlebih dahulu.");
-    if (existing.memberType === "bod") throw new ConvexError({ code: "FORBIDDEN", message: "Peran BoD diatur oleh admin. Hubungi admin untuk mengubahnya." });
-    const division = args.memberType === "core" ? args.division.trim() : "";
-    const errors = validateRole({ memberType: args.memberType, division });
-    if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
-    const from = tagValue(existing.memberType, existing.division), to = tagValue(args.memberType, division || undefined);
-    // A tag the member changes is self-declared again, so a confirmed one loses its confirmation (and any review it gave).
-    const unconfirm = from !== to && existing.tagConfirmedAt ? { tagConfirmedAt: undefined, tagConfirmedBy: undefined } : {};
-    await ctx.db.patch(existing._id, { memberType: args.memberType, division: division || undefined, updatedAt: Date.now(), ...unconfirm });
-    if (from !== to && existing.tagConfirmedAt) await logAccess(ctx, { actorId: user._id, targetId: user._id, change: "tagSelfChanged", from, to });
+    if (!existing.memberType) await ctx.db.patch(existing._id, { memberType: "member", updatedAt: Date.now() });
   },
 });

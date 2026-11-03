@@ -154,13 +154,8 @@ describe("dashboard roles and member management", () => {
     await admin.mutation(api.dashboard.setActive, { ownerId: media.id, active: true });
     expect(await media.query(api.dashboard.viewer)).toMatchObject({ reviewer: true });
 
-    // A member changing their own tag makes it self-declared again, even when they change it back.
-    await media.mutation(api.members.saveRole, { memberType: "core", division: "Technical" });
-    await media.mutation(api.members.saveRole, { memberType: "core", division: "Media & Creative" });
-    expect(await media.query(api.dashboard.viewer)).toMatchObject({ reviewer: false });
     const log = await owner.query(api.dashboard.accessLog, { ownerId: media.id, paginationOpts: page });
     expect(log.page.map(({ change, from, to, actor }) => [change, from, to, actor])).toEqual([
-      ["tagSelfChanged", "core:Media & Creative", "core:Technical", "Mira Media"],
       ["active", "deactivated", "active", "Admin"],
       ["active", "active", "deactivated", "Admin"],
       ["tagConfirmed", "unconfirmed", "core:Media & Creative", "Admin"],

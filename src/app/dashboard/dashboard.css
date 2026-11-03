@@ -129,8 +129,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-inline-button { display: inline; font-size: 11px; padding: 0; }
 .dash-role-prompt { max-width: 820px; }
 .dash-role-prompt h1 { font: 600 clamp(34px, 4vw, 48px)/1.1 var(--font-pixel), monospace; letter-spacing: -.03em; margin-block: 16px 14px; }
-.dash-role-form { display: grid; gap: 22px; margin-top: 26px; }
-.dash-role-form > .button { justify-self: start; }
+.dash-role-prompt > .button { margin-top: 22px; }
 .dash-profile-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 24px; align-items: start; }
 .dash-profile-grid h2 { font-size: 26px; margin-block: 0 12px; overflow-wrap: anywhere; }
 /* Foto profil (#146): the card front with the current photo, or the crop step with a live card preview. */
@@ -586,6 +585,7 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 
 .dash-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dash-unconfirmed { font-size: 11px; color: #785511; }
+.dash-confirmed { font-size: 11px; color: #2b5e2a; }
 .dash-active { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }
 .dash-active::before { content: ""; width: 8px; height: 8px; background: var(--green); }
 .dash-active[data-active="false"] { color: #9b3024; }

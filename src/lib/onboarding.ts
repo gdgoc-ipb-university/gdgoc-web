@@ -1,5 +1,5 @@
 export const divisions = ["Program & Development", "Media & Creative", "Technical", "Community & External", "Secretary Treasurer"] as const;
-/** Community tags. BoD (Board of Directors) is a tag like Core Team, not dashboard access, and only staff assign it. */
+/** Community tags. Members register as Member; staff assign Core Team and BoD (Board of Directors, a tag, not dashboard access). */
 export type MemberType = "member" | "core" | "bod";
 export const memberTypeLabels: Record<MemberType, string> = { member: "Member", core: "Core Team", bod: "BoD" };
 
@@ -8,42 +8,52 @@ export function memberTagLabel(type: MemberType, division?: string | null) {
   return type !== "member" && division ? `${memberTypeLabels[type]} · ${division}` : memberTypeLabels[type];
 }
 
-export type OnboardingValues = { fullName: string; campus: string; studyProgram: string; memberType: MemberType | ""; division: string };
-export type OnboardingStep = 1 | 2 | 3 | 4 | 5;
+export type OnboardingValues = { fullName: string; campus: string; studyProgram: string };
 export type OnboardingErrors = Partial<Record<keyof OnboardingValues, string>>;
-export type RoleValues = Pick<OnboardingValues, "memberType" | "division">;
+export type RoleValues = { memberType: MemberType | ""; division: string };
+export type RoleErrors = Partial<Record<keyof RoleValues, string>>;
+
+/**
+ * Onboarding screens by id: name, campus, the WhatsApp invitation, the GDG Community invitation. Ids keep their
+ * numbers from the five-screen flow so saved progress (`memberProfiles.nextStep`) means the same screen: 3 was the
+ * role screen, removed when community tags became staff-assigned (#156).
+ */
+export const onboardingSteps = [1, 2, 4, 5] as const;
+export type OnboardingStep = (typeof onboardingSteps)[number];
+export type SavedStep = OnboardingStep | 3;
+export const finalStep = 5 satisfies OnboardingStep;
 
 export const onboardingLimits = { fullName: 120, campus: 150, studyProgram: 150 } as const;
-export const roleStep: OnboardingStep = 3;
-export const finalStep: OnboardingStep = 5;
+
+/** The screen to resume on; a profile saved on the removed role screen continues at the WhatsApp invitation. */
+export function resumeStep(saved: SavedStep | undefined): OnboardingStep {
+  return saved === 3 ? 4 : saved ?? 1;
+}
+export function stepAfter(step: OnboardingStep): OnboardingStep {
+  return onboardingSteps[Math.min(onboardingSteps.indexOf(step) + 1, onboardingSteps.length - 1)];
+}
+export function stepBefore(step: OnboardingStep): OnboardingStep {
+  return onboardingSteps[Math.max(onboardingSteps.indexOf(step) - 1, 0)];
+}
 
 export function normalizeOnboarding(values: OnboardingValues): OnboardingValues {
   return {
     fullName: values.fullName.trim().replace(/\s+/g, " "),
     campus: values.campus.trim().replace(/\s+/g, " "),
     studyProgram: values.studyProgram.trim().replace(/\s+/g, " "),
-    memberType: values.memberType,
-    division: values.memberType === "core" || values.memberType === "bod" ? values.division.trim() : "",
   };
 }
 
-/** The member's own choice (onboarding, profile): Member or Core Team; BoD cannot be self-declared. */
-export function validateRole(values: RoleValues): OnboardingErrors {
-  if (values.memberType !== "member" && values.memberType !== "core") return { memberType: "Pilih Member atau Core Team." };
-  if (values.memberType === "core" && !divisions.some((division) => division === values.division)) return { division: "Pilih divisimu di Core Team." };
-  return {};
-}
-
-/** Staff assignment: any tag; Core Team needs a division, BoD may have one. */
-export function validateStaffRole(values: RoleValues): OnboardingErrors {
-  if (values.memberType !== "bod") return validateRole(values);
-  if (values.division && !divisions.some((division) => division === values.division)) return { division: "Pilih divisi yang tersedia atau kosongkan untuk BoD." };
+/** Staff assignment from the members page, the only way to set a tag: Core Team needs a division, BoD may have one. */
+export function validateStaffRole(values: RoleValues): RoleErrors {
+  if (values.memberType !== "member" && values.memberType !== "core" && values.memberType !== "bod") return { memberType: "Pilih Member, Core Team, atau BoD." };
+  if (values.memberType === "core" && !divisions.some((division) => division === values.division)) return { division: "Pilih divisi untuk Core Team." };
+  if (values.memberType === "bod" && values.division && !divisions.some((division) => division === values.division)) return { division: "Pilih divisi yang tersedia atau kosongkan untuk BoD." };
   return {};
 }
 
 export function validateOnboarding(values: OnboardingValues, step: OnboardingStep): OnboardingErrors {
   const clean = normalizeOnboarding(values);
-  if (step === roleStep) return validateRole(clean);
   const errors: OnboardingErrors = {};
   const fields: (keyof typeof onboardingLimits)[] = step === 1 ? ["fullName"] : step === 2 ? ["campus", "studyProgram"] : ["fullName", "campus", "studyProgram"];
   const required = { fullName: "Isi nama yang ingin kamu pakai.", campus: "Isi atau pilih nama kampusmu.", studyProgram: "Isi atau pilih program studimu." };

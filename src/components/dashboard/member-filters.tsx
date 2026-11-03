@@ -76,7 +76,7 @@ function FilterForm({ initial, search, stats, onCancel, onApply }: { initial: Me
         <MultiGroup label="Divisi" hint="Untuk Core Team dan BoD." value={draft.divisions} onChange={(selected) => set({ divisions: selected })}
           options={divisions.map((value) => ({ value, label: value, count: stats?.divisions[value] }))} />
         <SingleGroup label="Status akun" value={draft.status} onChange={(status) => set({ status })} options={(["all", "active", "deactivated"] as const).map((value) => ({ value, label: statusLabels[value], count: counts?.status[value] }))} />
-        <SingleGroup label="Konfirmasi peran komunitas" hint="Core Team dan BoD yang dipilih sendiri perlu dikonfirmasi staf." value={draft.tag} onChange={(tag) => set({ tag })}
+        <SingleGroup label="Konfirmasi peran komunitas" hint="Core Team yang dulu dipilih member sendiri perlu dikonfirmasi staf." value={draft.tag} onChange={(tag) => set({ tag })}
           options={(["all", "confirmed", "unconfirmed"] as const).map((value) => ({ value, label: tagLabels[value], count: counts?.tag[value] }))} />
       </div>
     </DialogContent>

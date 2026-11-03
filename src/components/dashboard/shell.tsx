@@ -15,7 +15,7 @@ import { Header } from "../header";
 import { Arrow, PixelDino } from "../icons";
 import { MemberAvatar } from "../member-avatar";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
-import { RolePrompt } from "./profile";
+import { MemberTagNotice } from "./profile";
 import { ViewerContext, isReviewer, isStaff, type DashboardViewer } from "./viewer";
 
 
@@ -42,7 +42,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   if (!viewer.active) {
     return <Standalone><AccountBar viewer={viewer} /><div className="app-panel dash-blocked"><p className="eyebrow">DASHBOARD GDGOC IPB</p><h1>Akunmu sedang dinonaktifkan.</h1><p>Tugas, apresiasi, dan kiriman tidak bisa dibuka untuk sementara. Semua yang sudah kamu kirim tetap tersimpan. Hubungi admin GDGoC IPB jika menurutmu ini keliru.</p></div></Standalone>;
   }
-  if (!viewer.memberType) return <Standalone><RolePrompt /></Standalone>;
+  if (!viewer.memberType) return <Standalone><MemberTagNotice /></Standalone>;
   return <ViewerContext.Provider value={viewer}><AppFrame viewer={viewer}>{children}</AppFrame></ViewerContext.Provider>;
 }
 

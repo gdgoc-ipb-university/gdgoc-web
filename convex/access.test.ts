@@ -191,7 +191,7 @@ const OPEN: Record<string, string> = {
   "auth.configuration": "public: whether Google sign-in is configured",
   "auth.viewer": "the signed-in account itself, or null",
   "dashboard.viewer": "the signed-in account's own access, or null",
-  "members.profile": "own profile", "members.saveStep": "own profile", "members.saveRole": "own profile",
+  "members.profile": "own profile", "members.saveStep": "own profile", "members.registerAsMember": "own profile, Member only (members.test.ts)",
   "appreciations.mine": "own drafts and submissions", "appreciations.get": "own", "appreciations.create": "own",
   "appreciations.save": "own", "appreciations.submit": "own", "appreciations.removeDraft": "own",
   "assignments.generateUploadUrl": "own submission, active members", "assignments.attachFile": "own submission, active members",

@@ -226,7 +226,7 @@ export function MemberActions({ row, viewer, labelled = false }: { row: Pick<Row
     ? { key: "unsupport", group: "access", icon: "user-x", label: "Cabut pengelola Tech Support", confirm: `Cabut akses antrean Tech Support dari ${row.fullName}? Catatan yang sudah ia tulis tetap tersimpan.`, run: () => setTechSupportHandler({ ownerId: row.ownerId, handler: false }) }
     : { key: "support", group: "access", icon: "user-plus", label: "Jadikan pengelola Tech Support", confirm: `Jadikan ${row.fullName} pengelola Tech Support? Ia bisa membuka antrean permintaan mentoring, melihat email pemohon, mencatat mentor, dan mengubah status.`, run: () => setTechSupportHandler({ ownerId: row.ownerId, handler: true }) });
   const mediaTag = row.division === "Media & Creative";
-  // A self-declared Core Team or BoD tag counts once staff confirm it; for Media & Creative that also grants Apresiasi review.
+  // A Core Team tag a member chose before tags became staff-assigned (#156) counts once staff confirm it; for Media & Creative that also grants Apresiasi review.
   if (row.memberType && row.memberType !== "member" && !row.tagConfirmed) actions.push({
     key: "confirm-tag", group: "community", icon: "check-double", label: "Konfirmasi peran komunitas",
     confirm: `Konfirmasi ${row.fullName} sebagai ${memberTagLabel(row.memberType, row.division)}?${mediaTag ? " Core Team dan BoD Media & Creative yang terkonfirmasi bisa meninjau apresiasi." : ""}`,
@@ -307,7 +307,7 @@ function CommunityRoleEditor({ row, onDone }: { row: Pick<Row, "ownerId" | "full
   const id = `role-${row.ownerId}`;
   return <form className="dash-role-editor dash-dialog-form" onSubmit={save}>
     <DialogContent>
-      <p className="dash-dialog-body">Menyimpan dari sini juga mengonfirmasi peran yang dipilih member sendiri.</p>
+      <p className="dash-dialog-body">Peran dan divisi hanya diatur pengurus dari sini. Menyimpan juga mengonfirmasi peran yang dulu dipilih member sendiri.</p>
       <Select id={`${id}-type`} label="Peran" value={memberType} disabled={busy} onChange={setType}
         options={[{ value: "member", label: memberTypeLabels.member }, { value: "core", label: memberTypeLabels.core }, { value: "bod", label: `${memberTypeLabels.bod} (Board of Directors)` }]} />
       {memberType !== "member" && <Select id={`${id}-division`} label={memberType === "bod" ? "Divisi (opsional)" : "Divisi"} value={memberType === "bod" ? division || NO_DIVISION : division} disabled={busy}

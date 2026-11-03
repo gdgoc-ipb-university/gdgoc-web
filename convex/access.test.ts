@@ -139,6 +139,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.reviewing", api.assignments.reviewing, MEMBERS, () => ({})],
   ["cohorts.mentoring", api.cohorts.mentoring, MEMBERS, () => ({})],
   ["cohorts.myTeams", api.cohorts.myTeams, MEMBERS, () => ({})],
+  ["cohorts.mine", api.cohorts.mine, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
   ["bogorRun.board", api.bogorRun.board, MEMBERS, () => ({ period: "all" })],
 ];

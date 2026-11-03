@@ -3,7 +3,7 @@ import { Faq } from "@/components/faq";
 import { Header } from "@/components/header";
 import { JsonLd } from "@/components/json-ld";
 import { Arrow } from "@/components/icons";
-import { PixelIcon, type PixelIconName } from "@/components/pixel-icons";
+import { PixelIcon } from "@/components/pixel-icons";
 import { breadcrumbJsonLd } from "@/lib/breadcrumb";
 import { catalyst, catalystCourseJsonLd, catalystEventJsonLd, currentOprecState } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
@@ -19,12 +19,6 @@ export const metadata: Metadata = {
 
 // The oprec status depends on the date, so the page is rebuilt at most hourly instead of once at deploy.
 export const revalidate = 3600;
-
-const roleIcons: Record<(typeof catalyst.roles)[number]["name"], PixelIconName> = {
-  Hacker: "code",
-  Hipster: "brush",
-  Hustler: "clipboard-note",
-};
 
 const { oprec, sessions } = catalyst;
 const sessionRange = rangeLabel(sessions.start, sessions.end);
@@ -72,7 +66,7 @@ export default function CatalystPage() {
       <section aria-labelledby="catalyst-roles">
         <h2 id="catalyst-roles">Satu track, tiga peran</h2>
         <ul className="league-categories catalyst-roles">{catalyst.roles.map((role) => <li key={role.name}>
-          <PixelIcon name={roleIcons[role.name]} size={32} />
+          <PixelIcon name={role.icon} size={32} />
           <span>{role.name}</span>
           <small>{role.focus}</small>
           <p>{role.text}</p>

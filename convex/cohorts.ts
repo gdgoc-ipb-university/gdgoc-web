@@ -6,7 +6,7 @@ import { authComponent, isOwner } from "./auth";
 import { requireMember, requireStaff } from "./access";
 import { logAccess } from "./accessLog";
 import { cohortRole, cohortStatus } from "./schema";
-import { catalystCohort, inCohortRoles, normalizeCohort, normalizeEmail, validateCohort, type CohortValues } from "../src/lib/cohort";
+import { catalystCohort, inCohortRoles, normalizeCohort, normalizeEmail, normalizeTeamName, teamNameProblem, validateCohort, type CohortValues } from "../src/lib/cohort";
 import { importBatch, importLimits, isEmail } from "../src/lib/enrolment-import";
 
 const cohortInput = v.object({ slug: v.string(), name: v.string(), roles: v.array(cohortRole), attendanceTarget: v.optional(v.number()) });
@@ -147,8 +147,10 @@ export const roster = query({
     if (!cohort) return null;
     const rows = await ctx.db.query("enrolments").withIndex("by_cohort_email", (q) => q.eq("cohortId", cohort._id)).collect();
     const mentorRows = await ctx.db.query("cohortMentors").withIndex("by_cohort_role", (q) => q.eq("cohortId", cohort._id)).collect();
+    const teams = await ctx.db.query("teams").withIndex("by_cohort", (q) => q.eq("cohortId", cohort._id)).collect();
     return {
       cohort: { _id: cohort._id, slug: cohort.slug, name: cohort.name, status: cohort.status, roles: cohort.roles },
+      teams: teams.map((team) => ({ _id: team._id, name: team.name })).sort((a, b) => a.name.localeCompare(b.name, "id", { numeric: true })),
       mentors: await Promise.all(mentorRows.map(async (row) => {
         const [profile, user] = await Promise.all([
           ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", row.ownerId)).unique(),
@@ -159,7 +161,7 @@ export const roster = query({
       rows: await Promise.all(rows.map(async (row) => {
         const profile = row.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", row.ownerId!)).unique() : null;
         return {
-          _id: row._id, email: row.email, name: row.name, role: row.role, status: row.status, ownerId: row.ownerId ?? null, claimedAt: row.claimedAt ?? null,
+          _id: row._id, email: row.email, name: row.name, role: row.role, status: row.status, ownerId: row.ownerId ?? null, claimedAt: row.claimedAt ?? null, teamId: row.teamId ?? null,
           importedAt: row.importedAt, fullName: profile?.fullName ?? null, campus: profile?.campus ?? null,
         };
       })),
@@ -347,6 +349,94 @@ export const mentoring = query({
         return { key: role.key, name: role.name, participants: names.sort((a, b) => a.localeCompare(b, "id")) };
       }));
       return { _id: cohort._id, name: cohort.name, roles };
+    }));
+    return result.filter((item) => item !== null);
+  },
+});
+
+// ——— Teams (#107) ———
+
+async function teamFor(ctx: MutationCtx, id: Id<"teams">) {
+  const team = await ctx.db.get(id);
+  if (!team) throw new ConvexError({ code: "NOT_FOUND", message: "Tim tidak ditemukan." });
+  return team;
+}
+
+/** A clean team name that no other team of the cohort uses, ignoring case. */
+async function teamName(ctx: MutationCtx, cohortId: Id<"cohorts">, raw: string, id?: Id<"teams">) {
+  const name = normalizeTeamName(raw);
+  const problem = teamNameProblem(name);
+  if (problem) invalid(problem);
+  const teams = await ctx.db.query("teams").withIndex("by_cohort", (q) => q.eq("cohortId", cohortId)).collect();
+  if (teams.some((team) => team._id !== id && team.name.toLowerCase() === name.toLowerCase())) invalid(`Nama tim “${name}” sudah dipakai.`);
+  return name;
+}
+
+export const createTeam = mutation({
+  args: { cohortId: v.id("cohorts"), name: v.string() },
+  handler: async (ctx, args) => {
+    const { user } = await requireStaff(ctx);
+    if (!(await ctx.db.get(args.cohortId))) notFound();
+    const now = Date.now();
+    return ctx.db.insert("teams", { cohortId: args.cohortId, name: await teamName(ctx, args.cohortId, args.name), createdBy: user._id, createdAt: now, updatedAt: now });
+  },
+});
+
+export const renameTeam = mutation({
+  args: { id: v.id("teams"), name: v.string() },
+  handler: async (ctx, args) => {
+    await requireStaff(ctx);
+    const team = await teamFor(ctx, args.id);
+    await ctx.db.patch(team._id, { name: await teamName(ctx, team.cohortId, args.name, team._id), updatedAt: Date.now() });
+  },
+});
+
+/** Deletes a team; its participants stay in the cohort without a team. */
+export const deleteTeam = mutation({
+  args: { id: v.id("teams") },
+  handler: async (ctx, { id }) => {
+    await requireStaff(ctx);
+    const team = await teamFor(ctx, id);
+    for (const row of await ctx.db.query("enrolments").withIndex("by_team", (q) => q.eq("teamId", team._id)).collect()) await ctx.db.patch(row._id, { teamId: undefined });
+    await ctx.db.delete(team._id);
+  },
+});
+
+/** Puts an active participant in a team of their cohort, moving them out of any other, or takes them out with null. */
+export const setTeam = mutation({
+  args: { id: v.id("enrolments"), teamId: v.union(v.id("teams"), v.null()) },
+  handler: async (ctx, args) => {
+    await requireStaff(ctx);
+    const { enrolment, cohort } = await enrolmentFor(ctx, args.id);
+    if (args.teamId === null) {
+      if (enrolment.teamId) await ctx.db.patch(enrolment._id, { teamId: undefined });
+      return;
+    }
+    const team = await teamFor(ctx, args.teamId);
+    if (team.cohortId !== cohort._id) invalid(`Tim “${team.name}” bukan tim ${cohort.name}.`);
+    if (enrolment.status !== "active") invalid("Aktifkan kembali peserta ini sebelum memasukkannya ke tim.");
+    if (enrolment.teamId !== team._id) await ctx.db.patch(enrolment._id, { teamId: team._id });
+  },
+});
+
+/**
+ * The signed-in participant's teams: each cohort where their active enrolment has a team, with the team's name and the
+ * other active members' names only (no emails, no campus). Withdrawn teammates are left out.
+ */
+export const myTeams = query({
+  args: {},
+  handler: async (ctx) => {
+    const { user } = await requireMember(ctx);
+    const mine = (await ctx.db.query("enrolments").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).collect()).filter((row) => row.status === "active" && row.teamId);
+    const result = await Promise.all(mine.map(async (row) => {
+      const [team, cohort] = await Promise.all([ctx.db.get(row.teamId!), ctx.db.get(row.cohortId)]);
+      if (!team || !cohort) return null;
+      const others = (await ctx.db.query("enrolments").withIndex("by_team", (q) => q.eq("teamId", team._id)).collect()).filter((item) => item._id !== row._id && item.status === "active");
+      const teammates = await Promise.all(others.map(async (item) => {
+        const profile = item.ownerId ? await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", item.ownerId!)).unique() : null;
+        return { name: profile?.fullName || item.name, role: cohort.roles.find((role) => role.key === item.role)?.name ?? item.role };
+      }));
+      return { _id: team._id, name: team.name, cohort: cohort.name, teammates: teammates.sort((a, b) => a.name.localeCompare(b.name, "id")) };
     }));
     return result.filter((item) => item !== null);
   },

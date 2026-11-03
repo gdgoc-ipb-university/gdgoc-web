@@ -9,7 +9,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { bevyConsentNote, bevyCsv, bevyFileName } from "@/lib/bevy-export";
-import { programPath, type CohortRole } from "@/lib/cohort";
+import { cohortLimits, programPath, roleMix, type CohortRole } from "@/lib/cohort";
 import { readableError } from "@/lib/draft-session";
 import { SKIP, guessColumns, guessRoles, importBatch, importLimits, parseDelimited, planImport, type ColumnMap } from "@/lib/enrolment-import";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
@@ -61,7 +61,8 @@ export function ProgramRoster({ slug }: { slug: string }) {
   if (!isStaff(viewer)) return <StaffOnly />;
   if (data === undefined) return <LoadingPanel label="Memuat peserta…" />;
   if (data === null) return <>{back}<div className="app-empty"><h1>Program tidak ditemukan.</h1><p>Periksa kembali link-nya.</p></div></>;
-  const { cohort, rows, mentors } = data;
+  const { cohort, rows, mentors, teams } = data;
+  const teamName = new Map(teams.map((team) => [team._id, team.name]));
   const needle = search.trim().toLowerCase();
   const shown = rows
     .filter((row) => (role === "all" || row.role === role) && (status === "all" || statusOf(row) === status))
@@ -92,7 +93,7 @@ export function ProgramRoster({ slug }: { slug: string }) {
       : <div className="dash-table-wrap" role="region" aria-labelledby="roster-caption" tabIndex={0}>
         <table className="dash-table">
           <caption id="roster-caption" className="sr-only">Peserta {cohort.name}, {shown.length} dari {rows.length}</caption>
-          <thead><tr><th scope="col">Peserta</th><th scope="col">Peran</th><th scope="col">Status</th><th scope="col">Diimpor</th><th scope="col" className="dash-table-actions"><span className="sr-only">Aksi</span></th></tr></thead>
+          <thead><tr><th scope="col">Peserta</th><th scope="col">Peran</th><th scope="col">Status</th><th scope="col">Tim</th><th scope="col">Diimpor</th><th scope="col" className="dash-table-actions"><span className="sr-only">Aksi</span></th></tr></thead>
           <tbody>{shown.map((row) => <tr key={row._id} data-active={row.status === "active"}>
             <th scope="row" className="dash-table-member"><span className="dash-table-stack">
               {row.ownerId ? <Link href={`/dashboard/anggota/${encodeURIComponent(row.ownerId)}`}>{row.fullName ?? row.name}</Link> : row.name}
@@ -101,12 +102,14 @@ export function ProgramRoster({ slug }: { slug: string }) {
             </span></th>
             <td><span className="dash-role">{roleName(cohort.roles, row.role)}</span></td>
             <td><span className="dash-enrolment" data-status={statusOf(row)}>{statusLabels[statusOf(row)]}</span></td>
+            <td>{row.teamId ? teamName.get(row.teamId) : <span className="app-small">—</span>}</td>
             <td className="dash-table-date"><time dateTime={new Date(row.importedAt).toISOString()} title={dateLabel(row.importedAt)}>{dayLabel.format(row.importedAt)}</time></td>
             <td className="dash-table-actions"><EnrolmentActions row={row} roles={cohort.roles} /></td>
           </tr>)}</tbody>
         </table>
       </div>}
 
+    <CohortTeams cohort={cohort} teams={teams} rows={rows} />
     <CohortMentors cohort={cohort} mentors={mentors} />
 
     <DashboardDialog open={exporting} onClose={() => setExporting(false)} title="CSV untuk Bevy">
@@ -152,6 +155,73 @@ function BevyExport({ cohort, count, onDone }: { cohort: Roster["cohort"]; count
       <button className="dash-dialog-button" data-primary type="button" disabled={busy} onClick={() => void download()}>{busy ? "Menyiapkan CSV…" : "Unduh CSV"}</button>
     </DialogFooter>
   </>;
+}
+
+/**
+ * Staff form teams after session 1 (#107): create, rename and delete them, add active participants who have no team yet,
+ * and take members out. Each team shows its role mix; participants see only their team's name and teammates' names.
+ */
+function CohortTeams({ cohort, teams, rows }: { cohort: Roster["cohort"]; teams: Roster["teams"]; rows: Row[] }) {
+  const createTeam = useMutation(api.cohorts.createTeam);
+  const renameTeam = useMutation(api.cohorts.renameTeam);
+  const deleteTeam = useMutation(api.cohorts.deleteTeam);
+  const setTeam = useMutation(api.cohorts.setTeam);
+  const [name, setName] = useState("");
+  const [renaming, setRenaming] = useState<Roster["teams"][number] | null>(null);
+  const [newName, setNewName] = useState("");
+  const [deleting, setDeleting] = useState<Roster["teams"][number] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [dialogError, setDialogError] = useState("");
+  const active = rows.filter((row) => row.status === "active");
+  const nameOf = (row: Row) => row.fullName ?? row.name;
+  const byName = (a: Row, b: Row) => nameOf(a).localeCompare(nameOf(b), "id");
+  const unassigned = active.filter((row) => !row.teamId || !teams.some((team) => team._id === row.teamId)).sort(byName);
+  async function run(change: () => Promise<unknown>, inDialog = false) {
+    setBusy(true); setError(""); setDialogError("");
+    try { await change(); return true; } catch (cause) { (inDialog ? setDialogError : setError)(readableError(cause)); return false; } finally { setBusy(false); }
+  }
+  return <section className="dash-reviewers dash-teams" aria-labelledby="teams-title">
+    <div className="app-section-heading"><div><p className="eyebrow">TIM</p><h2 id="teams-title">Tim</h2></div>
+      <span className="app-small">{teams.length} tim · {active.length - unassigned.length} dari {active.length} peserta aktif sudah punya tim</span></div>
+    <p className="app-small">Setiap peserta masuk satu tim. Peserta melihat nama timnya dan nama rekan setimnya saja, tanpa email.</p>
+    <form className="dash-team-create" onSubmit={(event) => { event.preventDefault(); void run(() => createTeam({ cohortId: cohort._id, name })).then((done) => { if (done) setName(""); }); }}>
+      <div className="app-field"><label htmlFor="team-name">Nama tim baru</label><input id="team-name" value={name} maxLength={cohortLimits.teamName} disabled={busy} onChange={(event) => setName(event.target.value)} placeholder="Contoh: Tim 1" autoComplete="off" /></div>
+      <button className="button button-quiet" type="submit" disabled={busy || !name.trim()}><PixelIcon name="plus" size={18} />Buat tim</button>
+    </form>
+    {error && <p className="field-error" role="alert">{error}</p>}
+    {teams.length > 0 && <ul className="dash-team-list">{teams.map((team) => {
+      const members = active.filter((row) => row.teamId === team._id).sort(byName);
+      return <li key={team._id} className="app-panel dash-team">
+        <div className="dash-team-head"><h3>{team.name}</h3><span className="app-small">{members.length ? roleMix(cohort.roles, members.map((row) => row.role)) : "Belum ada anggota"}</span></div>
+        {members.length > 0 && <ul className="dash-reviewer-list">{members.map((row) => <li key={row._id}><span>{nameOf(row)}<small className="app-small"> · {roleName(cohort.roles, row.role)}</small></span>
+          <button type="button" className="text-button text-danger" disabled={busy} onClick={() => void run(() => setTeam({ id: row._id, teamId: null }))} aria-label={`Keluarkan ${nameOf(row)} dari ${team.name}`}>Keluarkan</button></li>)}</ul>}
+        {unassigned.length > 0 && <Select id={`team-add-${team._id}`} label="Tambah anggota" value="" disabled={busy} placeholder="Pilih peserta tanpa tim"
+          onChange={(id: string) => void run(() => setTeam({ id: id as Id<"enrolments">, teamId: team._id }))} options={unassigned.map((row) => ({ value: row._id as string, label: `${nameOf(row)} · ${roleName(cohort.roles, row.role)}` }))} />}
+        <div className="app-inline-actions">
+          <button type="button" className="text-button" disabled={busy} onClick={() => { setNewName(team.name); setDialogError(""); setRenaming(team); }}>Ubah nama</button>
+          <button type="button" className="text-button text-danger" disabled={busy} onClick={() => { setDialogError(""); setDeleting(team); }}>Hapus tim</button>
+        </div>
+      </li>;
+    })}</ul>}
+    <div className="dash-team-unassigned"><h3>Belum punya tim <span className="app-small">({unassigned.length})</span></h3>
+      {unassigned.length ? <ul className="dash-mentee-list">{unassigned.map((row) => <li key={row._id}>{nameOf(row)} <span className="app-small">· {roleName(cohort.roles, row.role)}</span></li>)}</ul>
+        : <p className="app-small">{active.length ? "Semua peserta aktif sudah punya tim." : "Belum ada peserta aktif."}</p>}
+    </div>
+
+    <DashboardDialog open={renaming !== null} onClose={() => { if (!busy) setRenaming(null); }} busy={busy} title={`Ubah nama ${renaming?.name ?? "tim"}`}>
+      <form className="dash-dialog-form" onSubmit={(event) => { event.preventDefault(); if (renaming) void run(() => renameTeam({ id: renaming._id, name: newName }), true).then((done) => { if (done) setRenaming(null); }); }}>
+        <DialogContent>
+          <div className="app-field"><label htmlFor="team-rename">Nama tim</label><input id="team-rename" value={newName} maxLength={cohortLimits.teamName} disabled={busy} onChange={(event) => setNewName(event.target.value)} autoComplete="off" /></div>
+          {dialogError && <p className="field-error" role="alert">{dialogError}</p>}
+        </DialogContent>
+        <DialogFooter><button className="dash-dialog-button" type="button" disabled={busy} onClick={() => setRenaming(null)}>Batal</button><button className="dash-dialog-button" data-primary type="submit" disabled={busy}>{busy ? "Menyimpan…" : "Simpan nama"}</button></DialogFooter>
+      </form>
+    </DashboardDialog>
+    <ConfirmDialog open={deleting !== null} busy={busy} error={dialogError} danger title={`Hapus ${deleting?.name ?? "tim"}?`}
+      message="Anggotanya tetap menjadi peserta, tetapi tidak lagi punya tim sampai dimasukkan ke tim lain." confirmLabel="Ya, hapus tim"
+      onConfirm={() => { if (deleting) void run(() => deleteTeam({ id: deleting._id }), true).then((done) => { if (done) setDeleting(null); }); }} onClose={() => { if (!busy) setDeleting(null); }} />
+  </section>;
 }
 
 /**

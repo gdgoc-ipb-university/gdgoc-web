@@ -44,3 +44,4 @@ Never force-push this branch, and never open a pull request from it.
 | `issue-146/profile-photo` | #146 members upload their own profile photo (generated placeholder portrait) | #147 and its stack |
 | `issue-105/role-tasks` | #105 Catalyst role tasks and mentors (fixture data) | #151 |
 | `issue-107/teams` | #107 teams in a Catalyst cohort (fixture data) | #152 (stacked on #151) |
+| `issue-106/catalyst-card` | #106 Catalyst card on the participant's overview (fixture data) | #154 |

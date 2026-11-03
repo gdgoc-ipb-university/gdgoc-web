@@ -396,3 +396,79 @@ describe("role tasks and mentors (#105)", () => {
     expect(await hacker.query(api.cohorts.mentoring, {})).toEqual([]);
   });
 });
+
+describe("teams (#107)", () => {
+  async function teams() {
+    const w = await world();
+    const { t, owner, cohort } = w;
+    const hipster = await account(t, "hipster@example.com");
+    await enrol(t, cohort, "hipster@example.com", "hipster");
+    await hipster.mutation(api.cohorts.claimMine, {});
+    const unclaimed = await enrol(t, cohort, "belum@example.com", "hustler");
+    const rows = await t.run((ctx) => ctx.db.query("enrolments").collect());
+    const idOf = (email: string) => rows.find((row) => row.email === email)!._id;
+    const create = (name: string) => owner.mutation(api.cohorts.createTeam, { cohortId: cohort, name });
+    return { ...w, hipster, unclaimed, idOf, create };
+  }
+
+  it("creates and renames teams with names unique in the cohort, ignoring case", async () => {
+    const { owner, create } = await teams();
+    const one = await create("  Tim   Satu ");
+    await create("Tim Dua");
+    await expect(create("tim satu")).rejects.toThrow("sudah dipakai");
+    await expect(create(" ")).rejects.toThrow("Isi nama tim");
+    await owner.mutation(api.cohorts.renameTeam, { id: one, name: "TIM SATU" }); // its own name in other case is fine
+    await expect(owner.mutation(api.cohorts.renameTeam, { id: one, name: "Tim Dua" })).rejects.toThrow("sudah dipakai");
+    // Another cohort may reuse a name.
+    const intake = await owner.mutation(api.cohorts.create, { values: { slug: "intake", name: "Intake", roles: [{ key: "member", name: "Member" }] } });
+    await owner.mutation(api.cohorts.createTeam, { cohortId: intake, name: "Tim Dua" });
+    expect((await owner.query(api.cohorts.roster, { slug: "catalyst-2026" }))!.teams.map((team) => team.name)).toEqual(["Tim Dua", "TIM SATU"]);
+  });
+
+  it("keeps each participant in one team, refuses other cohorts and withdrawn participants, and shows the team on the roster", async () => {
+    const { t, owner, idOf, unclaimed, create } = await teams();
+    const one = await create("Tim 1");
+    const two = await create("Tim 2");
+    const set = (email: string, teamId: Id<"teams"> | null) => owner.mutation(api.cohorts.setTeam, { id: idOf(email), teamId });
+    await set("hacker@example.com", one);
+    await set("hacker@example.com", two); // moves, never in both
+    await owner.mutation(api.cohorts.setTeam, { id: unclaimed, teamId: one }); // not signed in yet is fine
+    const roster = (await owner.query(api.cohorts.roster, { slug: "catalyst-2026" }))!;
+    expect(Object.fromEntries(roster.rows.map((row) => [row.email, row.teamId]))).toMatchObject({ "hacker@example.com": two, "belum@example.com": one, "hipster@example.com": null });
+    await set("hacker@example.com", null);
+    expect(await t.run(async (ctx) => (await ctx.db.get(idOf("hacker@example.com")))!.teamId ?? null)).toBeNull();
+
+    const intake = await owner.mutation(api.cohorts.create, { values: { slug: "intake", name: "Intake", roles: [{ key: "member", name: "Member" }] } });
+    const elsewhere = await owner.mutation(api.cohorts.createTeam, { cohortId: intake, name: "Tim Lain" });
+    await expect(set("hacker@example.com", elsewhere)).rejects.toThrow("bukan tim GDGoC Catalyst");
+    await owner.mutation(api.cohorts.setStatus, { id: idOf("hipster@example.com"), status: "withdrawn" });
+    await expect(set("hipster@example.com", one)).rejects.toThrow("Aktifkan kembali");
+  });
+
+  it("deletes a team by clearing its participants' team", async () => {
+    const { t, owner, idOf, create } = await teams();
+    const one = await create("Tim 1");
+    await owner.mutation(api.cohorts.setTeam, { id: idOf("hacker@example.com"), teamId: one });
+    await owner.mutation(api.cohorts.setTeam, { id: idOf("hustler@example.com"), teamId: one });
+    await owner.mutation(api.cohorts.deleteTeam, { id: one });
+    const left = await t.run(async (ctx) => ({ teams: await ctx.db.query("teams").collect(), members: await ctx.db.query("enrolments").withIndex("by_team", (q) => q.eq("teamId", one)).collect() }));
+    expect(left).toEqual({ teams: [], members: [] });
+    await expect(owner.mutation(api.cohorts.setTeam, { id: idOf("hacker@example.com"), teamId: one })).rejects.toThrow("Tim tidak ditemukan");
+  });
+
+  it("shows a participant their team and active teammates by name and role only", async () => {
+    const { owner, hacker, hustler, hipster, outsider, idOf, unclaimed, create } = await teams();
+    const one = await create("Tim Kopi");
+    for (const id of [idOf("hacker@example.com"), idOf("hustler@example.com"), idOf("hipster@example.com"), unclaimed]) await owner.mutation(api.cohorts.setTeam, { id, teamId: one });
+    expect(await hacker.query(api.cohorts.myTeams, {})).toEqual([{ _id: one, name: "Tim Kopi", cohort: "GDGoC Catalyst 2026/27", teammates: [
+      { name: "belum", role: "Hustler" }, { name: "Nama hipster", role: "Hipster" }, { name: "Nama hustler", role: "Hustler" },
+    ] }]);
+    expect(JSON.stringify(await hacker.query(api.cohorts.myTeams, {}))).not.toContain("@");
+    // A withdrawn teammate drops out; a withdrawn participant sees no team.
+    await owner.mutation(api.cohorts.setStatus, { id: idOf("hustler@example.com"), status: "withdrawn" });
+    expect((await hacker.query(api.cohorts.myTeams, {}))[0].teammates.map((row) => row.name)).toEqual(["belum", "Nama hipster"]);
+    expect(await hustler.query(api.cohorts.myTeams, {})).toEqual([]);
+    expect(await outsider.query(api.cohorts.myTeams, {})).toEqual([]);
+    expect((await hipster.query(api.cohorts.myTeams, {}))[0].name).toBe("Tim Kopi");
+  });
+});

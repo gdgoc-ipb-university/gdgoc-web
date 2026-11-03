@@ -25,6 +25,7 @@ export const viewer = query({
       reviewer: isReviewer(access.user.email, access.user.emailVerified, access.profile),
       techSupportHandler: handlesTechSupport(access.role, access.profile),
       memberType: access.profile?.memberType ?? null, division: access.profile?.division ?? null,
+      tagConfirmed: Boolean(access.profile?.tagConfirmedAt),
       campus: access.profile?.campus ?? "", studyProgram: access.profile?.studyProgram ?? "",
       // The uploaded photo, else the Google one (photos.photoUrl); `photoUploaded` offers "Hapus foto".
       photo: await photoUrl(ctx, access.profile, access.user.image), photoUploaded: Boolean(access.profile?.photoStorageId),
@@ -384,7 +385,7 @@ export const setActive = mutation({
   },
 });
 
-/** Staff set a member's community tag: correct a self-declared Member/Core Team, or assign BoD. */
+/** Staff set a member's community tag (Member, Core Team or BoD, with a division), the only way to set one other than Member. */
 export const setMemberType = mutation({
   args: { ownerId: v.string(), memberType, division: v.string() },
   handler: async (ctx, args) => {

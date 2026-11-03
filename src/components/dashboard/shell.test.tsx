@@ -4,7 +4,7 @@ import { DashboardShell } from "./shell";
 import type { DashboardViewer } from "./viewer";
 
 // An owner with every Kelola permission, the longest sidebar there is.
-const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "owner", active: true, onboarded: true, reviewer: true, memberType: "core", division: "Technical", campus: "", studyProgram: "", doorHelper: true, photo: null, photoUploaded: false, techSupportHandler: true };
+const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "owner", active: true, onboarded: true, reviewer: true, memberType: "core", division: "Technical", tagConfirmed: false, campus: "", studyProgram: "", doorHelper: true, photo: null, photoUploaded: false, techSupportHandler: true };
 
 vi.mock("convex/react", () => ({
   useConvexAuth: () => ({ isLoading: false, isAuthenticated: true }),

@@ -5,7 +5,7 @@ import { divisions } from "./onboarding";
 
 /**
  * The members filter: AND across facets, OR within one. An empty list or "all" leaves that facet open.
- * Access is the dashboard role; community is the self-declared or staff-set tag; tag is whether staff confirmed it.
+ * Access is the dashboard role; community is the tag (staff-set, or self-declared before #156); tag is whether staff confirmed it.
  */
 export type MemberFilters = {
   access: MemberAccess[]; community: MemberCommunity[]; divisions: string[];

@@ -2,23 +2,28 @@
 
 The first authenticated visit to any `/dashboard` page redirects accounts without a completed member profile to `/onboarding`. This includes existing Google accounts that have never completed this introduction. The public landing and Google sign-in remain accessible without a profile.
 
-## Five screens
+## Four screens
 
 1. **Kenalan:** a name prefilled from Google, editable before saving.
 2. **Kampus:** searchable campus and study-program comboboxes. Both accept names outside the suggestions.
-3. **Peran:** Member or Core Team. Core Team then requires one division: Program & Development, Media & Creative, Technical, Community & External, or Secretary Treasurer. The list lives in `src/lib/onboarding.ts`. BoD (Board of Directors) is not offered here; only owners and admins assign it from the members page.
-4. **WhatsApp:** an optional invitation to the group supplied by the community owner.
-5. **Jadi member:** an optional invitation to the official GDG chapter, followed by completion and a return to the dashboard.
+3. **WhatsApp:** an optional invitation to the group supplied by the community owner.
+4. **Jadi member:** an optional invitation to the official GDG chapter, followed by completion and a return to the dashboard.
 
-The role is self-declared and grants no permissions; it is a profile label that also prefills the Apresiasi "Peran" field. Members can change it on `/dashboard/profil`, and dashboard staff can correct it on `/dashboard/anggota`. Accounts that completed onboarding before the role step existed see a one-screen role prompt on their next dashboard visit. Profiles saved in the middle of the older four-screen flow resume at the role step.
+## Community tag
+
+Everyone registers as **Member** ([ADR 0007](decisions/0007-staff-assign-community-tags.md), #156). Onboarding has no role screen, and finishing it saves `memberType: "member"` with no division, unless the profile already has a tag. **Core Team** with a division (Program & Development, Media & Creative, Technical, Community & External, or Secretary Treasurer, listed in `src/lib/onboarding.ts`) and **BoD** (Board of Directors) come only from owners and admins on `/dashboard/anggota`. `/dashboard/profil` shows the tag read-only, with whether staff confirmed it.
+
+The tag grants no permissions by itself; it decides which assignments a member gets and prefills the Apresiasi "Peran" field. Until #156 members chose Member or Core Team themselves. Those tags are kept as they are: a self-declared Core Team tag stays, marked unconfirmed, until staff change or confirm it. Accounts that completed onboarding before tags existed see a one-screen notice on their next dashboard visit and register as Member (`members.registerAsMember`, which never sets another tag).
+
+Screen ids keep their numbers from the five-screen flow (1, 2, 4, 5), so `memberProfiles.nextStep` needs no migration: a profile saved on the removed role screen (3) resumes at the WhatsApp invitation.
 
 External invitations open a new tab. Opening an invitation is not treated as proof of joining. Neither service is queried for membership, and no external join flags are stored. Both invitation screens can be skipped with the normal forward button.
 
 ## Persistence and access
 
-`memberProfiles` contains the authenticated owner ID, chosen name, campus, study program, community role and division, next saved screen, revision, update time, and optional completion time. `members.profile` reads only the current verified account's profile; `members.saveStep` derives ownership from the active Better Auth session. No client-supplied owner ID is accepted.
+`memberProfiles` contains the authenticated owner ID, chosen name, campus, study program, community tag and division, next saved screen, revision, update time, and optional completion time. `members.profile` reads only the current verified account's profile; `members.saveStep` derives ownership from the active Better Auth session. No client-supplied owner ID is accepted, and `saveStep` takes no community tag: a call that sends `memberType` or `division` is rejected.
 
-Each **Lanjut** saves that screen before advancing. Reload resumes the next saved screen; unsaved keystrokes are not described as saved. Back preserves local values, and a failed save keeps edits on screen. Required fields and lengths are validated on the server, forward skipping is rejected, and revision checks prevent an old tab from overwriting newer data. Identical request retries are safe. Completion does not repeat on later visits. The only return destinations are `/dashboard` and `/dashboard/apresiasi/tinjau`. `members.saveRole` changes the role after completion.
+Each **Lanjut** saves that screen before advancing. Reload resumes the next saved screen; unsaved keystrokes are not described as saved. Back preserves local values, and a failed save keeps edits on screen. Required fields and lengths are validated on the server, forward skipping is rejected, and revision checks prevent an old tab from overwriting newer data. Identical request retries are safe. Completion does not repeat on later visits. The only return destinations are `/dashboard` and `/dashboard/apresiasi/tinjau`.
 
 New appreciation drafts prefill the chosen name, campus, study program, and community tag (Member, Core Team, or BoD). Existing drafts keep their existing values. The additive schema keeps the previous frontend functional during backend-first deployment. Google permissions and appreciation review authorization do not change.
 

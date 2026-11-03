@@ -27,7 +27,7 @@ vi.mock("convex/react", () => ({
   useMutation: (ref: FunctionReference<"mutation">) => mutations[getFunctionName(ref)] ?? vi.fn(async () => null),
 }));
 
-const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "member", active: true, onboarded: true, reviewer: false, memberType: "core", division: "Community & External", campus: "", studyProgram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: true };
+const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "member", active: true, onboarded: true, reviewer: false, memberType: "core", division: "Community & External", tagConfirmed: false, campus: "", studyProgram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: true };
 const show = (extra: Partial<DashboardViewer> = {}) => render(<ViewerContext.Provider value={{ ...viewer, ...extra }}><TechSupportQueue /></ViewerContext.Provider>);
 const accessible = async (container: HTMLElement) => {
   const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] }, rules: { "color-contrast": { enabled: false } } });

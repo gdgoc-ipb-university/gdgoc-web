@@ -20,7 +20,7 @@ vi.mock("convex/react", () => ({
 
 const base: DashboardViewer = {
   id: "me" as DashboardViewer["id"], name: "Rania Putri", email: "rania@example.com", role: "member", active: true, onboarded: true, reviewer: false,
-  memberType: "core", division: "Technical", campus: "IPB University", studyProgram: "Ilmu Komputer", doorHelper: false, techSupportHandler: false,
+  memberType: "core", division: "Technical", tagConfirmed: false, campus: "IPB University", studyProgram: "Ilmu Komputer", doorHelper: false, techSupportHandler: false,
   photo: "https://lh3.googleusercontent.com/a/example=s96-c", photoUploaded: false,
 };
 const show = (viewer: Partial<DashboardViewer> = {}) => render(<ViewerContext.Provider value={{ ...base, ...viewer }}><ProfilePhotoPanel /></ViewerContext.Provider>);

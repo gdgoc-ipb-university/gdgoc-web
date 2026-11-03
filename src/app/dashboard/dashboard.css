@@ -586,6 +586,7 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dash-unconfirmed { font-size: 11px; color: #785511; }
 .dash-confirmed { font-size: 11px; color: #2b5e2a; }
+.dash-profile-tag { margin-block: 4px 14px; }
 .dash-active { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }
 .dash-active::before { content: ""; width: 8px; height: 8px; background: var(--green); }
 .dash-active[data-active="false"] { color: #9b3024; }

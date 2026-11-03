@@ -44,7 +44,7 @@ export function ProfilePage({ photo }: { photo?: ReactNode }) {
         {stats ? <p className="app-small">{stats.filter((item) => item.submittedAt).length} tugas sudah kamu kumpulkan.</p> : <LoadingPanel label="Memuat ringkasan…" />}
       </section>
       <section className="app-panel" aria-labelledby="profile-role"><h2 id="profile-role">Peran komunitas</h2>
-        {viewer.memberType && <p className="dash-badges"><span className="dash-role" data-role={viewer.memberType}>{memberTagLabel(viewer.memberType, viewer.division)}</span>
+        {viewer.memberType && <p className="dash-badges dash-profile-tag"><span className="dash-role" data-role={viewer.memberType}>{memberTagLabel(viewer.memberType, viewer.division)}</span>
           {viewer.tagConfirmed ? <span className="dash-confirmed">Dikonfirmasi pengurus</span> : viewer.memberType !== "member" && <span className="dash-unconfirmed">Belum dikonfirmasi pengurus</span>}</p>}
         <p className="app-small">{staffSetTag}</p>
       </section>

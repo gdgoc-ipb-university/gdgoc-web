@@ -40,7 +40,7 @@ function MentoredParticipants() {
   if (!mentoring?.length) return null;
   return <section aria-labelledby="mentoring-title"><div className="app-section-heading"><div><p className="eyebrow">MENTOR</p><h2 id="mentoring-title">Peserta yang kamu dampingi</h2></div></div>
     {mentoring.flatMap((cohort) => cohort.roles.map((role) => <details className="app-panel dash-mentees" key={`${cohort._id}-${role.key}`} open={mentoring.length === 1 && cohort.roles.length === 1}>
-      <summary><strong>{role.name}</strong> · {cohort.name}<span className="app-small">{role.participants.length} peserta aktif</span></summary>
+      <summary><strong>{role.name}</strong><span>{cohort.name}</span><span className="app-small">{role.participants.length} peserta aktif</span></summary>
       {role.participants.length ? <ul className="dash-mentee-list">{role.participants.map((name, index) => <li key={index}>{name}</li>)}</ul> : <p className="app-small">Belum ada peserta aktif di peran ini.</p>}
     </details>))}
   </section>;

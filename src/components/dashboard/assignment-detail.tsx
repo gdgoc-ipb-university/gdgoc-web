@@ -127,7 +127,7 @@ function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
     try { await action(); } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
   const change = (status: Doc<"assignments">["status"]) => run(() => setStatus({ id: assignment._id, revision: assignment.revision, status }));
-  const hint = { draft: "Draft hanya terlihat oleh admin.", published: "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
+  const hint = { draft: "Draft hanya terlihat oleh admin.", published: assignment.cohortId ? "Peserta aktif dari peran sasaran bisa melihat dan mengumpulkan tugas ini." : "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
   return <section className="dash-controls" aria-label="Kelola tugas">
     <p className="app-small">{hint}</p>
     <div className="app-inline-actions">

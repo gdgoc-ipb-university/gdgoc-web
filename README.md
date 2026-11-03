@@ -133,7 +133,7 @@ A single Next.js App Router frontend (`src/`) on a Convex backend (`convex/`), m
 | Path | Purpose |
 | --- | --- |
 | `page.tsx`, `layout.tsx` | The landing and the root layout |
-| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts with their rosters and role mentors), `kartu` (the member card), `kehadiran` (gatherings and check-in), `tech-support` (mentor requests and the handlers' queue), `profil` (profile and photo) |
+| `dashboard/` | Signed-in workspace: `tugas` (assignments), `anggota` (members), `apresiasi`, `papan-skor` (Bogor Run leaderboard), `program` (cohorts with their rosters, teams and role mentors), `kartu` (the member card), `kehadiran` (gatherings and check-in), `tech-support` (mentor requests and the handlers' queue), `profil` (profile and photo) |
 | `onboarding/` | Five-screen first-visit flow |
 | `tentang/`, `tim/`, `bergabung/`, `program/` (the hub, `catalyst/`, `tech-league/`, `tech-support/`), `privasi/` | Public pages, each listed in `indexablePaths` |
 | `environment/` | Full Three.js scene; `noindex`, used by the still-capture scripts |
@@ -159,7 +159,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 ### `convex/`: backend
 
-- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments and mentors, member cards and their per-year counters, gatherings and check-ins, Tech Support requests, the access log, and account deletions.
+- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments, teams and mentors, member cards and their per-year counters, gatherings and check-ins, Tech Support requests, the access log, and account deletions.
 - One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `techSupport`, `bogorRun` and `bogorRunToken`.
 - `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
 - `_generated/` is produced by Convex; do not edit it.

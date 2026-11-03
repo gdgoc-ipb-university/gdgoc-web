@@ -457,6 +457,20 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-reviewer-list { list-style: none; padding: 0; margin: 0 0 14px; display: grid; gap: 6px; max-width: 560px; }
 .dash-reviewer-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 14px; background: white; border: 1px solid #dfe5dc; }
 
+/* Cohort teams (#107) */
+.dash-teams { margin-top: 40px; max-width: none; }
+.dash-teams > p, .dash-team-create, .dash-team-unassigned { max-width: 860px; }
+.dash-team-create { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 18px; }
+.dash-team-create .app-field { flex: 1 1 260px; margin: 0; }
+.dash-team-list { list-style: none; padding: 0; margin: 0 0 22px; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.dash-team { display: grid; gap: 12px; align-content: start; }
+.dash-team .dash-reviewer-list { margin: 0; }
+.dash-team-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 4px 12px; }
+.dash-team-head h3, .dash-team-unassigned h3 { font-size: 16px; margin: 0; }
+.dash-team-unassigned .dash-mentee-list { margin-top: 10px; }
+.dash-my-team { margin-bottom: 10px; }
+.dash-my-team .dash-mentee-list { margin-top: 10px; }
+
 /* Cohort mentors (#105) */
 .dash-mentors { margin-top: 40px; }
 .dash-mentor-roles { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 6px 18px; margin-bottom: 18px; }

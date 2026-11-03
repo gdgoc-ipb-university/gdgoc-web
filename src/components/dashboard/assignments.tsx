@@ -34,6 +34,19 @@ function ReviewingAssignments() {
   </section>;
 }
 
+/** A participant's team in each cohort: its name and their active teammates' names and roles (#107). Nothing outside a team. */
+function MyTeams() {
+  const teams = useQuery(api.cohorts.myTeams);
+  if (!teams?.length) return null;
+  return <section aria-labelledby="my-team-title"><div className="app-section-heading"><div><p className="eyebrow">TIM</p><h2 id="my-team-title">Tim kamu</h2></div></div>
+    {teams.map((team) => <div className="app-panel dash-my-team" key={team._id}>
+      <div className="dash-team-head"><h3>{team.name}</h3><span className="app-small">{team.cohort}</span></div>
+      {team.teammates.length ? <ul className="dash-mentee-list">{team.teammates.map((mate, index) => <li key={index}>{mate.name} <span className="app-small">· {mate.role}</span></li>)}</ul>
+        : <p className="app-small">Belum ada rekan setim lain.</p>}
+    </div>)}
+  </section>;
+}
+
 /** A mentor's roles with their active participants, by name only (#32, decision 5). Nothing for anyone else. */
 function MentoredParticipants() {
   const mentoring = useQuery(api.cohorts.mentoring);
@@ -55,6 +68,7 @@ function MemberAssignments() {
   ] as const;
   return <>
     <div className="dash-intro"><p className="eyebrow">TUGAS MEMBER</p><h1>Tugas.</h1><p>Buka tugas untuk membaca instruksi, menulis jawaban, dan melampirkan file hasil kerjamu.</p></div>
+    <MyTeams />
     <ReviewingAssignments />
     <MentoredParticipants />
     {!assignments ? <LoadingPanel label="Memuat tugas…" /> : groups.map((group) => {

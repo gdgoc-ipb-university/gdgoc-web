@@ -472,3 +472,53 @@ describe("teams (#107)", () => {
     expect((await hipster.query(api.cohorts.myTeams, {}))[0].name).toBe("Tim Kopi");
   });
 });
+
+describe("participant overview (#106)", () => {
+  it("shows a participant their cohort, role and open tasks for that role, without a team until staff assign one", async () => {
+    const { t, owner, hacker, hustler, cohort, hackerTask } = await world();
+    const hipsterTask = await cohortTask(owner, cohort, "Tugas Hipster", ["hipster"]);
+    await owner.mutation(api.assignments.create, { values: { title: "Draft Hacker", description: "Nanti.", dueAt: dueAt(), cohortId: cohort, cohortRoles: ["hacker"] }, publish: false });
+    const closed = await cohortTask(owner, cohort, "Tugas lama", ["hacker"]);
+    await t.run((ctx) => ctx.db.patch(closed, { status: "closed" }));
+    await t.run((ctx) => ctx.db.patch(hackerTask, { dueAt: Date.now() + 24 * hour })); // due first
+    await hacker.mutation(api.assignments.submit, { assignmentId: hackerTask, revision: 0, answer: "Selesai", fileIds: [] });
+
+    const [mine] = await hacker.query(api.cohorts.mine, {});
+    expect(mine).toMatchObject({ cohort: { name: "GDGoC Catalyst 2026/27", slug: "catalyst-2026" }, role: { key: "hacker", name: "Hacker" }, team: null });
+    expect(mine.tasks.map((task) => [task.title, task.submittedAt !== null])).toEqual([["Tugas Hacker", true], ["Tugas semua peran", false]]);
+    expect(mine.tasks[0]).toMatchObject({ _id: hackerTask, slug: "tugas-hacker", late: false, revisionRequestedAt: null });
+    // Another role's tasks, drafts and closed tasks stay out.
+    expect((await hustler.query(api.cohorts.mine, {}))[0].tasks.map((task) => task.title)).toEqual(["Tugas semua peran"]);
+    expect(JSON.stringify(await hacker.query(api.cohorts.mine, {}))).not.toContain(hipsterTask);
+  });
+
+  it("adds the team and teammates' names once assigned, with no emails or other participants' rows", async () => {
+    const { t, owner, hacker, cohort } = await world();
+    const team = await owner.mutation(api.cohorts.createTeam, { cohortId: cohort, name: "Tim Kopi" });
+    await enrol(t, cohort, "hipster@example.com", "hipster");
+    const rows = await t.run((ctx) => ctx.db.query("enrolments").collect());
+    for (const email of ["hacker@example.com", "hustler@example.com", "hipster@example.com"]) {
+      await owner.mutation(api.cohorts.setTeam, { id: rows.find((row) => row.email === email)!._id, teamId: team });
+    }
+    const mine = await hacker.query(api.cohorts.mine, {});
+    expect(mine).toHaveLength(1);
+    expect(mine[0].team).toEqual({ name: "Tim Kopi", teammates: [{ name: "hipster", role: "Hipster" }, { name: "Nama hustler", role: "Hustler" }] });
+    expect(JSON.stringify(mine)).not.toContain("@");
+    expect(Object.keys(mine[0]).sort()).toEqual(["_id", "cohort", "role", "tasks", "team"]);
+  });
+
+  it("is empty for a member who is not enrolled, a withdrawn participant, and a cohort that ended", async () => {
+    const { owner, hacker, hustler, outsider, cohort } = await world();
+    expect(await outsider.query(api.cohorts.mine, {})).toEqual([]);
+    const rows = (await owner.query(api.cohorts.roster, { slug: "catalyst-2026" }))!.rows;
+    await owner.mutation(api.cohorts.setStatus, { id: rows.find((row) => row.email === "hustler@example.com")!._id, status: "withdrawn" });
+    expect(await hustler.query(api.cohorts.mine, {})).toEqual([]);
+    await owner.mutation(api.cohorts.update, { id: cohort, values: catalystCohort, status: "ended" });
+    expect(await hacker.query(api.cohorts.mine, {})).toEqual([]);
+  });
+
+  it("requires a signed-in member", async () => {
+    const t = setup();
+    await expect(t.query(api.cohorts.mine, {})).rejects.toThrow();
+  });
+});

@@ -61,7 +61,7 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
  * Account IDs of the owners, from the APPRECIATION_ADMIN_EMAILS allowlist (one or two addresses), so filtering by
  * access does not look up every member's sign-in account.
  */
-async function ownerIds(ctx: QueryCtx) {
+export async function ownerIds(ctx: QueryCtx) {
   // Better Auth stores emails lowercased.
   const emails = (process.env.APPRECIATION_ADMIN_EMAILS ?? "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean);
   const users = await Promise.all(emails.map((email) => ctx.runQuery(components.betterAuth.adapter.findOne, { model: "user", where: [{ field: "email", operator: "eq", value: email }] })));
@@ -69,7 +69,7 @@ async function ownerIds(ctx: QueryCtx) {
 }
 
 /** The filter facts of one onboarded profile; `access` treats an owner's profile as owner whatever its stored role. */
-function filterFacts(profile: Doc<"memberProfiles">, owners: Set<string>) {
+export function filterFacts(profile: Doc<"memberProfiles">, owners: Set<string>) {
   const access = owners.has(profile.ownerId) ? "owner" as const : profile.role === "admin" ? "admin" as const : "member" as const;
   return {
     access, memberType: profile.memberType, division: profile.division, active: access === "owner" || !profile.deactivatedAt,
@@ -77,7 +77,7 @@ function filterFacts(profile: Doc<"memberProfiles">, owners: Set<string>) {
   };
 }
 
-const filtersValidator = v.object({
+export const filtersValidator = v.object({
   access: v.optional(v.array(v.union(v.literal("owner"), v.literal("admin"), v.literal("member")))),
   community: v.optional(v.array(v.union(v.literal("member"), v.literal("core"), v.literal("bod")))),
   divisions: v.optional(v.array(v.string())),

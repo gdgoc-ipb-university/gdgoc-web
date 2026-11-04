@@ -46,4 +46,4 @@ Never force-push this branch, and never open a pull request from it.
 | `issue-107/teams` | #107 teams in a Catalyst cohort (fixture data) | #152 (stacked on #151) |
 | `issue-106/catalyst-card` | #106 Catalyst card on the participant's overview (fixture data) | #154 |
 | `issue-156/member-only` | #156 members register as Member only; staff assign Core Team (fixture data) | #157 |
-| `issue-159/bulk-print` | #159 bulk member card printing for staff: selection summary, PDF fronts and backs pages, duplex overlay, manifest (fixtures) | #160, #161, #162, #163 |
+| `issue-159/bulk-print` | #159 bulk member card printing for staff: selection summary, PDF fronts and backs pages, duplex overlay, manifest, long names clear of the landmarks (fixtures) | #164, #160, #161, #162, #163 |

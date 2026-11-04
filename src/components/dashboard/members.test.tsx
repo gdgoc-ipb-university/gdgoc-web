@@ -46,8 +46,10 @@ function list(name: string, args: Args) {
   return { rows: matching.slice(slice.start, slice.end), total: matching.length, page: slice.page, pageSize: slice.pageSize, pageCount: slice.pageCount };
 }
 // Next updates `useSearchParams` after pushState and replaceState; the fake does the same with an event.
+const push = vi.fn();
 vi.mock("next/navigation", () => ({
   usePathname: () => "/dashboard/anggota",
+  useRouter: () => ({ push }),
   useSearchParams: () => {
     const [, rerender] = useReducer((count: number) => count + 1, 0);
     useEffect(() => { window.addEventListener("test:url", rerender); return () => window.removeEventListener("test:url", rerender); }, []);
@@ -69,7 +71,7 @@ beforeEach(() => {
     vi.spyOn(window.history, method).mockImplementation((...args) => { original(...args); window.dispatchEvent(new Event("test:url")); });
   }
 });
-afterEach(() => { cleanup(); vi.restoreAllMocks(); setActive.mockClear(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); setActive.mockClear(); push.mockClear(); sessionStorage.clear(); });
 
 describe("members table", () => {
   it("is an accessible table with numbered pages", async () => {
@@ -124,6 +126,35 @@ describe("members table", () => {
     await user.click(screen.getByRole("button", { name: "Hapus filter Status: Nonaktif" }));
     expect(search()).toBe("");
     expect(bodyRows()).toHaveLength(25);
+  });
+
+  it("prints everyone matching the filters, or members ticked across pages (#159)", async () => {
+    const user = userEvent.setup();
+    window.history.replaceState(null, "", "/dashboard/anggota?community=core&page=1&sort=name-asc");
+    show("admin");
+    await user.click(screen.getByRole("button", { name: "Cetak kartu" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Semua yang cocok (1)" }));
+    expect(push).toHaveBeenLastCalledWith("/dashboard/anggota/cetak?community=core");
+
+    window.history.replaceState(null, "", "/dashboard/anggota");
+    expect(screen.queryByRole("checkbox", { name: /untuk dicetak/ })).toBeNull();
+    await user.click(screen.getByRole("button", { name: "Cetak kartu" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Pilih anggota" }));
+    const bar = screen.getByRole("region", { name: "Anggota dipilih untuk dicetak" });
+    expect(within(bar).getByRole("button", { name: /Cetak yang dipilih/ }).hasAttribute("disabled")).toBe(true);
+    await user.click(screen.getByRole("checkbox", { name: "Pilih Dina untuk dicetak" }));
+    await user.click(screen.getByRole("checkbox", { name: "Pilih Cahya untuk dicetak" }));
+    await user.click(screen.getByRole("button", { name: "Halaman berikutnya" }));
+    await user.click(within(bar).getByRole("button", { name: "Pilih semua di halaman ini" }));
+    expect(within(bar).getByRole("status").textContent).toBe("7 anggota dipilih");
+    await user.click(screen.getByRole("checkbox", { name: "Pilih Adi untuk dicetak" }));
+    expect(within(bar).getByRole("status").textContent).toBe("6 anggota dipilih");
+    expect(JSON.parse(sessionStorage.getItem("dashboard:anggota:cetak")!)).toEqual(["u29", "u28", "u4", "u3", "u2", "u1"]);
+    await user.click(within(bar).getByRole("button", { name: /Cetak yang dipilih/ }));
+    expect(push).toHaveBeenLastCalledWith("/dashboard/anggota/cetak?pilihan=1");
+    await user.click(within(bar).getByRole("button", { name: "Hapus pilihan" }));
+    expect(sessionStorage.getItem("dashboard:anggota:cetak")).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: /untuk dicetak/ })).toBeNull();
   });
 
   it("waits for typing to stop before searching, and replaces the history entry", async () => {

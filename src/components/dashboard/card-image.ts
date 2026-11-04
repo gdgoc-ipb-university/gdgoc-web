@@ -1,3 +1,4 @@
+import { bleed, cardImage } from "@/lib/card-sheet";
 import { cr80, divisionAccent, nameFit, photoAt } from "@/lib/member-card";
 import { memberTagLabel, type MemberType } from "@/lib/onboarding";
 import { withDpi } from "@/lib/png";
@@ -56,11 +57,11 @@ export async function loadPhoto(src: string | null) {
   } catch { return null; }
 }
 
-/**
- * Both sides of the card drawn for printing and for a poor connection at the venue, with every measure from the "ID
- * Card" page at 1:1. The faces' text, art and strip match the web; the punch slot stays empty, as on the printed card.
- */
-export async function drawCardImage(card: CardImage) {
+type Art = Record<keyof typeof passArt, HTMLImageElement>;
+type Fonts = { pixel: string; vcr: string; space: string; body: string; mono: string };
+
+/** The fonts and art every card draws with, loaded once however many cards are drawn. */
+async function loadAssets() {
   // The titling falls back to Pixelify Sans for glyphs VCR OSD Mono lacks, as on the face.
   const pixel = fontOf("--font-pixel", "monospace"), vcr = `${passFont.family}, ${pixel}`, space = fontOf("--font-space", "sans-serif"), body = fontOf("--font-body", "sans-serif"), mono = fontOf("--font-mono", "monospace");
   // Load each face first, as some are not preloaded. Only the first family: Next's local() fallback faces can fail to
@@ -68,16 +69,22 @@ export async function drawCardImage(card: CardImage) {
   await Promise.all([`400 54px ${passFont.family}`, `400 110px ${pixel}`, `700 24px ${pixel}`, `500 30px ${space}`, `700 26px ${space}`, `400 17px ${body}`, `500 18px ${body}`, `500 19px ${mono}`]
     .map((font) => document.fonts.load(font.replace(/,.*$/, "")).catch(() => [])));
   const names = Object.keys(passArt) as (keyof typeof passArt)[];
-  const [photo, ...loaded] = await Promise.all([loadPhoto(photoAt(card.photo, 400)), ...names.map((name) => loadImage(passArt[name].src))]);
-  const art = Object.fromEntries(names.map((name, index) => [name, loaded[index]])) as Record<keyof typeof passArt, HTMLImageElement | null>;
-  if (names.some((name) => !art[name])) throw new Error("art");
+  const loaded = await Promise.all(names.map((name) => loadImage(passArt[name].src)));
+  if (loaded.some((image) => !image)) throw new Error("art");
+  const art = Object.fromEntries(names.map((name, index) => [name, loaded[index]])) as Art;
+  const fonts: Fonts = { pixel, vcr, space, body, mono };
+  return { art, fonts };
+}
 
-  const canvas = document.createElement("canvas");
-  canvas.width = sheetSize.width; canvas.height = sheetSize.height;
-  const g = canvas.getContext("2d");
-  if (!g) throw new Error("canvas");
+/**
+ * Both sides of the card drawn for printing and for a poor connection at the venue, with every measure from the "ID
+ * Card" page at 1:1. The faces' text, art and strip match the web; the punch slot stays empty, as on the printed card.
+ * `front` and `back` draw one side with its trim at the context's origin.
+ */
+function painter(g: CanvasRenderingContext2D, card: CardImage, { art, fonts }: { art: Art; fonts: Fonts }, photo: HTMLImageElement | null) {
+  const { pixel, vcr, space, body, mono } = fonts;
   g.imageSmoothingEnabled = false;
-  const draw = (name: keyof typeof passArt, x: number, y: number, width: number) => g.drawImage(art[name]!, x, y, width, width * passArt[name].height / passArt[name].width);
+  const draw = (name: keyof typeof passArt, x: number, y: number, width: number) => g.drawImage(art[name], x, y, width, width * passArt[name].height / passArt[name].width);
   // Text centred on its CSS line box. `outline` is a stroke in the text's own colour under the fill, the outlined capitals.
   const text = (value: string, x: number, top: number, lineHeight: number, font: string, color: string, spacing = 0, outline = 0) => {
     g.font = font; g.fillStyle = color; g.letterSpacing = `${spacing}px`; g.textBaseline = "middle";
@@ -186,6 +193,17 @@ export async function drawCardImage(card: CardImage) {
     g.textAlign = "center";
   };
 
+  return { front, back, text, body };
+}
+
+/** One member's print sheet (#142): front and back side by side with crop marks and a line under them. */
+export async function drawCardImage(card: CardImage) {
+  const [assets, photo] = await Promise.all([loadAssets(), loadPhoto(photoAt(card.photo, 400))]);
+  const canvas = document.createElement("canvas");
+  canvas.width = sheetSize.width; canvas.height = sheetSize.height;
+  const g = canvas.getContext("2d");
+  if (!g) throw new Error("canvas");
+  const { front, back, text, body } = painter(g, card, assets, photo);
   g.fillStyle = "#fff"; g.fillRect(0, 0, canvas.width, canvas.height);
   for (const [index, drawSide] of [front, back].entries()) {
     const x = sheet.margin + index * (cr80.width + sheet.gap), y = sheet.margin;
@@ -212,4 +230,38 @@ export async function cardImagePng(card: CardImage) {
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png"));
   if (!blob) throw new Error("png");
   return new Blob([withDpi(new Uint8Array(await blob.arrayBuffer()), cr80.dpi)], { type: "image/png" });
+}
+
+/**
+ * Draws cards one by one for the bulk print file (#159), with the same painter as the saved card: fonts and art load
+ * once, then each call fetches one member's photo and returns both sides as pixels with bleed (`cardImage` in
+ * `src/lib/card-sheet.ts`), and whether the photo loaded. The bleed repeats the trim's edge pixels outward, so a cut a
+ * little off shows the card's own colours rather than white.
+ */
+export async function cardSideRenderer() {
+  const assets = await loadAssets();
+  const canvas = document.createElement("canvas");
+  canvas.width = cardImage.width; canvas.height = cardImage.height;
+  const g = canvas.getContext("2d", { willReadFrequently: true });
+  if (!g) throw new Error("canvas");
+  const side = (drawSide: () => void) => {
+    g.fillStyle = "#fff"; g.fillRect(0, 0, canvas.width, canvas.height);
+    g.save(); g.translate(bleed, bleed);
+    g.beginPath(); g.rect(0, 0, cr80.width, cr80.height); g.clip();
+    drawSide();
+    g.restore();
+    // Stretch the outermost column and row of the trim across the bleed, the sides first so the corners fill too.
+    g.imageSmoothingEnabled = false;
+    const right = bleed + cr80.width, bottom = bleed + cr80.height;
+    g.drawImage(canvas, bleed, bleed, 1, cr80.height, 0, bleed, bleed, cr80.height);
+    g.drawImage(canvas, right - 1, bleed, 1, cr80.height, right, bleed, bleed, cr80.height);
+    g.drawImage(canvas, 0, bleed, canvas.width, 1, 0, 0, canvas.width, bleed);
+    g.drawImage(canvas, 0, bottom - 1, canvas.width, 1, 0, bottom, canvas.width, bleed);
+    return g.getImageData(0, 0, canvas.width, canvas.height);
+  };
+  return async (card: CardImage) => {
+    const photo = await loadPhoto(photoAt(card.photo, 400));
+    const { front, back } = painter(g, card, assets, photo);
+    return { front: side(front), back: side(back), photo: Boolean(photo) };
+  };
 }

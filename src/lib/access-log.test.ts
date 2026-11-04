@@ -43,6 +43,13 @@ describe("access log sentences", () => {
     ]);
   });
 
+  it("describes staff issuing a member card for printing, new or renewed for this chapter year", () => {
+    expect([entry("cardIssued", "none", "2627-0004"), entry("cardIssued", "2526-0019", "2627-0005")].map(accessSentence)).toEqual([
+      "Aldio Lisafron menerbitkan kartu anggota Rania Putri dengan nomor 2627-0004.",
+      "Aldio Lisafron menerbitkan kartu anggota Rania Putri untuk tahun chapter ini dengan nomor 2627-0005 (sebelumnya 2526-0019).",
+    ]);
+  });
+
   it("describes door helpers of a gathering, and a gathering that is gone", () => {
     expect([
       entry("gatheringHelper", "off", "on", { gathering: { title: "Kumpul member November" } }),

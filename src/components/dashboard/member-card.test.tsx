@@ -108,6 +108,19 @@ describe("member card page", () => {
     expect([front, back].map((side) => side.querySelector(".cr80-ground") !== null)).toEqual([true, false]);
   });
 
+  it("sets a long name in nameFit's lines within the clear area, as the saved image draws it", () => {
+    mine = { ...card, name: "Dewi Kartika Sari" };
+    render(<MemberCardPage />);
+    const front = screen.getByRole("figure", { name: "Bagian depan" });
+    const name = within(front).getByRole("heading", { name: "Dewi Kartika Sari" });
+    expect([...name.querySelectorAll(".cr80-name-line")].map((line) => line.textContent)).toEqual(["Dewi Kartika", "Sari"]);
+    expect([name.style.getPropertyValue("--size"), name.style.getPropertyValue("--width")]).toEqual(["54", "440"]);
+    // The browser never rewraps it: each line is one unbroken block, and the box is the 440 px clear area.
+    const css = readFileSync("src/components/member-card.css", "utf8");
+    expect(css).toMatch(/\.cr80-name-line \{ display: block; white-space: nowrap; \}/);
+    expect(css).toMatch(/\.cr80-name \{ width: calc\(var\(--width, 440\) \* var\(--u\)\)/);
+  });
+
   it("shows the back full screen for the door, with the name, number and chapter year", async () => {
     render(<MemberCardPage />);
     await userEvent.click(screen.getByRole("button", { name: "Tampilkan QR" }));

@@ -139,7 +139,7 @@ export async function drawCardImage(card: CardImage) {
     } else text(card.name.trim().slice(0, 1).toUpperCase(), mid, y + 4, 192, `400 110px ${pixel}`, ink);
     y += 200 + 12;
     const name = nameFit(card.name);
-    for (const lineText of name.lines) { text(lineText, mid, y, name.px * vcrLine, `400 ${name.px}px ${vcr}`, ink, name.px * .02, name.px * .08); y += name.px * vcrLine; }
+    for (const lineText of name.lines) { text(lineText.toUpperCase(), mid, y, name.px * vcrLine, `400 ${name.px}px ${vcr}`, ink, name.px * .02, name.px * .08); y += name.px * vcrLine; }
     y += 12;
     text(card.number.toUpperCase(), mid, y, 38 * vcrLine, `400 38px ${vcr}`, ink, 38 * .06, 38 * .08);
     // The role bar near the bottom, over the landmarks: the division's colour, the role line only, and a hard shadow

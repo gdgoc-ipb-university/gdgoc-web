@@ -31,7 +31,9 @@
 .cr80-photo { flex: none; box-sizing: border-box; width: calc(200 * var(--u)); height: calc(200 * var(--u)); background: #e6eddc; border: calc(4 * var(--u)) solid var(--ink); box-shadow: calc(6 * var(--u)) calc(6 * var(--u)) 0 var(--ink); }
 .cr80-photo .member-card-photo { display: grid; place-items: center; width: 100%; height: 100%; object-fit: cover; border: 0; background: #e6eddc; font: 400 calc(110 * var(--u))/1 var(--font-pixel), monospace; }
 .cr80-id { display: flex; flex-direction: column; align-items: center; gap: calc(12 * var(--u)); }
-.cr80-name { width: 100%; margin: 0; font: 400 calc(var(--size, 54) * var(--u))/.98 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .02em; overflow-wrap: anywhere; }
+/* The name in the lines nameFit gives (src/lib/member-card.ts), the same as the saved image: within the 440 px clear area between the landmarks, centred, never rewrapped by the browser. */
+.cr80-name { width: calc(var(--width, 440) * var(--u)); max-width: 100%; margin: 0; font: 400 calc(var(--size, 54) * var(--u))/.98 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .02em; }
+.cr80-name-line { display: block; white-space: nowrap; }
 .cr80 .cr80-number { font: 400 calc(38 * var(--u))/.98 var(--font-vcr), var(--font-pixel), monospace; letter-spacing: .06em; }
 .cr80[data-side="back"] .cr80-number { font-size: calc(42 * var(--u)); }
 /* The role bar's hard shadow is cut at the column's right edge, as on the Figma page. */

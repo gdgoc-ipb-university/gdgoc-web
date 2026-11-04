@@ -2,7 +2,7 @@
 
 import localFont from "next/font/local";
 import Image from "next/image";
-import { useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, useId, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { chapterPeriod } from "@/lib/chapter";
 import { cr80, divisionAccent, nameFit, photoAt } from "@/lib/member-card";
 import { memberTagLabel, type MemberType } from "@/lib/onboarding";
@@ -147,7 +147,9 @@ export function MemberCardFront({ card, stamp }: { card: Partial<CardFace>; stam
       <CardHead side="front" period={card.period} />
       <div className="cr80-id" style={at(photo ? faceLayout.front.id : faceLayout.front.name)}>
         {photo && card.name && <span className="cr80-photo"><CardPhoto name={card.name} photo={card.photo ?? null} size={200} /></span>}
-        {card.name && name && <h2 className="cr80-name" style={{ "--size": name.px } as CSSProperties}>{card.name}</h2>}
+        {card.name && name && <h2 className="cr80-name" style={{ "--size": name.px, "--width": name.width } as CSSProperties}>
+          {name.lines.map((line, index) => <Fragment key={index}>{index > 0 && " "}<span className="cr80-name-line">{line}</span></Fragment>)}
+        </h2>}
         {card.number && <p className="cr80-number">{card.number}</p>}
         {stamp && <p className="cr80-stamp" data-stamp={stamp} aria-hidden="true"><PixelIcon name={stamp === "valid" ? "check" : "close"} size={26} />{stamp === "valid" ? "Aktif" : "Tidak berlaku"}</p>}
       </div>

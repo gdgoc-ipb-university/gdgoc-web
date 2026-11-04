@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConvex, useMutation } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { readableError } from "@/lib/draft-session";
 import { batches, byName, excluded, PICKED_PARAM, photoSourceLabels, printSummary, type PrintCandidate } from "@/lib/card-print";
 import { readListState, type MemberFilters } from "@/lib/member-table";
+import { cardPath } from "@/lib/member-card";
+import { manifestCsv, printFileName } from "@/lib/card-sheet";
+import { siteUrl } from "@/lib/site";
+import type { PrintCard } from "./card-pdf";
 import { LoadingPanel } from "../appreciation/shared";
 import { PixelIcon } from "../pixel-icons";
 import { ConfirmDialog } from "./data-table";
@@ -101,10 +105,72 @@ export function PrintSummary({ rows, onIssued }: { rows: PrintCandidate[]; onIss
       <h2 id="print-excluded">Diblokir atau nonaktif</h2>
       <p className="app-small">QR mereka tidak berlaku saat dipindai, jadi kartunya tidak dicetak{printableExcluded ? " kecuali kamu memilih tetap mencetaknya" : ""}. Nomor tidak diterbitkan untuk mereka.</p>
       <NameList rows={summary.excluded} detail={blockedLabel} />
-      {printableExcluded > 0 && <label className="check-row card-print-include"><input type="checkbox" checked={includeExcluded} onChange={(event) => setIncludeExcluded(event.target.checked)} />
+      {printableExcluded > 0 && <label className="card-print-include"><input type="checkbox" checked={includeExcluded} onChange={(event) => setIncludeExcluded(event.target.checked)} />
         <span>Tetap cetak {printableExcluded} kartu yang diblokir atau nonaktif</span></label>}
     </section>}
+    {summary.printing.length > 0 && <PrintOutput rows={summary.printing} />}
   </>;
+}
+
+type Output = { pdf: string; csv: string; size: number; cards: number; missing: number; at: number };
+const sizeLabel = (bytes: number) => `${(bytes / 1048576).toLocaleString("id-ID", { maximumFractionDigits: 1 })} MB`;
+
+/**
+ * Draws the PDF and the manifest in the browser (#159). The cards with their tokens are read now, in batches, so a QR
+ * replaced after the summary prints current; the drawing code loads only when staff press "Buat PDF".
+ */
+function PrintOutput({ rows }: { rows: PrintCandidate[] }) {
+  const convex = useConvex();
+  const [understood, setUnderstood] = useState(false);
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  const [output, setOutput] = useState<Output | null>(null);
+  const [error, setError] = useState("");
+  const cancelled = useRef(false);
+  useEffect(() => () => { if (output) { URL.revokeObjectURL(output.pdf); URL.revokeObjectURL(output.csv); } }, [output]);
+
+  async function build() {
+    setError(""); setOutput(null); cancelled.current = false;
+    setProgress({ done: 0, total: rows.length });
+    try {
+      const read = (await Promise.all(batches(rows).map((part) => convex.query(api.cards.printCards, { ownerIds: part.map((row) => row.ownerId) })))).flat();
+      const byOwner = new Map(read.map((card) => [card.ownerId, card]));
+      const cards: PrintCard[] = rows.flatMap((row) => {
+        const card = byOwner.get(row.ownerId);
+        return card ? [{ ...card, url: `${siteUrl}${cardPath(card.token)}` }] : [];
+      });
+      const { buildCardPdf } = await import("./card-pdf");
+      const { pdf, manifest } = await buildCardPdf(cards, (done, total) => {
+        if (cancelled.current) throw new DOMException("Dibatalkan", "AbortError");
+        setProgress({ done, total });
+      });
+      const now = Date.now();
+      setOutput({
+        pdf: URL.createObjectURL(pdf), csv: URL.createObjectURL(new Blob([manifestCsv(manifest)], { type: "text/csv;charset=utf-8" })),
+        size: pdf.size, cards: cards.length, missing: rows.length - cards.length, at: now,
+      });
+    } catch (cause) {
+      if (!(cause instanceof DOMException && cause.name === "AbortError")) setError(cause instanceof Error && cause.message === "art" ? "Gambar kartu belum bisa dibuat di browser ini. Coba Chrome atau Firefox terbaru." : readableError(cause));
+    } finally { setProgress(null); }
+  }
+
+  return <section className="app-panel card-print-section" aria-labelledby="print-output">
+    <h2 id="print-output">Buat file cetak</h2>
+    <p className="app-small">PDF A4: setiap lembar kartu depan diikuti lembar kartu belakang. Cetak dengan skala 100% (ukuran sebenarnya), bolak-balik, dibalik di sisi panjang. Coba satu lembar dulu, lalu terawangkan ke cahaya: bagian belakang harus tepat di balik depannya.</p>
+    <label className="card-print-include"><input type="checkbox" checked={understood} disabled={progress !== null} onChange={(event) => setUnderstood(event.target.checked)} />
+      <span>Saya paham PDF ini memuat QR asli setiap anggota yang dicetak. Jika anggota mengganti QR-nya nanti, kartu cetaknya tidak berlaku lagi dan perlu dicetak ulang.</span></label>
+    {progress ? <div className="card-print-progress">
+      <label htmlFor="print-progress">Menggambar kartu {progress.done} dari {progress.total}…</label>
+      <progress id="print-progress" max={progress.total} value={progress.done} />
+      <button type="button" className="dash-tool-button" onClick={() => { cancelled.current = true; }}>Batalkan</button>
+    </div>
+      : <button type="button" className="dash-tool-button" data-primary disabled={!understood} onClick={() => void build()}><PixelIcon name="file" size={18} />Buat PDF {rows.length} kartu</button>}
+    {error && <p className="field-error" role="alert">{error}</p>}
+    {output && <div className="card-print-files" role="status">
+      <p>{output.cards} kartu siap{output.missing ? `, ${output.missing} dilewati karena kartunya tidak lagi tersedia` : ""}.</p>
+      <a className="dash-tool-button" data-primary href={output.pdf} download={printFileName(output.at, "pdf")}><PixelIcon name="download" size={18} />Unduh PDF ({sizeLabel(output.size)})</a>
+      <a className="dash-tool-button" href={output.csv} download={printFileName(output.at, "csv")}><PixelIcon name="download" size={18} />Unduh manifes CSV</a>
+    </div>}
+  </section>;
 }
 
 /** Issues this chapter year's number to everyone listed, in name order, through `cards.issueFor`. */

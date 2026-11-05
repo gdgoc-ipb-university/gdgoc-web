@@ -1,4 +1,4 @@
-import { act, cleanup, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { about } from "@/lib/about";
 import { activationBand, storyQuery } from "@/lib/journey";
@@ -7,13 +7,17 @@ import { TigaMisi } from "./missions";
 import { PilihJalurmu } from "./programs";
 import { YearTimeline } from "./year-timeline";
 
+const motion = vi.hoisted(() => ({ animated: false }));
+vi.mock("@/components/experience-provider", () => ({ useExperience: () => ({ animated: motion.animated }) }));
+
 type Observed = { callback: IntersectionObserverCallback; options?: IntersectionObserverInit; targets: Element[] };
 let observers: Observed[] = [];
 
 function stubBrowser({ wide }: { wide: boolean }) {
   observers = [];
-  // jsdom has no Web Animations; `Reveal` only cancels animations with it.
+  // jsdom has no Web Animations (which `Reveal` only cancels) and no ResizeObserver.
   Element.prototype.getAnimations ??= () => [];
+  vi.stubGlobal("ResizeObserver", class { observe() {} disconnect() {} });
   vi.stubGlobal("matchMedia", (query: string) => ({
     matches: query === storyQuery && wide,
     media: query,
@@ -44,6 +48,7 @@ function cross(observed: Observed, inBand: Record<number, boolean>) {
 afterEach(() => {
   cleanup();
   vi.unstubAllGlobals();
+  motion.animated = false;
 });
 
 describe("mission scrollytelling", () => {
@@ -151,5 +156,65 @@ describe("year timeline", () => {
     await frame();
     expect(container.querySelector(".year-today")).toBeNull();
     expect(Array.from(container.querySelectorAll<HTMLElement>(".year-track li"), (item) => item.dataset.status)).toEqual(["done", "done"]);
+  });
+});
+
+describe("the angkot", () => {
+  const frame = () => act(async () => { await new Promise((resolve) => requestAnimationFrame(() => resolve(null))); });
+  let scroll = 0;
+
+  /** A 900 px window over a journey 1000 px down the page, with two 1000 px wide chapters under an 80 px start line. */
+  function renderRoad() {
+    stubBrowser({ wide: true });
+    Object.defineProperty(window, "innerHeight", { configurable: true, value: 900 });
+    const { container } = render(
+      <Journey>
+        <section data-chapter data-side="right" />
+        <section data-chapter data-side="left" />
+      </Journey>,
+    );
+    const rect = (top: number, height: number) => () => ({ top: top - scroll, left: 20, width: 1000, height }) as DOMRect;
+    const [first, second] = container.querySelectorAll<HTMLElement>("[data-chapter]");
+    container.querySelector<HTMLElement>(".journey")!.getBoundingClientRect = () => ({ top: 1000 - scroll, left: 0 }) as DOMRect;
+    first.getBoundingClientRect = rect(1080, 800);
+    second.getBoundingClientRect = rect(1880, 2000);
+    return container.querySelector<HTMLElement>(".angkot")!;
+  }
+
+  it("is decorative: hidden from assistive tech, with an empty alt", () => {
+    const angkot = renderRoad();
+    expect(angkot.getAttribute("aria-hidden")).toBe("true");
+    expect(angkot.querySelector("img")?.getAttribute("alt")).toBe("");
+  });
+
+  it("with reduced motion, waits at the start of the road and ignores scrolling", async () => {
+    scroll = 0;
+    const angkot = renderRoad();
+    await frame();
+    expect(angkot.style.transform).toBe("translate(34px, 94px)");
+    expect(angkot.dataset.heading).toBe("right");
+    scroll = 1500;
+    fireEvent.scroll(window);
+    await frame();
+    expect(angkot.style.transform).toBe("translate(34px, 94px)");
+  });
+
+  it("with motion, drives along the road with the reader's eye line", async () => {
+    motion.animated = true;
+    scroll = 0;
+    const angkot = renderRoad();
+    await frame();
+    expect(angkot.style.transform).toBe("translate(34px, 94px)");
+    // The eye line (55% of 900 px) is 1495 px down the page: 415 px into the first chapter, already down its side.
+    scroll = 1000;
+    fireEvent.scroll(window);
+    await frame();
+    expect(angkot.dataset.heading).toBe("down");
+    expect(angkot.style.transform).toMatch(/^translate\(1006px, \d+px\)$/);
+    scroll = 2000;
+    fireEvent.scroll(window);
+    await frame();
+    expect(angkot.dataset.heading).toBe("down");
+    expect(angkot.style.transform).toMatch(/^translate\(34px, \d+px\)$/);
   });
 });

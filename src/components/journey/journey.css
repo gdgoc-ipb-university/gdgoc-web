@@ -949,6 +949,44 @@
   background: var(--checker) 0 0 / 16px 16px;
 }
 
+/*
+ * The angkot that drives along the road. `Journey` writes its position; it is hidden until then (and with no
+ * script), turned to face the way it is driving, and never drawn over the badges.
+ */
+.angkot {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  width: 64px;
+  margin: -19px 0 0 -32px;
+  pointer-events: none;
+  visibility: hidden;
+}
+.angkot[data-heading] {
+  visibility: visible;
+}
+.angkot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(2px 2px 0 #172d4340);
+}
+.angkot[data-heading="right"] img {
+  transform: scaleX(-1);
+}
+.angkot[data-heading="down"] img {
+  transform: rotate(-90deg);
+}
+[data-motion="on"] .angkot img {
+  animation: angkot-idle 0.5s steps(2) infinite;
+}
+@keyframes angkot-idle {
+  50% {
+    translate: 0 -1px;
+  }
+}
+
 @media (max-width: 1050px) {
   .chapter {
     padding-bottom: 88px;
@@ -997,6 +1035,9 @@
 }
 
 @media (max-width: 760px) {
+  .angkot {
+    display: none;
+  }
   .journey {
     --road: 12px;
     --lane: 14px;

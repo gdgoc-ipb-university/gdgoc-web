@@ -61,6 +61,18 @@ The primary action is “Gabung member.” Its destination is the [official GDGo
 
 The closing invitation and footer share the same warm paper background as the landing. A small pixel garden, blue membership button, chapter identity, and navigation form one continuous composition. The dark footer variation was discarded at the user's direction. Internal art-direction review links are omitted from the public profile footer.
 
+## Landing journey (Perjalanan member) — November 2026
+
+Between the hero and the footer the landing is one scroll journey (#165), direction A of three Figma directions. A pixel road winds down the page through five chapters; each chapter draws road along its top edge and down one side, and the sides alternate, so the pieces join. The keyword strip is the start line, a checkered finish line hands off to the footer, and each chapter has a numbered badge on the road. On phones the road is one lane down the left edge. The hero, the dino panel (`DinoPlayground`) and the footer are unchanged, apart from the hero's eyebrow label, which was removed.
+
+1. **Kenalan** (`#community`): the vision from `about.ts` beside the dino panel.
+2. **Tiga misi** (`#misi`): scrollytelling. On a wide screen without reduced motion the missions scroll beside a sticky panel; an IntersectionObserver band across the middle of the screen picks the active step, and the panel swaps scenes with a stepped 4 × 4 dither mask while the mission's icon and colour step into its frame. Otherwise each mission shows its scene inline. The layout switch is a media query, so the prerendered HTML is already right.
+3. **Pilih jalurmu** (`#explore`): the programs as level-select cards. On wide screens three bands over the cards cross the middle of the screen in turn, and the card in the middle lifts with a "pilih" cursor.
+4. **Setahun bersama** (`#setahun`): Catalyst and Tech League on one ruler drawn to scale, rendered from `catalyst.ts` and `tech-league.ts`: each Catalyst item, and one step per Tech League phase (its page lists every item), with overlapping steps stacked in rows. Today and each milestone's status (done, current, upcoming, in WIB) are read on the client after hydration, so the page stays prerendered.
+5. **Dari IPB untuk Bogor** (`#bogor`): seven landmarks on one ground line, then the "Siap mulai perjalananmu?" band.
+
+The pixel angkot drives along the road with the reader's eye line (55% down the viewport), updated in `requestAnimationFrame` from native scroll, which Lenis drives too. It is `aria-hidden`, passes under the badges, stays at the start with reduced motion, and is hidden on phones. The pure parts (step activation, timeline status and scale, the angkot's road position) are in `src/lib/journey.ts`; the only client code is `Journey` and `YearTimeline`. Scenes and places are the Figma pixel art in `public/landing/` (svgo, `shape-rendering="crispEdges"`), with the member pass's art reused from `public/cards/`.
+
 ## Motion and rendering
 
 The new campus preloader uses a small pixel Dino, four Google-color loading blocks, and the same warm paper and fonts as the site. It waits for the actual first rendered frame, including the foreground pass, before a short fade. It has no simulated percentage or mandatory minimum delay. A native modal dialog contains keyboard focus during initialization; scroll and focus are restored on exit. Failed WebGL falls back to the reference image, with a 12-second escape for a stalled import/GPU. The first frame renders even when the hero is initially offscreen because the page was opened at a section anchor.

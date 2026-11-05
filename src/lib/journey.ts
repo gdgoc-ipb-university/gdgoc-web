@@ -125,3 +125,33 @@ export function laneRows(extents: readonly { left: number; width: number }[], mi
   }
   return rows;
 }
+
+/** A chapter's box inside the journey, in px from the journey's top left, and the side its road runs down. */
+export type RoadChapter = { top: number; left: number; width: number; height: number; side: "left" | "right" };
+export type RoadPoint = { x: number; y: number; heading: "left" | "right" | "down" };
+
+/**
+ * Where the angkot is on the road when the reader's eye line is `line` px below the journey's top. Each chapter's road
+ * runs across its top (entering on the side away from `side`) and down `side`. The angkot crosses the top while the
+ * line moves `turn` px into the chapter (or a quarter of a short chapter), so it never falls far behind the reader,
+ * then drives down with the line and meets it at the chapter's bottom. It waits at the start before the first
+ * chapter and stops one road width short of the finish line after the last.
+ */
+export function roadPoint(chapters: readonly RoadChapter[], road: number, line: number, turn = 320): RoadPoint {
+  const half = road / 2;
+  const entry = (chapter: RoadChapter) => (chapter.side === "right" ? chapter.left + half : chapter.left + chapter.width - half);
+  const exit = (chapter: RoadChapter) => (chapter.side === "right" ? chapter.left + chapter.width - half : chapter.left + half);
+  const across = (chapter: RoadChapter) => (chapter.side === "right" ? "right" : "left");
+  const first = chapters[0];
+  if (line <= first.top) return { x: entry(first), y: first.top + half, heading: across(first) };
+  const index = chapters.findIndex((chapter) => line < chapter.top + chapter.height);
+  const chapter = index < 0 ? chapters[chapters.length - 1] : chapters[index];
+  const into = index < 0 ? chapter.height : line - chapter.top;
+  const crossing = Math.min(turn, chapter.height / 4);
+  if (into < crossing) {
+    return { x: entry(chapter) + ((exit(chapter) - entry(chapter)) * into) / crossing, y: chapter.top + half, heading: across(chapter) };
+  }
+  const bottom = chapter.top + chapter.height - (chapter === chapters[chapters.length - 1] ? road : 0);
+  const y = chapter.top + half + ((bottom - chapter.top - half) * (into - crossing)) / (chapter.height - crossing);
+  return { x: exit(chapter), y, heading: "down" };
+}

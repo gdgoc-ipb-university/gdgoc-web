@@ -327,6 +327,9 @@ summary:focus-visible {
 .league-timeline { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; border-left: 2px solid var(--line); }
 .league-timeline li { display: grid; grid-template-columns: minmax(0, 260px) minmax(0, 1fr); gap: 16px; padding: 12px 0 12px 18px; }
 .league-timeline time { font-family: var(--font-mono), monospace; font-size: 13px; color: var(--blue); }
+.league-timeline small { display: block; margin-top: 2px; font-size: 13px; color: var(--muted); }
+.league-phase + .league-phase { margin-top: 24px; }
+.league-phase h3 { margin: 0 0 8px; font: 500 12px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
 .league-note { margin-top: 12px; font-size: 13px; color: var(--muted); }
 .league-faq { display: grid; gap: 18px; margin: 0; }
 .league-faq dt { font-weight: 600; }

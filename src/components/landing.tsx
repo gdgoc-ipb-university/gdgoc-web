@@ -7,7 +7,9 @@ import { Arrow } from "@/components/icons";
 import { JoinFooter } from "@/components/join-footer";
 import { DariIpbUntukBogor } from "@/components/journey/bogor";
 import { Chapter } from "@/components/journey/chapter";
+import { Journey } from "@/components/journey/journey";
 import { Kenalan, StartLine } from "@/components/journey/kenalan";
+import { TigaMisi } from "@/components/journey/missions";
 import "@/components/journey/journey.css";
 import { catalyst } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
@@ -57,10 +59,11 @@ export function Landing() {
       <Header />
       <main>
         <Hero />
-        <div className="journey">
+        <Journey>
           <StartLine />
           <Kenalan />
-          <Chapter id="explore" number="03" label="Pilih jalurmu" side="left" className="chapter-programs">
+          <TigaMisi />
+          <Chapter id="explore" number="03" label="Pilih jalurmu" side="right" className="chapter-programs">
             <Reveal className="section-top">
               <div>
                 <h2 id="explore-heading">
@@ -106,7 +109,7 @@ export function Landing() {
             </Reveal>
           </Chapter>
           <DariIpbUntukBogor />
-        </div>
+        </Journey>
       </main>
       <JoinFooter />
     </>

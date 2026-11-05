@@ -30,6 +30,34 @@ function followStory(root: HTMLElement) {
   return () => observer.disconnect();
 }
 
+/**
+ * Follows the program chapter: three invisible bands stacked over the cards cross the middle of the screen in turn,
+ * and the card for the band in the middle is written to `data-selected` (none once the chapter has passed).
+ */
+function followLevels(root: HTMLElement) {
+  const levels = root.querySelector<HTMLElement>("[data-levels]");
+  const bands = Array.from(levels?.querySelectorAll<HTMLElement>(".level-band") ?? []);
+  if (!levels || bands.length === 0) return () => {};
+  const inBand = bands.map(() => false);
+  let selected = -1;
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) inBand[bands.indexOf(entry.target as HTMLElement)] = entry.isIntersecting;
+      const next = nextActiveStep(inBand, selected, false);
+      if (next === selected) return;
+      selected = next;
+      if (next < 0) delete levels.dataset.selected;
+      else levels.dataset.selected = String(next);
+    },
+    { rootMargin: activationBand },
+  );
+  bands.forEach((band) => observer.observe(band));
+  return () => {
+    observer.disconnect();
+    delete levels.dataset.selected;
+  };
+}
+
 /** The journey's wrapper: server-rendered chapters inside, the scroll effects wired up once it hydrates. */
 export function Journey({ children }: { children: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -40,7 +68,12 @@ export function Journey({ children }: { children: React.ReactNode }) {
     let stop = () => {};
     const sync = () => {
       stop();
-      stop = wide.matches ? followStory(root) : () => {};
+      if (!wide.matches) {
+        stop = () => {};
+        return;
+      }
+      const stops = [followStory(root), followLevels(root)];
+      stop = () => stops.forEach((each) => each());
     };
     sync();
     wide.addEventListener("change", sync);

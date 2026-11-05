@@ -453,6 +453,166 @@
   }
 }
 
+/* Chapter 3: Pilih jalurmu, the programs as level-select cards. */
+.chapter-head-split {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 32px;
+  max-width: none;
+}
+.chapter-head-split .chapter-title {
+  margin-bottom: 0;
+}
+.chapter-head-split .chapter-lead {
+  max-width: 340px;
+  font-size: 14px;
+}
+.levels {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  margin-top: 72px;
+}
+.level-bands {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  pointer-events: none;
+}
+.level {
+  --accent: var(--blue);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  box-shadow: 5px 5px 0 var(--ink);
+  transition:
+    translate 0.24s steps(3),
+    box-shadow 0.24s steps(3);
+}
+.level[data-color="green"] {
+  --accent: var(--green);
+}
+.level[data-color="red"] {
+  --accent: var(--red);
+}
+.level-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--ink);
+}
+.level-number {
+  padding: 0 16px;
+  font: 500 11px/1 var(--font-mono), monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.level-glyph {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 44px;
+  border-left: 1px solid var(--ink);
+  background: var(--accent);
+  color: #fff;
+}
+.level-scene {
+  display: block;
+  border-bottom: 1px solid var(--ink);
+  background: #f4efd9;
+}
+.level-scene img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.level-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  padding: 22px 24px;
+}
+.level-body .eyebrow {
+  margin-bottom: 10px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.level-body h3 {
+  margin-bottom: 12px;
+  font-family: var(--font-pixel), monospace;
+  font-size: clamp(24px, 2.1vw, 30px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.level-text {
+  margin-bottom: 24px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.8;
+}
+.level-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 500;
+}
+.level-cursor {
+  position: absolute;
+  bottom: calc(100% + 14px);
+  left: 50%;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px 5px 7px;
+  border: 1px solid var(--ink);
+  background: var(--yellow);
+  box-shadow: 2px 2px 0 var(--ink);
+  font: 500 10px/1 var(--font-mono), monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  translate: -50% 0;
+}
+.level:hover,
+.level:focus-visible,
+.levels[data-selected="0"] .level[data-level="0"],
+.levels[data-selected="1"] .level[data-level="1"],
+.levels[data-selected="2"] .level[data-level="2"] {
+  translate: 0 -8px;
+  box-shadow: 8px 13px 0 var(--accent);
+}
+.level:hover .level-cursor,
+.level:focus-visible .level-cursor,
+.levels[data-selected="0"] .level[data-level="0"] .level-cursor,
+.levels[data-selected="1"] .level[data-level="1"] .level-cursor,
+.levels[data-selected="2"] .level[data-level="2"] .level-cursor {
+  display: flex;
+  animation: level-cursor 0.8s steps(2) infinite;
+}
+.levels[data-selected="0"] .level[data-level="0"] .level-scene img,
+.levels[data-selected="1"] .level[data-level="1"] .level-scene img,
+.levels[data-selected="2"] .level[data-level="2"] .level-scene img {
+  -webkit-mask-size: 24px 24px;
+  mask-size: 24px 24px;
+  animation: story-dither 0.42s both;
+}
+.chapter-more {
+  margin-top: 28px;
+}
+@keyframes level-cursor {
+  50% {
+    translate: -50% -4px;
+  }
+}
+
 /* Chapter 5: Dari IPB untuk Bogor. */
 .chapter-head {
   max-width: 640px;
@@ -564,8 +724,29 @@
   .chapter {
     padding-bottom: 88px;
   }
+  .levels {
+    gap: 16px;
+  }
+  .level-body {
+    padding: 18px;
+  }
   .skyline-place figcaption {
     font-size: 9px;
+  }
+}
+
+@media (max-width: 960px) {
+  .chapter-head-split {
+    display: block;
+  }
+  .chapter-head-split .chapter-title {
+    margin-bottom: 20px;
+  }
+  .levels {
+    grid-template-columns: 1fr;
+    gap: 28px;
+    max-width: 560px;
+    margin-top: 48px;
   }
 }
 

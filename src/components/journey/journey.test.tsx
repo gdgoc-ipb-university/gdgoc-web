@@ -4,6 +4,7 @@ import { about } from "@/lib/about";
 import { activationBand, storyQuery } from "@/lib/journey";
 import { Journey } from "./journey";
 import { TigaMisi } from "./missions";
+import { PilihJalurmu } from "./programs";
 
 type Observed = { callback: IntersectionObserverCallback; options?: IntersectionObserverInit; targets: Element[] };
 let observers: Observed[] = [];
@@ -87,5 +88,31 @@ describe("mission scrollytelling", () => {
     expect(observers).toHaveLength(0);
     expect(container.querySelectorAll(".story-step .story-inline img")).toHaveLength(3);
     expect(container.querySelector<HTMLElement>("[data-story]")?.dataset.prev).toBeUndefined();
+  });
+});
+
+describe("program level select", () => {
+  it("selects the card whose band crosses the middle of the screen, and none once the chapter has passed", () => {
+    stubBrowser({ wide: true });
+    const { container } = render(<Journey><PilihJalurmu /></Journey>);
+    const levels = container.querySelector<HTMLElement>("[data-levels]")!;
+    const observed = observers.find((each) => each.targets[0]?.classList.contains("level-band"))!;
+    expect(observed.targets).toHaveLength(3);
+    expect(levels.dataset.selected).toBeUndefined();
+    cross(observed, { 0: true });
+    expect(levels.dataset.selected).toBe("0");
+    cross(observed, { 0: false, 1: true });
+    expect(levels.dataset.selected).toBe("1");
+    cross(observed, { 1: false, 2: false });
+    expect(levels.dataset.selected).toBeUndefined();
+  });
+
+  it("keeps every program's link and the link to all programs", () => {
+    stubBrowser({ wide: false });
+    render(<Journey><PilihJalurmu /></Journey>);
+    expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
+      "/program/catalyst", "/program/tech-league", "/program/tech-support", "/program",
+    ]);
+    expect(observers).toHaveLength(0);
   });
 });

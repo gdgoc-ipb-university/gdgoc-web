@@ -32,8 +32,11 @@ export function nextActiveStep(inBand: readonly boolean[], current: number, keep
   return next >= 0 ? next : keep ? current : -1;
 }
 
-/** A dated step of a program, as `catalyst.timeline` and `techLeague.timeline` list them (YYYY-MM-DD, WIB). */
-export type Milestone = { readonly label: string; readonly start: string; readonly end?: string };
+/**
+ * A dated step of a program, as `catalyst.timeline` and `techLeague.timeline` list them (YYYY-MM-DD, WIB). Tech
+ * League's items also name the `phase` they belong to.
+ */
+export type Milestone = { readonly label: string; readonly start: string; readonly end?: string; readonly phase?: string };
 export type MilestoneStatus = "done" | "current" | "upcoming";
 
 const day = 86_400_000;
@@ -85,4 +88,40 @@ export function milestoneExtent(span: { start: number; end: number }, milestone:
   const from = spanPosition(span, startOfDay(milestone.start));
   const to = spanPosition(span, startOfDay(milestone.end ?? milestone.start) + day);
   return { left: from, width: to - from };
+}
+
+/**
+ * The steps a track shows on the landing. A timeline that names phases (Tech League) shows one step per phase, from
+ * its first item's start to its last item's end, in the order the phases first appear; one without (Catalyst) shows
+ * each item.
+ */
+export function timelineSteps(milestones: readonly Milestone[]): Milestone[] {
+  const groups = new Map<string, Milestone[]>();
+  for (const milestone of milestones) {
+    const key = milestone.phase ?? milestone.label;
+    groups.set(key, [...(groups.get(key) ?? []), milestone]);
+  }
+  return Array.from(groups, ([label, items]) => {
+    const start = items.map((item) => item.start).sort()[0];
+    const end = items.map((item) => item.end ?? item.start).sort()[items.length - 1];
+    return end === start ? { label, start } : { label, start, end };
+  });
+}
+
+/**
+ * Which row of a lane each step sits in so none overlap: steps are drawn at least `minWidth` wide (a share of the
+ * span), and each takes the first row that is clear by the time it starts.
+ */
+export function laneRows(extents: readonly { left: number; width: number }[], minWidth: number): number[] {
+  const order = extents.map((_, index) => index).sort((a, b) => extents[a].left - extents[b].left);
+  const ends: number[] = [];
+  const rows: number[] = [];
+  for (const index of order) {
+    const { left, width } = extents[index];
+    let row = ends.findIndex((end) => end <= left);
+    if (row < 0) row = ends.length;
+    ends[row] = left + Math.max(width, minWidth);
+    rows[index] = row;
+  }
+  return rows;
 }

@@ -662,10 +662,11 @@
 }
 .year-lane {
   --accent: var(--blue);
+  --row: 34px;
   position: relative;
-  height: 26px;
+  height: calc(var(--rows, 1) * var(--row) - 8px);
   margin-top: 18px;
-  background: linear-gradient(var(--line), var(--line)) 0 50% / 100% 2px no-repeat;
+  background: repeating-linear-gradient(transparent 0 12px, var(--line) 12px 14px, transparent 14px var(--row));
 }
 .year-bar,
 .year-dot {
@@ -683,11 +684,8 @@
 .year-lane[data-color="green"] :is(.year-bar, .year-dot) {
   color: var(--ink);
 }
-.year-dot {
-  translate: -50% 0;
-}
 .year-lane :is(.year-bar, .year-dot)[data-status="upcoming"] {
-  background: var(--paper);
+  background: color-mix(in srgb, var(--accent) 16%, var(--paper));
   color: var(--ink);
 }
 .year-lane :is(.year-bar, .year-dot)[data-status="done"] {
@@ -767,6 +765,9 @@
 }
 .year-track h3 a:hover {
   color: var(--blue);
+}
+.year-track .text-link {
+  margin-top: 14px;
 }
 .year-track ol {
   margin: 0;

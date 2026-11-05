@@ -25,6 +25,8 @@ export const accessChange = v.union(
   v.literal("photo"),
   // Staff made a member a mentor of one cohort role or removed them ("off" → role key, role key → "off").
   v.literal("cohortMentor"),
+  // Staff issued a member's card for the chapter year from the print page (the old number or "none" → the new one).
+  v.literal("cardIssued"),
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));

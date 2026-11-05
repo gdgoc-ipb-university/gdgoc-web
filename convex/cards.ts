@@ -1,14 +1,17 @@
 import { ConvexError, v } from "convex/values";
+import { paginationOptsValidator } from "convex/server";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { authComponent } from "./auth";
 import { dashboardAccess, isActive, requireMember, requireStaff, roleOf } from "./access";
 import { logAccess } from "./accessLog";
 import { photoUrl } from "./photos";
+import { filterFacts, filtersValidator, ownerIds } from "./dashboard";
 import { newNonce } from "./bogorRunToken";
 import { chapterPeriod, inChapterPeriod } from "../src/lib/chapter";
 import { runsToday } from "../src/lib/gathering";
 import { cardNumber, cardPrefix, cardTokenPattern, type CardStatus } from "../src/lib/member-card";
+import { matchesFilters, noFilters } from "../src/lib/member-table";
 
 async function cardOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
   return ctx.db.query("memberCards").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
@@ -31,6 +34,17 @@ async function nextNumber(ctx: MutationCtx) {
   if (counter) await ctx.db.patch(counter._id, { issued });
   else await ctx.db.insert("cardCounters", { period: chapterPeriod.year, issued });
   return cardNumber(cardPrefix(), issued);
+}
+
+/**
+ * Gives an account this chapter year's card: the next number and a new token, on the card it has from an earlier year or
+ * on a new one. Callers check first that it has no card of this year.
+ */
+async function issue(ctx: MutationCtx, ownerId: string, card: Doc<"memberCards"> | null) {
+  const fields = { period: chapterPeriod.year, number: await nextNumber(ctx), token: newNonce(), issuedAt: Date.now(), reissuedAt: undefined };
+  if (card) await ctx.db.patch(card._id, fields);
+  else await ctx.db.insert("memberCards", { ownerId, ...fields });
+  return fields.number;
 }
 
 type Holder = { profile: Doc<"memberProfiles"> | null; user: { email: string; emailVerified: boolean; image?: string | null } | null };
@@ -79,9 +93,7 @@ export const ensure = mutation({
     const { user } = await requireMember(ctx);
     const card = await cardOf(ctx, user._id);
     if (card?.period === chapterPeriod.year) return;
-    const fields = { period: chapterPeriod.year, number: await nextNumber(ctx), token: newNonce(), issuedAt: Date.now(), reissuedAt: undefined };
-    if (card) await ctx.db.patch(card._id, fields);
-    else await ctx.db.insert("memberCards", { ownerId: user._id, ...fields });
+    await issue(ctx, user._id, card);
   },
 });
 
@@ -152,5 +164,101 @@ export const setRevoked = mutation({
     if (Boolean(card.revokedAt) === revoked) return;
     await ctx.db.patch(card._id, revoked ? { revokedAt: Date.now(), revokedBy: actor.user._id } : { revokedAt: undefined, revokedBy: undefined });
     await logAccess(ctx, { actorId: actor.user._id, targetId: ownerId, change: "card", from: revoked ? "active" : "revoked", to: revoked ? "revoked" : "active" });
+  },
+});
+
+/** Where a printed card's photo comes from: the member's upload, else the Google photo, else the pixel initial. */
+export type PhotoSource = "uploaded" | "google" | "initial";
+const photoSource = (profile: Doc<"memberProfiles">, image: string | null | undefined): PhotoSource => profile.photoStorageId ? "uploaded" : image ? "google" : "initial";
+
+/** How many members one call of `printCards` or `issueFor` takes; the print page sends them in batches. */
+export const PRINT_BATCH = 50;
+function batch(ownerIds: string[]) {
+  if (ownerIds.length > PRINT_BATCH) throw new ConvexError(`Paling banyak ${PRINT_BATCH} anggota sekaligus.`);
+  return [...new Set(ownerIds)];
+}
+
+/**
+ * The members staff chose to print (#159), page by page as the members CSV: everyone matching the members table's search
+ * and filters, or the members they ticked. For each: name, tag, this chapter year's card number or null (no card, or one
+ * from an earlier year), blocked, active, and the photo source. Never the QR token: `printCards` gives that at print time.
+ */
+export const printSelection = query({
+  args: {
+    selection: v.union(
+      v.object({ kind: v.literal("filters"), search: v.string(), filters: filtersValidator }),
+      v.object({ kind: v.literal("picked"), ownerIds: v.array(v.string()) }),
+    ),
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, { selection, paginationOpts }) => {
+    await requireStaff(ctx);
+    const term = selection.kind === "filters" ? selection.search.trim().slice(0, 80) : "";
+    const result = await (term
+      ? ctx.db.query("memberProfiles").withSearchIndex("search_name", (q) => q.search("fullName", term))
+      : ctx.db.query("memberProfiles").withIndex("by_completed", (q) => q.gt("completedAt", 0))).paginate(paginationOpts);
+    const picked = selection.kind === "picked" ? new Set(selection.ownerIds) : null;
+    const filters = selection.kind === "filters" ? { ...noFilters, ...selection.filters } : noFilters;
+    const owners = !picked && filters.access.length ? await ownerIds(ctx) : new Set<string>();
+    const chosen = result.page.filter((profile) => profile.completedAt && (picked ? picked.has(profile.ownerId) : matchesFilters(filterFacts(profile, owners), filters)));
+    return {
+      ...result,
+      page: await Promise.all(chosen.map(async (profile) => {
+        const [user, card] = await Promise.all([authComponent.getAnyUserById(ctx, profile.ownerId), cardOf(ctx, profile.ownerId)]);
+        const role = roleOf(user?.email ?? "", Boolean(user?.emailVerified), profile);
+        return {
+          ownerId: profile.ownerId, name: profile.fullName, memberType: profile.memberType ?? null, division: profile.division ?? null,
+          active: isActive(role, profile), number: card?.period === chapterPeriod.year ? card.number : null, blocked: Boolean(card?.revokedAt),
+          photo: photoSource(profile, user?.image),
+        };
+      })),
+    };
+  },
+});
+
+/**
+ * The whole card of each given member who has this chapter year's card, QR token included, for the print PDF. Read at
+ * print time, so a QR replaced after the summary prints current. Members without one are left out.
+ */
+export const printCards = query({
+  args: { ownerIds: v.array(v.string()) },
+  handler: async (ctx, { ownerIds: given }) => {
+    await requireStaff(ctx);
+    const now = Date.now();
+    const cards = await Promise.all(batch(given).map(async (ownerId) => {
+      const [card, profile, user] = await Promise.all([cardOf(ctx, ownerId), profileOf(ctx, ownerId), authComponent.getAnyUserById(ctx, ownerId)]);
+      if (!card || card.period !== chapterPeriod.year || !profile?.completedAt) return null;
+      const holder = { profile, user };
+      return { ...await fullCard(ctx, card, holder, cardStatus(card, holder, now)), photoSource: photoSource(profile, user?.image) };
+    }));
+    return cards.filter((card) => card !== null);
+  },
+});
+
+/**
+ * Staff issue this chapter year's card to members who have none yet (#159), exactly as `ensure` does when a member opens
+ * theirs: the year's next number from the counter and a new token, so a number is never reused. A member who already
+ * has this year's card is left as it is, so sending the same list twice issues nothing new; a blocked card, an inactive
+ * or not onboarded account is skipped. Numbers follow the order given. Each card issued is logged as `cardIssued`.
+ */
+export const issueFor = mutation({
+  args: { ownerIds: v.array(v.string()) },
+  handler: async (ctx, { ownerIds: given }) => {
+    const actor = await requireStaff(ctx);
+    const issued: { ownerId: string; number: string }[] = [], skipped: { ownerId: string; reason: "current" | "blocked" | "inactive" | "missing" }[] = [];
+    // One at a time: each number reads and writes the year's counter.
+    for (const ownerId of batch(given)) {
+      const profile = await profileOf(ctx, ownerId);
+      const user = profile?.completedAt ? await authComponent.getAnyUserById(ctx, ownerId) : null;
+      if (!profile || !user) { skipped.push({ ownerId, reason: "missing" }); continue; }
+      if (!isActive(roleOf(user.email, user.emailVerified, profile), profile)) { skipped.push({ ownerId, reason: "inactive" }); continue; }
+      const card = await cardOf(ctx, ownerId);
+      if (card?.revokedAt) { skipped.push({ ownerId, reason: "blocked" }); continue; }
+      if (card?.period === chapterPeriod.year) { skipped.push({ ownerId, reason: "current" }); continue; }
+      const number = await issue(ctx, ownerId, card);
+      await logAccess(ctx, { actorId: actor.user._id, targetId: ownerId, change: "cardIssued", from: card?.number ?? "none", to: number });
+      issued.push({ ownerId, number });
+    }
+    return { issued, skipped };
   },
 });

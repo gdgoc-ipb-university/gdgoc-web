@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { chapterPeriod, inChapterPeriod } from "./chapter";
-import { cardNumber, cardPath, cardPrefix, cardTokenPattern, divisionAccent, divisionAccents, nameFit, photoAt } from "./member-card";
+import { cardNumber, cardPath, cardPrefix, cardTokenPattern, cr80, divisionAccent, divisionAccents, nameArea, nameFit, photoAt } from "./member-card";
 import { divisions } from "./onboarding";
 
 /** WCAG contrast of a hex colour against white. */
@@ -37,18 +37,46 @@ describe("member card helpers", () => {
     for (const division of ["Secretary Treasurer", null, undefined, "", "Unknown", "constructor"]) expect(divisionAccent(division), String(division)).toBe("#172d43");
   });
 
-  it("sets the name at 54 px, wrapped word by word onto a second line when it must, shrinking only past two lines", () => {
-    expect(nameFit("Rania Putri")).toEqual({ px: 54, lines: ["RANIA PUTRI"] });
-    // 17 characters at 54 px fit the 568 px column: .61 em × 54 × 17 = 560.
-    expect(nameFit("Rania Putri Maharani")).toEqual({ px: 54, lines: ["RANIA PUTRI", "MAHARANI"] });
-    expect(nameFit("Muhammad Rizky Ramadhan Saputra")).toEqual({ px: 54, lines: ["MUHAMMAD RIZKY", "RAMADHAN SAPUTRA"] });
-    // As the Figma preview wraps it: the first line takes as many words as fit.
-    expect(nameFit("Adela Belinda Vista")).toEqual({ px: 54, lines: ["ADELA BELINDA", "VISTA"] });
-    const long = nameFit("Raden Mas Muhammad Rizky Ramadhan Saputra Wijayakusuma");
-    expect(long.lines).toHaveLength(2);
-    expect(long.px).toBeLessThan(54);
-    for (const line of long.lines) expect(line.length * .61 * long.px).toBeLessThanOrEqual(568);
-    expect(nameFit("Wolfeschlegelsteinhausenbergerdorff")).toEqual({ px: 30, lines: ["WOLFESCHLEGELSTEINHAUSENBERGERDORFF"] });
+  it("wraps the name within the 440 px clear area between the landmarks, centred in the column", () => {
+    expect(nameArea).toEqual({ width: 440, column: 568, size: 54, min: 40, floor: 30 });
+    // 99 to 539 px across the 638 px trim: right of Tugu Kujang (its spire ends near 76 px) and left of the AHN roof.
+    expect([(cr80.width - nameArea.width) / 2, (cr80.width + nameArea.width) / 2]).toEqual([99, 539]);
+    expect(nameFit("Rania Putri")).toEqual({ px: 54, width: 440, lines: ["Rania Putri"] });
+    // 13 characters at 54 px: .61 em × 54 × 13 = 428 px, inside 440.
+    expect(nameFit("Fajar Nugroho")).toEqual({ px: 54, width: 440, lines: ["Fajar Nugroho"] });
+    // 17 characters were one 560 px line across the Kujang; now two lines, as Figma wraps, the first taking what fits.
+    expect(nameFit("Dewi Kartika Sari")).toEqual({ px: 54, width: 440, lines: ["Dewi Kartika", "Sari"] });
+    expect(nameFit("  Rania  Putri Maharani ")).toEqual({ px: 54, width: 440, lines: ["Rania Putri", "Maharani"] });
+    expect(nameFit("Adela Belinda Vista")).toEqual({ px: 54, width: 440, lines: ["Adela Belinda", "Vista"] });
+  });
+
+  it("steps the size down a pixel at a time when two lines are not enough, never below 40 px", () => {
+    // "Ramadhan Saputra" is 16 characters: 16 × .61 × 45 = 439 px.
+    expect(nameFit("Muhammad Rizky Ramadhan Saputra")).toEqual({ px: 45, width: 440, lines: ["Muhammad Rizky", "Ramadhan Saputra"] });
+    expect(nameFit("Ramadhanisaputra")).toEqual({ px: 45, width: 440, lines: ["Ramadhanisaputra"] });
+    for (const name of ["Dewi Kartika Sari", "Muhammad Rizky Ramadhan Saputra", "Nur Aisyah Kusumawardhani", "Anak Agung Gede Ngurah Putra", "Bambang Pamungkas"]) {
+      const fit = nameFit(name);
+      expect(fit.lines.length, name).toBeLessThanOrEqual(2);
+      expect(fit.px, name).toBeGreaterThanOrEqual(40);
+      expect(fit.width, name).toBe(440);
+      for (const line of fit.lines) expect(line.length * .61 * fit.px, line).toBeLessThanOrEqual(440);
+      expect(fit.lines.join(" "), name).toBe(name);
+    }
+  });
+
+  it("takes the whole column at 40 px for a name too long for the clear area, and goes smaller only past two full lines", () => {
+    // A 21-character word cannot fit 18 characters at 40 px: the 568 px column holds 23.
+    expect(nameFit("Bambang Pamungkasnugrahaputra")).toEqual({ px: 40, width: 568, lines: ["Bambang", "Pamungkasnugrahaputra"] });
+    // At 40 px a clear-area line holds 18 characters, too few for "Kusumawardhani Putri".
+    expect(nameFit("Nur Aisyah Kusumawardhani Putri")).toEqual({ px: 40, width: 568, lines: ["Nur Aisyah", "Kusumawardhani Putri"] });
+    // A word longer than a full line breaks anywhere, staying in the clear area when two of its lines fit there.
+    expect(nameFit("Wolfeschlegelsteinhausenbergerdorff")).toEqual({ px: 40, width: 440, lines: ["Wolfeschlegelstein", "hausenbergerdorff"] });
+    // 55 letters fit neither: two 28-letter lines of the column at 33 px.
+    expect(nameFit("Wolfeschlegelsteinhausenbergerdorffwelchevoralternwaren")).toEqual({ px: 33, width: 568, lines: ["Wolfeschlegelsteinhausenberg", "erdorffwelchevoralternwaren"] });
+    // 55 characters: past two 23-character lines at 40 px, so 32 px across the column.
+    expect(nameFit("Raden Mas Muhammad Rizky Ramadhan Saputra Wijayakusuma")).toEqual({ px: 32, width: 568, lines: ["Raden Mas Muhammad Rizky", "Ramadhan Saputra Wijayakusuma"] });
+    const longest = nameFit("A".repeat(80));
+    expect([longest.px, longest.width, longest.lines.length]).toEqual([30, 568, 3]);
   });
 
   it("holds the chapter year from 00:00 WIB on its first day to the end of its last day", () => {

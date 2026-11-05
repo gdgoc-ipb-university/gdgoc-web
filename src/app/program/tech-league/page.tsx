@@ -32,6 +32,8 @@ const faq: FaqItem[] = [
   { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
 ];
 
+const phases = [...new Set(techLeague.timeline.map((step) => step.phase))];
+
 function RegistrationStatus() {
   const state = currentRegistrationState();
   const { opensAt, closesAt } = techLeague.registration;
@@ -69,7 +71,13 @@ export default function TechLeaguePage() {
 
       <section aria-labelledby="league-timeline">
         <h2 id="league-timeline">Jadwal</h2>
-        <ol className="league-timeline">{techLeague.timeline.map((step) => <li key={step.label}><time dateTime={step.start}>{rangeLabel(step.start, "end" in step ? step.end : undefined)}</time><span>{step.label}</span></li>)}</ol>
+        {phases.map((phase) => <div key={phase} className="league-phase">
+          <h3>{phase}</h3>
+          <ol className="league-timeline">{techLeague.timeline.filter((step) => step.phase === phase).map((step) => <li key={step.label}>
+            <time dateTime={step.start}>{rangeLabel(step.start, "end" in step ? step.end : undefined)}</time>
+            <span>{step.label}{"note" in step && <small>{step.note}</small>}</span>
+          </li>)}</ol>
+        </div>)}
         <p className="league-note">Jadwal dapat berubah. Perubahan diumumkan di Instagram GDGoC IPB dan di halaman ini.</p>
       </section>
 

@@ -62,21 +62,51 @@ export const cr80 = { width: 638, height: 1011, dpi: 300 };
 const nameAdvance = .59 + .02;
 
 /**
- * The name's size in trim pixels and its lines, wrapped word by word across the 568 px column as Figma and the browser
- * wrap it: 54 px on one or two lines, shrinking only when two lines are not enough. Below 30 px it stays at 30 px on
- * one line and the face wraps anywhere.
+ * Where the front's name wraps, in trim pixels: the clear middle between Tugu Kujang and Gedung AHN, 440 px centred in
+ * the 568 px column (99 to 539 px across the trim), so a long name never runs into the landmarks. The name starts at
+ * 54 px and steps down to no less than 40 px; `column` and `floor` are only for names that cannot fit otherwise.
  */
-export function nameFit(name: string, width = 568, size = 54, min = 30) {
-  const text = name.trim().toUpperCase(), words = text.split(/\s+/);
-  for (let px = size; px >= min; px--) {
-    const fits = (line: string) => line.length * nameAdvance * px <= width;
-    const lines: string[] = [];
-    for (const word of words) {
-      const last = lines.at(-1);
-      if (last !== undefined && fits(`${last} ${word}`)) lines[lines.length - 1] = `${last} ${word}`;
-      else lines.push(word);
-    }
-    if (lines.length <= 2 && lines.every(fits)) return { px, lines };
+export const nameArea = { width: 440, column: 568, size: 54, min: 40, floor: 30 };
+
+/**
+ * Greedy word wrap at `px`: each line takes as many words as fit `width`, as Figma and the browser wrap. A word longer
+ * than a line fails, unless `split`, which breaks it anywhere. Null past `maxLines`.
+ */
+function wrapName(words: string[], px: number, width: number, split: boolean, maxLines = 2) {
+  const room = Math.floor(width / (nameAdvance * px)), length = (text: string) => text.toUpperCase().length;
+  const lines: string[] = [];
+  for (let word of words) {
+    if (length(word) > room && !split) return null;
+    const last = lines.at(-1);
+    if (last !== undefined && length(`${last} ${word}`) <= room) { lines[lines.length - 1] = `${last} ${word}`; continue; }
+    while (length(word) > room) { lines.push(word.slice(0, room)); word = word.slice(room); }
+    lines.push(word);
   }
-  return { px: min, lines: [text] };
+  return lines.length <= maxLines ? lines : null;
+}
+
+/**
+ * The name's size in trim pixels, its wrap width and its lines (in the name's own case; both faces set capitals), the
+ * one layout the web face and the canvas share (#159):
+ * 1. 54 px on one or two lines within the 440 px clear area, stepping down a pixel at a time to 40 px.
+ * 2. Still too long at 40 px: whole words across the 568 px column, over the art's edge, rather than smaller type. A
+ *    word longer than that breaks anywhere, within the clear area if two lines of it fit there (36 characters).
+ * 3. Past two full lines at 40 px (over 46 characters): smaller type down to 30 px, the only case below 40 px.
+ */
+export function nameFit(name: string) {
+  const { width, column, size, min, floor } = nameArea, words = name.trim().split(/\s+/).filter(Boolean);
+  for (let px = size; px >= min; px--) {
+    const lines = wrapName(words, px, width, false);
+    if (lines) return { px, width, lines };
+  }
+  // Whole words across the column first; then a word broken anywhere, kept within the clear area if it fits there.
+  for (const [width, split] of [[column, false], [nameArea.width, true], [column, true]] as const) {
+    const lines = wrapName(words, min, width, split);
+    if (lines) return { px: min, width, lines };
+  }
+  for (let px = min - 1; px > floor; px--) {
+    const lines = wrapName(words, px, column, true);
+    if (lines) return { px, width: column, lines };
+  }
+  return { px: floor, width: column, lines: wrapName(words, floor, column, true, Infinity)! };
 }

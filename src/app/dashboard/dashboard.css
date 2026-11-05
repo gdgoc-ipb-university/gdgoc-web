@@ -554,6 +554,30 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-chip button:hover { background: #d3e0f7; }
 .dash-chips-clear { font-size: 12px; padding-inline: 4px; }
 
+/* Picking members to print (#159) */
+.dash-tool-button[data-primary] { color: white; background: var(--blue); border-color: var(--blue); }
+.dash-tool-button[data-primary]:hover:not(:disabled) { background: #1d4fb0; border-color: #1d4fb0; }
+.dash-tool-button[data-primary]:disabled { color: #e7eefa; background: #8fa9d8; border-color: #8fa9d8; cursor: not-allowed; }
+.dash-pick-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; margin: 0 0 10px; padding: 10px 12px 10px 16px; font-size: 13px; background: #f3f7fe; border: 1px solid #c3d4f4; }
+.dash-pick-bar p { margin: 0; }
+.dash-pick-actions { display: flex; gap: 8px; margin-left: auto; }
+.dash-pick { flex-shrink: 0; width: 18px; height: 18px; margin: 0; accent-color: var(--blue); cursor: pointer; }
+.dash-table tbody tr[data-picked] > * { background: #f3f7fe; }
+.card-print-source { margin: 0 0 18px; font-size: 14px; }
+.dash-stats dd.card-print-hint { margin: 8px 0 0; font: 400 12px/1.45 var(--font-body), sans-serif; color: var(--muted); }
+.card-print-note { margin: 0 0 12px; }
+.card-print-note:empty { display: none; }
+.card-print-section { display: grid; justify-items: start; gap: 10px; margin-bottom: 16px; }
+.card-print-section h2 { margin: 0; font-size: 18px; }
+.card-print-section p { margin: 0; }
+.appreciation-page .card-print-names { width: 100%; margin: 0; border: 0; font-size: 13px; }
+.appreciation-page .card-print-names summary { width: fit-content; padding: 4px 0; color: #1d4fb0; cursor: pointer; }
+.card-print-names ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 4px 16px; max-height: 260px; overflow-y: auto; margin: 8px 0 0; padding: 0; list-style: none; }
+.card-print-names li { display: flex; flex-direction: column; padding: 4px 0; border-bottom: 1px solid #eef0ea; }
+.card-print-include { display: flex; align-items: center; gap: 10px; font-size: 13px; cursor: pointer; }
+.card-print-include input { width: 18px; height: 18px; margin: 0; accent-color: var(--blue); }
+@media (max-width: 560px) { .dash-pick-actions { margin-left: 0; width: 100%; } .dash-pick-actions > * { flex: 1; } }
+
 .dash-table-wrap { position: relative; overflow-x: auto; background: white; border: 1px solid #dfe5dc; overscroll-behavior-x: contain; scrollbar-width: thin; }
 .dash-table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 13px; transition: opacity .15s ease; }
 .dash-table[aria-busy="true"] { opacity: .55; }

@@ -22,8 +22,8 @@ export function FilterButton({ active, onPress }: { active: number; onPress: () 
   </button>;
 }
 
-/** One removable chip per facet in use, then "Hapus semua". */
-export function ActiveFilters({ filters, onChange }: { filters: MemberFilters; onChange: (filters: MemberFilters) => void }) {
+/** Each facet that narrows the list, in words, with what clears it. */
+export function filterChips(filters: MemberFilters) {
   const chips: { key: string; label: string; clear: Partial<MemberFilters> }[] = [];
   if (filters.access.length) chips.push({ key: "access", label: `Akses: ${filters.access.map((value) => accessLabels[value]).join(", ")}`, clear: { access: [] } });
   if (filters.reviewer) chips.push({ key: "reviewer", label: "Peninjau apresiasi", clear: { reviewer: false } });
@@ -31,6 +31,12 @@ export function ActiveFilters({ filters, onChange }: { filters: MemberFilters; o
   if (filters.divisions.length) chips.push({ key: "divisions", label: `Divisi: ${filters.divisions.join(", ")}`, clear: { divisions: [] } });
   if (filters.status !== "all") chips.push({ key: "status", label: `Status: ${statusLabels[filters.status]}`, clear: { status: "all" } });
   if (filters.tag !== "all") chips.push({ key: "tag", label: `Peran: ${tagLabels[filters.tag].toLowerCase()}`, clear: { tag: "all" } });
+  return chips;
+}
+
+/** One removable chip per facet in use, then "Hapus semua". */
+export function ActiveFilters({ filters, onChange }: { filters: MemberFilters; onChange: (filters: MemberFilters) => void }) {
+  const chips = filterChips(filters);
   if (!chips.length) return null;
   return <ul className="dash-chips" aria-label="Filter aktif">
     {chips.map((chip) => <li key={chip.key} className="dash-chip"><span>{chip.label}</span>

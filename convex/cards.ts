@@ -12,6 +12,7 @@ import { chapterPeriod, inChapterPeriod } from "../src/lib/chapter";
 import { runsToday } from "../src/lib/gathering";
 import { cardNumber, cardPrefix, cardTokenPattern, type CardStatus } from "../src/lib/member-card";
 import { matchesFilters, noFilters } from "../src/lib/member-table";
+import { PRINT_BATCH, type PhotoSource } from "../src/lib/card-print";
 
 async function cardOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
   return ctx.db.query("memberCards").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
@@ -167,12 +168,9 @@ export const setRevoked = mutation({
   },
 });
 
-/** Where a printed card's photo comes from: the member's upload, else the Google photo, else the pixel initial. */
-export type PhotoSource = "uploaded" | "google" | "initial";
 const photoSource = (profile: Doc<"memberProfiles">, image: string | null | undefined): PhotoSource => profile.photoStorageId ? "uploaded" : image ? "google" : "initial";
 
-/** How many members one call of `printCards` or `issueFor` takes; the print page sends them in batches. */
-export const PRINT_BATCH = 50;
+/** One call of `printCards` or `issueFor` takes `PRINT_BATCH` members; the print page sends them in batches. */
 function batch(ownerIds: string[]) {
   if (ownerIds.length > PRINT_BATCH) throw new ConvexError(`Paling banyak ${PRINT_BATCH} anggota sekaligus.`);
   return [...new Set(ownerIds)];

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Button } from "react-aria-components/Button";
 import { Header, Menu, MenuItem, MenuSection, MenuTrigger, Popover, Separator, Text } from "react-aria-components/Menu";
@@ -12,7 +12,7 @@ import { roleLabels } from "@/lib/assignment";
 import { divisions, memberTagLabel, memberTypeLabels, type MemberType } from "@/lib/onboarding";
 import { readableError } from "@/lib/draft-session";
 import { membersCsv, membersFileName, type MemberExportRow } from "@/lib/member-export";
-import { activeFilterCount, listQueryString, noFilters, readListState, type MemberFilters, type MemberListState, type MemberSort } from "@/lib/member-table";
+import { activeFilterCount, DEFAULT_PAGE_SIZE as defaultPageSize, DEFAULT_SORT as defaultSort, listQueryString, noFilters, readListState, type MemberFilters, type MemberListState, type MemberSort } from "@/lib/member-table";
 import { PixelIcon, type PixelIconName } from "../pixel-icons";
 import { Select } from "../select";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
@@ -20,6 +20,8 @@ import { StaffOnly } from "./assignments";
 import { MemberAvatar } from "../member-avatar";
 import { ConfirmDialog, DashboardDialog, DialogContent, DialogFooter, IconLink, Pagination, SortHeader, useKeptResult } from "./data-table";
 import { ActiveFilters, FilterButton, MemberFilterDialog } from "./member-filters";
+import { usePickedMembers } from "./picked-members";
+import { PICKED_PARAM } from "@/lib/card-print";
 import { isStaff, useDashboardViewer, type DashboardViewer } from "./viewer";
 
 type Row = FunctionReturnType<typeof api.dashboard.members>["rows"][number];
@@ -76,6 +78,12 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
   useEffect(() => { try { sessionStorage.setItem(LIST_KEY, listQuery); } catch { /* storage blocked: the link falls back to page 1 */ } }, [listQuery]);
 
   const [filtering, setFiltering] = useState(false);
+  // Picking members to print (#159): a tick per row, kept for the tab, and a bar to print them.
+  const router = useRouter();
+  const [picked, setPicked] = usePickedMembers();
+  const [picking, setPicking] = useState(false);
+  const selecting = picking || picked.length > 0;
+  const printHref = `/dashboard/anggota/cetak${listQueryString({ ...state, page: 1, pageSize: defaultPageSize, sort: defaultSort })}`;
   const filtered = activeFilterCount(state.filters) > 0;
   const applyFilters = (filters: MemberFilters) => go({ filters, page: 1 });
 
@@ -96,6 +104,7 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
         <input id="member-search" type="search" aria-label="Cari nama anggota" value={input} onChange={(event) => setInput(event.target.value)} placeholder="Cari nama anggota" autoComplete="off" />
       </div>
       <FilterButton active={activeFilterCount(state.filters)} onPress={() => setFiltering(true)} />
+      <PrintMenu matching={data?.total} onAll={() => router.push(printHref)} onPick={() => setPicking(true)} />
     </div>
     <ActiveFilters filters={state.filters} onChange={applyFilters} />
     <MemberFilterDialog open={filtering} onClose={() => setFiltering(false)} value={state.filters} search={state.search} stats={stats} onApply={applyFilters} />
@@ -103,6 +112,7 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
     {!data ? <LoadingPanel label="Memuat anggota…" /> : !data.total ? <div className="app-empty"><h2>Tidak ada anggota di sini.</h2><p>{state.search ? `Tidak ada nama yang cocok dengan “${state.search}”${filtered ? " dengan filter ini" : ""}.` : "Belum ada anggota yang cocok dengan filter ini."}</p>
       {(state.search || filtered) && <button type="button" className="button button-quiet" onClick={() => { setInput(""); go({ search: "", filters: noFilters, page: 1 }); }}>Hapus pencarian dan filter</button>}</div>
       : <>
+        {selecting && <PickBar picked={picked} rows={data.rows} onChange={setPicked} onDone={() => { setPicked([]); setPicking(false); }} onPrint={() => router.push(`/dashboard/anggota/cetak?${PICKED_PARAM}=1`)} />}
         <div ref={tableRef} className="dash-table-wrap" role="region" aria-labelledby="members-caption" tabIndex={0}>
           <table className="dash-table" aria-busy={reloading}>
             <caption id="members-caption" className="sr-only">Daftar anggota, halaman {data.page} dari {data.pageCount}</caption>
@@ -114,7 +124,8 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
               <SortHeader label="Bergabung" direction={direction("joined")} onSort={() => sortBy("joined")} />
               <th scope="col" className="dash-table-actions"><span className="sr-only">Aksi</span></th>
             </tr></thead>
-            <tbody>{data.rows.map((row) => <MemberTableRow key={row.ownerId} row={row} viewer={viewer} />)}</tbody>
+            <tbody>{data.rows.map((row) => <MemberTableRow key={row.ownerId} row={row} viewer={viewer}
+              pick={selecting ? { checked: picked.includes(row.ownerId), onChange: (checked) => setPicked(checked ? [...picked, row.ownerId] : picked.filter((id) => id !== row.ownerId)) } : undefined} />)}</tbody>
           </table>
         </div>
         <Pagination label="Halaman anggota" noun="anggota" page={data.page} pageCount={data.pageCount} pageSize={data.pageSize} total={data.total}
@@ -125,10 +136,11 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
 
 const dayLabel = new Intl.DateTimeFormat("id-ID", { dateStyle: "medium", timeZone: "Asia/Jakarta" });
 
-function MemberTableRow({ row, viewer }: { row: Row; viewer: DashboardViewer }) {
+function MemberTableRow({ row, viewer, pick }: { row: Row; viewer: DashboardViewer; pick?: { checked: boolean; onChange: (checked: boolean) => void } }) {
   const self = row.ownerId === viewer.id;
-  return <tr data-active={row.active}>
+  return <tr data-active={row.active} data-picked={pick?.checked || undefined}>
     <th scope="row" className="dash-table-member"><div className="dash-table-person">
+      {pick && <input type="checkbox" className="dash-pick" checked={pick.checked} onChange={(event) => pick.onChange(event.target.checked)} aria-label={`Pilih ${row.fullName} untuk dicetak`} />}
       <MemberAvatar name={row.fullName} photo={row.photo} size={34} />
       <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small title={row.email}>{row.email}</small></span>
     </div></th>
@@ -157,6 +169,32 @@ export function CommunityBadge({ row }: { row: Pick<Row, "memberType" | "divisio
 
 export function ActiveBadge({ active }: { active: boolean }) {
   return <span className="dash-active" data-active={active}>{active ? "Aktif" : "Nonaktif"}</span>;
+}
+
+/** "Cetak kartu": everyone matching the search and filters, or a hand-picked set (#159). */
+function PrintMenu({ matching, onAll, onPick }: { matching: number | undefined; onAll: () => void; onPick: () => void }) {
+  return <MenuTrigger>
+    <Button className="dash-tool-button"><PixelIcon name="id-card" size={18} />Cetak kartu</Button>
+    <Popover className="dash-menu-popover" placement="bottom end" data-lenis-prevent>
+      <Menu className="dash-menu" aria-label="Cetak kartu anggota" onAction={(key) => (key === "all" ? onAll : onPick)()}>
+        <MenuItem id="all" className="dash-menu-item" textValue="Semua yang cocok dengan filter"><PixelIcon name="users" size={18} /><Text slot="label">Semua yang cocok{matching !== undefined ? ` (${matching})` : ""}</Text></MenuItem>
+        <MenuItem id="pick" className="dash-menu-item" textValue="Pilih anggota"><PixelIcon name="check" size={18} /><Text slot="label">Pilih anggota</Text></MenuItem>
+      </Menu>
+    </Popover>
+  </MenuTrigger>;
+}
+
+/** While picking: how many are ticked, ticking the whole page, and printing them. */
+function PickBar({ picked, rows, onChange, onDone, onPrint }: { picked: string[]; rows: Row[]; onChange: (ids: string[]) => void; onDone: () => void; onPrint: () => void }) {
+  const page = rows.map((row) => row.ownerId), all = page.every((id) => picked.includes(id));
+  return <div className="dash-pick-bar" role="region" aria-label="Anggota dipilih untuk dicetak">
+    <p role="status"><strong>{picked.length}</strong> anggota dipilih</p>
+    <button type="button" className="text-button" onClick={() => onChange(all ? picked.filter((id) => !page.includes(id)) : [...picked, ...page])}>{all ? "Batalkan halaman ini" : "Pilih semua di halaman ini"}</button>
+    <span className="dash-pick-actions">
+      <button type="button" className="dash-tool-button" onClick={onDone}>Hapus pilihan</button>
+      <button type="button" className="dash-tool-button" data-primary disabled={!picked.length} onClick={onPrint}><PixelIcon name="id-card" size={18} />Cetak yang dipilih</button>
+    </span>
+  </div>;
 }
 
 /** Owners: the members CSV and the access log, beside the page title. */

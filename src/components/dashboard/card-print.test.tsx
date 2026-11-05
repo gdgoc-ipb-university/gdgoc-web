@@ -13,7 +13,11 @@ const member = (name: string, number: string | null, extra: Partial<PrintCandida
 });
 let people: PrintCandidate[] = [];
 const queried: { selection: unknown; cursor: string | null }[] = [];
-const query = vi.fn(async (ref: FunctionReference<"query">, args: { selection: unknown; paginationOpts: { cursor: string | null } }) => {
+const query = vi.fn(async (ref: FunctionReference<"query">, args: { selection: unknown; paginationOpts: { cursor: string | null }; ownerIds: string[] }) => {
+  if (getFunctionName(ref) === "cards:printCards") return args.ownerIds.map((ownerId) => {
+    const row = people.find((person) => person.ownerId === ownerId)!;
+    return { ...row, token: `token-${ownerId}`, photo: "https://example.convex.cloud/photo", campus: "IPB University", studyProgram: "Ilmu Komputer", period: "2026/27", photoSource: row.photo };
+  });
   expect(getFunctionName(ref)).toBe("cards:printSelection");
   queried.push({ selection: args.selection, cursor: args.paginationOpts.cursor });
   // Two pages, as the server cuts them.
@@ -28,6 +32,12 @@ const issueFor = vi.fn(async ({ ownerIds }: { ownerIds: string[] }) => {
 });
 const convex = { query };
 vi.mock("convex/react", () => ({ useConvex: () => convex, useMutation: () => issueFor }));
+const buildCardPdf = vi.fn(async (cards: { number: string }[], onProgress: (done: number, total: number) => void) => {
+  onProgress(0, cards.length);
+  for (let done = 1; done <= cards.length; done++) { await new Promise((resolve) => setTimeout(resolve, 5)); onProgress(done, cards.length); }
+  return { pdf: new Blob([new Uint8Array(2_400_000)], { type: "application/pdf" }), manifest: cards.map((card) => ({ ...card, photoSource: "uploaded" })) };
+});
+vi.mock("./card-pdf", () => ({ buildCardPdf }));
 let params = new URLSearchParams();
 vi.mock("next/navigation", () => ({ useSearchParams: () => params }));
 
@@ -35,7 +45,7 @@ const viewer = (role: DashboardViewer["role"]): DashboardViewer => ({ id: "me" a
 const show = (role: DashboardViewer["role"] = "admin") => render(<ViewerContext.Provider value={viewer(role)}><CardPrintPage /></ViewerContext.Provider>);
 const stat = (label: string) => screen.getAllByText(label).find((element) => element.tagName === "DT")!.nextElementSibling!.textContent;
 
-afterEach(() => { cleanup(); sessionStorage.clear(); queried.length = 0; issueFor.mockClear(); });
+afterEach(() => { cleanup(); sessionStorage.clear(); queried.length = 0; issueFor.mockClear(); query.mockClear(); vi.unstubAllGlobals(); });
 
 describe("print summary", () => {
   it("prints members with this year's number in number order, and lists who has none, no upload, or is left out", () => {
@@ -103,5 +113,29 @@ describe("print page", () => {
     expect(issueFor.mock.calls.flatMap(([args]) => args.ownerIds)).not.toContain("oki-pratama");
     expect(screen.getByText(/nomor diterbitkan/).textContent).toBe("55 nomor diterbitkan: 2627-0041 sampai 2627-0095.");
     expect(queried.length).toBe(4);
+  });
+
+  it("draws the PDF only after staff confirm the QR line, with progress, then offers the PDF and the manifest", async () => {
+    const user = userEvent.setup();
+    params = new URLSearchParams();
+    people = [member("Rania Putri", "2627-0002"), member("Bima Sakti", "2627-0001"), member("Citra Lestari", null)];
+    Object.assign(URL, { createObjectURL: vi.fn(() => `blob:${Math.random()}`), revokeObjectURL: vi.fn() });
+    show();
+    const build = await screen.findByRole("button", { name: "Buat PDF 2 kartu" });
+    expect(build.hasAttribute("disabled")).toBe(true);
+    const output = screen.getByRole("region", { name: "Buat file cetak" });
+    expect(output.textContent).toContain("skala 100%");
+    await user.click(within(output).getByRole("checkbox", { name: /QR asli setiap anggota.*mengganti QR-nya nanti, kartu cetaknya tidak berlaku lagi/ }));
+    await user.click(build);
+    expect(await screen.findByRole("progressbar", { name: /Menggambar kartu \d dari 2/ })).toBeTruthy();
+    const pdf = await screen.findByRole("link", { name: "Unduh PDF (2,3 MB)" });
+    expect(pdf.getAttribute("download")).toMatch(/^kartu-anggota-gdgoc-ipb-\d{4}-\d{2}-\d{2}\.pdf$/);
+    expect(screen.getByRole("link", { name: "Unduh manifes CSV" }).getAttribute("download")).toMatch(/-manifes\.csv$/);
+    // Tokens are read at print time, and cards print in member-number order.
+    expect(query.mock.calls.filter(([ref]) => getFunctionName(ref) === "cards:printCards").map(([, args]) => args.ownerIds)).toEqual([["bima-sakti", "rania-putri"]]);
+    expect(buildCardPdf.mock.calls[0][0].map((card) => [card.number, (card as unknown as { url: string }).url])).toEqual([
+      ["2627-0001", "https://www.gdgocipb.com/k/token-bima-sakti"], ["2627-0002", "https://www.gdgocipb.com/k/token-rania-putri"],
+    ]);
+    Reflect.deleteProperty(URL, "createObjectURL"); Reflect.deleteProperty(URL, "revokeObjectURL");
   });
 });

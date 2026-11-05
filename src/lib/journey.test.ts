@@ -1,6 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { catalyst } from "./catalyst";
-import { laneRows, milestoneExtent, milestoneStatus, nextActiveStep, spanPosition, storyQuery, timelineSpan, timelineSteps, wibDate } from "./journey";
+import {
+  laneRows,
+  milestoneExtent,
+  milestoneStatus,
+  nextActiveStep,
+  roadPoint,
+  spanPosition,
+  storyQuery,
+  timelineSpan,
+  timelineSteps,
+  wibDate,
+  type RoadChapter,
+} from "./journey";
 import { techLeague } from "./tech-league";
 
 describe("mission step activation", () => {
@@ -119,5 +131,43 @@ describe("timeline steps and rows", () => {
     extents.forEach((a, i) => extents.forEach((b, j) => {
       if (i < j && league[i] === league[j]) expect(a.left + Math.max(a.width, 0.03) <= b.left || b.left + Math.max(b.width, 0.03) <= a.left).toBe(true);
     }));
+  });
+});
+
+describe("the angkot on the road", () => {
+  // Two 1000 px wide chapters, 800 and 2000 px tall, under an 80 px start line; a 28 px road; 320 px to cross a top.
+  const chapters: RoadChapter[] = [
+    { top: 80, left: 20, width: 1000, height: 800, side: "right" },
+    { top: 880, left: 20, width: 1000, height: 2000, side: "left" },
+  ];
+  const point = (line: number) => roadPoint(chapters, 28, line, 320);
+
+  it("waits at the start line, facing along the first chapter's top", () => {
+    expect(point(-Infinity)).toEqual({ x: 34, y: 94, heading: "right" });
+    expect(point(0)).toEqual(point(80));
+  });
+
+  it("drives across a short chapter's top during its first quarter, then down its side", () => {
+    expect(point(80 + 100)).toEqual({ x: 520, y: 94, heading: "right" });
+    expect(point(80 + 200)).toEqual({ x: 1006, y: 94, heading: "down" });
+    expect(point(80 + 500)).toEqual({ x: 1006, y: 94 + (800 - 14) / 2, heading: "down" });
+  });
+
+  it("crosses a tall chapter's top within the turn distance, so it stays near the reader", () => {
+    expect(point(880 + 160)).toEqual({ x: 520, y: 894, heading: "left" });
+    const down = point(880 + 1000);
+    expect(down.heading).toBe("down");
+    expect(880 + 1000 - down.y).toBeLessThan(320);
+  });
+
+  it("carries on into the next chapter where the road turns, heading the other way", () => {
+    const end = point(879.999);
+    expect(end.x).toBe(1006);
+    expect(end.y).toBeCloseTo(880, 1);
+    expect(point(880)).toEqual({ x: 1006, y: 894, heading: "left" });
+  });
+
+  it("stops one road width short of the finish line", () => {
+    expect(point(9000)).toEqual({ x: 34, y: 880 + 2000 - 28, heading: "down" });
   });
 });

@@ -220,6 +220,104 @@
   line-height: 1.7;
 }
 
+/* Chapter 5: Dari IPB untuk Bogor. */
+.chapter-head {
+  max-width: 640px;
+  margin-bottom: 12px;
+}
+.skyline {
+  position: relative;
+  padding: 96px 0 44px;
+}
+.skyline-clouds {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 96px;
+}
+.skyline-clouds img {
+  position: absolute;
+}
+.skyline-row {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 10px;
+}
+.skyline-row > * {
+  flex: 0 1 calc(var(--w) * 1.3px);
+  min-width: 0;
+}
+.skyline-place {
+  position: relative;
+  margin: 0;
+}
+.skyline-place img,
+.skyline-tree {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.skyline-place figcaption {
+  position: absolute;
+  top: calc(100% + 26px);
+  left: 50%;
+  translate: -50% 0;
+  color: var(--ink);
+  font: 500 10px/1.3 var(--font-mono), monospace;
+  letter-spacing: 0.04em;
+  text-align: center;
+  white-space: nowrap;
+}
+.skyline-ground {
+  height: 14px;
+  border-top: 1px solid var(--ink);
+  background:
+    linear-gradient(#6fb24f 0 6px, #3f8a46 6px) 0 0 / 100% 100%;
+  box-shadow: inset 0 -1px 0 var(--ink);
+}
+.finish {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 28px;
+  align-items: center;
+  margin-top: 64px;
+  padding: 28px 32px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.finish h3 {
+  margin-bottom: 6px;
+  font-family: var(--font-pixel), monospace;
+  font-size: clamp(26px, 2.4vw, 36px);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.finish p {
+  color: var(--muted);
+  font-size: 15px;
+}
+.finish .text-link {
+  margin-top: 0;
+  white-space: nowrap;
+}
+.finish-flag {
+  position: relative;
+  width: 44px;
+  height: 56px;
+  border-left: 4px solid var(--ink);
+}
+.finish-flag::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 38px;
+  height: 26px;
+  border: 1px solid var(--ink);
+  background: repeating-conic-gradient(var(--ink) 0 25%, var(--paper) 0 50%) 0 0 / 12px 12px;
+}
 /* The finish line, where the road ends and the footer begins. */
 .journey::after {
   content: "";
@@ -232,6 +330,9 @@
 @media (max-width: 1050px) {
   .chapter {
     padding-bottom: 88px;
+  }
+  .skyline-place figcaption {
+    font-size: 9px;
   }
 }
 
@@ -304,5 +405,44 @@
   }
   .vision blockquote p {
     font-size: 16px;
+  }
+  .skyline {
+    margin-right: -22px;
+    padding-top: 80px;
+    overflow-x: auto;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+  }
+  .skyline-clouds {
+    width: 900px;
+    height: 80px;
+  }
+  .skyline-row,
+  .skyline-ground {
+    width: 900px;
+  }
+  .skyline-row > * {
+    flex: 0 0 calc(var(--w) * 1px);
+  }
+  .skyline-place {
+    scroll-snap-align: start;
+  }
+  .finish {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 18px 20px;
+    margin-top: 48px;
+    padding: 22px;
+  }
+  .finish .text-link {
+    grid-column: 1 / -1;
+  }
+  .finish-flag {
+    width: 36px;
+    height: 46px;
+  }
+  .finish-flag::before {
+    width: 30px;
+    height: 20px;
+    background-size: 10px 10px;
   }
 }

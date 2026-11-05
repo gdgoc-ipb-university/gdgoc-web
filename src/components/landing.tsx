@@ -5,6 +5,7 @@ import { PixelIcon, type PixelIconName } from "@/components/pixel-icons";
 import { Reveal } from "@/components/reveal";
 import { Arrow } from "@/components/icons";
 import { JoinFooter } from "@/components/join-footer";
+import { DariIpbUntukBogor } from "@/components/journey/bogor";
 import { Chapter } from "@/components/journey/chapter";
 import { Kenalan, StartLine } from "@/components/journey/kenalan";
 import "@/components/journey/journey.css";
@@ -104,6 +105,7 @@ export function Landing() {
               </Link>
             </Reveal>
           </Chapter>
+          <DariIpbUntukBogor />
         </div>
       </main>
       <JoinFooter />

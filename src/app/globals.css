@@ -463,9 +463,6 @@ summary:focus-visible {
   width: min(930px, calc(100% - 44px));
   text-align: center;
 }
-.hero-copy .eyebrow {
-  font-size: 10px;
-}
 .hero h1 {
   font-family: var(--font-pixel), monospace;
   font-size: clamp(64px, 6.5vw, 106px);
@@ -532,53 +529,6 @@ summary:focus-visible {
   box-shadow: 2px 2px 0 var(--ink);
 }
 
-.community-strip {
-  display: flex;
-  align-items: center;
-  justify-content: space-around;
-  gap: 28px;
-  padding: 24px var(--gutter);
-  border-block: 1px solid var(--ink);
-  background: #f4ce53;
-  overflow: hidden;
-}
-.community-strip span {
-  font:
-    500 clamp(14px, 1.6vw, 23px)/1 var(--font-pixel),
-    monospace;
-  letter-spacing: 0.05em;
-  white-space: nowrap;
-}
-.community-strip svg {
-  width: 12px;
-  height: 12px;
-  flex-shrink: 0;
-}
-.community-section {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 7%;
-  align-items: center;
-  padding-block: 120px;
-}
-.community-copy h2 {
-  font-size: clamp(36px, 3.45vw, 56px);
-  margin: 22px 0 26px;
-}
-.community-copy h2 em {
-  font-style: normal;
-  color: var(--blue);
-  font-family: var(--font-pixel), monospace;
-  font-weight: 500;
-  letter-spacing: 0;
-}
-.community-copy > p:not(.eyebrow) {
-  color: var(--muted);
-  max-width: 490px;
-  line-height: 1.95;
-  font-size: 15px;
-  margin-bottom: 17px;
-}
 .text-link {
   display: inline-flex;
   align-items: center;
@@ -895,16 +845,7 @@ summary:focus-visible {
   .hero-copy {
     padding-top: 45px;
   }
-  .community-section {
-    gap: 5%;
-    padding-block: 85px;
-  }
-  .community-copy h2 {
-    font-size: 38px;
-  }
-  .community-copy > p:not(.eyebrow) {
-    font-size: 14px;
-  }
+
   .path-grid {
     gap: 16px;
   }
@@ -984,10 +925,6 @@ summary:focus-visible {
     padding-top: 39px;
     width: calc(100% - 36px);
   }
-  .hero-copy .eyebrow {
-    font-size: 8px;
-    letter-spacing: 0.05em;
-  }
   .hero h1 {
     font-size: clamp(51px, 11.3vw, 81px);
     line-height: 0.98;
@@ -1027,35 +964,6 @@ summary:focus-visible {
     display: none;
   }
 
-  .community-strip {
-    padding: 19px 20px;
-    gap: 16px;
-    justify-content: space-between;
-  }
-  .community-strip span {
-    font-size: 13px;
-  }
-  .community-strip svg {
-    width: 10px;
-    height: 10px;
-  }
-  .community-strip span:last-child,
-  .community-strip svg:nth-last-child(2) {
-    display: none;
-  }
-  .community-section {
-    grid-template-columns: 1fr;
-    gap: 42px;
-    padding-block: 70px;
-  }
-  .community-copy h2 {
-    font-size: 40px;
-    margin: 20px 0 24px;
-  }
-  .community-copy > p:not(.eyebrow) {
-    font-size: 12px;
-    max-width: 100%;
-  }
   .text-link {
     font-size: 11px;
   }
@@ -1137,13 +1045,7 @@ summary:focus-visible {
   .hero h1 {
     font-size: 47px;
   }
-  .hero-copy .eyebrow {
-    font-size: 7px;
-  }
 
-  .community-copy h2 {
-    font-size: 34px;
-  }
   .section-top h2 {
     font-size: 31px;
   }
@@ -1301,14 +1203,6 @@ summary:focus-visible {
   .hero-art .campus-fallback {
     object-fit: contain;
     object-position: center bottom;
-  }
-}
-@media (max-width: 360px) {
-  .community-strip {
-    gap: 8px;
-  }
-  .community-strip span {
-    font-size: 11px;
   }
 }
 

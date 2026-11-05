@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { Header } from "@/components/header";
 import { Hero } from "@/components/hero";
-import { DinoPlayground } from "@/components/dino-playground";
 import { PixelIcon, type PixelIconName } from "@/components/pixel-icons";
 import { Reveal } from "@/components/reveal";
-import { Arrow, PixelSpark } from "@/components/icons";
+import { Arrow } from "@/components/icons";
 import { JoinFooter } from "@/components/join-footer";
+import { Chapter } from "@/components/journey/chapter";
+import { Kenalan, StartLine } from "@/components/journey/kenalan";
+import "@/components/journey/journey.css";
 import { catalyst } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
 import { techLeague } from "@/lib/tech-league";
@@ -54,53 +56,12 @@ export function Landing() {
       <Header />
       <main>
         <Hero />
-        <div className="community-strip" aria-label="Nilai komunitas">
-          <span>CODING</span>
-          <PixelSpark />
-          <span>UI/UX</span>
-          <PixelSpark />
-          <span>DATA & AI</span>
-          <PixelSpark />
-          <span>PROJECT</span>
-          <PixelSpark />
-          <span>KOMPETISI</span>
-        </div>
-        <section
-          id="community"
-          className="community-section section-width"
-          aria-labelledby="community-heading"
-        >
-          <Reveal className="community-copy">
-            <p className="eyebrow">
-              <span className="section-number">01 /</span> TENTANG GDGOC IPB
-            </p>
-            <h2 id="community-heading">
-              Kenalan dengan
-              <br />
-              <em>GDGoC IPB</em>
-            </h2>
-            <p>
-              Google Developer Group on Campus IPB University adalah komunitas mahasiswa Bogor
-              untuk belajar dan berkarya di bidang teknologi, apa pun kampus dan jurusannya
-            </p>
-            <p>
-              Kamu bisa mulai lewat Study Jam, mengerjakan produk digital bersama tim,
-              atau mencari masukan mentor untuk persiapan lomba. Ada ruang untuk yang suka
-              ngoding, mendesain, maupun mengelola proyek
-            </p>
-            <a className="text-link" href="#explore">
-              Temukan program yang cocok <Arrow down />
-            </a>
-          </Reveal>
-          <DinoPlayground />
-        </section>
-        <section id="explore" className="explore-section" aria-labelledby="explore-heading">
-          <div className="section-width">
+        <div className="journey">
+          <StartLine />
+          <Kenalan />
+          <Chapter id="explore" number="03" label="Pilih jalurmu" side="left" className="chapter-programs">
             <Reveal className="section-top">
               <div>
-                <p className="eyebrow">
-                  <span className="section-number">02 /</span> PROGRAM 2026/2027
-                </p>
                 <h2 id="explore-heading">
                   Mau belajar, bikin,
                   <br />
@@ -142,8 +103,8 @@ export function Landing() {
                 Lihat semua program <Arrow />
               </Link>
             </Reveal>
-          </div>
-        </section>
+          </Chapter>
+        </div>
       </main>
       <JoinFooter />
     </>

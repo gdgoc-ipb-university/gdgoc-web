@@ -1,0 +1,308 @@
+/*
+ * The landing's member journey (#165): a pixel road that winds down the page through five chapters.
+ * Each `.chapter` draws road along its top edge and down its `data-side`; the sides alternate, so the pieces join.
+ */
+.journey {
+  --road: 28px;
+  --road-fill: #c9cfd2;
+  --road-pad: clamp(24px, 4.4vw, 64px);
+  --checker: repeating-conic-gradient(var(--ink) 0 25%, var(--paper) 0 50%);
+  position: relative;
+  background: var(--paper);
+}
+
+/* The start line: the keyword strip with a checkered line under it, where the road begins. */
+.start-line {
+  position: relative;
+  padding-bottom: 16px;
+  background: var(--checker) 0 100% / 16px 16px repeat-x;
+  border-bottom: 1px solid var(--ink);
+}
+.community-strip {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  gap: 24px;
+  padding: 22px var(--gutter);
+  border-top: 1px solid var(--ink);
+  border-bottom: 1px solid var(--ink);
+  background: #f4ce53;
+  overflow: hidden;
+}
+.community-strip span {
+  font: 500 clamp(14px, 1.6vw, 23px)/1 var(--font-pixel), monospace;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+.community-strip svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+.start-flag {
+  position: absolute;
+  bottom: -5px;
+  left: max(16px, calc((100% - 1400px) / 2));
+  z-index: 2;
+  width: var(--road);
+  display: flex;
+  justify-content: center;
+}
+.start-flag span {
+  padding: 4px 7px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 10px/1 var(--font-mono), monospace;
+  letter-spacing: 0.12em;
+  box-shadow: 2px 2px 0 var(--blue);
+}
+
+/* A chapter and its stretch of road. */
+.chapter {
+  position: relative;
+  width: min(1400px, calc(100% - 32px));
+  margin-inline: auto;
+  padding: calc(var(--road) + 84px) calc(var(--road) + var(--road-pad)) 112px;
+}
+.chapter > :not(.road, .chapter-badge) {
+  position: relative;
+  z-index: 1;
+}
+.road {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.road > span {
+  position: absolute;
+  background-color: var(--road-fill);
+}
+.road-top {
+  top: 0;
+  left: var(--road);
+  right: var(--road);
+  height: var(--road);
+  border-block: 1px solid var(--ink);
+  background-image: repeating-linear-gradient(90deg, var(--paper) 0 16px, transparent 16px 32px);
+  background-size: 100% 4px;
+  background-position: 0 50%;
+  background-repeat: no-repeat;
+}
+.road-side {
+  top: var(--road);
+  bottom: 0;
+  width: var(--road);
+  border-inline: 1px solid var(--ink);
+  background-image: repeating-linear-gradient(var(--paper) 0 16px, transparent 16px 32px);
+  background-size: 4px 100%;
+  background-position: 50% 0;
+  background-repeat: no-repeat;
+}
+.road-turn {
+  top: 0;
+  width: var(--road);
+  height: var(--road);
+}
+/* The road enters a chapter on the side away from its `data-side`, coming down from the chapter above. */
+.chapter[data-side="right"] .road-side,
+.chapter[data-side="right"] .road-turn-out,
+.chapter[data-side="left"] .road-turn-in {
+  right: 0;
+}
+.chapter[data-side="left"] .road-side,
+.chapter[data-side="left"] .road-turn-out,
+.chapter[data-side="right"] .road-turn-in {
+  left: 0;
+}
+.road-turn-in {
+  border-bottom: 1px solid var(--ink);
+}
+.chapter[data-side="right"] .road-turn-in {
+  border-left: 1px solid var(--ink);
+}
+.chapter[data-side="left"] .road-turn-in {
+  border-right: 1px solid var(--ink);
+}
+.road-turn-out {
+  border-top: 1px solid var(--ink);
+}
+.chapter[data-side="right"] .road-turn-out {
+  border-right: 1px solid var(--ink);
+}
+.chapter[data-side="left"] .road-turn-out {
+  border-left: 1px solid var(--ink);
+}
+
+/* The level marker on the road. */
+.chapter-badge {
+  position: absolute;
+  top: calc(var(--road) / 2);
+  z-index: 3;
+  display: flex;
+  translate: 0 -50%;
+  border: 1px solid var(--ink);
+  box-shadow: 3px 3px 0 var(--ink);
+  font: 500 12px/1 var(--font-mono), monospace;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.chapter[data-side="right"] .chapter-badge {
+  left: calc(var(--road) + 20px);
+}
+.chapter[data-side="left"] .chapter-badge {
+  right: calc(var(--road) + 20px);
+}
+.chapter-number {
+  display: grid;
+  place-items: center;
+  min-width: 48px;
+  padding: 0 10px;
+  border-right: 1px solid var(--ink);
+  background: var(--blue);
+  color: #fff;
+  font: 700 17px/1 var(--font-mono), monospace;
+  letter-spacing: 0.02em;
+}
+.chapter-label {
+  padding: 13px 16px 12px;
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.chapter-title {
+  margin-bottom: 24px;
+  font-family: var(--font-pixel), monospace;
+  font-size: clamp(38px, 3.7vw, 58px);
+  font-weight: 500;
+  line-height: 1.02;
+  letter-spacing: -0.02em;
+}
+.chapter-title span {
+  color: var(--blue);
+}
+.chapter-lead {
+  max-width: 520px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.9;
+}
+.chapter-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 36px;
+  margin-top: 20px;
+}
+
+/* Chapter 1: Kenalan. */
+.kenalan {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(32px, 6%, 88px);
+  align-items: center;
+}
+.vision {
+  max-width: 540px;
+  margin: 30px 0 0;
+  padding: 2px 0 2px 22px;
+  border-left: 4px solid var(--blue);
+}
+.vision figcaption {
+  margin-bottom: 8px;
+  color: var(--blue);
+}
+.vision blockquote {
+  margin: 0;
+}
+.vision blockquote p {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+/* The finish line, where the road ends and the footer begins. */
+.journey::after {
+  content: "";
+  display: block;
+  height: 16px;
+  border-block: 1px solid var(--ink);
+  background: var(--checker) 0 0 / 16px 16px;
+}
+
+@media (max-width: 1050px) {
+  .chapter {
+    padding-bottom: 88px;
+  }
+}
+
+@media (max-width: 760px) {
+  .journey {
+    --road: 12px;
+    --lane: 14px;
+  }
+  .community-strip {
+    gap: 16px;
+    padding: 19px 20px;
+    justify-content: space-between;
+  }
+  .community-strip span {
+    font-size: 13px;
+  }
+  .community-strip svg {
+    width: 10px;
+    height: 10px;
+  }
+  .community-strip > :nth-last-child(-n + 2) {
+    display: none;
+  }
+  .start-flag {
+    left: calc(var(--lane) - 8px);
+    width: calc(var(--road) + 16px);
+  }
+  .start-flag span {
+    font-size: 9px;
+  }
+  /* On phones the road is one lane down the left edge. */
+  .chapter {
+    width: 100%;
+    padding: 96px 22px 72px calc(var(--lane) + var(--road) + 20px);
+  }
+  .road-top,
+  .road-turn {
+    display: none;
+  }
+  .chapter[data-side] .road-side {
+    top: 0;
+    right: auto;
+    left: var(--lane);
+    background-size: 2px 100%;
+    background-image: repeating-linear-gradient(var(--paper) 0 10px, transparent 10px 20px);
+  }
+  .chapter[data-side] .chapter-badge {
+    top: 32px;
+    right: auto;
+    left: calc(var(--lane) - 16px);
+    translate: none;
+    font-size: 10px;
+  }
+  .chapter-number {
+    min-width: 44px;
+    font-size: 15px;
+  }
+  .chapter-label {
+    padding: 11px 12px 10px;
+  }
+  .chapter-title {
+    font-size: 38px;
+  }
+  .chapter-lead {
+    font-size: 14px;
+  }
+  .kenalan {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .vision blockquote p {
+    font-size: 16px;
+  }
+}

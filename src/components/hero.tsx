@@ -21,9 +21,6 @@ export function Hero() {
         </div>
         <div className="hero-wash" />
         <div className="hero-copy">
-          <p className="eyebrow">
-            <span className="status-dot" /> GOOGLE DEVELOPER GROUP ON CAMPUS
-          </p>
           <h1 id="hero-heading">
             Belajar teknologi
             <br />

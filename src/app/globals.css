@@ -463,9 +463,6 @@ summary:focus-visible {
   width: min(930px, calc(100% - 44px));
   text-align: center;
 }
-.hero-copy .eyebrow {
-  font-size: 10px;
-}
 .hero h1 {
   font-family: var(--font-pixel), monospace;
   font-size: clamp(64px, 6.5vw, 106px);
@@ -984,10 +981,6 @@ summary:focus-visible {
     padding-top: 39px;
     width: calc(100% - 36px);
   }
-  .hero-copy .eyebrow {
-    font-size: 8px;
-    letter-spacing: 0.05em;
-  }
   .hero h1 {
     font-size: clamp(51px, 11.3vw, 81px);
     line-height: 0.98;
@@ -1136,9 +1129,6 @@ summary:focus-visible {
   }
   .hero h1 {
     font-size: 47px;
-  }
-  .hero-copy .eyebrow {
-    font-size: 7px;
   }
 
   .community-copy h2 {

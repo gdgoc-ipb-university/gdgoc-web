@@ -613,6 +613,234 @@
   }
 }
 
+/* Chapter 4: Setahun bersama, the year on one ruler. */
+.setahun-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 40px;
+  align-items: end;
+}
+.setahun-art {
+  width: clamp(200px, 22vw, 300px);
+  height: auto;
+}
+.year {
+  margin-top: 32px;
+}
+.year-ruler {
+  position: relative;
+  padding-bottom: 44px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.year-months {
+  display: grid;
+  border-bottom: 1px solid var(--ink);
+}
+.year-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+}
+.year-grid span + span {
+  border-left: 1px dashed var(--line);
+}
+.year-months span {
+  padding: 10px 12px;
+  border-left: 1px solid var(--line);
+  font: 500 11px/1 var(--font-mono), monospace;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.year-months span:first-child {
+  border-left: 0;
+}
+.year-months small {
+  color: var(--muted);
+  font-size: inherit;
+}
+.year-lane {
+  --accent: var(--blue);
+  position: relative;
+  height: 26px;
+  margin-top: 18px;
+  background: linear-gradient(var(--line), var(--line)) 0 50% / 100% 2px no-repeat;
+}
+.year-bar,
+.year-dot {
+  position: absolute;
+  top: 0;
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 26px;
+  border: 1px solid var(--ink);
+  background: var(--accent);
+  color: #fff;
+  font: 700 11px/1 var(--font-mono), monospace;
+}
+.year-lane[data-color="green"] :is(.year-bar, .year-dot) {
+  color: var(--ink);
+}
+.year-dot {
+  translate: -50% 0;
+}
+.year-lane :is(.year-bar, .year-dot)[data-status="upcoming"] {
+  background: var(--paper);
+  color: var(--ink);
+}
+.year-lane :is(.year-bar, .year-dot)[data-status="done"] {
+  background: var(--road-fill);
+  color: var(--ink);
+}
+.year-today {
+  position: absolute;
+  top: 34px;
+  bottom: 0;
+  width: 2px;
+  background: var(--red);
+  translate: -1px 0;
+}
+.year-today span {
+  position: absolute;
+  bottom: 8px;
+  left: 6px;
+  padding: 4px 7px;
+  background: var(--ink);
+  color: var(--paper);
+  font: 500 10px/1 var(--font-mono), monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.year-today::before {
+  content: "";
+  position: absolute;
+  top: -6px;
+  left: -4px;
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--ink);
+  background: var(--red);
+}
+.year-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  margin-top: 22px;
+  color: var(--muted);
+  font: 500 11px/1 var(--font-mono), monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.year-tracks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+  margin-top: 14px;
+}
+.year-track {
+  --accent: var(--blue);
+}
+.year-lane[data-color="green"],
+.year-track[data-color="green"] {
+  --accent: var(--green);
+}
+.year-track h3 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-family: var(--font-pixel), monospace;
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.year-track h3::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--ink);
+  background: var(--accent);
+}
+.year-track h3 a:hover {
+  color: var(--blue);
+}
+.year-track ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: milestone;
+}
+.year-track li {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) 96px;
+  grid-template-areas: "n date status" "n label status";
+  column-gap: 14px;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  counter-increment: milestone;
+}
+.year-track li::before {
+  content: counter(milestone);
+  grid-area: n;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--ink);
+  font: 700 11px/1 var(--font-mono), monospace;
+}
+.year-date {
+  grid-area: date;
+  font: 500 11px/1.5 var(--font-mono), monospace;
+  letter-spacing: 0.04em;
+}
+.year-label {
+  grid-area: label;
+  color: var(--muted);
+  font-size: 14px;
+}
+.year-status {
+  grid-area: status;
+  justify-self: end;
+  font: 500 10px/1 var(--font-mono), monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.year-track li[data-status] .year-status {
+  padding: 5px 7px;
+  border: 1px solid var(--ink);
+}
+.year-track li[data-status="current"] .year-status {
+  background: var(--yellow);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+.year-track li[data-status="done"] .year-date,
+.year-track li[data-status="done"] .year-label {
+  color: var(--muted);
+  text-decoration: line-through;
+  text-decoration-color: #59677580;
+}
+.year-track li[data-status="done"] .year-status {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.year-track li[data-status="done"]::before {
+  border-color: var(--line);
+  color: var(--muted);
+}
+.year-track li[data-status="current"]::before {
+  background: var(--accent);
+  color: #fff;
+}
+.year-track[data-color="green"] li[data-status="current"]::before {
+  color: var(--ink);
+}
+
 /* Chapter 5: Dari IPB untuk Bogor. */
 .chapter-head {
   max-width: 640px;
@@ -730,6 +958,10 @@
   .level-body {
     padding: 18px;
   }
+  .year-months span {
+    padding-inline: 8px;
+    font-size: 10px;
+  }
   .skyline-place figcaption {
     font-size: 9px;
   }
@@ -737,6 +969,9 @@
 
 @media (max-width: 960px) {
   .chapter-head-split {
+    display: block;
+  }
+  .setahun-head {
     display: block;
   }
   .chapter-head-split .chapter-title {
@@ -747,6 +982,16 @@
     gap: 28px;
     max-width: 560px;
     margin-top: 48px;
+  }
+  .setahun-art {
+    display: none;
+  }
+  .year-ruler {
+    display: none;
+  }
+  .year-tracks {
+    grid-template-columns: 1fr;
+    gap: 36px;
   }
 }
 

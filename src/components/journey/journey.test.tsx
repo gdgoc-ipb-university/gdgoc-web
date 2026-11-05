@@ -5,6 +5,7 @@ import { activationBand, storyQuery } from "@/lib/journey";
 import { Journey } from "./journey";
 import { TigaMisi } from "./missions";
 import { PilihJalurmu } from "./programs";
+import { YearTimeline } from "./year-timeline";
 
 type Observed = { callback: IntersectionObserverCallback; options?: IntersectionObserverInit; targets: Element[] };
 let observers: Observed[] = [];
@@ -114,5 +115,41 @@ describe("program level select", () => {
       "/program/catalyst", "/program/tech-league", "/program/tech-support", "/program",
     ]);
     expect(observers).toHaveLength(0);
+  });
+});
+
+describe("year timeline", () => {
+  const tracks = [
+    { name: "GDGoC Catalyst", href: "/program/catalyst", color: "blue" as const, milestones: [
+      { label: "Pendaftaran (oprec)", start: "2026-11-02", end: "2026-11-22" },
+      { label: "Pengumuman peserta", start: "2026-11-29" },
+    ] },
+  ];
+  const frame = () => act(async () => { await new Promise((resolve) => requestAnimationFrame(() => resolve(null))); });
+
+  afterEach(() => vi.useRealTimers());
+
+  it("renders no status until it reads today on the client, then marks each milestone in WIB", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    // 17:30 UTC on 22 November is already 00:30 WIB on the 23rd: oprec has closed.
+    vi.setSystemTime(new Date("2026-11-22T17:30:00Z"));
+    const { container } = render(<YearTimeline tracks={tracks} />);
+    const items = () => Array.from(container.querySelectorAll<HTMLElement>(".year-track li"));
+    expect(items().map((item) => item.dataset.status)).toEqual([undefined, undefined]);
+    expect(container.querySelector(".year-today")).toBeNull();
+    await frame();
+    expect(items().map((item) => item.dataset.status)).toEqual(["done", "upcoming"]);
+    expect(items().map((item) => item.querySelector(".year-status")?.textContent)).toEqual(["Selesai", "Akan datang"]);
+    expect(screen.getByText(/Hari ini 23 November 2026 WIB/)).toBeTruthy();
+    expect(container.querySelector(".year-today")).not.toBeNull();
+  });
+
+  it("drops the pin when today is outside the year", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2027-08-01T00:00:00Z"));
+    const { container } = render(<YearTimeline tracks={tracks} />);
+    await frame();
+    expect(container.querySelector(".year-today")).toBeNull();
+    expect(Array.from(container.querySelectorAll<HTMLElement>(".year-track li"), (item) => item.dataset.status)).toEqual(["done", "done"]);
   });
 });

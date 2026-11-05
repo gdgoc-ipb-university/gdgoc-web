@@ -6,6 +6,7 @@ import { Journey } from "@/components/journey/journey";
 import { Kenalan, StartLine } from "@/components/journey/kenalan";
 import { TigaMisi } from "@/components/journey/missions";
 import { PilihJalurmu } from "@/components/journey/programs";
+import { SetahunBersama } from "@/components/journey/setahun";
 import "@/components/journey/journey.css";
 
 /**
@@ -26,6 +27,7 @@ export function Landing() {
           <Kenalan />
           <TigaMisi />
           <PilihJalurmu />
+          <SetahunBersama />
           <DariIpbUntukBogor />
         </Journey>
       </main>

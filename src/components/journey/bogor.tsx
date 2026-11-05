@@ -34,7 +34,7 @@ function Tree() {
 /** Chapter 5: the skyline from campus to the city, then the band that hands off to the footer. */
 export function DariIpbUntukBogor() {
   return (
-    <Chapter id="bogor" number="05" label="Dari IPB untuk Bogor" side="left" className="chapter-bogor">
+    <Chapter id="bogor" number="05" label="Dari IPB untuk Bogor" side="right" className="chapter-bogor">
       <Reveal className="chapter-head">
         <ChapterTitle id="bogor" lead="Dari IPB" accent="untuk Bogor" />
         <p className="chapter-lead">

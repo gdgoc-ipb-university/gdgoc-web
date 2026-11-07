@@ -254,6 +254,8 @@ export default defineSchema({
       techSupportRequests: v.optional(v.number()),
       // Added with uploaded profile photos.
       photos: v.optional(v.number()),
+      // Added with Tech League teams: the teams the account left.
+      leagueTeams: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

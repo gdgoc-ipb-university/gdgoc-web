@@ -181,4 +181,30 @@ describe("league teams", () => {
     expect(await owner.mutation(api.league.importRegistrations, { rows: [{ email: "kapten@example.com", paid: true }] })).toMatchObject({ updated: 1 });
     expect((await owner.query(api.league.staffTeams, {}))[0].registration).toMatchObject({ paid: true });
   });
+
+  it("takes a deleted member out of their team: a deleted captain's team gets a new captain, a registered empty team is flagged", async () => {
+    const { t, captain, teamId, token } = await world();
+    const owner = await account(t, "owner@example.com");
+    const member = await account(t, "anggota@example.com");
+    await member.mutation(api.league.join, { token });
+    expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: captain.id, confirmName: "Nama kapten" })).toMatchObject({ leagueTeams: 1 });
+    expect(await t.run((ctx) => ctx.db.get(teamId))).toMatchObject({ captainId: member.id });
+    expect(await rowsOf(t, teamId)).toHaveLength(1);
+
+    await owner.mutation(api.league.importRegistrations, { rows: [{ email: "anggota@example.com", paid: true }] });
+    await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "Nama anggota" });
+    const [flagged] = await owner.query(api.league.staffTeams, {});
+    expect(flagged).toMatchObject({ captain: null, members: [], standing: "flagged", registration: { paid: true } });
+
+    // Whoever joins a flagged team with its link becomes its captain.
+    const back = await account(t, "kembali@example.com");
+    await back.mutation(api.league.join, { token });
+    expect(await teamOf(back)).toMatchObject({ captain: true, standing: "forming" });
+
+    // An unregistered team whose last member is deleted goes.
+    const solo = await account(t, "sendiri@example.com");
+    const soloTeam = await solo.mutation(api.league.create, { name: "Tim Sendiri", track: "business" });
+    await owner.mutation(api.dashboard.deleteAccount, { ownerId: solo.id, confirmName: "Nama sendiri" });
+    expect(await t.run((ctx) => ctx.db.get(soloTeam))).toBeNull();
+  });
 });

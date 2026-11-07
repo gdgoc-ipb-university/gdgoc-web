@@ -91,7 +91,7 @@ function DeleteAccount({ ownerId, fullName }: { ownerId: string; fullName: strin
   }
   return <section className="dash-delete-account" aria-labelledby="delete-account-title">
     <div className="app-section-heading"><div><p className="eyebrow">PEMILIK</p><h2 id="delete-account-title">Hapus akun</h2></div></div>
-    <p className="app-small">Untuk permintaan penghapusan data dari anggota. Profil, kiriman apresiasi beserta riwayat tinjauannya, kiriman tugas beserta file dan nilainya, skor Bogor Run, tugas yang ia nilai, serta akun login dan sesinya dihapus permanen. Catatan orang lain yang menyebut akun ini, misalnya siapa yang menilai, tetap ada tanpa nama. Tindakan ini tidak bisa dibatalkan.</p>
+    <p className="app-small">Untuk permintaan penghapusan data dari anggota. Profil, kiriman apresiasi beserta riwayat tinjauannya, kiriman tugas beserta file dan nilainya, skor Bogor Run, tugas yang ia nilai, keanggotaan tim Tech League (kapten pindah ke anggota lain), serta akun login dan sesinya dihapus permanen. Catatan orang lain yang menyebut akun ini, misalnya siapa yang menilai, tetap ada tanpa nama. Tindakan ini tidak bisa dibatalkan.</p>
     {!open ? <button type="button" className="text-button text-danger" onClick={() => setOpen(true)}>Hapus akun {fullName}</button>
       : <form onSubmit={(event) => { event.preventDefault(); if (matches && !busy) void confirm(); }}>
         <div className="app-field"><label htmlFor="delete-account-name">Ketik <strong>{fullName}</strong> untuk konfirmasi</label><input id="delete-account-name" value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" spellCheck={false} disabled={busy} /></div>

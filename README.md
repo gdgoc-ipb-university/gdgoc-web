@@ -50,3 +50,4 @@ Never force-push this branch, and never open a pull request from it.
 | `issue-166/tech-league-dates` | #166 Tech League schedule from P&D's new timeline: grouped schedule at 1280 and 390, the /bergabung line | #167 |
 | `issue-165/landing-story` | #165 landing as a member journey: hero before and after, the road and five chapters at 1440 and 390, each mission step and the dither transition (frames and GIF), programs, timeline, the angkot, reduced motion, against direction A | #169, #170, #171, #172, #173, #174 |
 | `issue-176/join-to-login` | #176 join buttons open the site's login: hero button and its /dashboard target, join footer note, /bergabung | #177 |
+| `issue-179/league-subdomain` | #179 Tech League on its own host: league landing at 1280 and 390, Daftar signed out and as a member, onboarding returning to the league, the main site signed in afterwards (made-up accounts) | #184, #185 |

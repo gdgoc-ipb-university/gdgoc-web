@@ -2,12 +2,13 @@
 
 The first authenticated visit to any `/dashboard` page redirects accounts without a completed member profile to `/onboarding`. This includes existing Google accounts that have never completed this introduction. The public landing and Google sign-in remain accessible without a profile.
 
-## Four screens
+## Three screens
 
 1. **Kenalan:** a name prefilled from Google, editable before saving.
 2. **Kampus:** searchable campus and study-program comboboxes. Both accept names outside the suggestions.
-3. **WhatsApp:** an optional invitation to the group supplied by the community owner.
-4. **Jadi member:** an optional invitation to the official GDG chapter, followed by completion and a return to the dashboard.
+3. **WhatsApp:** an optional invitation to the group supplied by the community owner, followed by completion and a return to the dashboard.
+
+Signing in with Google on `/dashboard` is how people join, so onboarding no longer sends them to the external chapter page (#176).
 
 ## Community tag
 
@@ -15,9 +16,9 @@ Everyone registers as **Member** ([ADR 0007](decisions/0007-staff-assign-communi
 
 The tag grants no permissions by itself; it decides which assignments a member gets and prefills the Apresiasi "Peran" field. Until #156 members chose Member or Core Team themselves. Those tags are kept as they are: a self-declared Core Team tag stays, marked unconfirmed, until staff change or confirm it. Accounts that completed onboarding before tags existed see a one-screen notice on their next dashboard visit and register as Member (`members.registerAsMember`, which never sets another tag).
 
-Screen ids keep their numbers from the five-screen flow (1, 2, 4, 5), so `memberProfiles.nextStep` needs no migration: a profile saved on the removed role screen (3) resumes at the WhatsApp invitation.
+Screen ids keep their numbers from the five-screen flow (1, 2, 4), so `memberProfiles.nextStep` needs no migration: a profile saved on the removed role screen (3) or the removed external chapter page screen (5) resumes at the WhatsApp invitation. `members.saveStep` still accepts step 5 from a tab opened before that screen went, and finishes it like step 4.
 
-External invitations open a new tab. Opening an invitation is not treated as proof of joining. Neither service is queried for membership, and no external join flags are stored. Both invitation screens can be skipped with the normal forward button.
+The WhatsApp invitation opens a new tab. Opening it is not treated as proof of joining. WhatsApp is not queried for membership, and no external join flags are stored. The invitation can be skipped: "Selesai, ke Dashboard" finishes onboarding either way.
 
 ## Persistence and access
 

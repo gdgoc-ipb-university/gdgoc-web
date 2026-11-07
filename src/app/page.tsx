@@ -20,7 +20,7 @@ const jsonLd = {
       description: siteDescription,
       url: `${siteUrl}/`,
       logo: `${siteUrl}/brand/gdgoc-ipb.svg`,
-      sameAs: [communityLinks.membership, communityLinks.instagram],
+      sameAs: [communityLinks.instagram],
       address: { "@type": "PostalAddress", addressLocality: "Bogor", addressRegion: "Jawa Barat", addressCountry: "ID" },
     },
     {

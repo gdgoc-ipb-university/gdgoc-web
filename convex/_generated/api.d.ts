@@ -21,6 +21,7 @@ import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as gatherings from "../gatherings.js";
 import type * as http from "../http.js";
+import type * as league from "../league.js";
 import type * as members from "../members.js";
 import type * as photos from "../photos.js";
 import type * as techSupport from "../techSupport.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   dashboard: typeof dashboard;
   gatherings: typeof gatherings;
   http: typeof http;
+  league: typeof league;
   members: typeof members;
   photos: typeof photos;
   techSupport: typeof techSupport;

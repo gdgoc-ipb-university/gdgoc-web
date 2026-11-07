@@ -33,6 +33,7 @@ export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.numbe
 export const techSupportStatus = v.union(v.literal("new"), v.literal("matched"), v.literal("inProgress"), v.literal("closed"));
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
 export const cohortRole = v.object({ key: v.string(), name: v.string() });
+export const leagueTrack = v.union(v.literal("software"), v.literal("uiux"), v.literal("business"));
 
 export default defineSchema({
   memberProfiles: defineTable({
@@ -212,6 +213,21 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId", "submittedAt"])
     .index("by_submitted", ["submittedAt"]),
+  // A Tech League team of one season (#183), formed by members on the league. `code` stands in for the name in anonymous
+  // judging and never changes; `inviteToken` is the secret in the invite link, which the captain can replace. `captainId`
+  // is one of its members, and a team whose last member leaves is deleted. `submittedAt` is set by submissions (#180)
+  // and locks the track.
+  leagueTeams: defineTable({
+    season: v.string(), name: v.string(), track: leagueTrack, code: v.string(), inviteToken: v.string(), captainId: v.string(),
+    submittedAt: v.optional(v.number()), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(),
+  })
+    .index("by_code", ["code"])
+    .index("by_invite", ["inviteToken"])
+    .index("by_season", ["season"]),
+  // One member of one team; `season` is copied from the team so a member is found in at most one team per season.
+  leagueTeamMembers: defineTable({ teamId: v.id("leagueTeams"), season: v.string(), ownerId: v.string(), joinedAt: v.number() })
+    .index("by_team", ["teamId", "joinedAt"])
+    .index("by_owner", ["ownerId", "season"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,

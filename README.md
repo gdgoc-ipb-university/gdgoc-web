@@ -70,7 +70,7 @@ Production also needs `CONVEX_DEPLOY_KEY` on Vercel (see Deployment).
 
 `/dashboard/apresiasi` provides private autosaved drafts, a review-before-submit form, documentation links (no uploads), and submission status. `/dashboard/apresiasi/tinjau` is the review queue for owners (the `APPRECIATION_ADMIN_EMAILS` allowlist), for dashboard admins, and for members an owner has made reviewers from the members page; it is locked until `APPRECIATION_ADMIN_EMAILS` is explicitly configured. The old `/apresiasi` and `/apresiasi/admin` URLs redirect there. Publication is a manual Media & Creative workflow, with the Instagram post URL recorded after publishing.
 
-The first authenticated visit opens a three-screen `/onboarding`: name, campus and study program, and an optional WhatsApp invitation. Everyone registers as Member; owners and admins assign Core Team (with a division) and BoD from the members page. Progress is saved per account after each forward action, and completed users do not repeat the flow. Searchable education comboboxes accept unlisted values and support keyboard navigation, mobile input hints, and accessible labels/errors. The resulting profile prefills new appreciation drafts. See `docs/ONBOARDING.md` for persistence, accessibility, and suggestion-source details.
+The first authenticated visit opens a four-screen `/onboarding`: name, campus and study program, optional WhatsApp invitation, and optional GDG Community invitation. Everyone registers as Member; owners and admins assign Core Team (with a division) and BoD from the members page. Progress is saved per account after each forward action, and completed users do not repeat the flow. Searchable education comboboxes accept unlisted values and support keyboard navigation, mobile input hints, and accessible labels/errors. The resulting profile prefills new appreciation drafts. See `docs/ONBOARDING.md` for persistence, accessibility, and suggestion-source details.
 
 ## Tech League
 
@@ -189,7 +189,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 - `src/lib/bogor-run/`: the fixed-tick engine shared with the server replay, the autopilot, responsive projection, Canvas drawing, synthesized sound, sprite frames, leaderboard helpers, and the lazily loaded Convex/auth client (`online.ts`).
 - `src/app/rai/` and `src/components/rai/`: an unlinked, noindex easter egg with the Tier Gemini Rising Star badge redrawn as SVG. It unlocks the blue dino skin for Bogor Run (`src/lib/bogor-run/skin.ts`); the landing page's browser console hints at it.
 - `convex/bogorRun.ts`: signed run tokens, replay-verified score submission, the public and dashboard leaderboards, moderation, and the 30-day pruning of run records.
-- `src/lib/community.ts`: the community WhatsApp and Instagram destinations.
+- `src/lib/community.ts`: verified official membership and Instagram destinations.
 - `src/app/program/page.tsx` and `src/lib/breadcrumb.ts`: the public program hub, and the `BreadcrumbList` JSON-LD helper every program page uses.
 - `src/app/bergabung/page.tsx`: the ways to join, their current windows, and the join FAQ.
 - `src/lib/about.ts` and `src/app/tentang/page.tsx`: the vision, missions, `AboutPage` JSON-LD, and the about page.

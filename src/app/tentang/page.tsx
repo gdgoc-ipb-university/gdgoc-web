@@ -55,7 +55,6 @@ export default function AboutPage() {
       <section aria-labelledby="about-history">
         <h2 id="about-history">Dari GDSC IPB ke GDGoC IPB</h2>
         <p>Komunitas ini sebelumnya bernama GDSC IPB (Google Developer Student Clubs). Kini GDGoC IPB menjadi bagian dari Google Developer Groups on Campus, jaringan komunitas developer di kampus yang didukung Google.</p>
-        <p>Halaman resmi chapter ada di <a href={communityLinks.membership} target="_blank" rel="noreferrer">Google Developer Groups <Arrow external /></a>. Di sana kamu bisa bergabung sebagai member dan melihat acara chapter.</p>
         <p>Kenali Lead, Co-Lead, dan lima divisi yang menjalankan chapter tahun ini di halaman <Link href={team.path}>Tim {team.year}</Link>.</p>
       </section>
 

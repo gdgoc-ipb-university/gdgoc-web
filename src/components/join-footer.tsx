@@ -22,15 +22,10 @@ export function JoinFooter() {
               Temukan teman belajar, ikuti kegiatan teknologi, dan kembangkan proyekmu
               bersama komunitas mahasiswa Bogor
             </p>
-            <a
-              className="button button-blue"
-              href={communityLinks.membership}
-              target="_blank"
-              rel="noreferrer"
-            >
-              Gabung member <Arrow external />
-            </a>
-            <p className="join-note">Lewat halaman resmi Google Developer Groups · <Link href="/bergabung">Cara lain untuk bergabung</Link></p>
+            <Link className="button button-blue" href="/dashboard">
+              Gabung member <Arrow />
+            </Link>
+            <p className="join-note">Daftar dengan akun Google · <Link href="/bergabung">Cara lain untuk bergabung</Link></p>
           </Reveal>
         }
       >
@@ -50,9 +45,6 @@ export function JoinFooter() {
               <Link href={techLeague.path}>Tech League</Link>
               <Link href="/dashboard/apresiasi">Apresiasi prestasi</Link>
               <Link href="/dashboard">Dashboard member</Link>
-              <a href={communityLinks.membership} target="_blank" rel="noreferrer">
-                Halaman GDG <Arrow external />
-              </a>
             </nav>
             <nav aria-label="Kanal komunitas">
               <p className="eyebrow">KABAR & KOLABORASI</p>

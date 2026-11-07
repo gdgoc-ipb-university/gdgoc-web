@@ -57,7 +57,7 @@ Desktop hero text keeps its previous 11% left margin and maximum 740px block wid
 
 The copy treats the site as a community profile. It names coding, UI/UX, AI, Study Jam, and the actual programs instead of generic motivational headlines. Local source material: `gdgoc-second-brain/02-divisi/aturan-copywriting.md`, `04-program/gdgoc-catalyst.md`, `04-program/tech-league.md`, and the current lead-authored scope recorded in `04-program/konten-open-knowledge-tech-support.md`. Catalyst roles and capstone, Tech League's three categories, and Tech Support's matching language follow those records. Program CTAs offer information without claiming registration is open.
 
-The primary action is “Gabung member.” Its destination is the [official GDGoC IPB chapter page](https://gdg.community.dev/gdg-on-campus-ipb-university-bogor-indonesia/), inspected live with the “Join us” button present. This is community-platform membership; it does not imply automatic admission to a program or core team.
+The primary action is “Gabung member.” It opens the site's own sign-in at `/dashboard`: visitors sign in with Google, and first-timers go on to onboarding (#176). Until then it opened the external chapter page. Membership does not imply automatic admission to a program or core team.
 
 The closing invitation and footer share the same warm paper background as the landing. A small pixel garden, blue membership button, chapter identity, and navigation form one continuous composition. The dark footer variation was discarded at the user's direction. Internal art-direction review links are omitted from the public profile footer.
 

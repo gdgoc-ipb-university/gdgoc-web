@@ -19,7 +19,7 @@ const path = "/bergabung";
 export const metadata: Metadata = {
   title: "Cara bergabung",
   description:
-    "Cara bergabung dengan GDGoC IPB: jadi member lewat Google Developer Groups dan grup WhatsApp, ikut bootcamp GDGoC Catalyst, atau berkompetisi di Tech League.",
+    "Cara bergabung dengan GDGoC IPB: daftar jadi member dengan akun Google dan gabung grup WhatsApp, ikut bootcamp GDGoC Catalyst, atau berkompetisi di Tech League.",
   ...canonical(path),
 };
 
@@ -28,7 +28,7 @@ export const revalidate = 3600;
 
 const faq: FaqItem[] = [
   { question: "Apakah harus mahasiswa IPB?", answer: ["Tidak. GDGoC IPB terbuka untuk mahasiswa yang tinggal di Bogor, dari kampus dan jurusan mana pun."] },
-  { question: "Apakah ada biaya untuk bergabung?", answer: ["Tidak. Bergabung sebagai member lewat Google Developer Groups dan grup WhatsApp tidak dipungut biaya. GDGoC Catalyst juga gratis."] },
+  { question: "Apakah ada biaya untuk bergabung?", answer: ["Tidak. Daftar jadi member dan bergabung di grup WhatsApp tidak dipungut biaya. GDGoC Catalyst juga gratis."] },
   { question: "Apa bedanya member dan peserta Catalyst?", answer: ["Member mengikuti kabar dan kegiatan komunitas. Peserta Catalyst mendaftar lewat oprec, lalu mengikuti sembilan sesi bootcamp dan mengerjakan capstone dalam tim."] },
   { question: "Bagaimana kalau saya terlewat pendaftaran Catalyst?", answer: ["Kamu tetap bisa bergabung sebagai member dan ikut Study Jam serta kegiatan komunitas lainnya. Program berikutnya diumumkan di ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
   { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
@@ -68,9 +68,9 @@ export default function JoinPage() {
         <ul className="program-grid join-ways">
           <li><div>
             <PixelIcon name="users" size={32} />
-            <h3>Member Google Developer Groups</h3>
-            <p>Daftar di halaman resmi chapter untuk mendapat kabar acara GDGoC IPB.</p>
-            <a className="button button-blue" href={communityLinks.membership} target="_blank" rel="noreferrer">Gabung member <Arrow external /></a>
+            <h3>Member GDGoC IPB</h3>
+            <p>Daftar dengan akun Google di website ini untuk mendapat kartu anggota dan dashboard member.</p>
+            <Link className="button button-blue" href="/dashboard">Gabung member <Arrow /></Link>
           </div></li>
           <li><div>
             <PixelIcon name="whatsapp" size={32} />

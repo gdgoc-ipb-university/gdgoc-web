@@ -41,7 +41,7 @@ export function OnboardingPage() {
   const save = useMutation(api.members.saveStep);
   const router = useRouter();
   const params = useSearchParams();
-  const destination = onboardingDestination(params.get("next"));
+  const destination = onboardingDestination(params.get("next"), params.get("undangan"));
   useEffect(() => {
     if (!isLoading && !isAuthenticated) router.replace("/dashboard");
     else if (profile?.completedAt) router.replace(destination);

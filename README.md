@@ -57,9 +57,12 @@ Before you change anything, read `docs/CONTRIBUTING.md`: how work starts on an i
 | `NEXT_PUBLIC_CONVEX_URL` | `.env.local`, written by `pnpm exec convex dev`; on Vercel, by `convex deploy` during the build | Convex client URL for queries and mutations | Yes |
 | `NEXT_PUBLIC_CONVEX_SITE_URL` | As above | Convex HTTP URL that the Better Auth handler forwards to | Yes |
 | `NEXT_PUBLIC_SITE_URL` | `.env.local`; Vercel | Origin for canonical URLs, the sitemap and Open Graph | Optional, falls back to `https://www.gdgocipb.com` |
+| `NEXT_PUBLIC_LEAGUE_URL` | `.env.local`; Vercel | Tech League's own origin. Its host is served from `src/app/league` and `/program/tech-league` redirects there; unset, the league is previewed at `/league` | Optional |
 | `DEV_ALLOWED_ORIGINS` | `.env.local` | Comma-separated hostnames (for example a Cloudflare tunnel) allowed to reach `next dev` | Optional |
 | `BETTER_AUTH_SECRET` | Convex deployment | Signs sessions and Bogor Run tokens; unique per deployment | Yes for sign-in; without it the game plays unranked |
-| `SITE_URL` | Convex deployment | The one origin Better Auth trusts and redirects to | Yes for sign-in |
+| `SITE_URL` | Convex deployment | The origin Better Auth runs on; Google returns there | Yes for sign-in |
+| `LEAGUE_URL` | Convex deployment | Tech League's origin, trusted as an origin and as a sign-in `callbackURL` | With `NEXT_PUBLIC_LEAGUE_URL` |
+| `AUTH_COOKIE_DOMAIN` | Convex deployment | Parent domain of both hosts (`gdgocipb.com`); auth cookies go there so one session covers both | With `NEXT_PUBLIC_LEAGUE_URL` |
 | `GOOGLE_CLIENT_ID` | Convex deployment | Google OAuth web client | Yes for sign-in; until set, the sign-in button is disabled |
 | `GOOGLE_CLIENT_SECRET` | Convex deployment | Its secret | Yes for sign-in |
 | `APPRECIATION_ADMIN_EMAILS` | Convex deployment | Comma-separated verified emails of the owners | Optional; the Apresiasi review queue stays locked until set |

@@ -1054,13 +1054,15 @@ summary:focus-visible {
 .league-daftar .app-panel h2 { font-size: clamp(26px, 6vw, 32px); margin-block: 10px 12px; overflow-wrap: anywhere; }
 .league-daftar .app-panel h3 { font-size: 18px; margin-block: 28px 12px; }
 .league-daftar .app-panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.league-daftar .app-panel > p { margin-bottom: 20px; }
 .league-daftar .app-panel .button { margin-top: 20px; }
+.league-daftar .app-panel .league-actions .button { margin-top: 0; }
 .league-tracks { display: grid; gap: 8px; }
 .league-track { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--control-line); background: white; font-size: 14px; font-weight: 500; cursor: pointer; }
 .league-track:has(input:checked) { border-color: var(--blue); box-shadow: 3px 3px 0 #dce6fb; }
 .league-track:has(input:disabled) { cursor: not-allowed; opacity: .6; }
 .league-track input { accent-color: var(--blue); width: 18px; height: 18px; margin: 0; }
-.league-track-field legend { font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+.league-track-field legend { padding: 0; font-size: 12px; font-weight: 500; margin-bottom: 8px; }
 .league-inline-form { display: grid; gap: 10px; align-items: end; }
 .league-inline-form .app-field { margin: 0; }
 .league-inline-form .button { margin-top: 0 !important; }
@@ -1075,7 +1077,7 @@ summary:focus-visible {
 .league-member-name small { font-weight: 400; color: var(--muted); }
 .league-member-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; flex-basis: 100%; }
 .league-confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 13px; }
-.league-danger { color: #b23729; }
+.text-button.league-danger { color: #b23729; }
 .league-invite-panel .league-inline-form { margin-block: 12px 6px; }
 .league-invite-panel input { font: 12px/1.4 var(--font-mono), monospace !important; }
 .league-settings { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; }

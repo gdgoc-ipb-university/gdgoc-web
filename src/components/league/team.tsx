@@ -127,12 +127,12 @@ function OpenInvite({ onOpen }: { onOpen: (token: string) => void }) {
 }
 
 /** A button that asks once more before acting, in place. */
-function Confirm({ label, question, confirm, onConfirm, busy }: { label: string; question: ReactNode; confirm: string; onConfirm: () => void; busy: boolean }) {
+function Confirm({ label, question, confirm, onConfirm, busy, danger = false }: { label: string; question: ReactNode; confirm: string; onConfirm: () => void; busy: boolean; danger?: boolean }) {
   const [asking, setAsking] = useState(false);
   if (!asking) return <button type="button" className="text-button" onClick={() => setAsking(true)}>{label}</button>;
   return <span className="league-confirm" role="group">
     <span>{question}</span>
-    <button type="button" className="text-button league-danger" disabled={busy} onClick={onConfirm}>{confirm}</button>
+    <button type="button" className={danger ? "text-button league-danger" : "text-button"} disabled={busy} onClick={onConfirm}>{confirm}</button>
     <button type="button" className="text-button" onClick={() => setAsking(false)}>Batal</button>
   </span>;
 }
@@ -158,7 +158,7 @@ function TeamPanel({ team }: { team: Team }) {
       {member.captain && <span className="app-status" data-status="submitted">Kapten</span>}
       {team.captain && !member.you && <span className="league-member-actions">
         <Confirm label="Jadikan kapten" question={`${member.name} jadi kapten?`} confirm="Ya, serahkan" busy={action.busy} onConfirm={() => void action.run(() => handOver({ memberId: member._id }))} />
-        <Confirm label="Keluarkan" question={`Keluarkan ${member.name}?`} confirm="Ya, keluarkan" busy={action.busy} onConfirm={() => void action.run(() => remove({ memberId: member._id }))} />
+        <Confirm label="Keluarkan" question={`Keluarkan ${member.name}?`} confirm="Ya, keluarkan" danger busy={action.busy} onConfirm={() => void action.run(() => remove({ memberId: member._id }))} />
       </span>}
     </li>)}</ol>
     {action.errorLine}
@@ -167,7 +167,7 @@ function TeamPanel({ team }: { team: Team }) {
     {team.captain && <TeamSettings team={team} />}
 
     <div className="league-leave">
-      <Confirm label="Keluar dari tim" busy={action.busy} confirm="Ya, keluar" onConfirm={() => void action.run(() => leave({}))}
+      <Confirm label="Keluar dari tim" danger busy={action.busy} confirm="Ya, keluar" onConfirm={() => void action.run(() => leave({}))}
         question={team.members.length === 1 ? "Tim ini akan dihapus." : team.captain ? "Kapten pindah ke anggota yang bergabung paling awal." : "Keluar dari tim?"} />
     </div>
   </section>;
@@ -190,7 +190,7 @@ function InvitePanel({ token, full }: { token: string; full: boolean }) {
         <input id="league-invite-url" readOnly value={link} onFocus={(event) => event.target.select()} /></div>
       <button type="button" className="button button-quiet" onClick={() => void copy()}>{copied ? "Tersalin" : "Salin tautan"}</button>
     </div>
-    <Confirm label="Ganti tautan" question="Tautan lama berhenti berlaku." confirm="Ya, ganti" busy={action.busy} onConfirm={() => void action.run(() => rotate({}))} />
+    <Confirm label="Ganti tautan" question="Tautan lama berhenti berlaku." confirm="Ya, ganti" danger busy={action.busy} onConfirm={() => void action.run(() => rotate({}))} />
     {action.errorLine}
   </div>;
 }

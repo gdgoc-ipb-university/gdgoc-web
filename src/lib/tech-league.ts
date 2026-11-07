@@ -1,17 +1,23 @@
+import { leagueHome } from "./league";
 import { windowState } from "./schedule";
 import { organizationId, siteUrl } from "./site";
 
 /**
- * Tech League 2026/27, shown at /program/tech-league. The categories match the landing; the dates are the main version
- * of Program & Development's timeline of 4 November 2026 (awarding 13 February 2027), chosen for the site on
- * 5 November (#166). Registration, payment and submissions run on Program & Development's forms, so the links stay
- * null until they are published: set them here and the page switches on its own.
+ * Tech League 2026/27, shown at the league's own host (`leagueUrl`, #179), or at /program/tech-league where the league
+ * has no host yet. Links to the competition use `href`; `path` is the old page, which then redirects to the league root.
+ * The categories match the landing; the dates are the main version of Program & Development's timeline of 4 November
+ * 2026 (awarding 13 February 2027), chosen for the site on 5 November (#166). The registration form and guidebook links
+ * stay null until Program & Development publishes them: set them here and the page switches on its own.
  *
  * Each timeline item is `{ label, start, end? }`. `phase` groups the items on the page, `note` adds a line under the
  * label, and items are in date order within a phase.
  */
 export const techLeague = {
   path: "/program/tech-league",
+  /** Where links to Tech League go: the league root, or the old page where the league has no host. */
+  href: leagueHome ?? "/program/tech-league",
+  /** The competition's canonical, absolute URL. */
+  url: leagueHome ?? `${siteUrl}/program/tech-league`,
   description:
     "Tech League GDGoC IPB: kompetisi nasional untuk Software Development, UI/UX Design, dan Business Plan. Pendaftaran tim dibuka 1 Desember 2026.",
   categories: ["Software Development", "UI/UX Design", "Business Plan"],
@@ -49,7 +55,7 @@ export function registrationState(now: number) {
 
 /** The competition as one `Event`, from registration opening to the awarding, the last timeline item. */
 export function techLeagueJsonLd() {
-  const url = `${siteUrl}${techLeague.path}`;
+  const url = techLeague.url;
   const last = techLeague.timeline[techLeague.timeline.length - 1];
   return {
     "@context": "https://schema.org",

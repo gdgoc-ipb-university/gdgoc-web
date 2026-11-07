@@ -124,6 +124,7 @@ describe("accessible member onboarding", () => {
     expect(screen.getByRole("link", { name: /Gabung di GDG Community/ })).toBeTruthy();
     expect(onboardingDestination("review")).toBe("/dashboard/apresiasi/tinjau");
     expect(onboardingDestination(null)).toBe("/dashboard");
+    expect(onboardingDestination("league")).toBe("/league/daftar");
     expect(onboardingDestination("https://malicious.example/")).toBe("/dashboard");
     expect(onboardingDestination("javascript:alert(1)")).toBe("/dashboard");
   });

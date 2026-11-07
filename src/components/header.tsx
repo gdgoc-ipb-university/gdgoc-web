@@ -7,6 +7,7 @@ import { Arrow } from "./icons";
 import { BrandLogo } from "./brand-logo";
 import { ScrollProgress } from "./scroll-progress";
 import { PixelIcon } from "./pixel-icons";
+import { leagueHref, mainHref } from "@/lib/league";
 import { cachedNavViewer, loadNavViewer, type NavViewer } from "@/lib/nav-viewer";
 
 type SectionId = "community" | "explore" | "join";
@@ -17,6 +18,12 @@ const SECTIONS: readonly { id: SectionId; label: string; href?: string }[] = [
   { id: "join", label: "Bogor Run" },
 ];
 /** The scroll-progress bar's quarters, in order; the active link is underlined in the quarter being filled. */
+/** The league's own links (#179): its sections, and the way back to the main site. */
+const LEAGUE_LINKS = [
+  { id: "jadwal", label: "Jadwal", href: `${leagueHref("/")}#jadwal` },
+  { id: "faq", label: "Pertanyaan umum", href: `${leagueHref("/")}#faq` },
+  { id: "site", label: "Situs GDGoC IPB", href: mainHref("/") },
+];
 const ACCENTS = ["blue", "red", "yellow", "green"] as const;
 type Accent = (typeof ACCENTS)[number];
 
@@ -63,10 +70,12 @@ function useNavViewer() {
   return viewer;
 }
 
-export function Header() {
+/** The site header. On the league (`league`) it links the league's sections, the main site and its dashboard instead. */
+export function Header({ league = false }: { league?: boolean }) {
   const pathname = usePathname();
-  const home = pathname === "/";
-  const inDashboard = pathname.startsWith("/dashboard");
+  const home = !league && pathname === "/";
+  const inDashboard = !league && pathname.startsWith("/dashboard");
+  const dashboard = league ? mainHref("/dashboard") : "/dashboard";
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const bar = useRef<HTMLElement>(null);
@@ -93,12 +102,12 @@ export function Header() {
 
   return (
     <header ref={bar} className="header">
-      <Link href="/" className="brand" aria-label="GDGoC IPB — beranda">
+      <Link href={league ? leagueHref("/") : "/"} className="brand" aria-label={league ? "Tech League GDGoC IPB — beranda" : "GDGoC IPB — beranda"}>
         <BrandLogo preload />
       </Link>
       <>
         {/* On phones a signed-in member reaches the dashboard in one tap, without opening the menu. */}
-        {viewer && <Link href="/dashboard" className="nav-quick" aria-label={cta.label} aria-current={inDashboard ? "page" : undefined}><span className="nav-avatar" aria-hidden="true">{viewer.initial}</span></Link>}
+        {viewer && <Link href={dashboard} className="nav-quick" aria-label={cta.label} aria-current={inDashboard ? "page" : undefined}><span className="nav-avatar" aria-hidden="true">{viewer.initial}</span></Link>}
         <button
           ref={trigger}
           className="menu-toggle"
@@ -111,13 +120,13 @@ export function Header() {
           <PixelIcon name={open ? "close" : "menu"} size={24} />
         </button>
         <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open} data-accent={accent}>
-          {SECTIONS.map(({ id, label, href }) => (
+          {league ? LEAGUE_LINKS.map(({ id, label, href }) => <Link key={id} href={href} onClick={() => setOpen(false)}>{label}</Link>) : SECTIONS.map(({ id, label, href }) => (
             <Link key={id} href={href ?? (home ? `#${id}` : `/#${id}`)} aria-current={href && pathname === href ? "page" : active === id ? "location" : undefined} onClick={() => setOpen(false)}>
               {label}
             </Link>
           ))}
           <Link
-            href="/dashboard"
+            href={dashboard}
             className="nav-cta"
             data-viewer={viewer ? "member" : viewer === null ? "guest" : "unknown"}
             aria-label={cta.label}

@@ -42,7 +42,7 @@ export function JoinFooter() {
               <Link href={team.path}>Tim {team.year}</Link>
               <Link href="/bergabung">Cara bergabung</Link>
               <Link href="/program">Program kami</Link>
-              <Link href={techLeague.path}>Tech League</Link>
+              <Link href={techLeague.href}>Tech League</Link>
               <Link href="/dashboard/apresiasi">Apresiasi prestasi</Link>
               <Link href="/dashboard">Dashboard member</Link>
             </nav>

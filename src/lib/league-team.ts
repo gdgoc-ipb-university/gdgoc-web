@@ -15,9 +15,9 @@ export const leagueTeamSize = { min: 2, max: 4 } as const;
 
 /** Track keys are stored on teams and never change; the names follow the league page. */
 export const leagueTracks = [
-  { key: "software", name: techLeague.categories[0], code: "SD" },
-  { key: "uiux", name: techLeague.categories[1], code: "UIUX" },
-  { key: "business", name: techLeague.categories[2], code: "BP" },
+  { key: "software", name: techLeague.categories[0] },
+  { key: "uiux", name: techLeague.categories[1] },
+  { key: "business", name: techLeague.categories[2] },
 ] as const;
 export type LeagueTrack = (typeof leagueTracks)[number]["key"];
 
@@ -25,13 +25,8 @@ export function trackName(key: string) {
   return leagueTracks.find((track) => track.key === key)?.name ?? key;
 }
 
-/** The track's short code in submission file names, `TEAMCODE_TRACK_SUBMISSION`. */
-export function trackCode(key: string) {
-  return leagueTracks.find((track) => track.key === key)?.code ?? key.toUpperCase();
-}
-
 // Team codes stand in for names in anonymous judging. Six characters from 31 letters and digits with no look-alikes
-// (0/O, 1/I/L) and no underscore, so they read aloud, type cleanly and split from the track in a file name.
+// (0/O, 1/I/L) and no underscore, so they read aloud, type cleanly and split cleanly in `TEAMCODE_TRACK_SUBMISSION` file names.
 const codeAlphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const teamCodeLength = 6;
 export const teamCodePattern = new RegExp(`^[${codeAlphabet}]{${teamCodeLength}}$`);

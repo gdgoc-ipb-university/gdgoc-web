@@ -1047,6 +1047,49 @@ summary:focus-visible {
 .league-daftar h1 { font-size: clamp(32px, 5vw, 44px); margin-block: 14px 16px; }
 .league-daftar .google-button { margin-top: 24px; }
 .league-daftar .league-actions { margin-top: 24px; }
+/* Teams on the league's /daftar (#183): phone width first. */
+.league-member .league-lead { margin-bottom: 28px; }
+.league-team-area { display: grid; gap: 20px; }
+.league-daftar .app-panel { padding: 28px 22px; }
+.league-daftar .app-panel h2 { font-size: clamp(26px, 6vw, 32px); margin-block: 10px 12px; overflow-wrap: anywhere; }
+.league-daftar .app-panel h3 { font-size: 18px; margin-block: 28px 12px; }
+.league-daftar .app-panel fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.league-daftar .app-panel .button { margin-top: 20px; }
+.league-tracks { display: grid; gap: 8px; }
+.league-track { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--control-line); background: white; font-size: 14px; font-weight: 500; cursor: pointer; }
+.league-track:has(input:checked) { border-color: var(--blue); box-shadow: 3px 3px 0 #dce6fb; }
+.league-track:has(input:disabled) { cursor: not-allowed; opacity: .6; }
+.league-track input { accent-color: var(--blue); width: 18px; height: 18px; margin: 0; }
+.league-track-field legend { font-size: 12px; font-weight: 500; margin-bottom: 8px; }
+.league-inline-form { display: grid; gap: 10px; align-items: end; }
+.league-inline-form .app-field { margin: 0; }
+.league-inline-form .button { margin-top: 0 !important; }
+.league-team-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0 0; }
+.league-team-facts div { padding: 14px 16px; border: 1px solid var(--line); background: white; }
+.league-team-facts dt { font: 500 10px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.league-team-facts dd { margin: 4px 0 0; font-size: 18px; font-weight: 600; }
+.league-code { font-family: var(--font-mono), monospace; letter-spacing: .12em; color: var(--blue); }
+.league-members { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
+.league-members li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.league-member-name { font-weight: 500; overflow-wrap: anywhere; }
+.league-member-name small { font-weight: 400; color: var(--muted); }
+.league-member-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; flex-basis: 100%; }
+.league-confirm { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: 13px; }
+.league-danger { color: #b23729; }
+.league-invite-panel .league-inline-form { margin-block: 12px 6px; }
+.league-invite-panel input { font: 12px/1.4 var(--font-mono), monospace !important; }
+.league-settings { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; }
+.league-settings summary { cursor: pointer; font-size: 13px; color: var(--blue); }
+.league-settings form { margin-block: 16px 20px; }
+.league-leave { margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); }
+.league-invite { border-left: 3px solid var(--blue); }
+.league-daftar > .league-actions { margin-top: 28px; }
+@media (min-width: 640px) {
+  .league-daftar .app-panel { padding: 36px; }
+  .league-tracks { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .league-inline-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .league-member-actions { flex-basis: auto; margin-left: auto; }
+}
 .league-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px 24px; padding-block: 25px 34px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
 .league-footer > span { display: flex; align-items: center; gap: 16px; font-weight: 500; color: var(--ink); }
 .league-footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }

@@ -2,7 +2,10 @@ import { siteUrl } from "@/lib/site";
 
 type BreadcrumbItem = { name: string; path: string };
 
-/** `BreadcrumbList` JSON-LD for a public page: Beranda, then each item after it. The trail should match the URL path. */
+/**
+ * `BreadcrumbList` JSON-LD for a public page: Beranda, then each item after it. The trail should match the URL path. An
+ * item on another host, such as Tech League's own (#179), gives its absolute URL as `path`.
+ */
 export function breadcrumbJsonLd(items: BreadcrumbItem[]) {
   return {
     "@context": "https://schema.org",
@@ -13,7 +16,7 @@ export function breadcrumbJsonLd(items: BreadcrumbItem[]) {
         "@type": "ListItem",
         position: index + 2,
         name,
-        item: `${siteUrl}${path}`,
+        item: /^https?:\/\//.test(path) ? path : `${siteUrl}${path}`,
       })),
     ],
   };

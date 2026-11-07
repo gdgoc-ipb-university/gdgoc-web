@@ -8,7 +8,7 @@ import { YearTimeline, type Track } from "./year-timeline";
 /** The dates come from the program modules, so the landing follows their pages. */
 const tracks: Track[] = [
   { name: "GDGoC Catalyst", href: catalyst.path, color: "blue", milestones: catalyst.timeline },
-  { name: "Tech League", href: techLeague.path, color: "green", milestones: techLeague.timeline },
+  { name: "Tech League", href: techLeague.href, color: "green", milestones: techLeague.timeline },
 ];
 
 /** Chapter 4: the 2026/27 year of Catalyst and Tech League on one timeline. */

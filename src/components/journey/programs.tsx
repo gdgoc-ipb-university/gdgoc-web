@@ -38,7 +38,7 @@ const programs: {
     text: "Kompetisi nasional untuk mengadu karya di tiga kategori: Software Development, UI/UX Design, dan Business Plan. Siapkan karya terbaik bersama timmu",
     cta: "Lihat jadwal Tech League",
     icon: "trophy",
-    href: techLeague.path,
+    href: techLeague.href,
     scene: "/landing/arena-kompetisi.svg",
   },
   {

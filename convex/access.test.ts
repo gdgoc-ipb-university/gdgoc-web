@@ -186,6 +186,7 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.requestRevision", api.assignments.requestRevision, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, note: "Perbaiki bagian dua." })],
   ["assignments.cancelRevision", api.assignments.cancelRevision, GRADERS, (ids) => ({ submissionId: ids.submission })],
   ["appreciations.review", api.appreciations.review, APRESIASI, (ids) => ({ id: ids.appreciation, revision: 1, status: "reviewing", note: "", postUrl: "" })],
+  ["league.importRegistrations", api.league.importRegistrations, STAFF, () => ({ rows: [{ email: "kapten@example.com", paid: true }] })],
   ["league.create", api.league.create, MEMBERS, () => ({ name: "Tim Baru", track: "software" })],
   ["techSupport.handle", api.techSupport.handle, HANDLERS, (ids) => ({ id: ids.request, status: "matched", mentorName: "Dika Aprilio Wibowo", note: "" })],
 ];

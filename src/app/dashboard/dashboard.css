@@ -796,4 +796,7 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-league-tracks li { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; }
 .dash-league-tracks strong { font: 600 30px/1.1 var(--font-pixel), monospace; }
 .dash-league-code { font-family: var(--font-mono), monospace; letter-spacing: .1em; color: var(--blue) !important; }
+.dash-league-preview { list-style: none; padding: 0; margin: 10px 0 0; max-height: 220px; overflow: auto; font-size: 13px; border-top: 1px solid var(--line); }
+.dash-league-preview li { padding: 7px 0; border-bottom: 1px solid var(--line); overflow-wrap: anywhere; }
+.dash-league-unmatched { font-size: 15px; margin-top: 18px; }
 @media (max-width: 760px) { .dash-league-tracks { grid-template-columns: 1fr; } }

@@ -90,14 +90,14 @@ export function registrationState(registration: { paid: boolean } | null): Regis
 
 export type StaffTeam = {
   name: string; code: string; trackName: string; standing: TeamStanding; createdAt: number;
-  registration: { paid: boolean } | null; captain: { name: string; email: string | null }; members: { name: string; captain: boolean }[];
+  registration: { paid: boolean } | null; captain: { name: string; email: string | null } | null; members: { name: string; captain: boolean }[];
 };
 
 /** Every team for staff as a spreadsheet, by track then name. The captain is the only contact, so only their email is in it. */
 export function teamsCsv(teams: StaffTeam[]) {
   const rows = [...teams].sort((a, b) => a.trackName.localeCompare(b.trackName) || a.name.localeCompare(b.name, "id", { numeric: true })).map((team) => [
     team.code, team.name, team.trackName, standingLabels[team.standing], registrationLabels[registrationState(team.registration)],
-    team.members.length, team.members.map((member) => member.name).join("; "), team.captain.name, team.captain.email, `${toJakartaInput(team.createdAt).replace("T", " ")} WIB`,
+    team.members.length, team.members.map((member) => member.name).join("; "), team.captain?.name ?? null, team.captain?.email ?? null, `${toJakartaInput(team.createdAt).replace("T", " ")} WIB`,
   ]);
   return toCsv([["kode_tim", "nama_tim", "kategori", "status", "pendaftaran", "jumlah_anggota", "anggota", "kapten", "email_kapten", "dibuat"], ...rows]);
 }

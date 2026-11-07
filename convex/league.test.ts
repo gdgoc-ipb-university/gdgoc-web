@@ -169,4 +169,16 @@ describe("league teams", () => {
     });
     expect(JSON.stringify(team)).not.toContain("anggota@example.com");
   });
+
+  it("imports registrations by the captain's email, keeps payment without a column, and returns unmatched emails", async () => {
+    const { t, teamId } = await world();
+    const owner = await account(t, "owner@example.com");
+    await expect((await account(t, "anggota@example.com")).mutation(api.league.importRegistrations, { rows: [] })).rejects.toThrow("hanya untuk admin");
+    expect(await owner.mutation(api.league.importRegistrations, { rows: [{ email: " Kapten@Example.com ", paid: false }, { email: "orang@example.com", paid: true }] }))
+      .toEqual({ registered: 1, updated: 0, unchanged: 0, unmatched: ["orang@example.com"] });
+    expect((await t.run((ctx) => ctx.db.get(teamId)))!.registration).toMatchObject({ paid: false, importedBy: owner.id });
+    expect(await owner.mutation(api.league.importRegistrations, { rows: [{ email: "kapten@example.com" }] })).toMatchObject({ unchanged: 1 });
+    expect(await owner.mutation(api.league.importRegistrations, { rows: [{ email: "kapten@example.com", paid: true }] })).toMatchObject({ updated: 1 });
+    expect((await owner.query(api.league.staffTeams, {}))[0].registration).toMatchObject({ paid: true });
+  });
 });

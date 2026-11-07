@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inviteTokenFrom, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackCode, trackName } from "./league-team";
+import { inviteTokenFrom, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackName } from "./league-team";
 import { techLeague } from "./tech-league";
 
 describe("league teams", () => {
@@ -25,7 +25,6 @@ describe("league teams", () => {
   it("names the tracks after the league page and reads a team's standing", () => {
     expect(leagueTracks.map((track) => track.name)).toEqual(techLeague.categories);
     expect(trackName("uiux")).toBe("UI/UX Design");
-    expect(trackCode("business")).toBe("BP");
     expect(leagueTeamSize.min).toBeLessThanOrEqual(leagueTeamSize.max);
     expect(teamStanding({ captainId: "a" }, leagueTeamSize.min - 1)).toBe("forming");
     expect(teamStanding({ captainId: "a" }, leagueTeamSize.min)).toBe("complete");

@@ -49,10 +49,12 @@ export function OnboardingPage() {
   if (isLoading || !isAuthenticated || !viewer || profile === undefined || profile?.completedAt) {
     return <main id="main" className="onboard-loading" role="status">Menyiapkan ruang untukmu…</main>;
   }
-  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} invitation={invitation ?? null} onComplete={() => router.replace(destination)} />;
+  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} invitation={invitation ?? null} onComplete={() => router.replace(destination)} finishLabel={params.get("next") === "league" ? "Selesai, ke Tech League" : undefined} />;
 }
 
-export function OnboardingFlow({ viewer, profile, save, onComplete, invitation = null }: {
+export function OnboardingFlow({ viewer, profile, save, onComplete, invitation = null, finishLabel = "Selesai, ke Dashboard" }: {
+  /** The last step's button, which names where onboarding returns to. */
+  finishLabel?: string;
   /** Set for an accepted program participant (cohorts.myInvitation): their program and role, and school-or-campus wording. */
   invitation?: { cohort: string; role: string } | null;
   viewer: { name: string; email: string }; profile: Doc<"memberProfiles"> | null; save: SaveStep; onComplete: () => void;
@@ -139,7 +141,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
             {step === 4 && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>}
             {step === finalStep && <div className="onboard-invitation"><div className="onboard-invite-icon gdg-icon" aria-hidden="true"><PixelIcon name="code" size={24} /></div><div><strong>GDG on Campus IPB University</strong><p>Buka halaman chapter, lalu pilih <b>Join us</b> untuk menjadi member.</p></div><a className="button onboard-external" href={communityLinks.membership} target="_blank" rel="noopener noreferrer">Gabung di GDG Community <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Sudah jadi member? Kamu bisa langsung menyelesaikan perkenalan.</p></div>}
             {error && <p className="onboard-notice" role="alert">{error} Isianmu tetap ada di halaman ini.</p>}
-            <div className="onboard-actions">{step > 1 ? <button className="onboard-back" type="button" disabled={busy || leaving} onClick={() => { setErrors({}); setError(""); setStep(stepBefore(step)); }}><PixelIcon name="arrow-left" size={24} /> Kembali</button> : <span className="onboard-time">{onboardingSteps.length} langkah singkat.</span>}<button className="button button-blue" type="submit" disabled={busy || leaving}>{busy ? "Menyimpan…" : step === finalStep ? "Selesai, ke Dashboard" : "Lanjut"}<Arrow /></button></div>
+            <div className="onboard-actions">{step > 1 ? <button className="onboard-back" type="button" disabled={busy || leaving} onClick={() => { setErrors({}); setError(""); setStep(stepBefore(step)); }}><PixelIcon name="arrow-left" size={24} /> Kembali</button> : <span className="onboard-time">{onboardingSteps.length} langkah singkat.</span>}<button className="button button-blue" type="submit" disabled={busy || leaving}>{busy ? "Menyimpan…" : step === finalStep ? finishLabel : "Lanjut"}<Arrow /></button></div>
             {step > 2 ? <p className="onboard-save-note">Belum ingin bergabung? {step === 4 ? "Pilih Lanjut untuk melewati langkah ini." : "Kamu tetap bisa menyelesaikan perkenalan."}</p> : <p className="onboard-save-note">Data tersimpan setiap menekan Lanjut. Bisa diteruskan nanti.</p>}
           </form>
         </section>

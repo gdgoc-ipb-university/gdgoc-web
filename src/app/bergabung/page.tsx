@@ -90,7 +90,7 @@ export default function JoinPage() {
             <p className="program-schedule">{catalystLine()}</p>
             <span className="text-link">Lihat Catalyst <Arrow /></span>
           </Link></li>
-          <li><Link href={techLeague.path}>
+          <li><Link href={techLeague.href}>
             <h3>Berkompetisi: Tech League</h3>
             <p>Kompetisi nasional untuk tim di kategori Software Development, UI/UX Design, dan Business Plan.</p>
             <p className="program-schedule">{techLeagueLine()}</p>

@@ -29,7 +29,7 @@ const programs = [
     title: "Tech League",
     audience: "Untuk tim yang ingin menguji karya di kompetisi nasional.",
     schedule: `Pendaftaran ${rangeLabel(techLeague.registration.opensAt, techLeague.registration.closesAt)}.`,
-    href: techLeague.path,
+    href: techLeague.href,
   },
   {
     title: "Tech Support",

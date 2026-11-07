@@ -1041,3 +1041,18 @@ summary:focus-visible {
 }
 
 /* Member / Core Team picker, shared by onboarding and the dashboard. */
+/* Tech League on its own host (#179). */
+.league-status .league-status-note { margin-top: 6px; font-weight: 400; color: var(--muted); }
+.league-daftar { max-width: 720px; padding-block: 64px 96px; }
+.league-daftar h1 { font-size: clamp(32px, 5vw, 44px); margin-block: 14px 16px; }
+.league-daftar .google-button { margin-top: 24px; }
+.league-daftar .league-actions { margin-top: 24px; }
+.league-footer { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 16px 24px; padding-block: 25px 34px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted); }
+.league-footer > span { display: flex; align-items: center; gap: 16px; font-weight: 500; color: var(--ink); }
+.league-footer nav { display: flex; flex-wrap: wrap; gap: 8px 22px; }
+.league-footer a { display: inline-flex; gap: 4px; align-items: center; }
+.league-footer a:hover { color: var(--blue); }
+.league-footer svg { width: 16px; height: 16px; }
+.league-dots { display: flex; gap: 4px; }
+.league-dots i { display: block; width: 5px; height: 5px; background: var(--blue); }
+.league-dots i:nth-child(2) { background: var(--red); } .league-dots i:nth-child(3) { background: var(--yellow); } .league-dots i:nth-child(4) { background: var(--green); }

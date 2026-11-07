@@ -15,11 +15,13 @@ export const profile = query({
 export const saveStep = mutation({
   args: {
     // No community tag here: members register as Member, and only staff set Core Team, BoD or a division.
+    // 5 is the removed external chapter page screen, still sent by a tab opened before it went; it finishes like 4.
     step: v.union(v.literal(1), v.literal(2), v.literal(4), v.literal(5)),
     revision: v.number(),
     values: v.object({ fullName: v.string(), campus: v.string(), studyProgram: v.string() }),
   },
-  handler: async (ctx, { step, revision, values }) => {
+  handler: async (ctx, { step: sent, revision, values }) => {
+    const step: OnboardingStep = sent === 5 ? finalStep : sent;
     const user = await authComponent.safeGetAuthUser(ctx);
     if (!user?.emailVerified) throw new ConvexError("Masuk kembali dengan akun Google untuk melanjutkan.");
     const existing = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();

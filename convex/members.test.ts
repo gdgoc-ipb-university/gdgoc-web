@@ -8,7 +8,7 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer" };
-const steps = [1, 2, 4, 5] as const;
+const steps = [1, 2, 4] as const;
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 async function member(t: ReturnType<typeof setup>, email = "onboarding@example.com", verified = true, expiresAt = Date.now() + 3600000) {
   const user = await t.mutation(components.betterAuth.adapter.create, {
@@ -75,7 +75,7 @@ describe("first-time member onboarding", () => {
     expect(completed?.completedAt).toEqual(expect.any(Number));
     expect(completed).not.toHaveProperty("whatsappJoined");
     expect(completed).not.toHaveProperty("gdgJoined");
-    const retried = await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
+    const retried = await owner.mutation(api.members.saveStep, { step: 4, revision: 2, values });
     expect(retried.completedAt).toBe(completed?.completedAt);
     const newDraft = await owner.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
     expect((await owner.query(api.appreciations.get, { id: newDraft })).values).toMatchObject({ fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram, memberType: "Member" });
@@ -85,7 +85,7 @@ describe("first-time member onboarding", () => {
     const owner = await member(setup());
     await onboard(owner);
     const profile = await owner.query(api.members.profile);
-    expect(profile).toMatchObject({ memberType: "member", nextStep: 5 });
+    expect(profile).toMatchObject({ memberType: "member", nextStep: 4 });
     expect(profile).not.toHaveProperty("division");
     expect(profile).not.toHaveProperty("tagConfirmedAt");
   });
@@ -96,9 +96,20 @@ describe("first-time member onboarding", () => {
     const profile = (await owner.query(api.members.profile))!;
     // Saved before the role screen was removed: waiting on screen 3.
     await t.run((ctx) => ctx.db.patch(profile._id, { nextStep: 3 }));
-    await expect(owner.mutation(api.members.saveStep, { step: 5, revision: 2, values })).rejects.toThrow("langkah sebelumnya");
-    expect(await owner.mutation(api.members.saveStep, { step: 4, revision: 2, values })).toMatchObject({ nextStep: 5 });
-    expect(await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values })).toMatchObject({ memberType: "member", completedAt: expect.any(Number) });
+    expect(await owner.mutation(api.members.saveStep, { step: 4, revision: 2, values })).toMatchObject({ nextStep: 4, memberType: "member", completedAt: expect.any(Number) });
+  });
+
+  it("finishes a profile saved on the removed external chapter page screen, from either screen", async () => {
+    const t = setup();
+    // Saved before the last screen was removed: waiting on screen 5. A new page shows the WhatsApp screen (4), and a tab
+    // opened before the change still shows screen 5.
+    for (const [email, step] of [["new-page@example.com", 4], ["old-tab@example.com", 5]] as const) {
+      const owner = await member(t, email);
+      for (const saved of [1, 2] as const) await owner.mutation(api.members.saveStep, { step: saved, revision: saved - 1, values });
+      const profile = (await owner.query(api.members.profile))!;
+      await t.run((ctx) => ctx.db.patch(profile._id, { nextStep: 5 }));
+      expect(await owner.mutation(api.members.saveStep, { step, revision: 2, values })).toMatchObject({ nextStep: 4, memberType: "member", completedAt: expect.any(Number) });
+    }
   });
 
   it("rejects a community tag sent with any onboarding screen", async () => {
@@ -117,10 +128,10 @@ describe("first-time member onboarding", () => {
 
   it("never downgrades a tag staff assigned before onboarding finished", async () => {
     const t = setup(); const owner = await member(t);
-    for (const [index, step] of ([1, 2, 4] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
+    for (const [index, step] of ([1, 2] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
     const profile = (await owner.query(api.members.profile))!;
     await t.run((ctx) => ctx.db.patch(profile._id, { memberType: "core", division: "Media & Creative", tagConfirmedAt: Date.now(), tagConfirmedBy: "staff" }));
-    await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
+    await owner.mutation(api.members.saveStep, { step: 4, revision: 2, values });
     expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "core", division: "Media & Creative", tagConfirmedAt: expect.any(Number), completedAt: expect.any(Number) });
   });
 

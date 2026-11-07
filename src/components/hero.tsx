@@ -1,10 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { Arrow } from "./icons";
 import { CampusEnvironment, type SceneStatus } from "./campus-environment";
 import { ScenePreloader } from "./scene-preloader";
-import { communityLinks } from "@/lib/community";
 
 export function Hero() {
   const [sceneStatus, setSceneStatus] = useState<SceneStatus>("loading");
@@ -30,9 +30,9 @@ export function Hero() {
             Komunitas mahasiswa Bogor untuk belajar coding, UI/UX, dan AI lewat sesi praktik,
             proyek tim, dan diskusi bersama mentor
           </p>
-          <a className="button button-blue" href={communityLinks.membership} target="_blank" rel="noreferrer">
-            Gabung member <Arrow external />
-          </a>
+          <Link className="button button-blue" href="/dashboard">
+            Gabung member <Arrow />
+          </Link>
         </div>
         <a href="#community" className="hero-scroll" aria-label="Jelajahi komunitas">
           <Arrow down />

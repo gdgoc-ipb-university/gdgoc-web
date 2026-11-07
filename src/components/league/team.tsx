@@ -57,7 +57,7 @@ function InviteCard({ token, onDone }: { token: string; onDone: () => void }) {
       <button type="button" className="text-button" onClick={onDone}>Tutup</button>
     </> : <>
       <h2 id="league-invite-title">{invite.name}</h2>
-      <p>{invite.trackName} · Kapten {invite.captain} · {invite.members} dari {invite.max} orang</p>
+      <p>{invite.trackName}{invite.captain && ` · Kapten ${invite.captain}`} · {invite.members} dari {invite.max} orang</p>
       {invite.inOtherTeam ? <p className="app-notice" role="status">Kamu sudah punya tim musim ini. Keluar dulu dari tim itu kalau ingin bergabung ke {invite.name}.</p>
         : invite.full ? <p className="app-notice" role="status">Tim ini sudah penuh.</p> : null}
       <div className="league-actions">

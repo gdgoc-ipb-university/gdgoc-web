@@ -1,12 +1,15 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { dashboardAccess, requireMember } from "./access";
+import { dashboardAccess, requireMember, requireStaff } from "./access";
+import { authComponent } from "./auth";
 import { newNonce } from "./bogorRunToken";
 import { leagueTrack } from "./schema";
 import {
   inviteTokenPattern, leagueSeason, leagueTeamSize, newTeamCode, normalizeTeamName, teamNameProblem, teamStanding, trackName,
 } from "../src/lib/league-team";
+import { normalizeEmail } from "../src/lib/cohort";
+import { registrationBatch } from "../src/lib/league-import";
 
 // Tech League teams (#183). Every function checks that the caller is an active, onboarded member (requireMember), so
 // every teammate is a GDGoC IPB member, not only the captain. Each mutation is one Convex transaction: a join reads the
@@ -108,7 +111,7 @@ export const invite = query({
     if (!team || team.season !== leagueSeason) return null;
     const [rows, mine] = await Promise.all([membersOf(ctx, team._id), membershipOf(ctx, user._id)]);
     return {
-      name: team.name, trackName: trackName(team.track), captain: await profileName(ctx, team.captainId),
+      name: team.name, trackName: trackName(team.track), captain: team.captainId ? await profileName(ctx, team.captainId) : null,
       members: rows.length, max: leagueTeamSize.max, full: rows.length >= leagueTeamSize.max,
       joined: mine?.teamId === team._id, inOtherTeam: Boolean(mine && mine.teamId !== team._id),
     };
@@ -145,14 +148,15 @@ export const join = mutation({
     if (rows.length >= leagueTeamSize.max) fail("FULL", `Tim ini sudah penuh (${leagueTeamSize.max} orang).`);
     const now = Date.now();
     await ctx.db.insert("leagueTeamMembers", { teamId: team._id, season: leagueSeason, ownerId: user._id, joinedAt: now });
-    await ctx.db.patch(team._id, { updatedAt: now });
+    // A team flagged without a captain (removeRow) gets the first member back as captain.
+    await ctx.db.patch(team._id, { updatedAt: now, ...(team.captainId ? {} : { captainId: user._id }) });
     return team._id;
   },
 });
 
 /**
- * Leaves the caller's team. A leaving captain passes captaincy to the member who joined earliest; the last member to
- * leave deletes the team.
+ * Leaves the caller's team. A leaving captain passes captaincy to the member who joined earliest. When the last member
+ * leaves, the team is deleted, or kept without a captain for staff if it is already registered.
  */
 export const leave = mutation({
   args: {},
@@ -162,11 +166,18 @@ export const leave = mutation({
   },
 });
 
-/** Takes one member row out of its team and keeps the team valid: a new captain when the captain went, or no team when no one is left. */
+/**
+ * Takes one member row out of its team and keeps the team valid: the earliest other member becomes captain when the
+ * captain went. With no one left, an unregistered team is deleted; a registered one stays, flagged without a captain,
+ * so staff see that a registered team lost its members. Leaving, removal and account deletion all come here.
+ */
 export async function removeRow(ctx: MutationCtx, team: Doc<"leagueTeams">, row: Doc<"leagueTeamMembers">) {
   await ctx.db.delete(row._id);
   const rest = await membersOf(ctx, team._id);
-  if (!rest.length) return ctx.db.delete(team._id);
+  if (!rest.length) {
+    if (team.registration) return ctx.db.patch(team._id, { captainId: undefined, updatedAt: Date.now() });
+    return ctx.db.delete(team._id);
+  }
   const captainId = team.captainId === row.ownerId ? rest[0].ownerId : team.captainId;
   await ctx.db.patch(team._id, { captainId, updatedAt: Date.now() });
 }
@@ -215,5 +226,62 @@ export const changeTrack = mutation({
     const { team } = await captainTeam(ctx);
     if (team.submittedAt) fail("LOCKED", "Kategori tidak bisa diganti setelah timmu mengumpulkan karya.");
     if (team.track !== track) await ctx.db.patch(team._id, { track, updatedAt: Date.now() });
+  },
+});
+
+// ——— Staff (#183) ———
+
+/**
+ * Every team of the season for owners and admins: track, standing, registration and payment, members by name, and the
+ * captain's email as the team's one contact. Teammates' emails are not shown.
+ */
+export const staffTeams = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireStaff(ctx);
+    const teams = await ctx.db.query("leagueTeams").withIndex("by_season", (q) => q.eq("season", leagueSeason)).collect();
+    return Promise.all(teams.map(async (team) => {
+      const rows = await membersOf(ctx, team._id);
+      const captain = team.captainId ? await authComponent.getAnyUserById(ctx, team.captainId) : null;
+      return {
+        _id: team._id, name: team.name, code: team.code, track: team.track, trackName: trackName(team.track),
+        standing: teamStanding(team, rows.length), createdAt: team.createdAt, submittedAt: team.submittedAt ?? null,
+        registration: team.registration ? { paid: team.registration.paid, importedAt: team.registration.importedAt } : null,
+        captain: team.captainId ? { name: await profileName(ctx, team.captainId), email: captain?.email ?? null } : null,
+        members: await Promise.all(rows.map(async (row) => ({ ownerId: row.ownerId, name: await profileName(ctx, row.ownerId), captain: row.ownerId === team.captainId }))),
+      };
+    }));
+  },
+});
+
+/**
+ * Marks teams registered from Program & Development's registration results (#183), matched by the captain's email on
+ * the server again, so the preview cannot point a row at another team. `paid` absent keeps the payment status. Emails
+ * that match no captain are returned, never dropped silently.
+ */
+export const importRegistrations = mutation({
+  args: { rows: v.array(v.object({ email: v.string(), paid: v.optional(v.boolean()) })) },
+  handler: async (ctx, { rows }) => {
+    const { user } = await requireStaff(ctx);
+    if (rows.length > registrationBatch) fail("VALIDATION", `Maksimal ${registrationBatch} baris sekali kirim.`);
+    const teams = await ctx.db.query("leagueTeams").withIndex("by_season", (q) => q.eq("season", leagueSeason)).collect();
+    const byEmail = new Map<string, Doc<"leagueTeams">>();
+    for (const team of teams) {
+      const captain = team.captainId ? await authComponent.getAnyUserById(ctx, team.captainId) : null;
+      if (captain?.email) byEmail.set(normalizeEmail(captain.email), team);
+    }
+    const result = { registered: 0, updated: 0, unchanged: 0, unmatched: [] as string[] };
+    const now = Date.now();
+    for (const row of rows) {
+      const team = byEmail.get(normalizeEmail(row.email));
+      if (!team) { result.unmatched.push(row.email); continue; }
+      const paid = row.paid ?? Boolean(team.registration?.paid);
+      if (team.registration?.paid === paid) { result.unchanged++; continue; }
+      result[team.registration ? "updated" : "registered"]++;
+      const registration = { paid, importedAt: now, importedBy: user._id };
+      await ctx.db.patch(team._id, { registration, updatedAt: now });
+      byEmail.set(normalizeEmail(row.email), { ...team, registration });
+    }
+    return result;
   },
 });

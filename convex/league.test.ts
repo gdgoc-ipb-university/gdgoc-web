@@ -154,4 +154,31 @@ describe("league teams", () => {
     expect(await rowsOf(t, teamId)).toHaveLength(0);
     await expect(second.mutation(api.league.leave, {})).rejects.toThrow("belum punya tim");
   });
+
+  it("shows staff every team with members by name and only the captain's email", async () => {
+    const { t, captain, token } = await world();
+    const owner = await account(t, "owner@example.com");
+    const member = await account(t, "anggota@example.com");
+    await member.mutation(api.league.join, { token });
+    await expect(member.query(api.league.staffTeams, {})).rejects.toThrow("hanya untuk admin");
+    const [team] = await owner.query(api.league.staffTeams, {});
+    expect(team).toMatchObject({
+      name: "Tim Hujan", trackName: "Software Development", standing: "complete", registration: null,
+      captain: { name: "Nama kapten", email: "kapten@example.com" },
+      members: [{ ownerId: captain.id, name: "Nama kapten", captain: true }, { ownerId: member.id, name: "Nama anggota", captain: false }],
+    });
+    expect(JSON.stringify(team)).not.toContain("anggota@example.com");
+  });
+
+  it("imports registrations by the captain's email, keeps payment without a column, and returns unmatched emails", async () => {
+    const { t, teamId } = await world();
+    const owner = await account(t, "owner@example.com");
+    await expect((await account(t, "anggota@example.com")).mutation(api.league.importRegistrations, { rows: [] })).rejects.toThrow("hanya untuk admin");
+    expect(await owner.mutation(api.league.importRegistrations, { rows: [{ email: " Kapten@Example.com ", paid: false }, { email: "orang@example.com", paid: true }] }))
+      .toEqual({ registered: 1, updated: 0, unchanged: 0, unmatched: ["orang@example.com"] });
+    expect((await t.run((ctx) => ctx.db.get(teamId)))!.registration).toMatchObject({ paid: false, importedBy: owner.id });
+    expect(await owner.mutation(api.league.importRegistrations, { rows: [{ email: "kapten@example.com" }] })).toMatchObject({ unchanged: 1 });
+    expect(await owner.mutation(api.league.importRegistrations, { rows: [{ email: "kapten@example.com", paid: true }] })).toMatchObject({ updated: 1 });
+    expect((await owner.query(api.league.staffTeams, {}))[0].registration).toMatchObject({ paid: true });
+  });
 });

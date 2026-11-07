@@ -74,6 +74,7 @@ function AppFrame({ viewer, children }: { viewer: DashboardViewer; children: Rea
       ...(viewer.techSupportHandler ? [{ href: "/dashboard/tech-support/antrean", label: "Antrean Tech Support", icon: "clock" as const, current: at("/dashboard/tech-support/antrean") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/anggota", label: "Anggota", icon: "users" as const, current: at("/dashboard/anggota") }] : []),
       ...(isStaff(viewer) ? [{ href: "/dashboard/program", label: "Program", icon: "teach" as const, current: at("/dashboard/program") }] : []),
+      ...(isStaff(viewer) ? [{ href: "/dashboard/tech-league", label: "Tech League", icon: "code" as const, current: at("/dashboard/tech-league") }] : []),
       ...(isStaff(viewer) || viewer.doorHelper ? [{ href: "/dashboard/kehadiran", label: "Kehadiran", icon: "check-double" as const, current: at("/dashboard/kehadiran") }] : []),
     ] }] : []),
     { title: "Akun", items: [

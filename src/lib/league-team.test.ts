@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inviteTokenFrom, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackName } from "./league-team";
+import { inviteTokenFrom, registrationState, teamsCsv, teamsFileName, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackName } from "./league-team";
 import { techLeague } from "./tech-league";
 
 describe("league teams", () => {
@@ -29,5 +29,19 @@ describe("league teams", () => {
     expect(teamStanding({ captainId: "a" }, leagueTeamSize.min - 1)).toBe("forming");
     expect(teamStanding({ captainId: "a" }, leagueTeamSize.min)).toBe("complete");
     expect(teamStanding({ captainId: null }, 3)).toBe("flagged");
+  });
+
+  it("exports teams for staff by track, with the captain as the only contact", () => {
+    const base = { standing: "complete" as const, createdAt: Date.parse("2026-12-01T03:00:00Z"), captain: { name: "Rania Putri", email: "rania@example.com" } };
+    const csv = teamsCsv([
+      { ...base, name: "Tim B", code: "ABC234", trackName: "UI/UX Design", registration: { paid: true }, members: [{ name: "Rania Putri", captain: true }, { name: "Bima, S.", captain: false }] },
+      { ...base, name: "Tim A", code: "XYZ789", trackName: "Business Plan", registration: null, standing: "forming", members: [{ name: "Rania Putri", captain: true }] },
+    ]);
+    const lines = csv.replace(/^\uFEFF/, "").trim().split("\r\n");
+    expect(lines[0]).toBe("kode_tim,nama_tim,kategori,status,pendaftaran,jumlah_anggota,anggota,kapten,email_kapten,dibuat");
+    expect(lines[1]).toBe("XYZ789,Tim A,Business Plan,Belum lengkap,Belum terdaftar,1,Rania Putri,Rania Putri,rania@example.com,2026-12-01 10:00 WIB");
+    expect(lines[2]).toBe('ABC234,Tim B,UI/UX Design,Anggota cukup,Lunas,2,"Rania Putri; Bima, S.",Rania Putri,rania@example.com,2026-12-01 10:00 WIB');
+    expect(teamsFileName(Date.parse("2026-12-01T20:00:00Z"))).toBe("tech-league-tim-2026-12-02.csv");
+    expect([null, { paid: false }, { paid: true }].map(registrationState)).toEqual(["none", "unpaid", "paid"]);
   });
 });

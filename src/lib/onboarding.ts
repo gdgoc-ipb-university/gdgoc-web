@@ -14,21 +14,20 @@ export type RoleValues = { memberType: MemberType | ""; division: string };
 export type RoleErrors = Partial<Record<keyof RoleValues, string>>;
 
 /**
- * Onboarding screens by id: name, campus, the WhatsApp invitation. Ids keep their numbers from the five-screen flow
- * so saved progress (`memberProfiles.nextStep`) means the same screen. 3 was the role screen, removed when community
- * tags became staff-assigned (#156); 5 sent people to the external chapter page, removed when joining moved to this
- * site's own sign-in (#176).
+ * Onboarding screens by id: name, campus, the WhatsApp invitation, the GDG Community invitation. Ids keep their
+ * numbers from the five-screen flow so saved progress (`memberProfiles.nextStep`) means the same screen: 3 was the
+ * role screen, removed when community tags became staff-assigned (#156).
  */
-export const onboardingSteps = [1, 2, 4] as const;
+export const onboardingSteps = [1, 2, 4, 5] as const;
 export type OnboardingStep = (typeof onboardingSteps)[number];
-export type SavedStep = OnboardingStep | 3 | 5;
-export const finalStep = 4 satisfies OnboardingStep;
+export type SavedStep = OnboardingStep | 3;
+export const finalStep = 5 satisfies OnboardingStep;
 
 export const onboardingLimits = { fullName: 120, campus: 150, studyProgram: 150 } as const;
 
-/** The screen to resume on; a profile saved on a removed screen (3 or 5) continues at the WhatsApp invitation. */
+/** The screen to resume on; a profile saved on the removed role screen continues at the WhatsApp invitation. */
 export function resumeStep(saved: SavedStep | undefined): OnboardingStep {
-  return saved === 3 || saved === 5 ? 4 : saved ?? 1;
+  return saved === 3 ? 4 : saved ?? 1;
 }
 export function stepAfter(step: OnboardingStep): OnboardingStep {
   return onboardingSteps[Math.min(onboardingSteps.indexOf(step) + 1, onboardingSteps.length - 1)];

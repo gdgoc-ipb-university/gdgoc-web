@@ -21,14 +21,15 @@ import { PixelIcon } from "../pixel-icons";
 
 type SaveStep = (args: { step: OnboardingStep; revision: number; values: OnboardingValues }) => Promise<Doc<"memberProfiles">>;
 // Per screen, in the order of `onboardingSteps`.
-const stepLabels = ["Kenalan", "Kampus", "WhatsApp"];
-const participantStepLabels = ["Kenalan", "Sekolah/kampus", "WhatsApp"];
+const stepLabels = ["Kenalan", "Kampus", "WhatsApp", "Jadi member"];
+const participantStepLabels = ["Kenalan", "Sekolah/kampus", "WhatsApp", "Jadi member"];
 const participantHeading = "Dari sekolah atau\nkampus mana?";
-const headings = ["Kenalan dulu, yuk.", "Dari kampus mana?", "Gabung grup\nWhatsApp."];
+const headings = ["Kenalan dulu, yuk.", "Dari kampus mana?", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB."];
 const descriptions = [
   "Selamat datang di GDGoC IPB. Mulai dari nama yang ingin kamu pakai di komunitas.",
   "Apa pun jurusanmu, kamu bisa belajar teknologi di sini. Lengkapi dua hal ini untuk profilmu.",
   "Gabung grup WhatsApp untuk kabar kegiatan, teman diskusi, dan ajakan belajar bareng.",
+  "Gabung sebagai member di halaman resmi GDGoC IPB. Temukan kegiatan dan daftar acara lewat Google Developer Groups.",
 ];
 
 export function OnboardingPage() {
@@ -135,10 +136,11 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
           }} noValidate>
             {step === 1 && <div className="onboard-field"><label htmlFor="fullName">Nama kamu <span aria-hidden="true">*</span></label><input id="fullName" ref={fullName} name="name" autoComplete="name" inputMode="text" enterKeyHint="next" autoCapitalize="words" maxLength={120} required disabled={busy} value={values.fullName} onChange={(event) => update("fullName", event.target.value)} aria-invalid={Boolean(errors.fullName)} aria-describedby={errors.fullName ? "name-hint name-error" : "name-hint"} placeholder="Nama yang ingin kamu pakai"/><p id="name-hint" className="onboard-hint">Kami isi dari akun Google. Kamu boleh menggantinya.</p>{errors.fullName && <p className="onboard-field-error" id="name-error">{errors.fullName}</p>}</div>}
             {step === 2 && <div className="onboard-education"><EducationCombobox id="campus" label={invitation ? "Sekolah atau kampus" : "Kampus"} options={campusOptions} inputRef={campus} value={values.campus} onChange={(value) => update("campus", value)} error={errors.campus} disabled={busy} enterKeyHint="next"/><EducationCombobox id="studyProgram" label={invitation ? "Jurusan atau program studi" : "Program studi"} options={studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="done"/></div>}
-            {step === finalStep && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk menyelesaikan perkenalan.</p></div>}
+            {step === 4 && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>}
+            {step === finalStep && <div className="onboard-invitation"><div className="onboard-invite-icon gdg-icon" aria-hidden="true"><PixelIcon name="code" size={24} /></div><div><strong>GDG on Campus IPB University</strong><p>Buka halaman chapter, lalu pilih <b>Join us</b> untuk menjadi member.</p></div><a className="button onboard-external" href={communityLinks.membership} target="_blank" rel="noopener noreferrer">Gabung di GDG Community <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Sudah jadi member? Kamu bisa langsung menyelesaikan perkenalan.</p></div>}
             {error && <p className="onboard-notice" role="alert">{error} Isianmu tetap ada di halaman ini.</p>}
             <div className="onboard-actions">{step > 1 ? <button className="onboard-back" type="button" disabled={busy || leaving} onClick={() => { setErrors({}); setError(""); setStep(stepBefore(step)); }}><PixelIcon name="arrow-left" size={24} /> Kembali</button> : <span className="onboard-time">{onboardingSteps.length} langkah singkat.</span>}<button className="button button-blue" type="submit" disabled={busy || leaving}>{busy ? "Menyimpan…" : step === finalStep ? "Selesai, ke Dashboard" : "Lanjut"}<Arrow /></button></div>
-            {step > 2 ? <p className="onboard-save-note">Belum ingin bergabung? Kamu tetap bisa menyelesaikan perkenalan.</p> : <p className="onboard-save-note">Data tersimpan setiap menekan Lanjut. Bisa diteruskan nanti.</p>}
+            {step > 2 ? <p className="onboard-save-note">Belum ingin bergabung? {step === 4 ? "Pilih Lanjut untuk melewati langkah ini." : "Kamu tetap bisa menyelesaikan perkenalan."}</p> : <p className="onboard-save-note">Data tersimpan setiap menekan Lanjut. Bisa diteruskan nanti.</p>}
           </form>
         </section>
         <footer className="onboard-footer"><span>Masuk sebagai <strong>{viewer.email}</strong></span><Link href="/privasi">Privasi</Link></footer>

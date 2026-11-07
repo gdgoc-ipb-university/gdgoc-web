@@ -790,3 +790,10 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-support-email { display: flex; align-items: center; gap: 8px; }
 .dash-table tr[data-overdue] td:first-child { box-shadow: inset 3px 0 0 #c24032; }
 .dash-stats .app-small { font: 400 13px/1 var(--font-body), sans-serif; color: var(--muted); }
+
+/* Tech League teams for staff (#183). */
+.dash-league-tracks { list-style: none; padding: 0; margin: 0 0 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.dash-league-tracks li { display: flex; flex-direction: column; gap: 4px; padding: 18px 20px; }
+.dash-league-tracks strong { font: 600 30px/1.1 var(--font-pixel), monospace; }
+.dash-league-code { font-family: var(--font-mono), monospace; letter-spacing: .1em; color: var(--blue) !important; }
+@media (max-width: 760px) { .dash-league-tracks { grid-template-columns: 1fr; } }

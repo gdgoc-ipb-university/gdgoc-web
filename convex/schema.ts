@@ -216,10 +216,12 @@ export default defineSchema({
   // A Tech League team of one season (#183), formed by members on the league. `code` stands in for the name in anonymous
   // judging and never changes; `inviteToken` is the secret in the invite link, which the captain can replace. `captainId`
   // is one of its members, and a team whose last member leaves is deleted. `submittedAt` is set by submissions (#180)
-  // and locks the track.
+  // and locks the track. `registration` is set when staff import Program & Development's registration results and the
+  // captain's email matches: present means registered, `paid` whether the payment is confirmed.
   leagueTeams: defineTable({
     season: v.string(), name: v.string(), track: leagueTrack, code: v.string(), inviteToken: v.string(), captainId: v.string(),
     submittedAt: v.optional(v.number()), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(),
+    registration: v.optional(v.object({ paid: v.boolean(), importedAt: v.number(), importedBy: v.string() })),
   })
     .index("by_code", ["code"])
     .index("by_invite", ["inviteToken"])

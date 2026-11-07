@@ -129,6 +129,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.roster", api.cohorts.roster, STAFF, () => ({ slug: "catalyst-2026" })],
   ["assignments.slugPreview", api.assignments.slugPreview, STAFF, () => ({ slug: "tugas-baru" })],
   ["gatherings.list", api.gatherings.list, STAFF, () => ({})],
+  ["league.staffTeams", api.league.staffTeams, STAFF, () => ({})],
   ["gatherings.get", api.gatherings.get, STAFF, (ids) => ({ id: ids.gathering })],
   ["assignments.submissions", api.assignments.submissions, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
   ["assignments.exportPage", api.assignments.exportPage, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],

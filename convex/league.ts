@@ -1,7 +1,8 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { dashboardAccess, requireMember } from "./access";
+import { dashboardAccess, requireMember, requireStaff } from "./access";
+import { authComponent } from "./auth";
 import { newNonce } from "./bogorRunToken";
 import { leagueTrack } from "./schema";
 import {
@@ -215,5 +216,30 @@ export const changeTrack = mutation({
     const { team } = await captainTeam(ctx);
     if (team.submittedAt) fail("LOCKED", "Kategori tidak bisa diganti setelah timmu mengumpulkan karya.");
     if (team.track !== track) await ctx.db.patch(team._id, { track, updatedAt: Date.now() });
+  },
+});
+
+// ——— Staff (#183) ———
+
+/**
+ * Every team of the season for owners and admins: track, standing, registration and payment, members by name, and the
+ * captain's email as the team's one contact. Teammates' emails are not shown.
+ */
+export const staffTeams = query({
+  args: {},
+  handler: async (ctx) => {
+    await requireStaff(ctx);
+    const teams = await ctx.db.query("leagueTeams").withIndex("by_season", (q) => q.eq("season", leagueSeason)).collect();
+    return Promise.all(teams.map(async (team) => {
+      const rows = await membersOf(ctx, team._id);
+      const captain = await authComponent.getAnyUserById(ctx, team.captainId);
+      return {
+        _id: team._id, name: team.name, code: team.code, track: team.track, trackName: trackName(team.track),
+        standing: teamStanding(team, rows.length), createdAt: team.createdAt, submittedAt: team.submittedAt ?? null,
+        registration: team.registration ? { paid: team.registration.paid, importedAt: team.registration.importedAt } : null,
+        captain: { name: await profileName(ctx, team.captainId), email: captain?.email ?? null },
+        members: await Promise.all(rows.map(async (row) => ({ ownerId: row.ownerId, name: await profileName(ctx, row.ownerId), captain: row.ownerId === team.captainId }))),
+      };
+    }));
   },
 });

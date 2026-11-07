@@ -1,3 +1,5 @@
+import { toJakartaInput } from "./assignment";
+import { toCsv } from "./assignment-export";
 import { chapterPeriod } from "./chapter";
 import { normalizeTeamName, teamNameProblem } from "./cohort";
 import { techLeague } from "./tech-league";
@@ -76,4 +78,30 @@ export type TeamStanding = "flagged" | "forming" | "complete";
 export function teamStanding(team: { captainId?: string | null }, size: number): TeamStanding {
   if (!team.captainId) return "flagged";
   return size < leagueTeamSize.min ? "forming" : "complete";
+}
+
+export const standingLabels: Record<TeamStanding, string> = { forming: "Belum lengkap", complete: "Anggota cukup", flagged: "Tanpa kapten" };
+
+export type RegistrationState = "none" | "unpaid" | "paid";
+export const registrationLabels: Record<RegistrationState, string> = { none: "Belum terdaftar", unpaid: "Terdaftar, belum lunas", paid: "Lunas" };
+export function registrationState(registration: { paid: boolean } | null): RegistrationState {
+  return !registration ? "none" : registration.paid ? "paid" : "unpaid";
+}
+
+export type StaffTeam = {
+  name: string; code: string; trackName: string; standing: TeamStanding; createdAt: number;
+  registration: { paid: boolean } | null; captain: { name: string; email: string | null }; members: { name: string; captain: boolean }[];
+};
+
+/** Every team for staff as a spreadsheet, by track then name. The captain is the only contact, so only their email is in it. */
+export function teamsCsv(teams: StaffTeam[]) {
+  const rows = [...teams].sort((a, b) => a.trackName.localeCompare(b.trackName) || a.name.localeCompare(b.name, "id", { numeric: true })).map((team) => [
+    team.code, team.name, team.trackName, standingLabels[team.standing], registrationLabels[registrationState(team.registration)],
+    team.members.length, team.members.map((member) => member.name).join("; "), team.captain.name, team.captain.email, `${toJakartaInput(team.createdAt).replace("T", " ")} WIB`,
+  ]);
+  return toCsv([["kode_tim", "nama_tim", "kategori", "status", "pendaftaran", "jumlah_anggota", "anggota", "kapten", "email_kapten", "dibuat"], ...rows]);
+}
+
+export function teamsFileName(now: number) {
+  return `tech-league-tim-${toJakartaInput(now).slice(0, 10)}.csv`;
 }

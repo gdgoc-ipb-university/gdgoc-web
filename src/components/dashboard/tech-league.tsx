@@ -77,7 +77,7 @@ export function TechLeagueTeams() {
       : <div className="dash-table-wrap" role="region" aria-labelledby="league-caption" tabIndex={0}>
         <table className="dash-table">
           <caption id="league-caption" className="sr-only">Tim Tech League, {shown.length} dari {teams.length}</caption>
-          <thead><tr><th scope="col">Tim</th><th scope="col">Kategori</th><th scope="col">Anggota</th><th scope="col">Kapten</th><th scope="col">Status</th><th scope="col">Pendaftaran</th></tr></thead>
+          <thead><tr><th scope="col">Tim</th><th scope="col">Kategori</th><th scope="col">Anggota</th><th scope="col">Kapten</th><th scope="col">Status</th></tr></thead>
           <tbody>{shown.map((team) => <TeamRow key={team._id} team={team} />)}</tbody>
         </table>
       </div>}
@@ -96,8 +96,10 @@ function TeamRow({ team }: { team: Team }) {
     <td><span className="dash-table-stack">{team.members.length} dari {leagueTeamSize.max}
       <small>{team.members.map((member, index) => <span key={member.ownerId}>{index > 0 && ", "}<Link href={`/dashboard/anggota/${encodeURIComponent(member.ownerId)}`}>{member.name}</Link></span>)}</small></span></td>
     <td>{team.captain ? <span className="dash-table-stack">{team.captain.name}{team.captain.email && <small title={team.captain.email}>{team.captain.email}</small>}</span> : <span className="app-small">Tanpa kapten</span>}</td>
-    <td><span className="app-status dash-status" data-status={standingTone[team.standing]}>{standingLabels[team.standing]}</span></td>
-    <td><span className="app-status dash-status" data-status={registrationTone[state]}>{registrationLabels[state]}</span></td>
+    <td><span className="dash-league-badges">
+      <span className="app-status dash-status" data-status={standingTone[team.standing]}>{standingLabels[team.standing]}</span>
+      <span className="app-status dash-status" data-status={registrationTone[state]}>{registrationLabels[state]}</span>
+    </span></td>
   </tr>;
 }
 

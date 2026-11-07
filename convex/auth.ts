@@ -37,11 +37,25 @@ export function isReviewer(email: string, verified: boolean, profile: ReviewerPr
   return profile.role === "admin" || Boolean(profile.appreciationReviewer) || reviewsByTag(profile);
 }
 
+type HostEnv = { SITE_URL?: string; LEAGUE_URL?: string; AUTH_COOKIE_DOMAIN?: string };
+
+/**
+ * The hosts one login covers (#179). SITE_URL is where Google returns; LEAGUE_URL (Tech League's host) is trusted as an
+ * origin and as a callbackURL, so sign-in started on the league lands back there. AUTH_COOKIE_DOMAIN puts every auth
+ * cookie, the OAuth state cookie included, on the shared parent domain, so a session on one host is a session on both
+ * and signing out of one signs out of both. With both unset, only SITE_URL is trusted and cookies stay host-only.
+ */
+export function hostOptions(env: HostEnv) {
+  const trustedOrigins = [env.SITE_URL, env.LEAGUE_URL].map((url) => url?.trim()).filter((url): url is string => Boolean(url));
+  const domain = env.AUTH_COOKIE_DOMAIN?.trim();
+  return { trustedOrigins, ...(domain ? { advanced: { crossSubDomainCookies: { enabled: true, domain } } } : {}) };
+}
+
 export const createAuth = (ctx: GenericCtx<DataModel>) => betterAuth({
   appName: "GDGoC IPB",
   baseURL: process.env.SITE_URL,
   secret: process.env.BETTER_AUTH_SECRET,
-  trustedOrigins: process.env.SITE_URL ? [process.env.SITE_URL] : [],
+  ...hostOptions({ SITE_URL: process.env.SITE_URL, LEAGUE_URL: process.env.LEAGUE_URL, AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN }),
   database: authComponent.adapter(ctx),
   socialProviders: process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? {
     google: {

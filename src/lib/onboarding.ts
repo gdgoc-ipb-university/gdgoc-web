@@ -1,5 +1,5 @@
 import { leagueHref } from "./league";
-import { invitePath, inviteTokenPattern } from "./league-team";
+import { inviteCodeFrom, invitePath } from "./league-team";
 export const divisions = ["Program & Development", "Media & Creative", "Technical", "Community & External", "Secretary Treasurer"] as const;
 /** Community tags. Members register as Member; staff assign Core Team and BoD (Board of Directors, a tag, not dashboard access). */
 export type MemberType = "member" | "core" | "bod";
@@ -68,9 +68,10 @@ export function validateOnboarding(values: OnboardingValues, step: OnboardingSte
 
 /**
  * Where onboarding ends: a fixed page per `next` value, never the value itself. `league` returns to Tech League (#179),
- * to the team invite the member opened when `undangan` holds a well-formed invite token (#183).
+ * to the team invite the member opened when `undangan` holds an invite code (#183, #192), rebuilt from the code alone.
  */
 export function onboardingDestination(next: string | null, invite: string | null = null) {
-  if (next === "league") return leagueHref(invite && inviteTokenPattern.test(invite) ? invitePath(invite) : "/daftar");
+  const code = inviteCodeFrom(invite);
+  if (next === "league") return leagueHref(code ? invitePath(code) : "/daftar");
   return next === "review" ? "/dashboard/apresiasi/tinjau" : "/dashboard";
 }

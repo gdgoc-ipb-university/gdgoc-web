@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatInviteCode, inviteCodeFrom, inviteCodePattern, invitePath, inviteTokenFrom, newInviteCode, registrationState, teamsCsv, teamsFileName, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackName } from "./league-team";
+import { formatInviteCode, inviteCodeFrom, inviteCodePattern, invitePath, newInviteCode, registrationState, teamsCsv, teamsFileName, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackName } from "./league-team";
 import { techLeague } from "./tech-league";
 
 describe("league teams", () => {
@@ -29,15 +29,6 @@ describe("league teams", () => {
     for (const input of ["ABCD234", "ABCD23456", "ABCD-2O45", "abcdefghijABCDEFGHIJ_-", "https://league.gdgocipb.com/daftar?undangan=abcdefghijABCDEFGHIJ_-", "halo", "", null]) {
       expect(inviteCodeFrom(input)).toBeNull();
     }
-  });
-
-  it("reads an invite token from a link or on its own", () => {
-    const token = "abcdefghijABCDEFGHIJ_-";
-    expect(inviteTokenFrom(token)).toBe(token);
-    expect(inviteTokenFrom(` https://league.gdgocipb.com/daftar?undangan=${token} `)).toBe(token);
-    expect(inviteTokenFrom(`/league/daftar?a=1&undangan=${token}#tim`)).toBe(token);
-    expect(inviteTokenFrom(`https://league.gdgocipb.com/daftar?undangan=${token}x`)).toBeNull();
-    expect(inviteTokenFrom("halo")).toBeNull();
   });
 
   it("names the tracks after the league page and reads a team's standing", () => {

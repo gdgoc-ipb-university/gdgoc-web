@@ -6,9 +6,9 @@ import { getFunctionName, type FunctionReference } from "convex/server";
 import { LeagueTeamArea } from "./team";
 
 // The league's team area against a fake Convex.
-const token = "abcdefghijABCDEFGHIJ_-";
+const code = "ABCD2345";
 const team = {
-  _id: "t1", name: "Tim Hujan", track: "software", trackName: "Software Development", code: "K7Q3XM", captain: true, inviteToken: token,
+  _id: "t1", name: "Tim Hujan", track: "software", trackName: "Software Development", captain: true, inviteCode: code,
   trackLocked: false, standing: "complete", size: { min: 2, max: 4 },
   members: [
     { _id: "m1", name: "Rania Putri", captain: true, you: true, joinedAt: 1 },
@@ -32,13 +32,12 @@ const accessible = async (container: HTMLElement) => {
 afterEach(() => { cleanup(); Object.values(mutations).forEach((fn) => fn.mockClear()); for (const key of Object.keys(queries)) delete queries[key]; });
 
 describe("league team area", () => {
-  it("shows a captain their team, code, members and the invite link, and hands over after a second click", async () => {
+  it("shows a captain their team, members and the invite link, and hands over after a second click", async () => {
     queries["league:mine"] = { eligible: true, team };
     const { container } = render(<LeagueTeamArea invite={null} onInvite={() => {}} />);
     const panel = screen.getByRole("region", { name: "Tim Hujan" });
-    expect(panel.textContent).toContain("K7Q3XM");
     expect(panel.textContent).toContain("2 dari 4");
-    expect((screen.getByLabelText("Tautan undangan") as HTMLInputElement).value).toBe(`${window.location.origin}/league/daftar?undangan=${token}`);
+    expect((screen.getByLabelText("Tautan undangan") as HTMLInputElement).value).toBe(`${window.location.origin}/league/daftar?undangan=${code}`);
     const bima = within(panel).getAllByRole("listitem")[1];
     await userEvent.click(within(bima).getByRole("button", { name: "Jadikan kapten" }));
     expect(mutations["league:handOver"]).not.toHaveBeenCalled();
@@ -48,7 +47,7 @@ describe("league team area", () => {
   });
 
   it("hides the invite and captain actions from a member", () => {
-    queries["league:mine"] = { eligible: true, team: { ...team, captain: false, inviteToken: null, members: team.members.map((member) => ({ ...member, you: !member.you })) } };
+    queries["league:mine"] = { eligible: true, team: { ...team, captain: false, inviteCode: null, members: team.members.map((member) => ({ ...member, you: !member.you })) } };
     render(<LeagueTeamArea invite={null} onInvite={() => {}} />);
     expect(screen.queryByLabelText("Tautan undangan")).toBeNull();
     expect(screen.queryByRole("button", { name: "Jadikan kapten" })).toBeNull();
@@ -77,22 +76,22 @@ describe("league team area", () => {
     await userEvent.click(screen.getByRole("button", { name: "Buka undangan" }));
     expect(onInvite).not.toHaveBeenCalled();
     await userEvent.clear(screen.getByLabelText("Tautan undangan"));
-    await userEvent.type(screen.getByLabelText("Tautan undangan"), `https://league.gdgocipb.com/daftar?undangan=${token}`);
+    await userEvent.type(screen.getByLabelText("Tautan undangan"), `https://league.gdgocipb.com/daftar?undangan=${code}`);
     await userEvent.click(screen.getByRole("button", { name: "Buka undangan" }));
-    expect(onInvite).toHaveBeenCalledWith(token);
+    expect(onInvite).toHaveBeenCalledWith(code);
 
-    queries["league:invite"] = { name: "Tim Hujan", trackName: "Software Development", captain: "Rania Putri", members: 2, max: 4, full: false, joined: false, inOtherTeam: false };
-    rerender(<LeagueTeamArea invite={token} onInvite={onInvite} />);
+    queries["league:invite"] = { name: "Tim Hujan", trackName: "Software Development", captain: "Rania Putri", members: 2, max: 4, full: false, joined: false, otherTeam: null };
+    rerender(<LeagueTeamArea invite={code} onInvite={onInvite} />);
     expect(screen.getByRole("region", { name: "Tim Hujan" }).textContent).toContain("Kapten Rania Putri · 2 dari 4 orang");
     await userEvent.click(screen.getByRole("button", { name: /Gabung ke tim/ }));
-    expect(mutations["league:join"]).toHaveBeenCalledWith({ token });
+    expect(mutations["league:join"]).toHaveBeenCalledWith({ code });
     expect(onInvite).toHaveBeenLastCalledWith(null);
   });
 
   it("says when an invite is full or the member already has a team", () => {
     queries["league:mine"] = { eligible: true, team: null };
-    queries["league:invite"] = { name: "Tim Hujan", trackName: "Software Development", captain: "Rania Putri", members: 4, max: 4, full: true, joined: false, inOtherTeam: false };
-    render(<LeagueTeamArea invite={token} onInvite={() => {}} />);
+    queries["league:invite"] = { name: "Tim Hujan", trackName: "Software Development", captain: "Rania Putri", members: 4, max: 4, full: true, joined: false, otherTeam: null };
+    render(<LeagueTeamArea invite={code} onInvite={() => {}} />);
     expect(screen.getByText("Tim ini sudah penuh.")).toBeTruthy();
     expect(screen.queryByRole("button", { name: /Gabung ke tim/ })).toBeNull();
   });

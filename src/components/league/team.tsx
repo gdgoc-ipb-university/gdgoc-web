@@ -8,14 +8,14 @@ import { LoadingPanel } from "@/components/appreciation/shared";
 import { Arrow } from "@/components/icons";
 import { readableError } from "@/lib/draft-session";
 import { leagueHref } from "@/lib/league";
-import { inviteTokenFrom, invitePath, leagueTeamSize, leagueTracks, type LeagueTrack } from "@/lib/league-team";
+import { inviteCodeFrom, invitePath, leagueTeamSize, leagueTracks, type LeagueTrack } from "@/lib/league-team";
 
 type Mine = FunctionReturnType<typeof api.league.mine>;
 type Team = NonNullable<Extract<Mine, { eligible: true }>["team"]>;
 
 /** The absolute invite link on the league host, which the captain shares. */
-export function inviteLink(token: string) {
-  return new URL(leagueHref(invitePath(token)), window.location.origin).toString();
+export function inviteLink(code: string) {
+  return new URL(leagueHref(invitePath(code)), window.location.origin).toString();
 }
 
 /** Calls a mutation with a busy flag and its error as readable text. */
@@ -44,7 +44,7 @@ export function LeagueTeamArea({ invite, onInvite }: { invite: string | null; on
 }
 
 function InviteCard({ token, onDone }: { token: string; onDone: () => void }) {
-  const invite = useQuery(api.league.invite, { token });
+  const invite = useQuery(api.league.invite, { code: token });
   const join = useMutation(api.league.join);
   const action = useAction();
   if (invite === undefined) return <LoadingPanel label="Membuka undangan…" />;
@@ -58,10 +58,10 @@ function InviteCard({ token, onDone }: { token: string; onDone: () => void }) {
     </> : <>
       <h2 id="league-invite-title">{invite.name}</h2>
       <p>{invite.trackName}{invite.captain && ` · Kapten ${invite.captain}`} · {invite.members} dari {invite.max} orang</p>
-      {invite.inOtherTeam ? <p className="app-notice" role="status">Kamu sudah punya tim musim ini. Keluar dulu dari tim itu kalau ingin bergabung ke {invite.name}.</p>
+      {invite.otherTeam ? <p className="app-notice" role="status">Kamu sudah punya tim musim ini. Keluar dulu dari tim itu kalau ingin bergabung ke {invite.name}.</p>
         : invite.full ? <p className="app-notice" role="status">Tim ini sudah penuh.</p> : null}
       <div className="league-actions">
-        {!invite.inOtherTeam && !invite.full && <button type="button" className="button button-blue" disabled={action.busy} onClick={() => void action.run(async () => { await join({ token }); onDone(); })}>{action.busy ? "Bergabung…" : "Gabung ke tim"} <Arrow /></button>}
+        {!invite.otherTeam && !invite.full && <button type="button" className="button button-blue" disabled={action.busy} onClick={() => void action.run(async () => { await join({ code: token }); onDone(); })}>{action.busy ? "Bergabung…" : "Gabung ke tim"} <Arrow /></button>}
         <button type="button" className="text-button" onClick={onDone}>Abaikan</button>
       </div>
       {action.errorLine}
@@ -110,7 +110,7 @@ function OpenInvite({ onOpen }: { onOpen: (token: string) => void }) {
   const [error, setError] = useState("");
   function submit(event: FormEvent) {
     event.preventDefault();
-    const token = inviteTokenFrom(text);
+    const token = inviteCodeFrom(text);
     if (!token) { setError("Tempel tautan undangan lengkap dari kaptenmu."); return; }
     setError(""); onOpen(token);
   }
@@ -143,14 +143,13 @@ function TeamPanel({ team }: { team: Team }) {
   const [leave, handOver, remove] = [useMutation(api.league.leave), useMutation(api.league.handOver), useMutation(api.league.removeMember)];
   const action = useAction();
   return <section className="app-panel league-team" aria-labelledby="league-team-title">
-    <p className="eyebrow">TIMMU · {team.trackName.toUpperCase()}</p>
+    <p className="eyebrow">TIMMU</p>
     <h2 id="league-team-title">{team.name}</h2>
     <span className="app-status" data-status={team.standing === "complete" ? "published" : "revision"}>{standingLabels[team.standing]}</span>
     <dl className="league-team-facts">
-      <div><dt>Kode tim</dt><dd className="league-code">{team.code}</dd></div>
+      <div><dt>Kategori</dt><dd>{team.trackName}</dd></div>
       <div><dt>Anggota</dt><dd>{team.members.length} dari {team.size.max}</dd></div>
     </dl>
-    <p className="field-hint">Panitia menilai karya dengan kode ini, bukan nama tim. Kode tim tidak berubah selama musim ini.</p>
 
     <h3>Anggota</h3>
     <ol className="league-members">{team.members.map((member) => <li key={member._id}>
@@ -163,7 +162,7 @@ function TeamPanel({ team }: { team: Team }) {
     </li>)}</ol>
     {action.errorLine}
 
-    {team.captain && team.inviteToken && <InvitePanel token={team.inviteToken} full={team.members.length >= team.size.max} />}
+    {team.captain && team.inviteCode && <InvitePanel token={team.inviteCode} full={team.members.length >= team.size.max} />}
     {team.captain && <TeamSettings team={team} />}
 
     <div className="league-leave">
@@ -209,7 +208,7 @@ function TeamSettings({ team }: { team: Team }) {
     <fieldset className="league-track-field" disabled={action.busy || team.trackLocked}><legend>Kategori</legend>
       <TrackChoice name="league-change-track" value={team.track} onChange={(track) => void action.run(() => changeTrack({ track }))} />
     </fieldset>
-    <p className="field-hint">{team.trackLocked ? "Kategori terkunci karena timmu sudah mengumpulkan karya." : "Kode tim tetap sama walau kategori diganti."}</p>
+    <p className="field-hint">{team.trackLocked ? "Kategori terkunci karena timmu sudah mengumpulkan karya." : "Kategori bisa diganti sampai timmu mengumpulkan karya."}</p>
     {action.errorLine}
   </details>;
 }

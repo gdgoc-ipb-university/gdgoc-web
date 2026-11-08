@@ -64,9 +64,6 @@ export function formatInviteCode(code: string) {
   return `${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
-/** Invite tokens are 128 random bits in base64url, like card tokens. */
-export const inviteTokenPattern = /^[A-Za-z0-9_-]{22}$/;
-
 /** The invite query parameter on the league's /daftar. */
 export const inviteParam = "undangan";
 
@@ -84,14 +81,6 @@ export function inviteCodeFrom(input: string | null | undefined) {
   const param = input.match(new RegExp(`(?:^|[?&])${inviteParam}=([^&#]*)`, "i"));
   const code = (param ? param[1] : input).replace(/[\s\u2010-\u2015-]|%20|\+/g, "").toUpperCase();
   return inviteCodePattern.test(code) ? code : null;
-}
-
-/** The invite token from a pasted link or the token alone, or null when neither holds one. */
-export function inviteTokenFrom(input: string) {
-  const text = input.trim();
-  if (inviteTokenPattern.test(text)) return text;
-  const match = text.match(new RegExp(`[?&]${inviteParam}=([A-Za-z0-9_-]{22})(?:[&#]|$)`));
-  return match ? match[1] : null;
 }
 
 export { normalizeTeamName, teamNameProblem };

@@ -27,47 +27,60 @@ export function trackName(key: string) {
   return leagueTracks.find((track) => track.key === key)?.name ?? key;
 }
 
-// Team codes stand in for names in anonymous judging. Six characters from 31 letters and digits with no look-alikes
-// (0/O, 1/I/L) and no underscore, so they read aloud, type cleanly and split cleanly in `TEAMCODE_TRACK_SUBMISSION` file names.
+// Team codes stand in for names in anonymous judging, for staff and judges only. Invite codes let a member join a team
+// (#192). Both use 31 letters and digits with no look-alikes (0/O, 1/I/L) and no underscore, so they read aloud, type
+// cleanly and split cleanly in `TEAMCODE_TRACK_SUBMISSION` file names.
 const codeAlphabet = "23456789ABCDEFGHJKMNPQRSTUVWXYZ";
 export const teamCodeLength = 6;
 export const teamCodePattern = new RegExp(`^[${codeAlphabet}]{${teamCodeLength}}$`);
 
-/** A random team code from the given bytes (one per character); rejection sampling keeps every character equally likely. */
-export function teamCodeFrom(bytes: Uint8Array) {
+/** A random code from the given bytes (one per character); rejection sampling keeps every character equally likely. */
+export function teamCodeFrom(bytes: Uint8Array, length: number = teamCodeLength) {
   const limit = 256 - (256 % codeAlphabet.length);
   let code = "";
   for (const byte of bytes) {
     if (byte >= limit) continue;
     code += codeAlphabet[byte % codeAlphabet.length];
-    if (code.length === teamCodeLength) return code;
+    if (code.length === length) return code;
   }
   return null;
 }
 
-export function newTeamCode() {
+function randomCode(length: number) {
   for (;;) {
-    const code = teamCodeFrom(crypto.getRandomValues(new Uint8Array(teamCodeLength * 2)));
+    const code = teamCodeFrom(crypto.getRandomValues(new Uint8Array(length * 2)), length);
     if (code) return code;
   }
 }
 
-/** Invite tokens are 128 random bits in base64url, like card tokens. */
-export const inviteTokenPattern = /^[A-Za-z0-9_-]{22}$/;
+export const newTeamCode = () => randomCode(teamCodeLength);
+
+/** Invite codes: eight characters, about 852 billion of them, stored bare and shown in halves as `ABCD-2345`. */
+export const inviteCodeLength = 8;
+export const inviteCodePattern = new RegExp(`^[${codeAlphabet}]{${inviteCodeLength}}$`);
+export const newInviteCode = () => randomCode(inviteCodeLength);
+
+export function formatInviteCode(code: string) {
+  return `${code.slice(0, 4)}-${code.slice(4)}`;
+}
 
 /** The invite query parameter on the league's /daftar. */
 export const inviteParam = "undangan";
 
-export function invitePath(token: string) {
-  return `/daftar?${inviteParam}=${token}`;
+/** The invite link carries the invite code, so replacing the code replaces the link. */
+export function invitePath(code: string) {
+  return `/daftar?${inviteParam}=${code}`;
 }
 
-/** The invite token from a pasted link or the token alone, or null when neither holds one. */
-export function inviteTokenFrom(input: string) {
-  const text = input.trim();
-  if (inviteTokenPattern.test(text)) return text;
-  const match = text.match(new RegExp(`[?&]${inviteParam}=([A-Za-z0-9_-]{22})(?:[&#]|$)`));
-  return match ? match[1] : null;
+/**
+ * The one reader of invite codes, on the server, Daftar and onboarding alike: the code in any case, with spaces or a
+ * dash, or a pasted link holding `undangan=`. Null when the input holds no well-formed code.
+ */
+export function inviteCodeFrom(input: string | null | undefined) {
+  if (!input || input.length > 500) return null;
+  const param = input.match(new RegExp(`(?:^|[?&])${inviteParam}=([^&#]*)`, "i"));
+  const code = (param ? param[1] : input).replace(/[\s\u2010-\u2015-]|%20|\+/g, "").toUpperCase();
+  return inviteCodePattern.test(code) ? code : null;
 }
 
 export { normalizeTeamName, teamNameProblem };

@@ -125,9 +125,11 @@ describe("accessible member onboarding", () => {
     expect(onboardingDestination("review")).toBe("/dashboard/apresiasi/tinjau");
     expect(onboardingDestination(null)).toBe("/dashboard");
     expect(onboardingDestination("league")).toBe("/league/daftar");
-    expect(onboardingDestination("league", "abcdefghijABCDEFGHIJ_-")).toBe("/league/daftar?undangan=abcdefghijABCDEFGHIJ_-");
+    expect(onboardingDestination("league", "abcd-2345")).toBe("/league/daftar?undangan=ABCD2345");
+    expect(onboardingDestination("league", "abcdefghijABCDEFGHIJ_-")).toBe("/league/daftar");
     expect(onboardingDestination("league", "x&next=https://malicious.example/")).toBe("/league/daftar");
-    expect(onboardingDestination(null, "abcdefghijABCDEFGHIJ_-")).toBe("/dashboard");
+    expect(onboardingDestination("league", "ABCD2345&next=https://malicious.example/")).toBe("/league/daftar");
+    expect(onboardingDestination(null, "ABCD2345")).toBe("/dashboard");
     expect(onboardingDestination("https://malicious.example/")).toBe("/dashboard");
     expect(onboardingDestination("javascript:alert(1)")).toBe("/dashboard");
   });

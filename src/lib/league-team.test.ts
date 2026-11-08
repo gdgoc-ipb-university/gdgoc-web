@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { inviteTokenFrom, registrationState, teamsCsv, teamsFileName, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackName } from "./league-team";
+import { formatInviteCode, inviteCodeFrom, inviteCodePattern, invitePath, newInviteCode, registrationState, teamsCsv, teamsFileName, leagueTeamSize, leagueTracks, newTeamCode, teamCodeFrom, teamCodePattern, teamStanding, trackName } from "./league-team";
 import { techLeague } from "./tech-league";
 
 describe("league teams", () => {
@@ -13,13 +13,22 @@ describe("league teams", () => {
     expect(teamCodeFrom(new Uint8Array([0, 1, 2]))).toBeNull();
   });
 
-  it("reads an invite token from a link or on its own", () => {
-    const token = "abcdefghijABCDEFGHIJ_-";
-    expect(inviteTokenFrom(token)).toBe(token);
-    expect(inviteTokenFrom(` https://league.gdgocipb.com/daftar?undangan=${token} `)).toBe(token);
-    expect(inviteTokenFrom(`/league/daftar?a=1&undangan=${token}#tim`)).toBe(token);
-    expect(inviteTokenFrom(`https://league.gdgocipb.com/daftar?undangan=${token}x`)).toBeNull();
-    expect(inviteTokenFrom("halo")).toBeNull();
+  it("makes eight-character invite codes and shows them in halves", () => {
+    const codes = new Set(Array.from({ length: 500 }, newInviteCode));
+    for (const code of codes) expect(code).toMatch(inviteCodePattern);
+    expect(codes.size).toBe(500);
+    expect(formatInviteCode("ABCD2345")).toBe("ABCD-2345");
+    expect(invitePath("ABCD2345")).toBe("/daftar?undangan=ABCD2345");
+  });
+
+  it("reads an invite code typed loosely or inside a pasted link", () => {
+    for (const input of ["ABCD2345", "abcd-2345", " AbCd 2345 ", "ab cd–23 45", "https://league.gdgocipb.com/daftar?undangan=ABCD2345", "/league/daftar?a=1&undangan=abcd-2345#tim", "undangan=abcd2345"]) {
+      expect(inviteCodeFrom(input)).toBe("ABCD2345");
+    }
+    // Too short or long, a look-alike that is not in the alphabet, an old 22-character token, or nothing at all.
+    for (const input of ["ABCD234", "ABCD23456", "ABCD-2O45", "abcdefghijABCDEFGHIJ_-", "https://league.gdgocipb.com/daftar?undangan=abcdefghijABCDEFGHIJ_-", "halo", "", null]) {
+      expect(inviteCodeFrom(input)).toBeNull();
+    }
   });
 
   it("names the tracks after the league page and reads a team's standing", () => {

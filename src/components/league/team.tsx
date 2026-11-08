@@ -8,7 +8,7 @@ import { LoadingPanel } from "@/components/appreciation/shared";
 import { Arrow } from "@/components/icons";
 import { readableError } from "@/lib/draft-session";
 import { leagueHref } from "@/lib/league";
-import { inviteCodeFrom, invitePath, leagueTeamSize, leagueTracks, type LeagueTrack } from "@/lib/league-team";
+import { formatInviteCode, inviteCodeFrom, invitePath, leagueTeamSize, leagueTracks, type LeagueTrack } from "@/lib/league-team";
 
 type Mine = FunctionReturnType<typeof api.league.mine>;
 type Team = NonNullable<Extract<Mine, { eligible: true }>["team"]>;
@@ -29,43 +29,52 @@ function useAction() {
   return { busy, error, run, errorLine: error ? <p className="field-error" role="alert">{error}</p> : null };
 }
 
-/** The signed-in member's Tech League area: an invite they opened, their team, or how to start one. */
-export function LeagueTeamArea({ invite, onInvite }: { invite: string | null; onInvite: (token: string | null) => void }) {
+/**
+ * The signed-in member's Tech League area: their team, or forms to start or join one. An invite they opened, by link or
+ * by code, shows alone until they join or close it (#192).
+ */
+export function LeagueTeamArea({ invite, onInvite }: { invite: string | null; onInvite: (code: string | null) => void }) {
   const mine = useQuery(api.league.mine);
   if (mine === undefined) return <LoadingPanel label="Membuka timmu…" />;
   if (!mine.eligible) return null;
   return <div className="league-team-area">
-    {invite && <InviteCard token={invite} onDone={() => onInvite(null)} />}
-    {mine.team ? <TeamPanel team={mine.team} /> : <>
-      <CreateTeam />
-      {!invite && <OpenInvite onOpen={onInvite} />}
-    </>}
+    {invite ? <InviteConfirm input={invite} team={mine.team} onClose={() => onInvite(null)} />
+      : mine.team ? <TeamPanel team={mine.team} /> : <><CreateTeam /><OpenInvite onOpen={onInvite} /></>}
   </div>;
 }
 
-function InviteCard({ token, onDone }: { token: string; onDone: () => void }) {
-  const invite = useQuery(api.league.invite, { code: token });
+/** The team an invite opens, with "Gabung ke tim" only when the member can join it. */
+function InviteConfirm({ input, team, onClose }: { input: string; team: Team | null; onClose: () => void }) {
+  const code = inviteCodeFrom(input);
+  const invite = useQuery(api.league.invite, code ? { code } : "skip");
   const join = useMutation(api.league.join);
   const action = useAction();
-  if (invite === undefined) return <LoadingPanel label="Membuka undangan…" />;
-  if (invite?.joined) return null;
+  if (code && invite === undefined) return <LoadingPanel label="Membuka undangan…" />;
+  if (invite?.joined && team) return <>
+    <p className="app-notice league-invite-note" role="status">Kamu sudah ada di tim ini. <button type="button" className="text-button" onClick={onClose}>Tutup</button></p>
+    <TeamPanel team={team} />
+  </>;
+  const canJoin = invite && !invite.otherTeam && !invite.full;
   return <section className="app-panel league-invite" aria-labelledby="league-invite-title">
     <p className="eyebrow">UNDANGAN TIM</p>
     {!invite ? <>
-      <h2 id="league-invite-title">Tautan ini tidak berlaku.</h2>
-      <p>Mungkin kaptennya sudah mengganti tautan. Minta tautan terbaru ke kapten timmu.</p>
-      <button type="button" className="text-button" onClick={onDone}>Tutup</button>
+      <h2 id="league-invite-title">Kode undangan ini tidak berlaku.</h2>
+      <p>Periksa lagi kodenya, atau minta kode terbaru ke kapten timmu. Kode lama berhenti berlaku saat kapten menggantinya.</p>
     </> : <>
       <h2 id="league-invite-title">{invite.name}</h2>
-      <p>{invite.trackName}{invite.captain && ` · Kapten ${invite.captain}`} · {invite.members} dari {invite.max} orang</p>
-      {invite.otherTeam ? <p className="app-notice" role="status">Kamu sudah punya tim musim ini. Keluar dulu dari tim itu kalau ingin bergabung ke {invite.name}.</p>
-        : invite.full ? <p className="app-notice" role="status">Tim ini sudah penuh.</p> : null}
-      <div className="league-actions">
-        {!invite.otherTeam && !invite.full && <button type="button" className="button button-blue" disabled={action.busy} onClick={() => void action.run(async () => { await join({ code: token }); onDone(); })}>{action.busy ? "Bergabung…" : "Gabung ke tim"} <Arrow /></button>}
-        <button type="button" className="text-button" onClick={onDone}>Abaikan</button>
-      </div>
-      {action.errorLine}
+      <dl className="league-team-facts">
+        <div><dt>Kategori</dt><dd>{invite.trackName}</dd></div>
+        <div><dt>Kapten</dt><dd>{invite.captain ?? "Belum ada"}</dd></div>
+        <div><dt>Anggota</dt><dd>{invite.members} dari {invite.max}</dd></div>
+      </dl>
+      {invite.otherTeam ? <p className="app-notice" role="status">Kamu sudah ada di {invite.otherTeam}. Keluar dulu dari tim itu untuk bergabung ke {invite.name}.</p>
+        : invite.full && <p className="app-notice" role="status">Tim ini sudah penuh. Tim bisa menerima anggota lagi kalau ada yang keluar.</p>}
     </>}
+    <div className="league-actions">
+      {canJoin && <button type="button" className="button button-blue" disabled={action.busy} onClick={() => void action.run(async () => { await join({ code: code! }); onClose(); })}>{action.busy ? "Bergabung…" : "Gabung ke tim"} <Arrow /></button>}
+      <button type="button" className={canJoin ? "text-button" : "button button-quiet"} onClick={onClose}>{canJoin ? "Bukan sekarang" : "Tutup"}</button>
+    </div>
+    {action.errorLine}
   </section>;
 }
 
@@ -91,7 +100,7 @@ function CreateTeam() {
   return <form className="app-panel league-create" onSubmit={submit} noValidate aria-labelledby="league-create-title">
     <p className="eyebrow">BUAT TIM</p>
     <h2 id="league-create-title">Bentuk timmu.</h2>
-    <p>Kamu jadi kapten: satu-satunya kontak timmu untuk panitia. Setelah tim jadi, ajak {leagueTeamSize.max - 1 > 1 ? `sampai ${leagueTeamSize.max - 1}` : "satu"} teman lewat tautan undangan. Mereka juga masuk sebagai member GDGoC IPB.</p>
+    <p>Kamu jadi kapten: satu-satunya kontak timmu untuk panitia. Setelah tim jadi, ajak {leagueTeamSize.max - 1 > 1 ? `sampai ${leagueTeamSize.max - 1}` : "satu"} teman dengan kode atau tautan undangan. Mereka juga masuk sebagai member GDGoC IPB.</p>
     <fieldset disabled={action.busy}>
       <div className="app-field"><label htmlFor="league-team-name">Nama tim <span className="field-required" aria-hidden="true">*</span></label>
         <input id="league-team-name" required maxLength={80} value={name} onChange={(event) => setName(event.target.value)} autoComplete="off" /></div>
@@ -105,24 +114,25 @@ function CreateTeam() {
   </form>;
 }
 
-function OpenInvite({ onOpen }: { onOpen: (token: string) => void }) {
+function OpenInvite({ onOpen }: { onOpen: (code: string) => void }) {
   const [text, setText] = useState("");
   const [error, setError] = useState("");
   function submit(event: FormEvent) {
     event.preventDefault();
-    const token = inviteCodeFrom(text);
-    if (!token) { setError("Tempel tautan undangan lengkap dari kaptenmu."); return; }
-    setError(""); onOpen(token);
+    const code = inviteCodeFrom(text);
+    if (!code) { setError(text.trim() ? "Kode undangan terdiri dari 8 huruf dan angka, seperti ABCD-2345." : "Isi kode undangan dari kaptenmu."); return; }
+    setError(""); onOpen(code);
   }
   return <form className="app-panel league-open-invite" onSubmit={submit} noValidate aria-labelledby="league-open-title">
     <h2 id="league-open-title">Diajak teman?</h2>
-    <p>Buka tautan undangan dari kaptenmu, atau tempel di sini.</p>
+    <p>Masukkan kode undangan dari kaptenmu, atau buka tautan undangannya.</p>
     <div className="league-inline-form">
-      <div className="app-field"><label htmlFor="league-invite-link">Tautan undangan</label>
-        <input id="league-invite-link" value={text} onChange={(event) => setText(event.target.value)} inputMode="url" autoComplete="off" placeholder="https://…/daftar?undangan=…" aria-invalid={Boolean(error)} /></div>
+      <div className="app-field"><label htmlFor="league-invite-code">Kode undangan</label>
+        <input id="league-invite-code" value={text} onChange={(event) => setText(event.target.value)} autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="ABCD-2345"
+          aria-invalid={Boolean(error)} aria-describedby={error ? "league-invite-code-error" : undefined} /></div>
       <button type="submit" className="button button-quiet">Buka undangan</button>
     </div>
-    {error && <p className="field-error" role="alert">{error}</p>}
+    {error && <p className="field-error" id="league-invite-code-error" role="alert">{error}</p>}
   </form>;
 }
 
@@ -132,7 +142,7 @@ function Confirm({ label, question, confirm, onConfirm, busy, danger = false }: 
   if (!asking) return <button type="button" className="text-button" onClick={() => setAsking(true)}>{label}</button>;
   return <span className="league-confirm" role="group">
     <span>{question}</span>
-    <button type="button" className={danger ? "text-button league-danger" : "text-button"} disabled={busy} onClick={onConfirm}>{confirm}</button>
+    <button type="button" className={danger ? "text-button league-danger" : "text-button"} disabled={busy} onClick={() => { setAsking(false); onConfirm(); }}>{confirm}</button>
     <button type="button" className="text-button" onClick={() => setAsking(false)}>Batal</button>
   </span>;
 }
@@ -162,7 +172,7 @@ function TeamPanel({ team }: { team: Team }) {
     </li>)}</ol>
     {action.errorLine}
 
-    {team.captain && team.inviteCode && <InvitePanel token={team.inviteCode} full={team.members.length >= team.size.max} />}
+    {team.captain && <InvitePanel code={team.inviteCode} full={team.members.length >= team.size.max} />}
     {team.captain && <TeamSettings team={team} />}
 
     <div className="league-leave">
@@ -172,26 +182,42 @@ function TeamPanel({ team }: { team: Team }) {
   </section>;
 }
 
-function InvitePanel({ token, full }: { token: string; full: boolean }) {
+/** The captain's invite: the code to read out or type, and the link that carries it. Replacing one replaces both. */
+function InvitePanel({ code, full }: { code: string | null; full: boolean }) {
   const rotate = useMutation(api.league.rotateInvite);
   const action = useAction();
-  const [copied, setCopied] = useState(false);
-  const link = inviteLink(token);
-  async function copy() {
-    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2400); } catch { setCopied(false); }
-  }
-  return <div className="league-invite-panel">
+  // A team made before invite codes has none until the migration runs (#192); its captain can make one now.
+  if (!code) return <div className="league-invite-panel">
     <h3>Undang anggota</h3>
-    {full ? <p className="app-notice" role="status">Tim sudah penuh. Tautan ini baru bisa dipakai lagi kalau ada yang keluar.</p>
-      : <p className="field-hint">Siapa pun yang memegang tautan ini bisa bergabung, jadi kirim hanya ke anggota timmu.</p>}
-    <div className="league-inline-form">
-      <div className="app-field"><label htmlFor="league-invite-url" className="sr-only">Tautan undangan</label>
-        <input id="league-invite-url" readOnly value={link} onFocus={(event) => event.target.select()} /></div>
-      <button type="button" className="button button-quiet" onClick={() => void copy()}>{copied ? "Tersalin" : "Salin tautan"}</button>
-    </div>
-    <Confirm label="Ganti tautan" question="Tautan lama berhenti berlaku." confirm="Ya, ganti" danger busy={action.busy} onConfirm={() => void action.run(() => rotate({}))} />
+    <p className="field-hint">Buat kode undangan untuk mengajak anggota timmu.</p>
+    <button type="button" className="button button-quiet" disabled={action.busy} onClick={() => void action.run(() => rotate({}))}>{action.busy ? "Membuat kode…" : "Buat kode undangan"}</button>
     {action.errorLine}
   </div>;
+  const link = inviteLink(code);
+  return <div className="league-invite-panel">
+    <h3>Undang anggota</h3>
+    {full ? <p className="app-notice" role="status">Tim sudah penuh. Kode ini baru bisa dipakai lagi kalau ada yang keluar.</p>
+      : <p className="field-hint">Siapa pun yang memegang kode atau tautan ini bisa bergabung, jadi kirim hanya ke anggota timmu.</p>}
+    <div className="league-invite-code">
+      <dl><dt>Kode undangan</dt><dd className="league-code">{formatInviteCode(code)}</dd></dl>
+      <CopyButton text={formatInviteCode(code)} label="Salin kode" />
+    </div>
+    <div className="league-inline-form">
+      <div className="app-field"><label htmlFor="league-invite-url">Tautan undangan</label>
+        <input id="league-invite-url" readOnly value={link} onFocus={(event) => event.target.select()} /></div>
+      <CopyButton text={link} label="Salin tautan" />
+    </div>
+    <Confirm label="Ganti kode" question="Kode dan tautan lama berhenti berlaku." confirm="Ya, ganti" danger busy={action.busy} onConfirm={() => void action.run(() => rotate({}))} />
+    {action.errorLine}
+  </div>;
+}
+
+function CopyButton({ text, label }: { text: string; label: string }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2400); } catch { setCopied(false); }
+  }
+  return <button type="button" className="button button-quiet" onClick={() => void copy()}>{copied ? "Tersalin" : label}</button>;
 }
 
 function TeamSettings({ team }: { team: Team }) {

@@ -7,40 +7,62 @@ import { GoogleMark, LoadingPanel } from "@/components/appreciation/shared";
 import { Arrow } from "@/components/icons";
 import { authClient } from "@/lib/auth-client";
 import { leagueHref, mainHref } from "@/lib/league";
+import { inviteParam, invitePath, inviteTokenPattern } from "@/lib/league-team";
 import { forgetNavViewer } from "@/lib/nav-viewer";
+import { LeagueTeamArea } from "./team";
 
-/** Where Google returns after sign-in started here: this page, on the league host (a trusted origin, #179). */
-function returnUrl() {
-  return new URL(leagueHref("/daftar"), window.location.origin).toString();
+/** Where Google returns after sign-in started here: this page, with the invite being opened, on the league host (#179). */
+function returnUrl(invite: string | null) {
+  return new URL(leagueHref(invite ? invitePath(invite) : "/daftar"), window.location.origin).toString();
+}
+
+/** The invite token in this page's address, if it holds a well-formed one. */
+function inviteInUrl() {
+  const token = new URLSearchParams(window.location.search).get(inviteParam);
+  return token && inviteTokenPattern.test(token) ? token : null;
 }
 
 /**
  * "Daftar" on the league: a visitor signs in with Google, a new member goes through onboarding on the main site and comes
- * back here, and a member sees what opens next. Teams and submissions arrive here in #183 and #180.
+ * back here (to the invite they opened, if any), and a member forms or joins a team (#183). Submissions arrive in #180.
  */
 export function LeagueRegistration() {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.auth.viewer, isAuthenticated ? {} : "skip");
   const profile = useQuery(api.members.profile, isAuthenticated ? {} : "skip");
+  const [invite, setInvite] = useState<string | null>(null);
+  useEffect(() => { const token = inviteInUrl(); if (token) requestAnimationFrame(() => setInvite(token)); }, []);
   const needsOnboarding = Boolean(viewer && profile !== undefined && !profile?.completedAt);
-  useEffect(() => { if (needsOnboarding) window.location.assign(mainHref("/onboarding?next=league")); }, [needsOnboarding]);
+  useEffect(() => {
+    if (!needsOnboarding) return;
+    const token = inviteInUrl();
+    window.location.assign(mainHref(`/onboarding?next=league${token ? `&${inviteParam}=${token}` : ""}`));
+  }, [needsOnboarding]);
+  /** Opens or closes an invite and keeps the address in step, so a reload shows the same thing. */
+  function openInvite(token: string | null) {
+    setInvite(token);
+    window.history.replaceState(null, "", token ? `?${inviteParam}=${token}` : window.location.pathname);
+  }
 
   if (isLoading || (isAuthenticated && (viewer === undefined || profile === undefined))) return <LoadingPanel label="Menghubungkan akunmu…" />;
-  if (!viewer) return <SignIn />;
+  if (!viewer) return <SignIn invite={invite} />;
   if (needsOnboarding) return <p className="app-panel" role="status">Mengajakmu kenalan singkat dulu…</p>;
-  return <section className="app-panel league-member" aria-labelledby="league-member-title">
-    <p className="eyebrow">TECH LEAGUE 2026/27</p>
-    <h1 id="league-member-title">Halo, {viewer.name.split(/\s+/)[0]}.</h1>
-    <p>Kamu sudah masuk sebagai member GDGoC IPB. Pembentukan tim dan pengumpulan karya segera dibuka di sini. Kabarnya kami umumkan di Instagram GDGoC IPB.</p>
+  return <>
+    <header className="league-member">
+      <p className="eyebrow">TECH LEAGUE 2026/27</p>
+      <h1>Halo, {viewer.name.split(/\s+/)[0]}.</h1>
+      <p className="league-lead">Bentuk timmu di sini, atau bergabung lewat tautan undangan dari kaptenmu. Pengumpulan karya segera dibuka di halaman ini.</p>
+    </header>
+    <LeagueTeamArea invite={invite} onInvite={openInvite} />
     <div className="league-actions">
-      <a className="button button-blue" href={leagueHref("/")}>Lihat jadwal <Arrow /></a>
+      <a className="text-button" href={leagueHref("/")}>Lihat jadwal <Arrow /></a>
       <a className="text-button" href={mainHref("/dashboard")}>Buka dashboard <Arrow /></a>
       <SignOut />
     </div>
-  </section>;
+  </>;
 }
 
-function SignIn() {
+function SignIn({ invite }: { invite: string | null }) {
   const config = useQuery(api.auth.configuration);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -50,15 +72,15 @@ function SignIn() {
   async function signIn() {
     setBusy(true); setError("");
     try {
-      const here = returnUrl();
-      const result = await authClient.signIn.social({ provider: "google", callbackURL: here, errorCallbackURL: `${here}?authError=1` });
+      const here = returnUrl(invite);
+      const result = await authClient.signIn.social({ provider: "google", callbackURL: here, errorCallbackURL: `${here}${here.includes("?") ? "&" : "?"}authError=1` });
       if (result.error) { setError("Google login belum berhasil. Coba lagi dengan akun yang ingin kamu pakai."); setBusy(false); }
     } catch { setError("Belum bisa membuka Google login. Periksa koneksi dan coba lagi."); setBusy(false); }
   }
   return <section className="app-panel login-panel" aria-labelledby="league-login-title">
     <p className="eyebrow">DAFTAR TECH LEAGUE</p>
-    <h1 id="league-login-title">Masuk dulu sebagai member GDGoC IPB.</h1>
-    <p>Masuk dengan akun Google. Kalau ini pertama kalinya, kamu diajak kenalan singkat dulu, lalu kembali ke sini. Pembentukan tim dan pengumpulan karya segera dibuka di Tech League.</p>
+    <h1 id="league-login-title">{invite ? "Kamu diajak bergabung ke sebuah tim." : "Masuk dulu sebagai member GDGoC IPB."}</h1>
+    <p>Masuk dengan akun Google. Kalau ini pertama kalinya, kamu diajak kenalan singkat dulu sebagai member GDGoC IPB, lalu kembali ke sini{invite ? " untuk membuka undangannya" : " untuk membentuk atau bergabung ke tim"}.</p>
     <button className="google-button" onClick={signIn} disabled={busy || !config?.googleEnabled}><GoogleMark />{busy ? "Membuka Google…" : "Lanjutkan dengan Google"}<Arrow /></button>
     {config && !config.googleEnabled && <p className="app-notice" role="status">Login sedang disiapkan. Coba lagi nanti.</p>}
     {error && <p role="alert" className="field-error">{error}</p>}

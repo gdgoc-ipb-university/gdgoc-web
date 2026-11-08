@@ -16,7 +16,7 @@ const categoryIcons: Record<(typeof techLeague.categories)[number], PixelIconNam
 
 /** The FAQ the page renders and serialises as `FAQPage` JSON-LD. */
 export const techLeagueFaq: FaqItem[] = [
-  { question: "Bagaimana cara mendaftar?", answer: [`Pilih Daftar, masuk dengan akun Google, lalu lengkapi perkenalan singkat sebagai member GDGoC IPB. Pembentukan tim dan pengumpulan karya segera dibuka di halaman Tech League; kabarnya diumumkan di Instagram saat pendaftaran dibuka pada ${dayLabel(techLeague.registration.opensAt)}.`] },
+  { question: "Bagaimana cara mendaftar?", answer: [`Pilih Daftar, masuk dengan akun Google, lalu lengkapi perkenalan singkat sebagai member GDGoC IPB. Setelah itu, bentuk tim atau bergabung lewat tautan undangan dari kaptenmu. Pengumpulan karya segera dibuka di halaman Tech League; kabarnya diumumkan di Instagram saat pendaftaran dibuka pada ${dayLabel(techLeague.registration.opensAt)}.`] },
   { question: "Di mana aturan lengkapnya?", answer: techLeague.guidebookUrl ? ["Di ", { text: "guidebook Tech League", href: techLeague.guidebookUrl }, "."] : ["Di guidebook Tech League, yang ditautkan di halaman ini setelah terbit."] },
   { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
 ];
@@ -33,7 +33,7 @@ function RegistrationStatus() {
   }[state];
   return <div className="league-status" role="status">
     <p>{message}</p>
-    {state !== "closed" && <p className="league-status-note">Masuk sebagai member GDGoC IPB sekarang. Pembentukan tim dan pengumpulan karya segera dibuka di sini.</p>}
+    {state !== "closed" && <p className="league-status-note">Masuk sebagai member GDGoC IPB, lalu bentuk timmu di sini. Pengumpulan karya segera dibuka.</p>}
     <div className="league-actions">
       {state !== "closed" && <Link className="button button-blue" href={leagueHref("/daftar")}>Daftar <Arrow /></Link>}
       {state === "open" && techLeague.registrationUrl && <a className="button button-quiet" href={techLeague.registrationUrl} target="_blank" rel="noreferrer">Form pendaftaran tim <Arrow external /></a>}

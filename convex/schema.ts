@@ -33,6 +33,7 @@ export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.numbe
 export const techSupportStatus = v.union(v.literal("new"), v.literal("matched"), v.literal("inProgress"), v.literal("closed"));
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
 export const cohortRole = v.object({ key: v.string(), name: v.string() });
+export const leagueTrack = v.union(v.literal("software"), v.literal("uiux"), v.literal("business"));
 
 export default defineSchema({
   memberProfiles: defineTable({
@@ -212,6 +213,23 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId", "submittedAt"])
     .index("by_submitted", ["submittedAt"]),
+  // A Tech League team of one season (#183), formed by members on the league. `code` stands in for the name in anonymous
+  // judging and never changes; `inviteToken` is the secret in the invite link, which the captain can replace. `captainId`
+  // is one of its members. A team whose last member leaves is deleted, unless it is registered: then it stays without a
+  // captain, flagged for staff (league.removeRow). `submittedAt` is set by submissions (#180) and locks the track. `registration` is set when staff import Program & Development's registration results and the
+  // captain's email matches: present means registered, `paid` whether the payment is confirmed.
+  leagueTeams: defineTable({
+    season: v.string(), name: v.string(), track: leagueTrack, code: v.string(), inviteToken: v.string(), captainId: v.optional(v.string()),
+    submittedAt: v.optional(v.number()), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(),
+    registration: v.optional(v.object({ paid: v.boolean(), importedAt: v.number(), importedBy: v.string() })),
+  })
+    .index("by_code", ["code"])
+    .index("by_invite", ["inviteToken"])
+    .index("by_season", ["season"]),
+  // One member of one team; `season` is copied from the team so a member is found in at most one team per season.
+  leagueTeamMembers: defineTable({ teamId: v.id("leagueTeams"), season: v.string(), ownerId: v.string(), joinedAt: v.number() })
+    .index("by_team", ["teamId", "joinedAt"])
+    .index("by_owner", ["ownerId", "season"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
@@ -236,6 +254,8 @@ export default defineSchema({
       techSupportRequests: v.optional(v.number()),
       // Added with uploaded profile photos.
       photos: v.optional(v.number()),
+      // Added with Tech League teams: the teams the account left.
+      leagueTeams: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

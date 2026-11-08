@@ -25,7 +25,7 @@ describe("dashboard sidebar", () => {
     const nav = within(sidebar).getByRole("navigation", { name: "Navigasi dashboard" });
     // Lenis leaves wheel events to the browser inside an element marked data-lenis-prevent.
     expect(nav.closest("[data-lenis-prevent]")).toBe(sidebar);
-    expect(within(nav).getAllByRole("link")).toHaveLength(12);
+    expect(within(nav).getAllByRole("link")).toHaveLength(13);
     const signOut = within(sidebar).getByRole("button", { name: "Keluar" });
     expect(nav.contains(signOut)).toBe(false);
     expect(nav.contains(within(sidebar).getByRole("link", { name: "Ke beranda situs" }))).toBe(false);

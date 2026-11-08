@@ -129,6 +129,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.roster", api.cohorts.roster, STAFF, () => ({ slug: "catalyst-2026" })],
   ["assignments.slugPreview", api.assignments.slugPreview, STAFF, () => ({ slug: "tugas-baru" })],
   ["gatherings.list", api.gatherings.list, STAFF, () => ({})],
+  ["league.staffTeams", api.league.staffTeams, STAFF, () => ({})],
   ["gatherings.get", api.gatherings.get, STAFF, (ids) => ({ id: ids.gathering })],
   ["assignments.submissions", api.assignments.submissions, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
   ["assignments.exportPage", api.assignments.exportPage, GRADERS, (ids) => ({ id: ids.assignment, paginationOpts: page })],
@@ -144,6 +145,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.mine", api.cohorts.mine, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
   ["bogorRun.board", api.bogorRun.board, MEMBERS, () => ({ period: "all" })],
+  ["league.invite", api.league.invite, MEMBERS, () => ({ token: "abcdefghijABCDEFGHIJ_-" })],
 ];
 
 const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
@@ -184,6 +186,8 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.requestRevision", api.assignments.requestRevision, GRADERS, (ids) => ({ submissionId: ids.submission, submissionRevision: ids.submissionRevision, note: "Perbaiki bagian dua." })],
   ["assignments.cancelRevision", api.assignments.cancelRevision, GRADERS, (ids) => ({ submissionId: ids.submission })],
   ["appreciations.review", api.appreciations.review, APRESIASI, (ids) => ({ id: ids.appreciation, revision: 1, status: "reviewing", note: "", postUrl: "" })],
+  ["league.importRegistrations", api.league.importRegistrations, STAFF, () => ({ rows: [{ email: "kapten@example.com", paid: true }] })],
+  ["league.create", api.league.create, MEMBERS, () => ({ name: "Tim Baru", track: "software" })],
   ["techSupport.handle", api.techSupport.handle, HANDLERS, (ids) => ({ id: ids.request, status: "matched", mentorName: "Dika Aprilio Wibowo", note: "" })],
 ];
 
@@ -207,6 +211,10 @@ const OPEN: Record<string, string> = {
   "cards.verify": "public: a scanned card, with more for its holder, staff and door helpers (cards.test.ts, gatherings.test.ts)",
   "gatherings.mine": "own check-ins, active members",
   "photos.uploadUrl": "own photo, active members", "photos.set": "own photo, active members (photos.test.ts)", "photos.remove": "own photo, active members",
+  "league.mine": "own team, or why the caller can't take part yet",
+  "league.join": "own membership by invite, active members (league.test.ts)", "league.leave": "own membership, active members",
+  "league.handOver": "own team, its captain (league.test.ts)", "league.removeMember": "own team, its captain",
+  "league.rotateInvite": "own team, its captain", "league.rename": "own team, its captain", "league.changeTrack": "own team, its captain",
   "techSupport.mine": "own requests, active members", "techSupport.submit": "own request, active members (techSupport.test.ts)",
 };
 

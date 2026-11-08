@@ -9,6 +9,7 @@ import { dashboardAccess, handlesTechSupport, isActive, requireMember, requireSt
 import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
 import { clearPhoto, photoUrl } from "./photos";
+import { removeRow } from "./league";
 import { divisions, validateStaffRole } from "../src/lib/onboarding";
 import { normalizeEmail } from "../src/lib/cohort";
 import { assignmentMaxScore, isLate, isStaleReview } from "../src/lib/assignment";
@@ -250,7 +251,7 @@ export const deleteAccount = mutation({
     if (row.role === "owner") throw new ConvexError("Akun pemilik diatur lewat konfigurasi server dan tidak bisa dihapus dari sini.");
     if (confirmName.trim() !== profile.fullName.trim()) throw new ConvexError({ code: "VALIDATION", message: "Ketik nama anggota persis seperti tertulis untuk konfirmasi." });
 
-    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0 };
+    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0 };
     for (const doc of await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).collect()) {
       for (const review of await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", doc._id)).collect()) { await ctx.db.delete(review._id); counts.appreciationReviews++; }
       await ctx.db.delete(doc._id); counts.appreciations++;
@@ -285,6 +286,12 @@ export const deleteAccount = mutation({
       await ctx.db.patch(gathering._id, { helpers: gathering.helpers.filter((id) => id !== ownerId) }); counts.helperGrants++;
     }
     for (const request of await ctx.db.query("techSupportRequests").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(request._id); counts.techSupportRequests++; }
+    // Tech League: out of every team, as if leaving, so a captain's team gets a new captain or is flagged (league.removeRow).
+    for (const row of await ctx.db.query("leagueTeamMembers").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) {
+      const team = await ctx.db.get(row.teamId);
+      if (team) await removeRow(ctx, team, row); else await ctx.db.delete(row._id);
+      counts.leagueTeams++;
+    }
     if (await clearPhoto(ctx, profile)) counts.photos++;
     await ctx.db.delete(profile._id);
     counts.sessions = await deleteAuthRows(ctx, "session", ownerId);

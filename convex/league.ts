@@ -1,12 +1,11 @@
 import { ConvexError, v } from "convex/values";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
+import { internalMutation, mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { dashboardAccess, requireMember, requireStaff } from "./access";
 import { authComponent } from "./auth";
-import { newNonce } from "./bogorRunToken";
 import { leagueTrack } from "./schema";
 import {
-  inviteTokenPattern, leagueSeason, leagueTeamSize, newTeamCode, normalizeTeamName, teamNameProblem, teamStanding, trackName,
+  inviteCodeFrom, inviteCodePattern, leagueSeason, leagueTeamSize, newInviteCode, newTeamCode, normalizeTeamName, teamNameProblem, teamStanding, trackName,
 } from "../src/lib/league-team";
 import { normalizeEmail } from "../src/lib/cohort";
 import { registrationBatch } from "../src/lib/league-import";
@@ -43,6 +42,22 @@ async function uniqueCode(ctx: MutationCtx) {
   fail("RETRY", "Belum bisa membuat kode tim. Coba lagi.");
 }
 
+/** A new invite code that no team holds (#192). It lives in `inviteToken`, which once held a 22-character token. */
+async function uniqueInviteCode(ctx: MutationCtx) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const code = newInviteCode();
+    if (!(await ctx.db.query("leagueTeams").withIndex("by_invite", (q) => q.eq("inviteToken", code)).first())) return code;
+  }
+  fail("RETRY", "Belum bisa membuat kode undangan. Coba lagi.");
+}
+
+/** This season's team that an invite code opens, read from whatever the member typed or pasted, or null. */
+async function invitedTeam(ctx: QueryCtx | MutationCtx, input: string) {
+  const code = inviteCodeFrom(input);
+  const team = code ? await ctx.db.query("leagueTeams").withIndex("by_invite", (q) => q.eq("inviteToken", code)).first() : null;
+  return team?.season === leagueSeason ? team : null;
+}
+
 /** The caller's team this season and their row in it. */
 async function myTeam(ctx: MutationCtx) {
   const access = await requireMember(ctx);
@@ -73,7 +88,8 @@ async function profileName(ctx: QueryCtx, ownerId: string) {
 
 /**
  * The caller's place in Tech League: whether they can take part (signed in, onboarded, active) and their team this
- * season with its members by name. Only the captain gets the invite token. No emails or campuses.
+ * season with its members by name. Only the captain gets the invite code, and none while the team still holds an old
+ * 22-character token (until `assignInviteCodes` runs or the captain makes one). No emails, campuses or team code (#192).
  */
 export const mine = query({
   args: {},
@@ -90,8 +106,8 @@ export const mine = query({
     return {
       eligible: true as const,
       team: {
-        _id: team._id, name: team.name, track: team.track, trackName: trackName(team.track), code: team.code,
-        captain, inviteToken: captain ? team.inviteToken : null, trackLocked: Boolean(team.submittedAt),
+        _id: team._id, name: team.name, track: team.track, trackName: trackName(team.track),
+        captain, inviteCode: captain && inviteCodePattern.test(team.inviteToken) ? team.inviteToken : null, trackLocked: Boolean(team.submittedAt),
         standing: teamStanding(team, rows.length), size: leagueTeamSize,
         members: await Promise.all(rows.map(async (item) => ({
           _id: item._id, name: await profileName(ctx, item.ownerId), captain: item.ownerId === team.captainId, you: item._id === row._id, joinedAt: item.joinedAt,
@@ -101,19 +117,21 @@ export const mine = query({
   },
 });
 
-/** What an invite link opens, for a member deciding to join: the team's name, track, captain and room. Null when the link is wrong or old. */
+/**
+ * What an invite code or link opens, for a member deciding to join: the team's name, track, captain and room, and the
+ * name of the member's own team when it is another. Null when the code is wrong or replaced. Never the team code.
+ */
 export const invite = query({
-  args: { token: v.string() },
-  handler: async (ctx, { token }) => {
+  args: { code: v.string() },
+  handler: async (ctx, { code }) => {
     const { user } = await requireMember(ctx);
-    if (!inviteTokenPattern.test(token)) return null;
-    const team = await ctx.db.query("leagueTeams").withIndex("by_invite", (q) => q.eq("inviteToken", token)).first();
-    if (!team || team.season !== leagueSeason) return null;
+    const team = await invitedTeam(ctx, code);
+    if (!team) return null;
     const [rows, mine] = await Promise.all([membersOf(ctx, team._id), membershipOf(ctx, user._id)]);
+    const otherTeam = mine && mine.teamId !== team._id ? (await ctx.db.get(mine.teamId))?.name ?? "tim lain" : null;
     return {
       name: team.name, trackName: trackName(team.track), captain: team.captainId ? await profileName(ctx, team.captainId) : null,
-      members: rows.length, max: leagueTeamSize.max, full: rows.length >= leagueTeamSize.max,
-      joined: mine?.teamId === team._id, inOtherTeam: Boolean(mine && mine.teamId !== team._id),
+      members: rows.length, max: leagueTeamSize.max, full: rows.length >= leagueTeamSize.max, joined: mine?.teamId === team._id, otherTeam,
     };
   },
 });
@@ -126,7 +144,7 @@ export const create = mutation({
     if (await membershipOf(ctx, user._id)) fail("IN_TEAM", "Kamu sudah punya tim Tech League musim ini.");
     const now = Date.now();
     const teamId = await ctx.db.insert("leagueTeams", {
-      season: leagueSeason, name: await teamName(ctx, args.name), track: args.track, code: await uniqueCode(ctx), inviteToken: newNonce(),
+      season: leagueSeason, name: await teamName(ctx, args.name), track: args.track, code: await uniqueCode(ctx), inviteToken: await uniqueInviteCode(ctx),
       captainId: user._id, createdBy: user._id, createdAt: now, updatedAt: now,
     });
     await ctx.db.insert("leagueTeamMembers", { teamId, season: leagueSeason, ownerId: user._id, joinedAt: now });
@@ -134,13 +152,13 @@ export const create = mutation({
   },
 });
 
-/** Joins the team of an invite link, if it has room and the caller has no team this season. Joining again changes nothing. */
+/** Joins the team of an invite code or link, if it has room and the caller has no team this season. Joining again changes nothing. */
 export const join = mutation({
-  args: { token: v.string() },
-  handler: async (ctx, { token }) => {
+  args: { code: v.string() },
+  handler: async (ctx, { code }) => {
     const { user } = await requireMember(ctx);
-    const team = inviteTokenPattern.test(token) ? await ctx.db.query("leagueTeams").withIndex("by_invite", (q) => q.eq("inviteToken", token)).first() : null;
-    if (!team || team.season !== leagueSeason) fail("NOT_FOUND", "Tautan undangan ini tidak berlaku. Minta tautan baru ke kapten timmu.");
+    const team = await invitedTeam(ctx, code);
+    if (!team) fail("NOT_FOUND", "Kode undangan ini tidak berlaku. Minta kode terbaru ke kapten timmu.");
     const mine = await membershipOf(ctx, user._id);
     if (mine?.teamId === team._id) return team._id;
     if (mine) fail("IN_TEAM", "Kamu sudah punya tim Tech League musim ini. Keluar dulu dari tim itu untuk bergabung.");
@@ -200,14 +218,33 @@ export const removeMember = mutation({
   },
 });
 
-/** A new invite link; the old one stops working at once. */
+/** A new invite code, and so a new link; the old ones stop working at once. A team with an old token gets its first code here. */
 export const rotateInvite = mutation({
   args: {},
   handler: async (ctx) => {
     const { team } = await captainTeam(ctx);
-    const inviteToken = newNonce();
+    const inviteToken = await uniqueInviteCode(ctx);
     await ctx.db.patch(team._id, { inviteToken, updatedAt: Date.now() });
     return inviteToken;
+  },
+});
+
+/**
+ * Gives every team still holding an old 22-character invite token a fresh invite code (#192), so the old links stop
+ * working. Run once on each deployment after the release, `pnpm exec convex run --prod league:assignInviteCodes` on
+ * production; running it again changes nothing.
+ */
+export const assignInviteCodes = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const teams = await ctx.db.query("leagueTeams").collect();
+    let assigned = 0;
+    for (const team of teams) {
+      if (inviteCodePattern.test(team.inviteToken)) continue;
+      await ctx.db.patch(team._id, { inviteToken: await uniqueInviteCode(ctx) });
+      assigned++;
+    }
+    return { assigned, unchanged: teams.length - assigned };
   },
 });
 

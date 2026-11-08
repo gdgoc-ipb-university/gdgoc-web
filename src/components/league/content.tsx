@@ -16,7 +16,8 @@ const categoryIcons: Record<(typeof techLeague.categories)[number], PixelIconNam
 
 /** The FAQ the page renders and serialises as `FAQPage` JSON-LD. */
 export const techLeagueFaq: FaqItem[] = [
-  { question: "Bagaimana cara mendaftar?", answer: [`Pilih Daftar, masuk dengan akun Google, lalu lengkapi perkenalan singkat sebagai member GDGoC IPB. Setelah itu, bentuk tim atau bergabung lewat tautan undangan dari kaptenmu. Pengumpulan karya segera dibuka di halaman Tech League; kabarnya diumumkan di Instagram saat pendaftaran dibuka pada ${dayLabel(techLeague.registration.opensAt)}.`] },
+  { question: "Bagaimana cara mendaftar?", answer: [`Pilih Daftar, masuk dengan akun Google, lalu lengkapi perkenalan singkat sebagai member GDGoC IPB. Setelah itu, bentuk tim atau bergabung dengan kode atau tautan undangan dari kaptenmu. Pengumpulan karya segera dibuka di halaman Tech League; kabarnya diumumkan di Instagram saat pendaftaran dibuka pada ${dayLabel(techLeague.registration.opensAt)}.`] },
+  { question: "Bagaimana cara bergabung ke tim teman?", answer: ["Minta kode undangan ke kapten timmu, lalu masukkan di kotak “Diajak teman?” di halaman Daftar, atau buka tautan undangannya. Sebelum bergabung, kamu melihat nama tim, kategori, dan kaptennya."] },
   { question: "Di mana aturan lengkapnya?", answer: techLeague.guidebookUrl ? ["Di ", { text: "guidebook Tech League", href: techLeague.guidebookUrl }, "."] : ["Di guidebook Tech League, yang ditautkan di halaman ini setelah terbit."] },
   { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
 ];

@@ -145,7 +145,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.mine", api.cohorts.mine, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
   ["bogorRun.board", api.bogorRun.board, MEMBERS, () => ({ period: "all" })],
-  ["league.invite", api.league.invite, MEMBERS, () => ({ token: "abcdefghijABCDEFGHIJ_-" })],
+  ["league.invite", api.league.invite, MEMBERS, () => ({ code: "ABCD2345" })],
 ];
 
 const mutations: [string, Any, Role[], (ids: Ids) => object][] = [

@@ -1066,10 +1066,11 @@ summary:focus-visible {
 .league-inline-form { display: grid; gap: 10px; align-items: end; }
 .league-inline-form .app-field { margin: 0; }
 .league-inline-form .button { margin-top: 0 !important; }
-.league-team-facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 22px 0 0; }
+.league-team-facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin: 22px 0 0; }
 .league-team-facts div { padding: 14px 16px; border: 1px solid var(--line); background: white; }
-.league-team-facts dt { font: 500 10px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
-.league-team-facts dd { margin: 4px 0 0; font-size: 18px; font-weight: 600; }
+.league-team-facts dt, .league-invite-code dt { font: 500 10px/1.6 var(--font-mono), monospace; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.league-team-facts dd { margin: 4px 0 0; font-size: 18px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .league-team-facts div:first-child { grid-column: 1 / -1; } }
 .league-code { font-family: var(--font-mono), monospace; letter-spacing: .12em; color: var(--blue); }
 .league-members { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--line); }
 .league-members li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
@@ -1080,6 +1081,12 @@ summary:focus-visible {
 .text-button.league-danger { color: #b23729; }
 .league-invite-panel .league-inline-form { margin-block: 12px 6px; }
 .league-invite-panel input { font: 12px/1.4 var(--font-mono), monospace !important; }
+.league-invite-code { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 16px; margin-block: 16px 20px; padding: 16px; border: 1px solid var(--line); background: white; }
+.league-invite-code dl { margin: 0; }
+.league-invite-code dd { margin: 4px 0 0; font-size: clamp(30px, 9vw, 40px); font-weight: 600; line-height: 1.1; }
+.league-daftar .league-invite-code .button { margin-top: 0; }
+.league-open-invite input { font-family: var(--font-mono), monospace; letter-spacing: .06em; }
+.league-invite-note { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
 .league-settings { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; }
 .league-settings summary { cursor: pointer; font-size: 13px; color: var(--blue); }
 .league-settings form { margin-block: 16px 20px; }

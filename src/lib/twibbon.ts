@@ -10,8 +10,11 @@ export const twibbon = {
   slide: "/twibbon/member-2026-27-slide-2.jpg",
   fileName: "gdgoc-ipb-member-2026-27-twibbon.jpg",
   slideFileName: "gdgoc-ipb-member-2026-27-slide-2.jpg",
-  /** How far a photo can be enlarged past filling the canvas. */
+  /** Zoom range: 1 just covers the canvas; below 1 the photo shrinks inside the frame on white (#215). */
+  minZoom: 0.3,
   maxZoom: 4,
+  /** What shows where the photo does not reach. */
+  background: "#ffffff",
   /** Every twibbon post must carry it (#205). */
   hashtag: "#OprecMemberGDGOCIPB2627",
 } as const;
@@ -30,11 +33,14 @@ function drawnSize(photo: ImageSize, zoom: number) {
   return { width: photo.width * scale, height: photo.height * scale };
 }
 
-/** Keeps the zoom in range and the offset within the photo's overhang, so the photo never leaves a gap at an edge. */
+/**
+ * Keeps the zoom in range and the photo where it belongs: along an axis where it is larger than the canvas it never
+ * leaves a gap at an edge; where it is smaller (zoomed out) it stays inside the canvas.
+ */
 export function clampPlacement(photo: ImageSize, place: Placement): Placement {
-  const zoom = Math.min(Math.max(place.zoom, 1), twibbon.maxZoom);
+  const zoom = Math.min(Math.max(place.zoom, twibbon.minZoom), twibbon.maxZoom);
   const { width, height } = drawnSize(photo, zoom);
-  return { zoom, x: clamp(place.x, (width - twibbon.width) / 2), y: clamp(place.y, (height - twibbon.height) / 2) };
+  return { zoom, x: clamp(place.x, Math.abs(width - twibbon.width) / 2), y: clamp(place.y, Math.abs(height - twibbon.height) / 2) };
 }
 
 /** Where to draw the photo on the canvas for a placement, which is clamped first. */

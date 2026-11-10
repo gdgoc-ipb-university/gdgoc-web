@@ -71,6 +71,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
   const fullName = useRef<HTMLInputElement>(null);
   const campus = useRef<HTMLInputElement>(null);
   const studyProgram = useRef<HTMLInputElement>(null);
+  const kindChoice = useRef<HTMLInputElement>(null);
   const previousStep = useRef(step);
   const position = onboardingSteps.indexOf(step);
 
@@ -95,7 +96,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
     setErrors(nextErrors); setError("");
     const first = Object.keys(nextErrors)[0] as keyof OnboardingValues | undefined;
     if (first) {
-      ({ fullName, campus, studyProgram })[first].current?.focus();
+      ({ fullName, campus, studyProgram, institutionKind: kindChoice })[first].current?.focus();
       return;
     }
     inFlight.current = true; setBusy(true);

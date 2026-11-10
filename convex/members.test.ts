@@ -101,6 +101,21 @@ describe("first-time member onboarding", () => {
     expect(await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values })).toMatchObject({ memberType: "member", completedAt: expect.any(Number) });
   });
 
+  it("stores whether the member studies at a campus or a school, and accepts a page that does not say", async () => {
+    const t = setup(); const student = await member(t); const older = await member(t, "older-page@example.com");
+    await student.mutation(api.members.saveStep, { step: 1, revision: 0, values });
+    const school = { ...values, campus: "SMKN 1 BOGOR", studyProgram: "Rekayasa Perangkat Lunak", institutionKind: "school" as const };
+    expect(await student.mutation(api.members.saveStep, { step: 2, revision: 1, values: school })).toMatchObject({ institutionKind: "school", campus: "SMKN 1 BOGOR", nextStep: 4 });
+    // Later screens send no kind and keep the saved one; a hand-made kind outside the two is rejected.
+    for (const [index, step] of ([4, 5] as const).entries()) await student.mutation(api.members.saveStep, { step, revision: index + 2, values });
+    expect(await student.query(api.members.profile)).toMatchObject({ institutionKind: "school", completedAt: expect.any(Number) });
+    await expect(older.mutation(api.members.saveStep, { step: 1, revision: 0, values: { ...values, institutionKind: "kantor" } } as never)).rejects.toThrow();
+    // A page from before the question (a backend-first deploy) still saves the education screen, with no kind.
+    await older.mutation(api.members.saveStep, { step: 1, revision: 0, values });
+    expect(await older.mutation(api.members.saveStep, { step: 2, revision: 1, values })).not.toHaveProperty("institutionKind");
+  });
+
+
   it("rejects a community tag sent with any onboarding screen", async () => {
     const owner = await member(setup());
     const tags = [{ memberType: "core", division: "Technical" }, { memberType: "bod", division: "" }, { memberType: "member", division: "Media & Creative" }];

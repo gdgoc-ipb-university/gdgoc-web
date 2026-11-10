@@ -27,7 +27,7 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 const faq: FaqItem[] = [
-  { question: "Apakah harus mahasiswa IPB?", answer: ["Tidak. GDGoC IPB terbuka untuk mahasiswa yang tinggal di Bogor, dari kampus dan jurusan mana pun."] },
+  { question: "Apakah harus mahasiswa IPB?", answer: ["Tidak. Member GDGoC IPB terbuka untuk umum: mahasiswa dari kampus mana pun dan siswa SMK, dari jurusan apa pun."] },
   { question: "Apakah ada biaya untuk bergabung?", answer: ["Tidak. Daftar jadi member dan bergabung di grup WhatsApp tidak dipungut biaya. GDGoC Catalyst juga gratis."] },
   { question: "Apa bedanya member dan peserta Catalyst?", answer: ["Member mengikuti kabar dan kegiatan komunitas. Peserta Catalyst mendaftar lewat oprec, lalu mengikuti sembilan sesi bootcamp dan mengerjakan capstone dalam tim."] },
   { question: "Bagaimana kalau saya terlewat pendaftaran Catalyst?", answer: ["Kamu tetap bisa bergabung sebagai member dan ikut Study Jam serta kegiatan komunitas lainnya. Program berikutnya diumumkan di ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
@@ -61,7 +61,7 @@ export default function JoinPage() {
     <main id="main" className="league-page join-page section-width">
       <p className="eyebrow">GDGOC IPB · BERGABUNG</p>
       <h1>Gabung GDGoC IPB.</h1>
-      <p className="league-lead">Terbuka untuk mahasiswa yang tinggal di Bogor, dari kampus dan jurusan mana pun. Pilih cara yang paling cocok untukmu.</p>
+      <p className="league-lead">Terbuka untuk mahasiswa dari kampus mana pun dan siswa SMK, dari jurusan apa pun. Pilih cara yang paling cocok untukmu.</p>
 
       <section aria-labelledby="join-now">
         <h2 id="join-now">Gabung sekarang</h2>
@@ -69,7 +69,7 @@ export default function JoinPage() {
           <li><div>
             <PixelIcon name="users" size={32} />
             <h3>Member GDGoC IPB</h3>
-            <p>Daftar dengan akun Google di website ini untuk mendapat kartu anggota dan dashboard member.</p>
+            <p>Daftar dengan akun Google di website ini untuk mendapat kartu anggota dan dashboard member, lalu pasang <Link href="/twibbon">twibbon member</Link> di Instagram.</p>
             <Link className="button button-blue" href="/dashboard">Gabung member <Arrow /></Link>
           </div></li>
           <li><div>
@@ -102,7 +102,7 @@ export default function JoinPage() {
 
       <section aria-labelledby="join-who">
         <h2 id="join-who">Siapa yang bisa bergabung</h2>
-        <p className="join-who">Mahasiswa yang tinggal di Bogor, dari kampus dan jurusan mana pun, tidak hanya IPB. GDGoC Catalyst juga menerima siswa SMK, dan Tech League terbuka untuk tim dari seluruh Indonesia.</p>
+        <p className="join-who">Member terbuka untuk umum: mahasiswa dari kampus mana pun, tidak hanya IPB, dan siswa SMK. GDGoC Catalyst juga menerima siswa SMK, dan Tech League terbuka untuk tim dari seluruh Indonesia.</p>
       </section>
 
       <section aria-labelledby="join-faq">

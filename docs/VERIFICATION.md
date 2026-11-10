@@ -425,6 +425,15 @@ Evidence:
 - Headless Chrome at 1280 × 800 and 390 × 844 on a throwaway page that renders the onboarding screens with made-up data and an in-memory save (not committed): "smkn 1 bogor" lists SMKN 1 BOGOR with "Kota Bogor · Tanah Sareal"; "tkj" under Siswa SMK finds Teknik Komputer dan Jaringan; "gadjah" under Mahasiswa finds Universitas Gadjah Mada (Kab. Sleman). On phones the current step's label is cut with an ellipsis ("Sekolah/kam…") so it does not run into the next step's number.
 - Not checked: a real sign-in against Convex, the deployed site, and how quickly the lists load on a slow phone connection (42 KB and 65 KB gzipped).
 
+## Tech Support on the last onboarding screen — 10 November
+
+New members see Tech Support before they finish onboarding (#198): a fifth screen with the help kinds and the 3-working-day reply, and *Ya, ajukan setelah ini* or *Nanti saja*. *Ya* finishes onboarding and opens `/dashboard/tech-support?ajukan=1` with the request form focused.
+
+Evidence:
+- `pnpm check`, `pnpm test` (86 files, 758 tests) and `pnpm build` pass on Node 24, and each commit passes lint, typecheck and tests on its own. Tests cover the new screen's semantics with axe, finishing with and without *Ya*, the server finishing only on screen 6, `techSupport.mine` refusing a member until then, and the form focusing "Nama kompetisi" only with `?ajukan=1`.
+- Headless Chrome at 1280 × 800 and 390 × 844 on the same throwaway page: the offer screen shows all eight help kinds with *Nanti saja* chosen; choosing *Ya* changes the button to "Selesai, ajukan Tech Support"; the GDG screen now says "Pilih Lanjut ke langkah terakhir." With five steps the desktop label "Sekolah/kam…" and the phone label "Jadi me…" are cut with an ellipsis.
+- Not checked: the redirect into the real dashboard after a Convex sign-in, and the deployed site.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

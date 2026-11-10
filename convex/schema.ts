@@ -40,7 +40,7 @@ export default defineSchema({
   memberProfiles: defineTable({
     ownerId: v.string(), fullName: v.string(), campus: v.string(), studyProgram: v.string(),
     // Onboarding screen ids (src/lib/onboarding.ts); 3 was the role screen and resumes at 4.
-    nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4), v.literal(5)),
+    nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4), v.literal(5), v.literal(6)),
     // Campus or school (SMK), chosen on the education screen; unset on profiles saved before it was asked.
     institutionKind: v.optional(institutionKind),
     revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),

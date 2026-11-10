@@ -2,12 +2,13 @@
 
 The first authenticated visit to any `/dashboard` page redirects accounts without a completed member profile to `/onboarding`. This includes existing Google accounts that have never completed this introduction. The public landing and Google sign-in remain accessible without a profile.
 
-## Four screens
+## Five screens
 
 1. **Kenalan:** a name prefilled from Google, editable before saving.
 2. **Sekolah/kampus:** membership is open to university students anywhere and to SMK students (oprec member 2026/27). The member first says whether they are a **Mahasiswa** or a **Siswa SMK** (`memberProfiles.institutionKind`: `campus` or `school`), then picks from a searchable list: every campus in the national registry with the Bogor campuses first, or every SMK and MAK in West Java, Jakarta and Banten with Bogor first. The second field lists study programs or SMK majors (found by their old short names too: TKJ, RPL, Multimedia, OTKP). Both fields accept names outside the suggestions. Switching between Mahasiswa and Siswa SMK clears both answers.
 3. **WhatsApp:** an optional invitation to the group supplied by the community owner.
-4. **Jadi member:** an optional invitation to the official GDG chapter, followed by completion and a return to the dashboard.
+4. **Jadi member:** an optional invitation to the official GDG chapter.
+5. **Tech Support:** what the program offers (the help kinds from `src/lib/tech-support-request.ts`) and the reply target, with **Ya, ajukan setelah ini** or **Nanti saja** (the default). Finishing completes onboarding; with *Ya* the member lands on `/dashboard/tech-support?ajukan=1`, where the request form is scrolled to and its first field focused. The request itself is sent from that form, because `techSupport.submit` only accepts members who finished onboarding (#92).
 
 ## Community tag
 
@@ -15,7 +16,7 @@ Everyone registers as **Member** ([ADR 0007](decisions/0007-staff-assign-communi
 
 The tag grants no permissions by itself; it decides which assignments a member gets and prefills the Apresiasi "Peran" field. Until #156 members chose Member or Core Team themselves. Those tags are kept as they are: a self-declared Core Team tag stays, marked unconfirmed, until staff change or confirm it. Accounts that completed onboarding before tags existed see a one-screen notice on their next dashboard visit and register as Member (`members.registerAsMember`, which never sets another tag).
 
-Screen ids keep their numbers from the five-screen flow (1, 2, 4, 5), so `memberProfiles.nextStep` needs no migration: a profile saved on the removed role screen (3) resumes at the WhatsApp invitation.
+Screen ids keep their numbers from the earlier flows (1, 2, 4, 5, then 6 for Tech Support), so `memberProfiles.nextStep` needs no migration: a profile saved on the removed role screen (3) resumes at the WhatsApp invitation, and a profile waiting on screen 5 goes on to 6 before it completes.
 
 External invitations open a new tab. Opening an invitation is not treated as proof of joining. Neither service is queried for membership, and no external join flags are stored. Both invitation screens can be skipped with the normal forward button.
 
@@ -58,4 +59,4 @@ The school and campus lists are suggestions, not proof of enrollment, and both f
 
 ## Release
 
-Onboarding ships with the rest of the site: a release to the `release` branch deploys Convex and then the frontend, as described in the Release section of `APRESIASI.md`. CI runs `pnpm check` and `pnpm test` on the pull request to `main` first. No onboarding-specific environment variables or OAuth scopes are required; the schema changes are additive, so the backend-first deploy keeps the previous frontend working.
+Onboarding ships with the rest of the site: a release to the `release` branch deploys Convex and then the frontend, as described in the Release section of `APRESIASI.md`. CI runs `pnpm check` and `pnpm test` on the pull request to `main` first. No onboarding-specific environment variables or OAuth scopes are required; the schema changes are additive, so the backend-first deploy keeps the previous frontend working. One gap: a member who has the previous page open on screen 4 (Jadi member) during the deploy is not finished by it any more, and stays on that screen until a reload brings the Tech Support screen.

@@ -443,6 +443,31 @@ Evidence:
 - `next start` and headless Chrome at 1280 × 800 and 390 × 844, with a made-up landscape picture (no person): the photo shows only through the frame's window (alpha 0 there, 1 elsewhere), dragging and zooming move it, "Unduh twibbon" saves `gdgoc-ipb-member-2026-27-twibbon.jpg` at 1080 × 1440 and "Unduh slide 2" the second slide. No horizontal scroll on the phone. The only failed request is `/api/auth/get-session`, as on every page without a local auth backend.
 - Not checked: Instagram's own upload of the two slides, and iOS Safari, which opens a download in a new tab instead of saving it.
 
+## Catalyst schedule on hold — 10 November
+
+The GDGoC Catalyst 2026/27 dates are tentative, so no Catalyst date appears on the site while `catalyst.scheduleOnHold` in `src/lib/catalyst.ts` is true (#210). `/program/catalyst` says "Jadwal GDGoC Catalyst 2026/27 masih disusun. Tanggal pendaftaran dan sesi diumumkan di Instagram @gdgoc.ipb dan di halaman ini." with its Instagram link, hides the Jadwal section, answers the FAQ without dates (online Sunday sessions, at least 70% attended), and carries a `Course` without dates and no `Event`. `/bergabung` and `/program` read "Jadwal 2026/27 menyusul. Pantau Instagram @gdgoc.ipb." The landing's "Setahun bersama" timeline draws only Tech League, and the Catalyst card says "Lihat Catalyst". The planned dates stay in the module; turning the switch off brings them all back.
+
+Evidence:
+- `pnpm check`, `pnpm test` (89 files, 778 tests) and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs pass on Node 24, and each commit passes lint, typecheck and tests on its own. New page tests render `/program/catalyst`, `/bergabung` and `/program` in jsdom and find no Catalyst date in their HTML or JSON-LD; the landing tests do the same for "Setahun bersama"; `src/lib/catalyst.test.ts` covers both states of the switch (the dated description, `CourseInstance` and `Event` when it is off).
+- Against `next start`, read with `curl`: `/`, `/program`, `/bergabung`, `/program/catalyst`, `/tentang` and `/sitemap.xml` contain none of 2026-11-02, 2026-11-22, 2026-11-29, 2026-12-06, 2027-04-18, 2027-05-02, "2 November 2026", "29 November", "6 Desember 2026", "18 April 2027", "2 Mei 2027" or "Pendaftaran (oprec)"; `/program/catalyst` has a `Course` without a `CourseInstance`, and no `Event`.
+- Chromium at 1440 × 900 and 390 × 844: the one-track ruler runs from December 2026 to February 2027, the Tech League list sits in the left column on desktop and full width on phones, and there is no horizontal scroll.
+- Not checked: the deployed site, and the pages with the switch off in a browser.
+
+## Member intake popup and header links — 10 November
+
+While member intake 2026/27 is open, 10–30 November 2026 WIB (#211), the landing opens a popup with who can join, the dates, the three steps, and links to register, make the twibbon and read the guidebook. A browser sees it once. The main header now links Bergabung and Twibbon.
+
+Evidence:
+- `pnpm check`, `pnpm test` (91 files, 793 tests) and `pnpm build` pass on Node 24, and each commit passes lint, typecheck and tests on its own. Tests cover:
+  - the window at 23:59:59 WIB on 9 November, 00:00 on 10 November, 23:59:59 on 30 November and 00:00 on 1 December;
+  - the popup's text, steps and links, focus moving in and back, the page behind inert, and axe;
+  - closing with Tutup, Escape or Daftar member, each remembered in localStorage, and once per page load when storage throws;
+  - waiting for the loading screen;
+  - the header's two links, `aria-current` on their pages, neither on the Tech League header, and the phone menu closing on Escape and on a link.
+- `next start` with placeholder Convex URLs and headless Chrome, on a system clock of 10 November 2026 with a mocked guest session: `/` still answers `x-nextjs-prerender: 1` and its HTML has no popup. The popup opens only after the loading screen has closed, with its stylesheet already applied when it is inserted. At 1280 × 800 it is 600 px wide and at 390 × 844 it fits the screen; neither needs scrolling and there is no horizontal scroll. With reduced motion it does not animate. Escape closed it, and after a reload it did not open again. It also opens with `?webgl=off`, and not on `/twibbon`. React-aria and the popup's CSS are not among the landing's initial files (still 10 scripts); they load when it opens.
+- The header in headless Chrome against `next dev` on `/privasi`, as a guest and as a mocked member with a 14-letter first name: at 1024, 1050, 1051, 1100, 1180, 1181, 1280 and 1440 px no label wraps and nothing scrolls sideways, with at least 25 px between the logo and the links. Before the CSS change the member's greeting pushed "Tentang kami" and "Bogor Run" onto two lines at 961 and 990 px and at 1051–1100 px. At 1000 and 1023 px the menu shows instead; at 390 px it lists all five links.
+- Not checked: the deployed site, a real sign-in, a physical phone, and screen readers.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

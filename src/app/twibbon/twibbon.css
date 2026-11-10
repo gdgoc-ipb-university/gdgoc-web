@@ -2,7 +2,7 @@
 .twibbon-page { max-width: 980px; }
 .twibbon-maker { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 32px; align-items: start; margin-top: 40px; }
 .twibbon-stage { display: grid; gap: 12px; }
-.twibbon-canvas { position: relative; aspect-ratio: 3 / 4; border: 1px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); background: #fafaf7; touch-action: none; user-select: none; }
+.twibbon-canvas { position: relative; aspect-ratio: 3 / 4; border: 1px solid var(--ink); box-shadow: 4px 4px 0 var(--ink); background: #ffffff; touch-action: none; user-select: none; }
 .twibbon-canvas[data-photo="true"] { cursor: grab; }
 .twibbon-canvas[data-photo="true"]:active { cursor: grabbing; }
 .twibbon-canvas:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }

@@ -1,16 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Arrow } from "./icons";
 import { CampusEnvironment, type SceneStatus } from "./campus-environment";
+import { MemberIntakePopup } from "./member-intake-popup";
 import { ScenePreloader } from "./scene-preloader";
 
 export function Hero() {
   const [sceneStatus, setSceneStatus] = useState<SceneStatus>("loading");
+  // The member intake popup opens only once the loading screen, a native modal dialog of its own, has closed.
+  const [revealed, setRevealed] = useState(false);
+  const reveal = useCallback(() => setRevealed(true), []);
   return (
     <>
-      <ScenePreloader status={sceneStatus} />
+      <ScenePreloader status={sceneStatus} onFinish={reveal} />
+      <MemberIntakePopup ready={revealed} />
       <section
         className="hero"
         aria-labelledby="hero-heading"

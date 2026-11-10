@@ -12,7 +12,7 @@ import type { Doc, Id } from "../../../convex/_generated/dataModel";
 
 vi.mock("@/lib/auth-client", () => ({ authClient: { signOut: vi.fn() } }));
 const viewer = { name: "Nama Google", email: "onboarding@example.com" };
-const base: Doc<"memberProfiles"> = { _id: "member-test" as Id<"memberProfiles">, _creationTime: 1, ownerId: "test-user", fullName: "Nama Baru", campus: "IPB University", studyProgram: "Ilmu Komputer", nextStep: 2, revision: 1, updatedAt: 1 };
+const base: Doc<"memberProfiles"> = { _id: "member-test" as Id<"memberProfiles">, _creationTime: 1, ownerId: "test-user", fullName: "Nama Baru", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "teman.uji", nextStep: 2, revision: 1, updatedAt: 1 };
 function gateway() {
   return vi.fn(async ({ step, revision, values }: { step: OnboardingStep; revision: number; values: OnboardingValues }) => ({
     ...base, ...values, nextStep: stepAfter(step), revision: revision + 1, ...(step === 6 ? { completedAt: 100, memberType: "member" as const } : {}),
@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("accessible member onboarding", () => {
-  it.each([1, 2, 4, 5, 6] as const)("has accessible form and navigation semantics on screen %i", async (step) => {
+  it.each([1, 2, 3, 4, 5, 6] as const)("has accessible form and navigation semantics on screen %i", async (step) => {
     const { container } = render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: step }} save={gateway()} onComplete={vi.fn()} />);
     const audit = await axe.run(container, {
       runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] },
@@ -41,35 +41,37 @@ describe("accessible member onboarding", () => {
     expect(screen.getByText(/Kamu terdaftar sebagai peserta GDGoC Catalyst 2026\/27, peran Hustler\./)).toBeTruthy();
   });
 
-  it("asks campus or SMK first, then names the fields and clears answers when the choice changes", async () => {
+  it("asks campus or school first, then names the fields and clears answers when the choice changes", async () => {
     const save = gateway(); const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 2, campus: "", studyProgram: "" }} save={save} onComplete={vi.fn()} />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Dari sekolah atau\nkampus mana?");
     expect(screen.queryByRole("combobox")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
-    expect(screen.getByText("Pilih kamu mahasiswa atau siswa SMK.")).toBeTruthy();
+    expect(screen.getByText("Pilih kamu mahasiswa atau siswa SMA/SMK.")).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole("radio", { name: /Mahasiswa/ }));
     expect(save).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("radio", { name: /Siswa SMK/ }));
+    await user.click(screen.getByRole("radio", { name: /Siswa SMA\/SMK/ }));
     fireEvent.change(screen.getByRole("combobox", { name: /^Sekolah/ }), { target: { value: "SMK Uji Coba" } });
     fireEvent.change(screen.getByRole("combobox", { name: /^Jurusan/ }), { target: { value: "Rekayasa Perangkat Lunak" } });
     await user.click(screen.getByRole("radio", { name: /Mahasiswa/ }));
     expect((screen.getByRole("combobox", { name: /^Kampus/ }) as HTMLInputElement).value).toBe("");
-    await user.click(screen.getByRole("radio", { name: /Siswa SMK/ }));
+    await user.click(screen.getByRole("radio", { name: /Siswa SMA\/SMK/ }));
     fireEvent.change(screen.getByRole("combobox", { name: /^Sekolah/ }), { target: { value: "SMK Uji Coba" } });
     fireEvent.change(screen.getByRole("combobox", { name: /^Jurusan/ }), { target: { value: "Rekayasa Perangkat Lunak" } });
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
     await waitFor(() => expect(save).toHaveBeenCalledOnce());
-    expect(save.mock.calls[0][0].values).toEqual({ fullName: base.fullName, campus: "SMK Uji Coba", studyProgram: "Rekayasa Perangkat Lunak", institutionKind: "school" });
+    expect(save.mock.calls[0][0].values).toEqual({ fullName: base.fullName, campus: "SMK Uji Coba", studyProgram: "Rekayasa Perangkat Lunak", institutionKind: "school", instagram: "teman.uji" });
   });
 
   it("suggests SMK majors by their old short names", async () => {
     const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 2, campus: "", studyProgram: "" }} save={gateway()} onComplete={vi.fn()} />);
-    await user.click(screen.getByRole("radio", { name: /Siswa SMK/ }));
+    await user.click(screen.getByRole("radio", { name: /Siswa SMA\/SMK/ }));
     const program = screen.getByRole("combobox", { name: /^Jurusan/ });
     await user.click(program); await user.type(program, "TKJ");
     expect(await screen.findByRole("option", { name: "Teknik Komputer dan Jaringan" })).toBeTruthy();
+    await user.clear(program); await user.type(program, "IPA");
+    expect(await screen.findByRole("option", { name: "MIPA" })).toBeTruthy();
   });
 
   it("keeps blank-name errors tied to the input and retains edits after a failed save", async () => {
@@ -89,12 +91,12 @@ describe("accessible member onboarding", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kenalan dulu, yuk.");
   });
 
-  it("completes five screens without a role choice and makes the invitations and Tech Support optional", async () => {
+  it("completes six screens, requires Instagram, and makes the invitations and Tech Support optional", async () => {
     const save = gateway(); const complete = vi.fn(); const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={null} save={save} onComplete={complete} />);
-    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["01 Kenalan", "02 Sekolah/kampus", "03 WhatsApp", "04 Jadi member", "05 Tech Support"]);
-    expect(screen.getByText(/LANGKAH 01 DARI 05/)).toBeTruthy();
-    expect(screen.getByText("5 langkah singkat.")).toBeTruthy();
+    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["01 Kenalan", "02 Sekolah/kampus", "03 Instagram", "04 WhatsApp", "05 Jadi member", "06 Tech Support"]);
+    expect(screen.getByText(/LANGKAH 01 DARI 06/)).toBeTruthy();
+    expect(screen.getByText("6 langkah singkat.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
     await waitFor(() => expect(document.activeElement?.id).toBe("onboard-title"));
     await user.click(screen.getByRole("radio", { name: /Mahasiswa/ }));
@@ -102,26 +104,38 @@ describe("accessible member onboarding", () => {
     fireEvent.change(screen.getByRole("combobox", { name: /Program studi/ }), { target: { value: "Prodi Baru" } });
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
 
+    // Screen 3: the username is required, with the follow and twibbon requirements and the warning beside it.
+    const username = await screen.findByRole("textbox", { name: /Username Instagram/ });
+    expect(screen.getByText(/LANGKAH 03 DARI 06/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Follow @gdgoc.ipb/ }).getAttribute("href")).toBe(communityLinks.instagram);
+    expect(screen.getByRole("link", { name: /Buat twibbon/ }).getAttribute("href")).toBe("/twibbon");
+    expect(screen.getByText(/Core team akan mengecek akun ini/).textContent).toMatch(/30 November/);
+    await user.click(screen.getByRole("button", { name: "Lanjut" }));
+    expect(screen.getByText("Isi username Instagram-mu.")).toBeTruthy();
+    expect(document.activeElement).toBe(username);
+    await user.type(username, "@Teman.Uji");
+    await user.click(screen.getByRole("button", { name: "Lanjut" }));
+
     expect(await screen.findByRole("link", { name: /Gabung grup WhatsApp/ })).toHaveProperty("href", communityLinks.whatsapp);
-    expect(screen.getByText(/LANGKAH 03 DARI 05/)).toBeTruthy();
+    expect(screen.getByText(/LANGKAH 04 DARI 06/)).toBeTruthy();
     expect(screen.queryByRole("radio")).toBeNull();
     await user.click(screen.getByRole("button", { name: /Kembali/ }));
-    expect((screen.getByRole("combobox", { name: /Kampus/ }) as HTMLInputElement).value).toBe("Kampus Baru");
+    expect((screen.getByRole("textbox", { name: /Username Instagram/ }) as HTMLInputElement).value).toBe("teman.uji");
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
     await user.click(await screen.findByRole("button", { name: "Lanjut" }));
     const link = await screen.findByRole("link", { name: /Gabung di GDG Community/ });
     expect(link.getAttribute("href")).toBe(communityLinks.membership);
     expect(link.getAttribute("target")).toBe("_blank");
-    expect(screen.getByText(/LANGKAH 04 DARI 05/)).toBeTruthy();
+    expect(screen.getByText(/LANGKAH 05 DARI 06/)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
-    expect(await screen.findByText(/LANGKAH 05 DARI 05/)).toBeTruthy();
+    expect(await screen.findByText(/LANGKAH 06 DARI 06/)).toBeTruthy();
     expect((screen.getByRole("radio", { name: /Nanti saja/ }) as HTMLInputElement).checked).toBe(true);
     expect(complete).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /Selesai, ke Dashboard/ }));
     await waitFor(() => expect(complete).toHaveBeenCalledOnce());
     expect(complete).toHaveBeenCalledWith(undefined);
-    expect(save.mock.calls.map(([args]) => args.step)).toEqual([1, 2, 2, 4, 5, 6]);
-    expect(Object.keys(save.mock.calls[0][0].values).sort()).toEqual(["campus", "fullName", "studyProgram"]);
+    expect(save.mock.calls.map(([args]) => args.step)).toEqual([1, 2, 3, 3, 4, 5, 6]);
+    expect(save.mock.calls[2][0].values).toMatchObject({ instagram: "teman.uji" });
     for (const [args] of save.mock.calls.slice(1)) expect(args.values).toMatchObject({ institutionKind: "campus" });
   });
 
@@ -136,14 +150,20 @@ describe("accessible member onboarding", () => {
     expect(techSupportRequestPath).toBe("/dashboard/tech-support?ajukan=1");
   });
 
-  it("moves a profile saved on the removed role screen on to the WhatsApp screen", async () => {
+  it("sends a profile past screen 3 without Instagram back to it, and reads a pasted profile link", async () => {
     const save = gateway(); const user = userEvent.setup();
-    render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 3, revision: 2 }} save={save} onComplete={vi.fn()} />);
-    expect(screen.getByRole("link", { name: /Gabung grup WhatsApp/ })).toBeTruthy();
-    expect(screen.getByText(/LANGKAH 03 DARI 05/)).toBeTruthy();
+    render(<OnboardingFlow viewer={viewer} profile={{ ...base, instagram: undefined, nextStep: 5, revision: 4 }} save={save} onComplete={vi.fn()} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Follow & pasang\ntwibbon.");
+    expect(screen.getByText(/LANGKAH 03 DARI 06/)).toBeTruthy();
+    const username = screen.getByRole("textbox", { name: /Username Instagram/ });
+    await user.type(username, "nama kamu");
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
-    expect(await screen.findByRole("link", { name: /Gabung di GDG Community/ })).toBeTruthy();
-    expect(save.mock.calls[0][0]).toMatchObject({ step: 4, revision: 2 });
+    expect(screen.getByText(/hanya berisi huruf, angka, titik, dan garis bawah/)).toBeTruthy();
+    expect(save).not.toHaveBeenCalled();
+    await user.clear(username); await user.type(username, "https://www.instagram.com/Nama_Kamu/");
+    await user.click(screen.getByRole("button", { name: "Lanjut" }));
+    expect(await screen.findByRole("link", { name: /Gabung grup WhatsApp/ })).toBeTruthy();
+    expect(save.mock.calls[0][0]).toMatchObject({ step: 3, revision: 4, values: { instagram: "nama_kamu" } });
   });
 
   it("supports keyboard search, selection, Escape and custom campus input without submitting", async () => {
@@ -188,7 +208,7 @@ describe("accessible member onboarding", () => {
     await user.click(campus); await user.keyboard("{Escape}");
     // Unlike userEvent, fireEvent.click does not focus the button, matching iOS.
     fireEvent.click(screen.getByRole("button", { name: "Lanjut" }));
-    expect(await screen.findByRole("link", { name: /Gabung grup WhatsApp/ })).toBeTruthy();
+    expect(await screen.findByRole("textbox", { name: /Username Instagram/ })).toBeTruthy();
     expect(save).toHaveBeenCalledOnce();
   });
 });

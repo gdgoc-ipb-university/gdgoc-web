@@ -1,4 +1,5 @@
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { forgetNavViewer } from "@/lib/nav-viewer";
@@ -19,10 +20,12 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.unstubAllGlobals(); });
 
 describe("public header", () => {
-  it("links the about page, the program hub, and the game, without Apresiasi", async () => {
+  it("links the about page, the program hub, the game, how to join, and the twibbon, without Apresiasi", async () => {
     const { container } = render(<Header />);
     const links = within(nav()).getAllByRole("link");
-    expect(links.map((link) => [link.textContent, link.getAttribute("href")]).slice(0, 3)).toEqual([["Tentang kami", "/tentang"], ["Program", "/program"], ["Bogor Run", "#join"]]);
+    expect(links.map((link) => [link.textContent, link.getAttribute("href")]).slice(0, 5)).toEqual([
+      ["Tentang kami", "/tentang"], ["Program", "/program"], ["Bogor Run", "#join"], ["Bergabung", "/bergabung"], ["Twibbon", "/twibbon"],
+    ]);
     expect(within(nav()).queryByRole("link", { name: /Apresiasi/ })).toBeNull();
     expect(within(nav()).queryByRole("link", { name: /Gabung member/ })).toBeNull();
     await waitFor(() => expect(within(nav()).getByRole("link", { name: "Masuk ke dashboard dengan Google" })).toBeTruthy());
@@ -36,6 +39,8 @@ describe("public header", () => {
     expect(within(nav()).getByRole("link", { name: "Bogor Run" }).getAttribute("href")).toBe("/#join");
     expect(within(nav()).getByRole("link", { name: "Tentang kami" }).getAttribute("href")).toBe("/tentang");
     expect(within(nav()).getByRole("link", { name: "Program" }).getAttribute("href")).toBe("/program");
+    expect(within(nav()).getByRole("link", { name: "Bergabung" }).getAttribute("href")).toBe("/bergabung");
+    expect(within(nav()).getByRole("link", { name: "Twibbon" }).getAttribute("href")).toBe("/twibbon");
   });
 
   it("marks Tentang kami as the current page on the about page", () => {
@@ -49,6 +54,43 @@ describe("public header", () => {
     render(<Header />);
     expect(within(nav()).getByRole("link", { name: "Program" }).getAttribute("aria-current")).toBe("page");
     expect(within(nav()).getByRole("link", { name: "Tentang kami" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("marks Bergabung and Twibbon as the current page on their own pages", () => {
+    route.pathname = "/bergabung";
+    const { unmount } = render(<Header />);
+    expect(within(nav()).getByRole("link", { name: "Bergabung" }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav()).getByRole("link", { name: "Twibbon" }).getAttribute("aria-current")).toBeNull();
+    unmount();
+    route.pathname = "/twibbon";
+    render(<Header />);
+    expect(within(nav()).getByRole("link", { name: "Twibbon" }).getAttribute("aria-current")).toBe("page");
+    expect(within(nav()).getByRole("link", { name: "Bergabung" }).getAttribute("aria-current")).toBeNull();
+  });
+
+  it("leaves Bergabung and Twibbon out of the Tech League header", () => {
+    render(<Header league />);
+    expect(within(nav()).getAllByRole("link").map((link) => link.textContent?.trim())).toEqual(["Jadwal", "Pertanyaan umum", "Situs GDGoC IPB", "Dashboard"]);
+  });
+
+  it("keeps the phone menu closing on Escape and on a link, with focus back on the toggle", async () => {
+    const user = userEvent.setup();
+    route.pathname = "/privasi";
+    render(<Header />);
+    const toggle = screen.getByRole("button", { name: "Buka menu" });
+    await user.click(toggle);
+    expect(toggle.getAttribute("aria-expanded")).toBe("true");
+    expect(nav().dataset.open).toBe("true");
+    await user.keyboard("{Escape}");
+    expect(toggle.getAttribute("aria-expanded")).toBe("false");
+    expect(nav().dataset.open).toBe("false");
+    expect(document.activeElement).toBe(toggle);
+    await user.click(toggle);
+    const stay = (event: Event) => event.preventDefault(); // jsdom cannot navigate; the link's own click handler still runs
+    document.addEventListener("click", stay, { capture: true });
+    await user.click(within(nav()).getByRole("link", { name: "Twibbon" }));
+    document.removeEventListener("click", stay, { capture: true });
+    expect(nav().dataset.open).toBe("false");
   });
 
   it("says Dashboard until it knows, then Masuk for guests", async () => {

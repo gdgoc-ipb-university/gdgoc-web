@@ -27,7 +27,7 @@ describe("education suggestions", () => {
     expect(searchEducation(options, "smk", 3)).toHaveLength(3);
   });
 
-  it("loads the national campus list after the Bogor campuses, without repeating them, and the SMK list", async () => {
+  it("loads the national campus list after the Bogor campuses, without repeating them, and the SMA and SMK list", async () => {
     const campuses = await loadCampusOptions();
     expect(campuses.slice(0, campusOptions.length)).toEqual(campusOptions);
     const names = campuses.map((option) => option.name);
@@ -35,5 +35,6 @@ describe("education suggestions", () => {
     expect(names.filter((name) => /^Institut Pertanian Bogor$/i.test(name))).toEqual([]);
     const schools = (await loadSchoolOptions()).map((option) => option.name);
     expect(new Set(schools).size).toBe(schools.length);
+    expect(schools).toEqual(expect.arrayContaining(["SMAN 1 BOGOR", "MAN 1 KOTA BOGOR", "SMKN 1 BOGOR"]));
   });
 });

@@ -40,10 +40,16 @@ export const studyProgramOptions: EducationOption[] = [
 ].map((name) => ({ name }));
 
 /**
- * SMK majors (konsentrasi keahlian), with the older names students still use (TKJ, RPL, Multimedia, OTKP) as search
- * terms. A starting list for the technology-adjacent majors most likely to join, not the full spectrum.
+ * SMA and MA tracks first (Kurikulum Merdeka has none, hence "Umum"), then SMK majors (konsentrasi keahlian) with the
+ * older names students still use (TKJ, RPL, Multimedia, OTKP) as search terms. A starting list for the
+ * technology-adjacent majors most likely to join, not the full spectrum.
  */
 export const schoolProgramOptions: EducationOption[] = [
+  { name: "MIPA", keywords: "IPA Matematika dan Ilmu Pengetahuan Alam SMA MA" },
+  { name: "IPS", keywords: "Ilmu Pengetahuan Sosial SMA MA" },
+  { name: "Bahasa dan Budaya", keywords: "Bahasa SMA MA" },
+  { name: "Keagamaan", keywords: "Agama MA madrasah" },
+  { name: "Umum (Kurikulum Merdeka)", keywords: "tanpa jurusan belum ada jurusan SMA MA" },
   { name: "Rekayasa Perangkat Lunak", keywords: "RPL PPLG Pengembangan Perangkat Lunak dan Gim programming" },
   { name: "Pengembangan Gim", keywords: "PPLG game developer" },
   { name: "Teknik Komputer dan Jaringan", keywords: "TKJ TJKT jaringan" },
@@ -120,7 +126,7 @@ export async function loadCampusOptions(): Promise<EducationOption[]> {
   return [...campusOptions, ...toOptions(rows).filter((option) => !skip.has(fold(option.name)))];
 }
 
-/** SMKs and MAKs in West Java, Jakarta and Banten, Bogor first. Loaded on demand. */
+/** SMAs, MAs, SMKs and MAKs in West Java, Jakarta and Banten, Bogor first. Loaded on demand. */
 export async function loadSchoolOptions(): Promise<EducationOption[]> {
   return toOptions((await import("./institutions/schools.json")).default as Row[]);
 }

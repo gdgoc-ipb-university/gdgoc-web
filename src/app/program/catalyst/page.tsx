@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/json-ld";
 import { Arrow } from "@/components/icons";
 import { PixelIcon } from "@/components/pixel-icons";
 import { breadcrumbJsonLd } from "@/lib/breadcrumb";
-import { catalyst, catalystCourseJsonLd, catalystEventJsonLd, currentOprecState } from "@/lib/catalyst";
+import { catalyst, catalystCourseJsonLd, catalystDescription, catalystEventJsonLd, currentOprecState } from "@/lib/catalyst";
 import { communityLinks } from "@/lib/community";
 import { faqJsonLd, type FaqItem } from "@/lib/faq";
 import { dayLabel, rangeLabel } from "@/lib/schedule";
@@ -13,29 +13,32 @@ import { canonical } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "GDGoC Catalyst",
-  description: catalyst.description,
+  description: catalystDescription(),
   ...canonical(catalyst.path),
 };
 
 // The oprec status depends on the date, so the page is rebuilt at most hourly instead of once at deploy.
 export const revalidate = 3600;
 
-const { oprec, sessions } = catalyst;
-const sessionRange = rangeLabel(sessions.start, sessions.end);
+const { oprec, sessions, scheduleOnHold } = catalyst;
+const instagram = { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram };
+// While the schedule is on hold (#210) no answer gives a date; they point to Instagram instead.
+const sessionDates = scheduleOnHold ? "" : `, ${rangeLabel(sessions.start, sessions.end)}`;
 
 const faq: FaqItem[] = [
   { question: "Siapa yang bisa mendaftar?", answer: ["Siswa SMK dan mahasiswa dari sekolah atau kampus mana pun, tidak hanya IPB."] },
   { question: "Apakah ada biaya?", answer: ["Tidak. GDGoC Catalyst gratis."] },
-  { question: "Berapa komitmen waktunya?", answer: [`Sembilan sesi daring pada hari Minggu, ${sessionRange}. Peserta berkomitmen hadir minimal ${catalyst.attendance} sesi.`] },
-  { question: "Bagaimana cara mendaftar?", answer: catalyst.oprecUrl ? ["Lewat ", { text: "form pendaftaran Catalyst", href: catalyst.oprecUrl }, `, dibuka ${rangeLabel(oprec.opensAt, oprec.closesAt)}.`] : [`Lewat form pendaftaran yang ditautkan di halaman ini dan diumumkan di Instagram saat pendaftaran dibuka pada ${dayLabel(oprec.opensAt)}.`] },
-  { question: "Kapan peserta diumumkan?", answer: [`${dayLabel(catalyst.announcedAt)}.`] },
-  { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
+  { question: "Berapa komitmen waktunya?", answer: [`Sembilan sesi daring pada hari Minggu${sessionDates}. Peserta berkomitmen hadir minimal ${catalyst.attendance} sesi.`] },
+  { question: "Bagaimana cara mendaftar?", answer: scheduleOnHold ? ["Lewat form pendaftaran yang ditautkan di halaman ini dan diumumkan di ", instagram, " saat pendaftaran dibuka."] : catalyst.oprecUrl ? ["Lewat ", { text: "form pendaftaran Catalyst", href: catalyst.oprecUrl }, `, dibuka ${rangeLabel(oprec.opensAt, oprec.closesAt)}.`] : [`Lewat form pendaftaran yang ditautkan di halaman ini dan diumumkan di Instagram saat pendaftaran dibuka pada ${dayLabel(oprec.opensAt)}.`] },
+  { question: "Kapan peserta diumumkan?", answer: scheduleOnHold ? ["Tanggalnya diumumkan bersama jadwal pendaftaran di ", instagram, " dan di halaman ini."] : [`${dayLabel(catalyst.announcedAt)}.`] },
+  { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", instagram, "."] },
 ];
 
 function OprecStatus() {
-  const state = currentOprecState();
+  const state = scheduleOnHold ? "onHold" : currentOprecState();
   const announcement = `Peserta diumumkan ${dayLabel(catalyst.announcedAt)}.`;
   const message = {
+    onHold: "Jadwal GDGoC Catalyst 2026/27 masih disusun. Tanggal pendaftaran dan sesi diumumkan di Instagram @gdgoc.ipb dan di halaman ini.",
     upcoming: `Pendaftaran dibuka ${dayLabel(oprec.opensAt)} dan ditutup ${dayLabel(oprec.closesAt)}. ${announcement}`,
     open: catalyst.oprecUrl ? `Pendaftaran dibuka sampai ${dayLabel(oprec.closesAt)}. ${announcement}` : `Pendaftaran dibuka sampai ${dayLabel(oprec.closesAt)}. Link form diumumkan di Instagram GDGoC IPB.`,
     closed: `Pendaftaran sudah ditutup pada ${dayLabel(oprec.closesAt)}. ${announcement}`,
@@ -51,9 +54,10 @@ function OprecStatus() {
 }
 
 export default function CatalystPage() {
+  const event = catalystEventJsonLd();
   return <>
     <JsonLd data={catalystCourseJsonLd()} />
-    <JsonLd data={catalystEventJsonLd()} />
+    {event && <JsonLd data={event} />}
     <JsonLd data={faqJsonLd(faq)} />
     <JsonLd data={breadcrumbJsonLd([{ name: "Program", path: "/program" }, { name: "Catalyst", path: catalyst.path }])} />
     <Header />
@@ -92,11 +96,11 @@ export default function CatalystPage() {
         </ul>
       </section>
 
-      <section aria-labelledby="catalyst-timeline">
+      {!scheduleOnHold && <section aria-labelledby="catalyst-timeline">
         <h2 id="catalyst-timeline">Jadwal</h2>
         <ol className="league-timeline">{catalyst.timeline.map((step) => <li key={step.label}><time dateTime={step.start}>{rangeLabel(step.start, "end" in step ? step.end : undefined)}</time><span>{step.label}</span></li>)}</ol>
         <p className="league-note">Jadwal dapat berubah. Perubahan diumumkan di Instagram GDGoC IPB dan di halaman ini.</p>
-      </section>
+      </section>}
 
       <section aria-labelledby="catalyst-faq">
         <h2 id="catalyst-faq">Pertanyaan umum</h2>

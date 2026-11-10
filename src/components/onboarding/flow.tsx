@@ -13,7 +13,7 @@ import { communityLinks } from "@/lib/community";
 import { campusOptions, loadCampusOptions, loadSchoolOptions, schoolProgramOptions, studyProgramOptions, type EducationOption } from "@/lib/education-options";
 import { techSupportHelpKinds, techSupportResponseDays } from "@/lib/tech-support-request";
 import { readableError } from "@/lib/draft-session";
-import { educationLabels, finalStep, institutionKindLabels, institutionKinds, normalizeOnboarding, onboardingDestination, onboardingSteps, resumeStep, stepAfter, stepBefore, techSupportRequestPath, validateOnboarding, type InstitutionKind, type OnboardingErrors, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
+import { educationLabels, finalStep, instagramStep, institutionKindLabels, institutionKinds, normalizeOnboarding, onboardingDestination, onboardingSteps, resumeStep, stepAfter, stepBefore, techSupportRequestPath, validateOnboarding, type InstitutionKind, type OnboardingErrors, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
 import { Arrow } from "../icons";
 import { BrandLogo } from "../brand-logo";
 import { EducationCombobox } from "./education-combobox";
@@ -21,12 +21,13 @@ import { OnboardingArtwork } from "./artwork";
 import { PixelIcon } from "../pixel-icons";
 
 type SaveStep = (args: { step: OnboardingStep; revision: number; values: OnboardingValues }) => Promise<Doc<"memberProfiles">>;
-// Per screen, in the order of `onboardingSteps`. Membership is open to SMK students too, so screen 2 asks for either.
-const stepLabels = ["Kenalan", "Sekolah/kampus", "WhatsApp", "Jadi member", "Tech Support"];
-const headings = ["Kenalan dulu, yuk.", "Dari sekolah atau\nkampus mana?", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB.", "Punya target\nlomba?"];
+// Per screen, in the order of `onboardingSteps`. Membership is open to SMA and SMK students too, so screen 2 asks for either.
+const stepLabels = ["Kenalan", "Sekolah/kampus", "Instagram", "WhatsApp", "Jadi member", "Tech Support"];
+const headings = ["Kenalan dulu, yuk.", "Dari sekolah atau\nkampus mana?", "Follow & pasang\ntwibbon.", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB.", "Punya target\nlomba?"];
 const descriptions = [
   "Selamat datang di GDGoC IPB. Mulai dari nama yang ingin kamu pakai di komunitas.",
-  "Mahasiswa dari kampus mana pun dan siswa SMK bisa bergabung. Apa pun jurusanmu, kamu bisa belajar teknologi di sini.",
+  "Mahasiswa dari kampus mana pun dan siswa SMA/SMK bisa bergabung. Apa pun jurusanmu, kamu bisa belajar teknologi di sini.",
+  "Syarat jadi member: follow Instagram @gdgoc.ipb dan pasang twibbon di feed. Tulis username Instagram-mu supaya core team bisa mengeceknya.",
   "Gabung grup WhatsApp untuk kabar kegiatan, teman diskusi, dan ajakan belajar bareng.",
   "Gabung sebagai member di halaman resmi GDGoC IPB. Temukan kegiatan dan daftar acara lewat Google Developer Groups.",
   `Member bisa minta Tech Support: GDGoC IPB mencarikan mentor dan mendampingimu untuk lomba teknologi, AI, dan web dev di luar komunitas. Dibalas paling lama ${techSupportResponseDays} hari kerja.`,
@@ -60,9 +61,9 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
   /** Called once the last screen is saved; `target` is set when the member chose to request Tech Support. */
   viewer: { name: string; email: string }; profile: Doc<"memberProfiles"> | null; save: SaveStep; onComplete: (target?: string) => void;
 }) {
-  const [step, setStep] = useState<OnboardingStep>(resumeStep(profile?.nextStep));
+  const [step, setStep] = useState<OnboardingStep>(resumeStep(profile?.nextStep, profile?.instagram));
   // A profile saved before the kind was asked had a campus; a new one chooses.
-  const [values, setValues] = useState<OnboardingValues>({ fullName: profile?.fullName || viewer.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "", institutionKind: profile?.institutionKind ?? (profile?.campus ? "campus" : undefined) });
+  const [values, setValues] = useState<OnboardingValues>({ fullName: profile?.fullName || viewer.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "", institutionKind: profile?.institutionKind ?? (profile?.campus ? "campus" : undefined), instagram: profile?.instagram ?? "" });
   const [wantsSupport, setWantsSupport] = useState(false);
   const [lists, setLists] = useState<Record<InstitutionKind, EducationOption[]>>({ campus: campusOptions, school: [] });
   const [errors, setErrors] = useState<OnboardingErrors>({});
@@ -76,12 +77,13 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
   const campus = useRef<HTMLInputElement>(null);
   const studyProgram = useRef<HTMLInputElement>(null);
   const kindChoice = useRef<HTMLInputElement>(null);
+  const instagram = useRef<HTMLInputElement>(null);
   const previousStep = useRef(step);
   const position = onboardingSteps.indexOf(step);
   const kind = values.institutionKind;
   const labels = educationLabels(kind);
 
-  // The national campus list and the SMK list are long, so they load only when the education screen needs them.
+  // The national campus list and the school list are long, so they load only when the education screen needs them.
   useEffect(() => {
     if (step !== 2 || !kind || (kind === "campus" ? lists.campus.length > campusOptions.length : lists.school.length)) return;
     let live = true;
@@ -97,7 +99,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
     }
   }, [step]);
 
-  function update(field: "fullName" | "campus" | "studyProgram", value: string) {
+  function update(field: "fullName" | "campus" | "studyProgram" | "instagram", value: string) {
     setValues((current) => ({ ...current, [field]: value }));
     setErrors((current) => ({ ...current, [field]: undefined }));
     setError("");
@@ -117,7 +119,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
     setErrors(nextErrors); setError("");
     const first = Object.keys(nextErrors)[0] as keyof OnboardingValues | undefined;
     if (first) {
-      ({ fullName, campus, studyProgram, institutionKind: kindChoice })[first].current?.focus();
+      ({ fullName, campus, studyProgram, institutionKind: kindChoice, instagram })[first].current?.focus();
       return;
     }
     inFlight.current = true; setBusy(true);
@@ -148,7 +150,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
       <div className="onboard-content">
         <nav aria-label="Langkah perkenalan"><ol className="onboard-progress">{stepLabels.map((label, index) => <li key={label} aria-current={position === index ? "step" : undefined} data-done={position > index}><span className="onboard-progress-line"/><span className="onboard-progress-label"><b>{position > index ? <PixelIcon name="check" size={12} /> : `0${index + 1}`}</b> <span className="onboard-progress-name">{label}</span></span></li>)}</ol></nav>
         <section className="onboard-step" aria-labelledby="onboard-title" aria-busy={busy}>
-          <p className="onboard-step-counter">LANGKAH 0{position + 1} DARI 0{onboardingSteps.length} <span>{step > 2 ? "OPSIONAL" : "TENTANG KAMU"}</span></p>
+          <p className="onboard-step-counter">LANGKAH 0{position + 1} DARI 0{onboardingSteps.length} <span>{step > instagramStep ? "OPSIONAL" : step === instagramStep ? "WAJIB" : "TENTANG KAMU"}</span></p>
           <h1 id="onboard-title" ref={title} tabIndex={-1}>{headings[position]}</h1>
           <p className="onboard-description">{descriptions[position]}{invitation && step === 1 && <> Kamu terdaftar sebagai peserta {invitation.cohort}, peran {invitation.role}.</>}</p>
           <form onSubmit={next} onKeyDown={(event) => {
@@ -165,7 +167,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
                 <legend>Saat ini kamu <span aria-hidden="true">*</span></legend>
                 <div className="onboard-kind-options">{institutionKinds.map((option, index) => <label key={option} className="onboard-kind-option" data-checked={kind === option}>
                   <input ref={index === 0 ? kindChoice : undefined} type="radio" name="institutionKind" value={option} checked={kind === option} disabled={busy} onChange={() => chooseKind(option)} />
-                  <span>{institutionKindLabels[option]}</span><small>{option === "campus" ? "Kampus mana pun, di Bogor atau luar Bogor" : "SMK atau MAK"}</small>
+                  <span>{institutionKindLabels[option]}</span><small>{option === "campus" ? "Kampus mana pun, di Bogor atau luar Bogor" : "SMA, MA, SMK, atau MAK"}</small>
                 </label>)}</div>
                 {errors.institutionKind && <p className="onboard-field-error" id="kind-error">{errors.institutionKind}</p>}
               </fieldset>
@@ -173,6 +175,17 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
                 <EducationCombobox key={`institution-${kind}`} id="campus" label={labels.institution} options={lists[kind].length ? lists[kind] : kind === "campus" ? campusOptions : []} inputRef={campus} value={values.campus} onChange={(value) => update("campus", value)} error={errors.campus} disabled={busy} enterKeyHint="next" hint={kind === "school" ? "Cari nama atau kotanya, misalnya “SMKN 1 Bogor”. Belum ada? Ketik nama lengkapnya." : undefined}/>
                 <EducationCombobox key={`program-${kind}`} id="studyProgram" label={labels.program} options={kind === "school" ? schoolProgramOptions : studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="done"/>
               </>}
+            </div>}
+            {step === instagramStep && <div className="onboard-instagram">
+              <div className="onboard-field"><label htmlFor="instagram">Username Instagram <span aria-hidden="true">*</span></label>
+                <div className="onboard-at-field"><span aria-hidden="true">@</span><input id="instagram" ref={instagram} name="instagram" autoComplete="off" inputMode="text" enterKeyHint="done" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={80} required disabled={busy} value={values.instagram ?? ""} onChange={(event) => update("instagram", event.target.value)} aria-invalid={Boolean(errors.instagram)} aria-describedby={errors.instagram ? "instagram-hint instagram-error" : "instagram-hint"} placeholder="usernamekamu"/></div>
+                <p id="instagram-hint" className="onboard-hint">Akun yang dipakai untuk follow dan memasang twibbon. Pastikan akunnya publik.</p>{errors.instagram && <p className="onboard-field-error" id="instagram-error">{errors.instagram}</p>}</div>
+              <div className="onboard-invitation onboard-requirements"><div className="onboard-invite-icon instagram-icon" aria-hidden="true"><PixelIcon name="check-double" size={24} /></div><div><strong>Syarat member</strong><ol>
+                <li>Follow Instagram <b>@gdgoc.ipb</b>.</li>
+                <li>Pasang twibbon di feed (bukan story) dan biarkan sampai pendaftaran ditutup 30 November.</li>
+              </ol></div>
+                <div className="onboard-requirement-links"><a className="button onboard-external" href={communityLinks.instagram} target="_blank" rel="noopener noreferrer">Follow @gdgoc.ipb <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><a className="text-link onboard-twibbon-link" href="/twibbon" target="_blank" rel="noopener">Buat twibbon <Arrow external /><span className="sr-only"> (buka tab baru)</span></a></div>
+                <p className="onboard-warning">Core team akan mengecek akun ini. Kalau belum follow @gdgoc.ipb atau twibbon tidak terpasang sampai 30 November, pendaftaranmu bisa dibatalkan.</p></div>
             </div>}
             {step === 4 && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>}
             {step === 5 && <div className="onboard-invitation"><div className="onboard-invite-icon gdg-icon" aria-hidden="true"><PixelIcon name="code" size={24} /></div><div><strong>GDG on Campus IPB University</strong><p>Buka halaman chapter, lalu pilih <b>Join us</b> untuk menjadi member.</p></div><a className="button onboard-external" href={communityLinks.membership} target="_blank" rel="noopener noreferrer">Gabung di GDG Community <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Sudah jadi member? Pilih Lanjut ke langkah terakhir.</p></div>}
@@ -183,7 +196,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
               </div></fieldset></div>}
             {error && <p className="onboard-notice" role="alert">{error} Isianmu tetap ada di halaman ini.</p>}
             <div className="onboard-actions">{step > 1 ? <button className="onboard-back" type="button" disabled={busy || leaving} onClick={() => { setErrors({}); setError(""); setStep(stepBefore(step)); }}><PixelIcon name="arrow-left" size={24} /> Kembali</button> : <span className="onboard-time">{onboardingSteps.length} langkah singkat.</span>}<button className="button button-blue" type="submit" disabled={busy || leaving}>{busy ? "Menyimpan…" : step === finalStep ? (wantsSupport ? "Selesai, ajukan Tech Support" : finishLabel) : "Lanjut"}<Arrow /></button></div>
-            {step === finalStep ? <p className="onboard-save-note">Tidak sedang ikut lomba? Pilih Nanti saja, lalu selesaikan perkenalan.</p> : step > 2 ? <p className="onboard-save-note">Belum ingin bergabung? Pilih Lanjut untuk melewati langkah ini.</p> : <p className="onboard-save-note">Data tersimpan setiap menekan Lanjut. Bisa diteruskan nanti.</p>}
+            {step === finalStep ? <p className="onboard-save-note">Tidak sedang ikut lomba? Pilih Nanti saja, lalu selesaikan perkenalan.</p> : step > instagramStep ? <p className="onboard-save-note">Belum ingin bergabung? Pilih Lanjut untuk melewati langkah ini.</p> : <p className="onboard-save-note">Data tersimpan setiap menekan Lanjut. Bisa diteruskan nanti.</p>}
           </form>
         </section>
         <footer className="onboard-footer"><span>Masuk sebagai <strong>{viewer.email}</strong></span><Link href="/privasi">Privasi</Link></footer>

@@ -719,12 +719,15 @@ summary:focus-visible {
     padding-top: 65px;
   }
 }
+/* Five links and a member's greeting (#211): tighter gaps under 1180px, and the menu from 1023px down, so no label wraps. */
+@media (max-width: 1180px) {
+  .navigation {
+    gap: 23px;
+  }
+}
 @media (max-width: 1050px) {
   .brand {
     width: 230px;
-  }
-  .navigation {
-    gap: 23px;
   }
   .hero {
     height: 760px;
@@ -740,7 +743,7 @@ summary:focus-visible {
   }
 
 }
-@media (max-width: 960px) {
+@media (max-width: 1023px) {
   .menu-toggle {
     display: grid;
     place-items: center;

@@ -39,8 +39,9 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
     <dl className="dash-facts dash-member-facts">
       <div><dt>Email</dt><dd><span className="dash-fact-row"><a href={`mailto:${member.email}`}>{member.email}</a><CopyIconButton text={member.email} label="Salin email" /></span></dd></div>
       <div><dt>Peran komunitas</dt><dd><CommunityBadge row={member} /></dd></div>
-      <div><dt>Kampus</dt><dd>{member.campus || "—"}</dd></div>
-      <div><dt>Program studi</dt><dd>{member.studyProgram || "—"}</dd></div>
+      <div><dt>Sekolah/kampus</dt><dd>{member.campus || "—"}</dd></div>
+      <div><dt>Jurusan/program studi</dt><dd>{member.studyProgram || "—"}</dd></div>
+      <div><dt>Instagram</dt><dd>{member.instagram ? <a href={`https://www.instagram.com/${member.instagram}/`} target="_blank" rel="noreferrer">@{member.instagram}</a> : "—"}</dd></div>
       <div><dt>Bergabung</dt><dd>{dateLabel(member.joinedAt)}</dd></div>
       <div><dt>Kartu anggota</dt><dd>{member.card ? `${member.card.number}${member.card.revoked ? " · Diblokir" : ""}` : "Belum dibuka"}</dd></div>
       <div><dt>Perubahan akses terakhir</dt><dd>{member.accessUpdatedBy ?? "Belum pernah diubah"}</dd></div>

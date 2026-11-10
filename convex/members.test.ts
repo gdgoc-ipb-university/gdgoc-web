@@ -7,8 +7,8 @@ import { api, components } from "./_generated/api";
 import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
-const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer" };
-const steps = [1, 2, 4, 5, 6] as const;
+const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "teman.uji" };
+const steps = [1, 2, 3, 4, 5, 6] as const;
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 async function member(t: ReturnType<typeof setup>, email = "onboarding@example.com", verified = true, expiresAt = Date.now() + 3600000) {
   const user = await t.mutation(components.betterAuth.adapter.create, {
@@ -56,7 +56,7 @@ describe("first-time member onboarding", () => {
     await expect(owner.mutation(api.members.saveStep, { step: 2, revision: 1, values: { ...values, campus: "", studyProgram: "" } })).rejects.toThrow("Lengkapi");
     await expect(owner.mutation(api.members.saveStep, { step: 2, revision: 1, values: { ...values, studyProgram: "x".repeat(151) } })).rejects.toThrow("Lengkapi");
     const saved = await owner.mutation(api.members.saveStep, { step: 2, revision: 1, values: { ...values, campus: "Kampus di luar saran", studyProgram: "Program studi baru" } });
-    expect(saved).toMatchObject({ nextStep: 4, campus: "Kampus di luar saran", studyProgram: "Program studi baru" });
+    expect(saved).toMatchObject({ nextStep: 3, campus: "Kampus di luar saran", studyProgram: "Program studi baru" });
   });
 
   it("makes retries safe and rejects stale edits from another tab", async () => {
@@ -75,7 +75,7 @@ describe("first-time member onboarding", () => {
     expect(completed?.completedAt).toEqual(expect.any(Number));
     expect(completed).not.toHaveProperty("whatsappJoined");
     expect(completed).not.toHaveProperty("gdgJoined");
-    const retried = await owner.mutation(api.members.saveStep, { step: 6, revision: 4, values });
+    const retried = await owner.mutation(api.members.saveStep, { step: 6, revision: 5, values });
     expect(retried.completedAt).toBe(completed?.completedAt);
     const newDraft = await owner.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
     expect((await owner.query(api.appreciations.get, { id: newDraft })).values).toMatchObject({ fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram, memberType: "Member" });
@@ -90,27 +90,42 @@ describe("first-time member onboarding", () => {
     expect(profile).not.toHaveProperty("tagConfirmedAt");
   });
 
-  it("resumes a profile saved on the removed role screen at the WhatsApp screen", async () => {
+  it("sends a profile past screen 3 without an Instagram username back to screen 3", async () => {
     const t = setup(); const owner = await member(t);
     for (const step of [1, 2] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
     const profile = (await owner.query(api.members.profile))!;
-    // Saved before the role screen was removed: waiting on screen 3.
-    await t.run((ctx) => ctx.db.patch(profile._id, { nextStep: 3 }));
-    await expect(owner.mutation(api.members.saveStep, { step: 5, revision: 2, values })).rejects.toThrow("langkah sebelumnya");
-    expect(await owner.mutation(api.members.saveStep, { step: 4, revision: 2, values })).toMatchObject({ nextStep: 5 });
-    const atOffer = await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
-    expect(atOffer).toMatchObject({ nextStep: 6 });
-    expect(atOffer.completedAt).toBeUndefined();
-    expect(await owner.mutation(api.members.saveStep, { step: 6, revision: 4, values })).toMatchObject({ memberType: "member", completedAt: expect.any(Number) });
+    // Saved before screen 3 asked for Instagram: waiting on the GDG invitation.
+    await t.run((ctx) => ctx.db.patch(profile._id, { nextStep: 5 }));
+    await expect(owner.mutation(api.members.saveStep, { step: 4, revision: 2, values })).rejects.toThrow("langkah sebelumnya");
+    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, instagram: "" } })).rejects.toThrow("Lengkapi");
+    // Then on through the WhatsApp screen again, as the page does.
+    expect(await owner.mutation(api.members.saveStep, { step: 3, revision: 2, values })).toMatchObject({ instagram: "teman.uji", nextStep: 4 });
+    for (const [index, step] of ([4, 5] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index + 3, values });
+    expect((await owner.query(api.members.profile))?.completedAt).toBeUndefined();
+    expect(await owner.mutation(api.members.saveStep, { step: 6, revision: 5, values })).toMatchObject({ memberType: "member", completedAt: expect.any(Number) });
+  });
+
+  it("stores the Instagram username from screen 3, read from @, a profile link or capitals, and keeps it on later screens", async () => {
+    const owner = await member(setup());
+    for (const step of [1, 2] as const) await owner.mutation(api.members.saveStep, { step, revision: step - 1, values });
+    for (const instagram of ["", "nama kamu!", "nama..kamu", "namakamu.", "a".repeat(31)]) {
+      await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, instagram } })).rejects.toThrow("Lengkapi");
+    }
+    // A page from before the question sends no username, and screen 3 still needs one.
+    const older = { fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram };
+    await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: older })).rejects.toThrow("Lengkapi");
+    expect(await owner.mutation(api.members.saveStep, { step: 3, revision: 2, values: { ...values, instagram: " https://www.instagram.com/Nama_Kamu.27/?hl=id " } })).toMatchObject({ instagram: "nama_kamu.27", nextStep: 4 });
+    for (const [index, step] of ([4, 5, 6] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index + 3, values: { ...older, instagram: "" } });
+    expect(await owner.query(api.members.profile)).toMatchObject({ instagram: "nama_kamu.27", completedAt: expect.any(Number) });
   });
 
   it("stores whether the member studies at a campus or a school, and accepts a page that does not say", async () => {
     const t = setup(); const student = await member(t); const older = await member(t, "older-page@example.com");
     await student.mutation(api.members.saveStep, { step: 1, revision: 0, values });
     const school = { ...values, campus: "SMKN 1 BOGOR", studyProgram: "Rekayasa Perangkat Lunak", institutionKind: "school" as const };
-    expect(await student.mutation(api.members.saveStep, { step: 2, revision: 1, values: school })).toMatchObject({ institutionKind: "school", campus: "SMKN 1 BOGOR", nextStep: 4 });
+    expect(await student.mutation(api.members.saveStep, { step: 2, revision: 1, values: school })).toMatchObject({ institutionKind: "school", campus: "SMKN 1 BOGOR", nextStep: 3 });
     // Later screens send no kind and keep the saved one; a hand-made kind outside the two is rejected.
-    for (const [index, step] of ([4, 5, 6] as const).entries()) await student.mutation(api.members.saveStep, { step, revision: index + 2, values });
+    for (const [index, step] of ([3, 4, 5, 6] as const).entries()) await student.mutation(api.members.saveStep, { step, revision: index + 2, values });
     expect(await student.query(api.members.profile)).toMatchObject({ institutionKind: "school", completedAt: expect.any(Number) });
     await expect(older.mutation(api.members.saveStep, { step: 1, revision: 0, values: { ...values, institutionKind: "kantor" } } as never)).rejects.toThrow();
     // A page from before the question (a backend-first deploy) still saves the education screen, with no kind.
@@ -120,19 +135,18 @@ describe("first-time member onboarding", () => {
 
   it("offers Tech Support as the last screen: the GDG invitation no longer finishes onboarding", async () => {
     const owner = await member(setup());
-    for (const [index, step] of ([1, 2, 4, 5] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
+    for (const [index, step] of ([1, 2, 3, 4, 5] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
     expect(await owner.query(api.members.profile)).toMatchObject({ nextStep: 6 });
     expect((await owner.query(api.members.profile))?.completedAt).toBeUndefined();
     await expect(owner.query(api.techSupport.mine, {})).rejects.toThrow("Selesaikan perkenalan");
-    await owner.mutation(api.members.saveStep, { step: 6, revision: 4, values });
+    await owner.mutation(api.members.saveStep, { step: 6, revision: 5, values });
     expect(await owner.query(api.techSupport.mine, {})).toEqual([]);
   });
 
   it("rejects a community tag sent with any onboarding screen", async () => {
     const owner = await member(setup());
     const tags = [{ memberType: "core", division: "Technical" }, { memberType: "bod", division: "" }, { memberType: "member", division: "Media & Creative" }];
-    // The removed role screen, and every remaining one with tag fields added, as an old tab or a hand-made call would send.
-    for (const tag of tags) await expect(owner.mutation(api.members.saveStep, { step: 3, revision: 0, values: { ...values, ...tag } } as never)).rejects.toThrow();
+    // Every screen with tag fields added, as an old tab from the role screen's days or a hand-made call would send.
     for (const [index, step] of steps.entries()) {
       for (const tag of tags) await expect(owner.mutation(api.members.saveStep, { step, revision: index, values: { ...values, ...tag } } as never)).rejects.toThrow();
       await owner.mutation(api.members.saveStep, { step, revision: index, values });
@@ -144,10 +158,10 @@ describe("first-time member onboarding", () => {
 
   it("never downgrades a tag staff assigned before onboarding finished", async () => {
     const t = setup(); const owner = await member(t);
-    for (const [index, step] of ([1, 2, 4] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
+    for (const [index, step] of ([1, 2, 3, 4] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
     const profile = (await owner.query(api.members.profile))!;
     await t.run((ctx) => ctx.db.patch(profile._id, { memberType: "core", division: "Media & Creative", tagConfirmedAt: Date.now(), tagConfirmedBy: "staff" }));
-    for (const [index, step] of ([5, 6] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index + 3, values });
+    for (const [index, step] of ([5, 6] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index + 4, values });
     expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "core", division: "Media & Creative", tagConfirmedAt: expect.any(Number), completedAt: expect.any(Number) });
   });
 

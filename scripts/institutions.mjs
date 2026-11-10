@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Rebuilds the onboarding suggestion lists in src/lib/institutions from the ministry's public reference pages
-// (referensi.data.kemendikdasmen.go.id): every SMK and MAK in West Java, Jakarta and Banten, and every higher-education
+// (referensi.data.kemendikdasmen.go.id): every SMA, MA, SMK and MAK in West Java, Jakarta and Banten, and every higher-education
 // institution in Indonesia. See docs/ONBOARDING.md, "Suggestion sources".
 //
 //   node scripts/institutions.mjs [--cache <dir>] [--only schools|campuses]
@@ -95,13 +95,13 @@ function distinct(list, label) {
   });
 }
 
-// SMK and MAK, Bogor and its neighbours first, then the rest of the three provinces; state schools before private.
+// SMA, MA, SMK and MAK, Bogor and its neighbours first, then the rest of the three provinces; state schools before private.
 const near = ["Kota Bogor", "Kab. Bogor", "Kota Depok", "Kota Bekasi", "Kab. Bekasi", "Kota Tangerang Selatan", "Kota Tangerang", "Kab. Tangerang"];
 const rank = (regency) => near.includes(regency) ? near.indexOf(regency) : regency.startsWith("Kota Adm. Jakarta") ? near.length : near.length + 1;
 if (only !== "campuses") {
 const schools = new Map();
-for (const row of await crawl("dikmen", ["020000", "010000", "280000"], (key) => key.startsWith("SMK"))) {
-  if (!["SMK", "MAK"].includes(row.Bentuk) || !row.NPSN || schools.has(row.NPSN)) continue;
+for (const row of await crawl("dikmen", ["020000", "010000", "280000"], (key) => key.startsWith("SMA") || key.startsWith("SMK"))) {
+  if (!["SMA", "MA", "SMK", "MAK"].includes(row.Bentuk) || !row.NPSN || schools.has(row.NPSN)) continue;
   schools.set(row.NPSN, { name: row["Nama sekolah"], detail: `${place(row.regency)} · ${district(row.district)}`, regency: row.regency, state: row.Status === "NEGERI", district: row.district });
 }
 const schoolList = [...schools.values()].sort((a, b) => rank(a.regency) - rank(b.regency) || a.regency.localeCompare(b.regency, "id") || Number(b.state) - Number(a.state) || a.name.localeCompare(b.name, "id"));

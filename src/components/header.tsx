@@ -17,6 +17,11 @@ const SECTIONS: readonly { id: SectionId; label: string; href?: string }[] = [
   { id: "explore", label: "Program", href: "/program" },
   { id: "join", label: "Bogor Run" },
 ];
+/** Pages with no landing section, after the sections: how to join, and the member intake twibbon (#211). */
+const PAGES = [
+  { label: "Bergabung", href: "/bergabung" },
+  { label: "Twibbon", href: "/twibbon" },
+] as const;
 /** The scroll-progress bar's quarters, in order; the active link is underlined in the quarter being filled. */
 /** The league's own links (#179): its sections, and the way back to the main site. */
 const LEAGUE_LINKS = [
@@ -120,11 +125,14 @@ export function Header({ league = false }: { league?: boolean }) {
           <PixelIcon name={open ? "close" : "menu"} size={24} />
         </button>
         <nav id="site-nav" className="navigation" aria-label="Navigasi utama" data-open={open} data-accent={accent}>
-          {league ? LEAGUE_LINKS.map(({ id, label, href }) => <Link key={id} href={href} onClick={() => setOpen(false)}>{label}</Link>) : SECTIONS.map(({ id, label, href }) => (
-            <Link key={id} href={href ?? (home ? `#${id}` : `/#${id}`)} aria-current={href && pathname === href ? "page" : active === id ? "location" : undefined} onClick={() => setOpen(false)}>
-              {label}
-            </Link>
-          ))}
+          {league ? LEAGUE_LINKS.map(({ id, label, href }) => <Link key={id} href={href} onClick={() => setOpen(false)}>{label}</Link>) : <>
+            {SECTIONS.map(({ id, label, href }) => (
+              <Link key={id} href={href ?? (home ? `#${id}` : `/#${id}`)} aria-current={href && pathname === href ? "page" : active === id ? "location" : undefined} onClick={() => setOpen(false)}>
+                {label}
+              </Link>
+            ))}
+            {PAGES.map(({ label, href }) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}
+          </>}
           <Link
             href={dashboard}
             className="nav-cta"

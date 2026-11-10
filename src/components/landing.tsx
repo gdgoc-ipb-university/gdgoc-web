@@ -11,7 +11,8 @@ import "@/components/journey/journey.css";
 
 /**
  * The landing page: the hero, then the member journey (#165), a road through five chapters, then the footer.
- * The header's scrollspy follows `#community`, `#explore` and `#join`.
+ * The header's scrollspy follows `#community`, `#explore` and `#join`. While member intake is open, the hero opens its
+ * popup (#211) once the loading screen is gone.
  */
 export function Landing() {
   return (

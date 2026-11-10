@@ -22,7 +22,9 @@ const programs = [
   {
     title: "GDGoC Catalyst",
     audience: "Untuk siswa SMK dan mahasiswa yang ingin membangun produk dalam tim.",
-    schedule: `Pendaftaran ${rangeLabel(catalyst.oprec.opensAt, catalyst.oprec.closesAt)}. Sesi berjalan ${rangeLabel(catalyst.sessions.start, catalyst.sessions.end)}.`,
+    schedule: catalyst.scheduleOnHold
+      ? catalyst.scheduleToFollow
+      : `Pendaftaran ${rangeLabel(catalyst.oprec.opensAt, catalyst.oprec.closesAt)}. Sesi berjalan ${rangeLabel(catalyst.sessions.start, catalyst.sessions.end)}.`,
     href: catalyst.path,
   },
   {

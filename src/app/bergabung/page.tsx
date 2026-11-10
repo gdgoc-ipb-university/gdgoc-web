@@ -35,6 +35,7 @@ const faq: FaqItem[] = [
 ];
 
 function catalystLine() {
+  if (catalyst.scheduleOnHold) return catalyst.scheduleToFollow;
   const { opensAt, closesAt } = catalyst.oprec;
   return {
     upcoming: `Pendaftaran dibuka ${rangeLabel(opensAt, closesAt)}.`,

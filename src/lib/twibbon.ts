@@ -57,7 +57,7 @@ export function twibbonCaption({ name, origin, friends }: CaptionFields) {
   return [
     `Halo, aku ${name.trim() || "[nama]"} dari ${origin.trim() || "[sekolah/kampus]"}. Aku daftar jadi member GDGoC IPB University 2026/27!`,
     "",
-    "Di GDGoC IPB aku bisa ikut Study Jam, networking lintas kampus, dan didampingi mentor lewat Tech Support saat ikut lomba teknologi. Pendaftarannya terbuka untuk umum, mahasiswa dan siswa SMK.",
+    "Di GDGoC IPB aku bisa ikut Study Jam, networking lintas kampus, dan didampingi mentor lewat Tech Support saat ikut lomba teknologi. Pendaftarannya terbuka untuk umum, mahasiswa dan siswa SMA/SMK.",
     "",
     "Yuk daftar juga di gdgocipb.com. Guidebook: gdgocipb.com/gb-member",
     "",

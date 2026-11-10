@@ -10,10 +10,10 @@ export function memberTagLabel(type: MemberType, division?: string | null) {
   return type !== "member" && division ? `${memberTypeLabels[type]} · ${division}` : memberTypeLabels[type];
 }
 
-/** Where the member studies: a campus (university, institute, polytechnic…) or a school (SMK). Both may join since the 2026/27 member intake. */
+/** Where the member studies: a campus (university, institute, polytechnic…) or a school (SMA, MA, SMK or MAK). Both may join since the 2026/27 member intake. */
 export type InstitutionKind = "campus" | "school";
 export const institutionKinds: InstitutionKind[] = ["campus", "school"];
-export const institutionKindLabels: Record<InstitutionKind, string> = { campus: "Mahasiswa", school: "Siswa SMK" };
+export const institutionKindLabels: Record<InstitutionKind, string> = { campus: "Mahasiswa", school: "Siswa SMA/SMK" };
 /** Field labels per kind; no kind yet reads as either. */
 export function educationLabels(kind: InstitutionKind | undefined) {
   return kind === "school" ? { institution: "Sekolah", program: "Jurusan" } : kind === "campus" ? { institution: "Kampus", program: "Program studi" } : { institution: "Sekolah atau kampus", program: "Jurusan atau program studi" };
@@ -74,7 +74,7 @@ export function validateOnboarding(values: OnboardingValues, step: OnboardingSte
   const fields: (keyof typeof onboardingLimits)[] = step === 1 ? ["fullName"] : step === 2 ? ["campus", "studyProgram"] : ["fullName", "campus", "studyProgram"];
   const school = clean.institutionKind === "school";
   const required = { fullName: "Isi nama yang ingin kamu pakai.", campus: school ? "Isi atau pilih nama sekolahmu." : "Isi atau pilih nama kampusmu.", studyProgram: school ? "Isi atau pilih jurusanmu." : "Isi atau pilih program studimu." };
-  if (requireKind && step === 2 && !clean.institutionKind) errors.institutionKind = "Pilih kamu mahasiswa atau siswa SMK.";
+  if (requireKind && step === 2 && !clean.institutionKind) errors.institutionKind = "Pilih kamu mahasiswa atau siswa SMA/SMK.";
   for (const field of fields) {
     if (!clean[field]) errors[field] = required[field];
     else if (clean[field].length > onboardingLimits[field]) errors[field] = `Maksimal ${onboardingLimits[field]} karakter.`;

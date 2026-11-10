@@ -21,12 +21,12 @@ import { OnboardingArtwork } from "./artwork";
 import { PixelIcon } from "../pixel-icons";
 
 type SaveStep = (args: { step: OnboardingStep; revision: number; values: OnboardingValues }) => Promise<Doc<"memberProfiles">>;
-// Per screen, in the order of `onboardingSteps`. Membership is open to SMK students too, so screen 2 asks for either.
+// Per screen, in the order of `onboardingSteps`. Membership is open to SMA and SMK students too, so screen 2 asks for either.
 const stepLabels = ["Kenalan", "Sekolah/kampus", "WhatsApp", "Jadi member", "Tech Support"];
 const headings = ["Kenalan dulu, yuk.", "Dari sekolah atau\nkampus mana?", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB.", "Punya target\nlomba?"];
 const descriptions = [
   "Selamat datang di GDGoC IPB. Mulai dari nama yang ingin kamu pakai di komunitas.",
-  "Mahasiswa dari kampus mana pun dan siswa SMK bisa bergabung. Apa pun jurusanmu, kamu bisa belajar teknologi di sini.",
+  "Mahasiswa dari kampus mana pun dan siswa SMA/SMK bisa bergabung. Apa pun jurusanmu, kamu bisa belajar teknologi di sini.",
   "Gabung grup WhatsApp untuk kabar kegiatan, teman diskusi, dan ajakan belajar bareng.",
   "Gabung sebagai member di halaman resmi GDGoC IPB. Temukan kegiatan dan daftar acara lewat Google Developer Groups.",
   `Member bisa minta Tech Support: GDGoC IPB mencarikan mentor dan mendampingimu untuk lomba teknologi, AI, dan web dev di luar komunitas. Dibalas paling lama ${techSupportResponseDays} hari kerja.`,
@@ -81,7 +81,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
   const kind = values.institutionKind;
   const labels = educationLabels(kind);
 
-  // The national campus list and the SMK list are long, so they load only when the education screen needs them.
+  // The national campus list and the school list are long, so they load only when the education screen needs them.
   useEffect(() => {
     if (step !== 2 || !kind || (kind === "campus" ? lists.campus.length > campusOptions.length : lists.school.length)) return;
     let live = true;
@@ -165,7 +165,7 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
                 <legend>Saat ini kamu <span aria-hidden="true">*</span></legend>
                 <div className="onboard-kind-options">{institutionKinds.map((option, index) => <label key={option} className="onboard-kind-option" data-checked={kind === option}>
                   <input ref={index === 0 ? kindChoice : undefined} type="radio" name="institutionKind" value={option} checked={kind === option} disabled={busy} onChange={() => chooseKind(option)} />
-                  <span>{institutionKindLabels[option]}</span><small>{option === "campus" ? "Kampus mana pun, di Bogor atau luar Bogor" : "SMK atau MAK"}</small>
+                  <span>{institutionKindLabels[option]}</span><small>{option === "campus" ? "Kampus mana pun, di Bogor atau luar Bogor" : "SMA, MA, SMK, atau MAK"}</small>
                 </label>)}</div>
                 {errors.institutionKind && <p className="onboard-field-error" id="kind-error">{errors.institutionKind}</p>}
               </fieldset>

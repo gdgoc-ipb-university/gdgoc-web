@@ -27,7 +27,7 @@ export const viewer = query({
       techSupportHandler: handlesTechSupport(access.role, access.profile),
       memberType: access.profile?.memberType ?? null, division: access.profile?.division ?? null,
       tagConfirmed: Boolean(access.profile?.tagConfirmedAt),
-      campus: access.profile?.campus ?? "", studyProgram: access.profile?.studyProgram ?? "",
+      campus: access.profile?.campus ?? "", studyProgram: access.profile?.studyProgram ?? "", instagram: access.profile?.instagram ?? "",
       // The uploaded photo, else the Google one (photos.photoUrl); `photoUploaded` offers "Hapus foto".
       photo: await photoUrl(ctx, access.profile, access.user.image), photoUploaded: Boolean(access.profile?.photoStorageId),
       // Runs the door of a gathering that is not over yet, so the sidebar offers Kehadiran (gatherings.ts).
@@ -43,6 +43,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
   const role = roleOf(user?.email ?? "", Boolean(user?.emailVerified), profile);
   return {
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
+    // For core team to check the intake's follow and twibbon (#212); empty for members who onboarded before it was asked.
+    instagram: profile.instagram ?? "",
     email: user?.email ?? "", role, active: isActive(role, profile), joinedAt: profile.completedAt ?? profile._creationTime,
     memberType: profile.memberType ?? null, division: profile.division ?? null,
     // The granted permission only; owners and admins review by role and are not flagged here.

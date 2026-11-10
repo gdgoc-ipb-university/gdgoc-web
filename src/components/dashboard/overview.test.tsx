@@ -20,7 +20,7 @@ vi.mock("convex/react", () => ({
   usePaginatedQuery: () => ({ status: "Exhausted", results: [], loadMore: () => {} }),
 }));
 
-const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Budi Santoso", email: "budi@example.com", role: "member", active: true, onboarded: true, reviewer: false, memberType: "member", division: null, tagConfirmed: false, campus: "", studyProgram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false };
+const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Budi Santoso", email: "budi@example.com", role: "member", active: true, onboarded: true, reviewer: false, memberType: "member", division: null, tagConfirmed: false, campus: "", studyProgram: "", instagram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false };
 const show = (programs: unknown[]) => { mine = programs; return render(<ViewerContext.Provider value={viewer}><DashboardOverview /></ViewerContext.Provider>); };
 const card = () => screen.getByRole("region", { name: "GDGoC Catalyst 2026/27" });
 

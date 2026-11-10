@@ -8,7 +8,7 @@ afterEach(cleanup);
 
 const base: DashboardViewer = {
   id: "me" as DashboardViewer["id"], name: "Rania Putri", email: "rania@example.com", role: "member", active: true, onboarded: true, reviewer: false,
-  memberType: "member", division: null, tagConfirmed: false, campus: "IPB University", studyProgram: "Ilmu Komputer", doorHelper: false, techSupportHandler: false,
+  memberType: "member", division: null, tagConfirmed: false, campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "", doorHelper: false, techSupportHandler: false,
   photo: null, photoUploaded: false,
 };
 const panel = (viewer: Partial<DashboardViewer> = {}) => {

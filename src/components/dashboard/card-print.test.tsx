@@ -41,7 +41,7 @@ vi.mock("./card-pdf", () => ({ buildCardPdf }));
 let params = new URLSearchParams();
 vi.mock("next/navigation", () => ({ useSearchParams: () => params }));
 
-const viewer = (role: DashboardViewer["role"]): DashboardViewer => ({ id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role, active: true, onboarded: true, reviewer: true, memberType: null, division: null, tagConfirmed: false, campus: "", studyProgram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false });
+const viewer = (role: DashboardViewer["role"]): DashboardViewer => ({ id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role, active: true, onboarded: true, reviewer: true, memberType: null, division: null, tagConfirmed: false, campus: "", studyProgram: "", instagram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false });
 const show = (role: DashboardViewer["role"] = "admin") => render(<ViewerContext.Provider value={viewer(role)}><CardPrintPage /></ViewerContext.Provider>);
 const stat = (label: string) => screen.getAllByText(label).find((element) => element.tagName === "DT")!.nextElementSibling!.textContent;
 

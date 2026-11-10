@@ -41,21 +41,21 @@ describe("accessible member onboarding", () => {
     expect(screen.getByText(/Kamu terdaftar sebagai peserta GDGoC Catalyst 2026\/27, peran Hustler\./)).toBeTruthy();
   });
 
-  it("asks campus or SMK first, then names the fields and clears answers when the choice changes", async () => {
+  it("asks campus or school first, then names the fields and clears answers when the choice changes", async () => {
     const save = gateway(); const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 2, campus: "", studyProgram: "" }} save={save} onComplete={vi.fn()} />);
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Dari sekolah atau\nkampus mana?");
     expect(screen.queryByRole("combobox")).toBeNull();
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
-    expect(screen.getByText("Pilih kamu mahasiswa atau siswa SMK.")).toBeTruthy();
+    expect(screen.getByText("Pilih kamu mahasiswa atau siswa SMA/SMK.")).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByRole("radio", { name: /Mahasiswa/ }));
     expect(save).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("radio", { name: /Siswa SMK/ }));
+    await user.click(screen.getByRole("radio", { name: /Siswa SMA\/SMK/ }));
     fireEvent.change(screen.getByRole("combobox", { name: /^Sekolah/ }), { target: { value: "SMK Uji Coba" } });
     fireEvent.change(screen.getByRole("combobox", { name: /^Jurusan/ }), { target: { value: "Rekayasa Perangkat Lunak" } });
     await user.click(screen.getByRole("radio", { name: /Mahasiswa/ }));
     expect((screen.getByRole("combobox", { name: /^Kampus/ }) as HTMLInputElement).value).toBe("");
-    await user.click(screen.getByRole("radio", { name: /Siswa SMK/ }));
+    await user.click(screen.getByRole("radio", { name: /Siswa SMA\/SMK/ }));
     fireEvent.change(screen.getByRole("combobox", { name: /^Sekolah/ }), { target: { value: "SMK Uji Coba" } });
     fireEvent.change(screen.getByRole("combobox", { name: /^Jurusan/ }), { target: { value: "Rekayasa Perangkat Lunak" } });
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
@@ -66,10 +66,12 @@ describe("accessible member onboarding", () => {
   it("suggests SMK majors by their old short names", async () => {
     const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 2, campus: "", studyProgram: "" }} save={gateway()} onComplete={vi.fn()} />);
-    await user.click(screen.getByRole("radio", { name: /Siswa SMK/ }));
+    await user.click(screen.getByRole("radio", { name: /Siswa SMA\/SMK/ }));
     const program = screen.getByRole("combobox", { name: /^Jurusan/ });
     await user.click(program); await user.type(program, "TKJ");
     expect(await screen.findByRole("option", { name: "Teknik Komputer dan Jaringan" })).toBeTruthy();
+    await user.clear(program); await user.type(program, "IPA");
+    expect(await screen.findByRole("option", { name: "MIPA" })).toBeTruthy();
   });
 
   it("keeps blank-name errors tied to the input and retains edits after a failed save", async () => {

@@ -1,7 +1,7 @@
 import { PixelDino, PixelSpark } from "../icons";
 import type { OnboardingStep } from "@/lib/onboarding";
 
-const captions: Record<OnboardingStep, string> = { 1: "Teman belajarmu, mulai di sini.", 2: "Kampus atau SMK. Bisa bikin bareng.", 4: "Ada teman buat tanya & cerita.", 5: "Satu komunitas, banyak kesempatan.", 6: "Ikut lomba? Ada mentor yang menemani." };
+const captions: Record<OnboardingStep, string> = { 1: "Teman belajarmu, mulai di sini.", 2: "Kampus, SMA, atau SMK. Bisa bikin bareng.", 4: "Ada teman buat tanya & cerita.", 5: "Satu komunitas, banyak kesempatan.", 6: "Ikut lomba? Ada mentor yang menemani." };
 
 export function OnboardingArtwork({ step }: { step: OnboardingStep }) {
   return <aside className="onboard-art" data-step={step} aria-hidden="true">

@@ -25,14 +25,14 @@ export type RoleValues = { memberType: MemberType | ""; division: string };
 export type RoleErrors = Partial<Record<keyof RoleValues, string>>;
 
 /**
- * Onboarding screens by id: name, school or campus, the WhatsApp invitation, the GDG Community invitation. Ids keep
- * their numbers from the five-screen flow so saved progress (`memberProfiles.nextStep`) means the same screen: 3 was
- * the role screen, removed when community tags became staff-assigned (#156).
+ * Onboarding screens by id: name, school or campus, the WhatsApp invitation, the GDG Community invitation, and the
+ * Tech Support offer. Ids keep their numbers from earlier flows so saved progress (`memberProfiles.nextStep`) means the
+ * same screen: 3 was the role screen, removed when community tags became staff-assigned (#156); 6 came after (#198).
  */
-export const onboardingSteps = [1, 2, 4, 5] as const;
+export const onboardingSteps = [1, 2, 4, 5, 6] as const;
 export type OnboardingStep = (typeof onboardingSteps)[number];
 export type SavedStep = OnboardingStep | 3;
-export const finalStep = 5 satisfies OnboardingStep;
+export const finalStep = 6 satisfies OnboardingStep;
 
 export const onboardingLimits = { fullName: 120, campus: 150, studyProgram: 150 } as const;
 
@@ -81,6 +81,9 @@ export function validateOnboarding(values: OnboardingValues, step: OnboardingSte
   }
   return errors;
 }
+
+/** Where "Ajukan Tech Support" on the last screen leads: the request form, opened ready to fill. */
+export const techSupportRequestPath = "/dashboard/tech-support?ajukan=1";
 
 /**
  * Where onboarding ends: a fixed page per `next` value, never the value itself. `league` returns to Tech League (#179),

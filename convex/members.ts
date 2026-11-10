@@ -16,7 +16,7 @@ export const profile = query({
 export const saveStep = mutation({
   args: {
     // No community tag here: members register as Member, and only staff set Core Team, BoD or a division.
-    step: v.union(v.literal(1), v.literal(2), v.literal(4), v.literal(5)),
+    step: v.union(v.literal(1), v.literal(2), v.literal(4), v.literal(5), v.literal(6)),
     revision: v.number(),
     // The kind is optional so a page from before it was asked keeps saving during a backend-first deploy.
     values: v.object({ fullName: v.string(), campus: v.string(), studyProgram: v.string(), institutionKind: v.optional(institutionKind) }),

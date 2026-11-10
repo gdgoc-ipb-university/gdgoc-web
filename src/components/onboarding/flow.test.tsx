@@ -7,7 +7,7 @@ import { OnboardingFlow } from "./flow";
 import { EducationCombobox } from "./education-combobox";
 import { campusOptions } from "@/lib/education-options";
 import { communityLinks } from "@/lib/community";
-import { onboardingDestination, stepAfter, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
+import { onboardingDestination, stepAfter, techSupportRequestPath, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 
 vi.mock("@/lib/auth-client", () => ({ authClient: { signOut: vi.fn() } }));
@@ -15,7 +15,7 @@ const viewer = { name: "Nama Google", email: "onboarding@example.com" };
 const base: Doc<"memberProfiles"> = { _id: "member-test" as Id<"memberProfiles">, _creationTime: 1, ownerId: "test-user", fullName: "Nama Baru", campus: "IPB University", studyProgram: "Ilmu Komputer", nextStep: 2, revision: 1, updatedAt: 1 };
 function gateway() {
   return vi.fn(async ({ step, revision, values }: { step: OnboardingStep; revision: number; values: OnboardingValues }) => ({
-    ...base, ...values, nextStep: stepAfter(step), revision: revision + 1, ...(step === 5 ? { completedAt: 100, memberType: "member" as const } : {}),
+    ...base, ...values, nextStep: stepAfter(step), revision: revision + 1, ...(step === 6 ? { completedAt: 100, memberType: "member" as const } : {}),
   }));
 }
 beforeEach(() => {
@@ -25,7 +25,7 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.unstubAllGlobals(); });
 
 describe("accessible member onboarding", () => {
-  it.each([1, 2, 4, 5] as const)("has accessible form and navigation semantics on screen %i", async (step) => {
+  it.each([1, 2, 4, 5, 6] as const)("has accessible form and navigation semantics on screen %i", async (step) => {
     const { container } = render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: step }} save={gateway()} onComplete={vi.fn()} />);
     const audit = await axe.run(container, {
       runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] },
@@ -89,12 +89,12 @@ describe("accessible member onboarding", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Kenalan dulu, yuk.");
   });
 
-  it("completes four screens without a role choice and makes both invitations optional", async () => {
+  it("completes five screens without a role choice and makes the invitations and Tech Support optional", async () => {
     const save = gateway(); const complete = vi.fn(); const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={null} save={save} onComplete={complete} />);
-    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["01 Kenalan", "02 Sekolah/kampus", "03 WhatsApp", "04 Jadi member"]);
-    expect(screen.getByText(/LANGKAH 01 DARI 04/)).toBeTruthy();
-    expect(screen.getByText("4 langkah singkat.")).toBeTruthy();
+    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["01 Kenalan", "02 Sekolah/kampus", "03 WhatsApp", "04 Jadi member", "05 Tech Support"]);
+    expect(screen.getByText(/LANGKAH 01 DARI 05/)).toBeTruthy();
+    expect(screen.getByText("5 langkah singkat.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
     await waitFor(() => expect(document.activeElement?.id).toBe("onboard-title"));
     await user.click(screen.getByRole("radio", { name: /Mahasiswa/ }));
@@ -103,7 +103,7 @@ describe("accessible member onboarding", () => {
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
 
     expect(await screen.findByRole("link", { name: /Gabung grup WhatsApp/ })).toHaveProperty("href", communityLinks.whatsapp);
-    expect(screen.getByText(/LANGKAH 03 DARI 04/)).toBeTruthy();
+    expect(screen.getByText(/LANGKAH 03 DARI 05/)).toBeTruthy();
     expect(screen.queryByRole("radio")).toBeNull();
     await user.click(screen.getByRole("button", { name: /Kembali/ }));
     expect((screen.getByRole("combobox", { name: /Kampus/ }) as HTMLInputElement).value).toBe("Kampus Baru");
@@ -112,20 +112,35 @@ describe("accessible member onboarding", () => {
     const link = await screen.findByRole("link", { name: /Gabung di GDG Community/ });
     expect(link.getAttribute("href")).toBe(communityLinks.membership);
     expect(link.getAttribute("target")).toBe("_blank");
-    expect(screen.getByText(/LANGKAH 04 DARI 04/)).toBeTruthy();
+    expect(screen.getByText(/LANGKAH 04 DARI 05/)).toBeTruthy();
+    await user.click(screen.getByRole("button", { name: "Lanjut" }));
+    expect(await screen.findByText(/LANGKAH 05 DARI 05/)).toBeTruthy();
+    expect((screen.getByRole("radio", { name: /Nanti saja/ }) as HTMLInputElement).checked).toBe(true);
     expect(complete).not.toHaveBeenCalled();
     await user.click(screen.getByRole("button", { name: /Selesai, ke Dashboard/ }));
     await waitFor(() => expect(complete).toHaveBeenCalledOnce());
-    expect(save.mock.calls.map(([args]) => args.step)).toEqual([1, 2, 2, 4, 5]);
+    expect(complete).toHaveBeenCalledWith(undefined);
+    expect(save.mock.calls.map(([args]) => args.step)).toEqual([1, 2, 2, 4, 5, 6]);
     expect(Object.keys(save.mock.calls[0][0].values).sort()).toEqual(["campus", "fullName", "studyProgram"]);
     for (const [args] of save.mock.calls.slice(1)) expect(args.values).toMatchObject({ institutionKind: "campus" });
+  });
+
+  it("sends a member who asks for Tech Support straight to the request form", async () => {
+    const complete = vi.fn(); const user = userEvent.setup();
+    render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 6, revision: 5 }} save={gateway()} onComplete={complete} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Punya target\nlomba?");
+    expect(screen.getByText("Review pitch deck")).toBeTruthy();
+    await user.click(screen.getByRole("radio", { name: /Ya, ajukan setelah ini/ }));
+    await user.click(screen.getByRole("button", { name: /Selesai, ajukan Tech Support/ }));
+    await waitFor(() => expect(complete).toHaveBeenCalledWith(techSupportRequestPath));
+    expect(techSupportRequestPath).toBe("/dashboard/tech-support?ajukan=1");
   });
 
   it("moves a profile saved on the removed role screen on to the WhatsApp screen", async () => {
     const save = gateway(); const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 3, revision: 2 }} save={save} onComplete={vi.fn()} />);
     expect(screen.getByRole("link", { name: /Gabung grup WhatsApp/ })).toBeTruthy();
-    expect(screen.getByText(/LANGKAH 03 DARI 04/)).toBeTruthy();
+    expect(screen.getByText(/LANGKAH 03 DARI 05/)).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
     expect(await screen.findByRole("link", { name: /Gabung di GDG Community/ })).toBeTruthy();
     expect(save.mock.calls[0][0]).toMatchObject({ step: 4, revision: 2 });

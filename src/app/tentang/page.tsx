@@ -49,7 +49,7 @@ export default function AboutPage() {
 
       <section aria-labelledby="about-audience">
         <h2 id="about-audience">Untuk siapa</h2>
-        <p>Untuk mahasiswa yang tinggal di Bogor, dari kampus dan jurusan mana pun, tidak hanya IPB. Ada ruang untuk yang suka ngoding, mendesain, maupun mengelola proyek.</p>
+        <p>Untuk mahasiswa dari kampus mana pun, tidak hanya IPB, dan siswa SMK, dari jurusan apa pun. Ada ruang untuk yang suka ngoding, mendesain, maupun mengelola proyek.</p>
       </section>
 
       <section aria-labelledby="about-history">

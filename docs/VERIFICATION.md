@@ -434,6 +434,15 @@ Evidence:
 - Headless Chrome at 1280 × 800 and 390 × 844 on the same throwaway page: the offer screen shows all eight help kinds with *Nanti saja* chosen; choosing *Ya* changes the button to "Selesai, ajukan Tech Support"; the GDG screen now says "Pilih Lanjut ke langkah terakhir." With five steps the desktop label "Sekolah/kam…" and the phone label "Jadi me…" are cut with an ellipsis.
 - Not checked: the redirect into the real dashboard after a Convex sign-in, and the deployed site.
 
+## Twibbon maker — 10 November
+
+`/twibbon` makes the member intake twibbon in the browser (#203): a photo under the 2026/27 frame, the second slide, and a caption to copy. The guidebook's twibbon QR points here.
+
+Evidence:
+- `pnpm check`, `pnpm test` (762 tests) and `pnpm build` pass on Node 24. Tests cover the cover-fit and clamping maths, refusing a GIF, keyboard moves and zoom, the 1080 × 1440 JPEG download, the caption with friends' tags, copying and a refused clipboard, and axe.
+- `next start` and headless Chrome at 1280 × 800 and 390 × 844, with a made-up landscape picture (no person): the photo shows only through the frame's window (alpha 0 there, 1 elsewhere), dragging and zooming move it, "Unduh twibbon" saves `gdgoc-ipb-member-2026-27-twibbon.jpg` at 1080 × 1440 and "Unduh slide 2" the second slide. No horizontal scroll on the phone. The only failed request is `/api/auth/get-session`, as on every page without a local auth backend.
+- Not checked: Instagram's own upload of the two slides, and iOS Safari, which opens a download in a new tab instead of saving it.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

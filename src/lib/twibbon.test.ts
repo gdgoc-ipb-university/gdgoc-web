@@ -15,11 +15,24 @@ describe("placing a photo under the twibbon frame", () => {
   it("never moves a photo far enough to leave a gap, and keeps the zoom between 1 and the maximum", () => {
     expect(clampPlacement(landscape, { zoom: 1, x: 900, y: 50 })).toEqual({ zoom: 1, x: 420, y: 0 });
     expect(clampPlacement(landscape, { zoom: 2, x: -5000, y: 5000 })).toEqual({ zoom: 2, x: -1380, y: 720 });
-    expect(clampPlacement(landscape, { zoom: 0.2, x: 0, y: 0 }).zoom).toBe(1);
+    expect(clampPlacement(landscape, { zoom: 0.1, x: 0, y: 0 }).zoom).toBe(twibbon.minZoom);
     expect(clampPlacement(landscape, { zoom: 99, x: 0, y: 0 }).zoom).toBe(twibbon.maxZoom);
     const moved = photoRect(portrait, { zoom: 1, x: 300, y: -1000 });
     expect(moved.left).toBe(0);
     expect(moved.top + moved.height).toBe(twibbon.height);
+  });
+});
+
+describe("zooming a photo out", () => {
+  it("shrinks it inside the canvas and keeps it there", () => {
+    // Landscape at zoom 0.5: 960 × 720, centred with white around it.
+    expect(photoRect(landscape, { zoom: 0.5, x: 0, y: 0 })).toEqual({ left: 60, top: 360, width: 960, height: 720 });
+    // It can move up to the canvas edges, not past them.
+    expect(clampPlacement(landscape, { zoom: 0.5, x: 500, y: -900 })).toEqual({ zoom: 0.5, x: 60, y: -360 });
+    // Partly zoomed out: the wider side still covers, so it keeps no gap there; the other side stays inside.
+    const portraitHalf = photoRect(portrait, { zoom: 0.9, x: 999, y: 999 });
+    expect(portraitHalf.left).toBeCloseTo(108);
+    expect(portraitHalf.top + portraitHalf.height).toBeCloseTo(twibbon.height + (1728 - 1440));
   });
 });
 

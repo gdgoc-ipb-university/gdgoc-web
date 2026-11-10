@@ -27,7 +27,7 @@ describe("twibbon maker", () => {
   it("asks for a photo first, offers the second slide, and is accessible", async () => {
     const { container } = render(<TwibbonMaker />);
     expect((screen.getByRole("button", { name: /Unduh twibbon/ }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("slider", { name: "Perbesar" }) as HTMLInputElement).disabled).toBe(true);
+    expect((screen.getByRole("slider", { name: "Ukuran foto" }) as HTMLInputElement).disabled).toBe(true);
     const slide = screen.getByRole("link", { name: /Unduh slide 2/ });
     expect(slide.getAttribute("href")).toBe(twibbon.slide);
     expect(slide.getAttribute("download")).toBe(twibbon.slideFileName);
@@ -58,7 +58,13 @@ describe("twibbon maker", () => {
     // Right moves the photo; down does nothing, since at zoom 1 it has no height to spare.
     expect(lastPhotoDraw()?.slice(1)).toEqual([-400, 0, 1920, 1440]);
     await user.keyboard("+");
-    expect(screen.getByRole("slider", { name: "Perbesar" }).getAttribute("aria-valuetext")).toBe("110%");
+    expect(screen.getByRole("slider", { name: "Ukuran foto" }).getAttribute("aria-valuetext")).toBe("110%");
+    // Zoomed out below filling the frame, the photo sits on white.
+    await user.keyboard("------");
+    expect(screen.getByRole("slider", { name: "Ukuran foto" }).getAttribute("aria-valuetext")).toBe("50%");
+    const [width, height] = lastPhotoDraw()!.slice(3) as number[];
+    expect(width).toBeCloseTo(960); expect(height).toBeCloseTo(720);
+    expect(context.fillStyle).toBe("#ffffff");
 
     await user.click(screen.getByRole("button", { name: /Unduh twibbon/ }));
     expect(saved).toHaveBeenCalledWith({ type: "image/jpeg", quality: .92 });

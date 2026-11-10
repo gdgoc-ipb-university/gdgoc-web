@@ -21,11 +21,11 @@ async function openPhoto(file: File): Promise<Photo | string> {
   }
 }
 
-/** The photo under the frame at full size, on the page's paper colour where no photo is chosen yet. */
+/** The photo under the frame at full size, on white wherever the photo does not reach. */
 function compose(canvas: HTMLCanvasElement, frame: HTMLImageElement | null, photo: Photo | null, place: Placement) {
   const g = canvas.getContext("2d");
   if (!g) return;
-  g.fillStyle = "#fafaf7";
+  g.fillStyle = twibbon.background;
   g.fillRect(0, 0, twibbon.width, twibbon.height);
   if (photo) {
     const rect = photoRect(photo, place);
@@ -131,11 +131,11 @@ export function TwibbonMaker() {
         </button>}
       </div>
       <p id="twibbon-hint" className="league-note">{photo
-        ? "Geser foto agar wajahmu pas di dalam bingkai. Di keyboard, pakai tombol panah untuk menggeser, serta + dan - untuk memperbesar."
+        ? "Geser foto agar wajahmu pas di dalam bingkai, dan perkecil kalau ingin seluruh foto terlihat. Di keyboard, pakai tombol panah untuk menggeser, serta + dan - untuk memperbesar atau memperkecil."
         : "Pilih atau seret foto ke sini. Foto diproses di perangkatmu dan tidak diunggah."}</p>
       <label className="twibbon-zoom">
-        <span>Perbesar</span>
-        <input type="range" min={1} max={twibbon.maxZoom} step={.01} value={place.zoom} disabled={!photo}
+        <span>Ukuran foto</span>
+        <input type="range" min={twibbon.minZoom} max={twibbon.maxZoom} step={.01} value={place.zoom} disabled={!photo}
           aria-valuetext={`${Math.round(place.zoom * 100)}%`} onChange={(event) => update({ ...place, zoom: Number(event.target.value) })} />
       </label>
     </div>

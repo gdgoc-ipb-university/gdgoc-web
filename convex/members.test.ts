@@ -8,7 +8,7 @@ import schema from "./schema";
 
 const modules = import.meta.glob("./**/*.ts");
 const values = { fullName: "Teman Pengujian", campus: "IPB University", studyProgram: "Ilmu Komputer" };
-const steps = [1, 2, 4, 5] as const;
+const steps = [1, 2, 4, 5, 6] as const;
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 async function member(t: ReturnType<typeof setup>, email = "onboarding@example.com", verified = true, expiresAt = Date.now() + 3600000) {
   const user = await t.mutation(components.betterAuth.adapter.create, {
@@ -75,7 +75,7 @@ describe("first-time member onboarding", () => {
     expect(completed?.completedAt).toEqual(expect.any(Number));
     expect(completed).not.toHaveProperty("whatsappJoined");
     expect(completed).not.toHaveProperty("gdgJoined");
-    const retried = await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
+    const retried = await owner.mutation(api.members.saveStep, { step: 6, revision: 4, values });
     expect(retried.completedAt).toBe(completed?.completedAt);
     const newDraft = await owner.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
     expect((await owner.query(api.appreciations.get, { id: newDraft })).values).toMatchObject({ fullName: values.fullName, campus: values.campus, studyProgram: values.studyProgram, memberType: "Member" });
@@ -85,7 +85,7 @@ describe("first-time member onboarding", () => {
     const owner = await member(setup());
     await onboard(owner);
     const profile = await owner.query(api.members.profile);
-    expect(profile).toMatchObject({ memberType: "member", nextStep: 5 });
+    expect(profile).toMatchObject({ memberType: "member", nextStep: 6 });
     expect(profile).not.toHaveProperty("division");
     expect(profile).not.toHaveProperty("tagConfirmedAt");
   });
@@ -98,7 +98,34 @@ describe("first-time member onboarding", () => {
     await t.run((ctx) => ctx.db.patch(profile._id, { nextStep: 3 }));
     await expect(owner.mutation(api.members.saveStep, { step: 5, revision: 2, values })).rejects.toThrow("langkah sebelumnya");
     expect(await owner.mutation(api.members.saveStep, { step: 4, revision: 2, values })).toMatchObject({ nextStep: 5 });
-    expect(await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values })).toMatchObject({ memberType: "member", completedAt: expect.any(Number) });
+    const atOffer = await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
+    expect(atOffer).toMatchObject({ nextStep: 6 });
+    expect(atOffer.completedAt).toBeUndefined();
+    expect(await owner.mutation(api.members.saveStep, { step: 6, revision: 4, values })).toMatchObject({ memberType: "member", completedAt: expect.any(Number) });
+  });
+
+  it("stores whether the member studies at a campus or a school, and accepts a page that does not say", async () => {
+    const t = setup(); const student = await member(t); const older = await member(t, "older-page@example.com");
+    await student.mutation(api.members.saveStep, { step: 1, revision: 0, values });
+    const school = { ...values, campus: "SMKN 1 BOGOR", studyProgram: "Rekayasa Perangkat Lunak", institutionKind: "school" as const };
+    expect(await student.mutation(api.members.saveStep, { step: 2, revision: 1, values: school })).toMatchObject({ institutionKind: "school", campus: "SMKN 1 BOGOR", nextStep: 4 });
+    // Later screens send no kind and keep the saved one; a hand-made kind outside the two is rejected.
+    for (const [index, step] of ([4, 5, 6] as const).entries()) await student.mutation(api.members.saveStep, { step, revision: index + 2, values });
+    expect(await student.query(api.members.profile)).toMatchObject({ institutionKind: "school", completedAt: expect.any(Number) });
+    await expect(older.mutation(api.members.saveStep, { step: 1, revision: 0, values: { ...values, institutionKind: "kantor" } } as never)).rejects.toThrow();
+    // A page from before the question (a backend-first deploy) still saves the education screen, with no kind.
+    await older.mutation(api.members.saveStep, { step: 1, revision: 0, values });
+    expect(await older.mutation(api.members.saveStep, { step: 2, revision: 1, values })).not.toHaveProperty("institutionKind");
+  });
+
+  it("offers Tech Support as the last screen: the GDG invitation no longer finishes onboarding", async () => {
+    const owner = await member(setup());
+    for (const [index, step] of ([1, 2, 4, 5] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
+    expect(await owner.query(api.members.profile)).toMatchObject({ nextStep: 6 });
+    expect((await owner.query(api.members.profile))?.completedAt).toBeUndefined();
+    await expect(owner.query(api.techSupport.mine, {})).rejects.toThrow("Selesaikan perkenalan");
+    await owner.mutation(api.members.saveStep, { step: 6, revision: 4, values });
+    expect(await owner.query(api.techSupport.mine, {})).toEqual([]);
   });
 
   it("rejects a community tag sent with any onboarding screen", async () => {
@@ -120,7 +147,7 @@ describe("first-time member onboarding", () => {
     for (const [index, step] of ([1, 2, 4] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index, values });
     const profile = (await owner.query(api.members.profile))!;
     await t.run((ctx) => ctx.db.patch(profile._id, { memberType: "core", division: "Media & Creative", tagConfirmedAt: Date.now(), tagConfirmedBy: "staff" }));
-    await owner.mutation(api.members.saveStep, { step: 5, revision: 3, values });
+    for (const [index, step] of ([5, 6] as const).entries()) await owner.mutation(api.members.saveStep, { step, revision: index + 3, values });
     expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "core", division: "Media & Creative", tagConfirmedAt: expect.any(Number), completedAt: expect.any(Number) });
   });
 

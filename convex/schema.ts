@@ -30,6 +30,7 @@ export const accessChange = v.union(
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
+export const institutionKind = v.union(v.literal("campus"), v.literal("school"));
 export const techSupportStatus = v.union(v.literal("new"), v.literal("matched"), v.literal("inProgress"), v.literal("closed"));
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
 export const cohortRole = v.object({ key: v.string(), name: v.string() });
@@ -39,7 +40,9 @@ export default defineSchema({
   memberProfiles: defineTable({
     ownerId: v.string(), fullName: v.string(), campus: v.string(), studyProgram: v.string(),
     // Onboarding screen ids (src/lib/onboarding.ts); 3 was the role screen and resumes at 4.
-    nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4), v.literal(5)),
+    nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4), v.literal(5), v.literal(6)),
+    // Campus or school (SMK), chosen on the education screen; unset on profiles saved before it was asked.
+    institutionKind: v.optional(institutionKind),
     revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
     // Community tag: Member from onboarding; Core Team, BoD and divisions only from staff (#156). Tags members chose
     // themselves before that stay until staff change or confirm them; profiles from before this field register as Member once.

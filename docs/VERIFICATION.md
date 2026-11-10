@@ -416,6 +416,33 @@ Evidence:
 - Google's [Search Central documentation updates](https://developers.google.com/search/updates): breadcrumbs only on desktop results (22 January 2025); online event properties removed, and events must be bookable by the general public at a physical location (5 June 2025); Course info documentation removed because it is no longer shown (9 September 2025); FAQ rich results no longer shown from 7 May 2026.
 - Not checked: Google's Rich Results Test, which needs a browser. By the updates above it can only report the breadcrumbs and the landing's site data.
 
+## Onboarding for SMK students and campuses outside Bogor — 10 November
+
+Member intake 2026/27 is open to SMK students and to students of any campus (#197). The education screen asks *Mahasiswa* or *Siswa SMK* first, then searches 4,174 SMKs and MAKs in West Java, DKI Jakarta and Banten, or 5,940 campuses nationwide, from the ministry's reference pages fetched on 10 November.
+
+Evidence:
+- `pnpm check`, `pnpm test` (86 files, 754 tests) and `pnpm build` pass on Node 24, and each commit passes lint, typecheck and tests on its own.
+- Headless Chrome at 1280 × 800 and 390 × 844 on a throwaway page that renders the onboarding screens with made-up data and an in-memory save (not committed): "smkn 1 bogor" lists SMKN 1 BOGOR with "Kota Bogor · Tanah Sareal"; "tkj" under Siswa SMK finds Teknik Komputer dan Jaringan; "gadjah" under Mahasiswa finds Universitas Gadjah Mada (Kab. Sleman). On phones the current step's label is cut with an ellipsis ("Sekolah/kam…") so it does not run into the next step's number.
+- Not checked: a real sign-in against Convex, the deployed site, and how quickly the lists load on a slow phone connection (42 KB and 65 KB gzipped).
+
+## Tech Support on the last onboarding screen — 10 November
+
+New members see Tech Support before they finish onboarding (#198): a fifth screen with the help kinds and the 3-working-day reply, and *Ya, ajukan setelah ini* or *Nanti saja*. *Ya* finishes onboarding and opens `/dashboard/tech-support?ajukan=1` with the request form focused.
+
+Evidence:
+- `pnpm check`, `pnpm test` (86 files, 758 tests) and `pnpm build` pass on Node 24, and each commit passes lint, typecheck and tests on its own. Tests cover the new screen's semantics with axe, finishing with and without *Ya*, the server finishing only on screen 6, `techSupport.mine` refusing a member until then, and the form focusing "Nama kompetisi" only with `?ajukan=1`.
+- Headless Chrome at 1280 × 800 and 390 × 844 on the same throwaway page: the offer screen shows all eight help kinds with *Nanti saja* chosen; choosing *Ya* changes the button to "Selesai, ajukan Tech Support"; the GDG screen now says "Pilih Lanjut ke langkah terakhir." With five steps the desktop label "Sekolah/kam…" and the phone label "Jadi me…" are cut with an ellipsis.
+- Not checked: the redirect into the real dashboard after a Convex sign-in, and the deployed site.
+
+## Twibbon maker — 10 November
+
+`/twibbon` makes the member intake twibbon in the browser (#203): a photo under the 2026/27 frame, the second slide, and a caption to copy. The guidebook's twibbon QR points here.
+
+Evidence:
+- `pnpm check`, `pnpm test` (88 files, 766 tests) and `pnpm build` pass on Node 24. Tests cover the cover-fit and clamping maths, refusing a GIF, keyboard moves and zoom, the 1080 × 1440 JPEG download, the caption with friends' tags, copying and a refused clipboard, and axe.
+- `next start` and headless Chrome at 1280 × 800 and 390 × 844, with a made-up landscape picture (no person): the photo shows only through the frame's window (alpha 0 there, 1 elsewhere), dragging and zooming move it, "Unduh twibbon" saves `gdgoc-ipb-member-2026-27-twibbon.jpg` at 1080 × 1440 and "Unduh slide 2" the second slide. No horizontal scroll on the phone. The only failed request is `/api/auth/get-session`, as on every page without a local auth backend.
+- Not checked: Instagram's own upload of the two slides, and iOS Safari, which opens a download in a new tab instead of saving it.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

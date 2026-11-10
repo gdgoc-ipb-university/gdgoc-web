@@ -34,6 +34,8 @@ const nextConfig: NextConfig = {
     { source: "/apresiasi/admin", destination: "/dashboard/apresiasi/tinjau", permanent: true },
     // A member card's QR opens /k/<token>; the bare path has nothing to show.
     { source: "/k", destination: "/", permanent: false },
+    // Printed as a QR on the member intake posts (#201). Temporary, so a new edition can replace the file behind it.
+    { source: "/gb-member", destination: "/guidebook/member-2026-27.pdf", permanent: false },
   ],
 };
 

@@ -10,9 +10,9 @@ import type { Doc } from "../../../convex/_generated/dataModel";
 import { authClient } from "@/lib/auth-client";
 import { forgetNavViewer } from "@/lib/nav-viewer";
 import { communityLinks } from "@/lib/community";
-import { campusOptions, studyProgramOptions } from "@/lib/education-options";
+import { campusOptions, loadCampusOptions, loadSchoolOptions, schoolProgramOptions, studyProgramOptions, type EducationOption } from "@/lib/education-options";
 import { readableError } from "@/lib/draft-session";
-import { finalStep, normalizeOnboarding, onboardingDestination, onboardingSteps, resumeStep, stepAfter, stepBefore, validateOnboarding, type OnboardingErrors, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
+import { educationLabels, finalStep, institutionKindLabels, institutionKinds, normalizeOnboarding, onboardingDestination, onboardingSteps, resumeStep, stepAfter, stepBefore, validateOnboarding, type InstitutionKind, type OnboardingErrors, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
 import { Arrow } from "../icons";
 import { BrandLogo } from "../brand-logo";
 import { EducationCombobox } from "./education-combobox";
@@ -20,14 +20,12 @@ import { OnboardingArtwork } from "./artwork";
 import { PixelIcon } from "../pixel-icons";
 
 type SaveStep = (args: { step: OnboardingStep; revision: number; values: OnboardingValues }) => Promise<Doc<"memberProfiles">>;
-// Per screen, in the order of `onboardingSteps`.
-const stepLabels = ["Kenalan", "Kampus", "WhatsApp", "Jadi member"];
-const participantStepLabels = ["Kenalan", "Sekolah/kampus", "WhatsApp", "Jadi member"];
-const participantHeading = "Dari sekolah atau\nkampus mana?";
-const headings = ["Kenalan dulu, yuk.", "Dari kampus mana?", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB."];
+// Per screen, in the order of `onboardingSteps`. Membership is open to SMK students too, so screen 2 asks for either.
+const stepLabels = ["Kenalan", "Sekolah/kampus", "WhatsApp", "Jadi member"];
+const headings = ["Kenalan dulu, yuk.", "Dari sekolah atau\nkampus mana?", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB."];
 const descriptions = [
   "Selamat datang di GDGoC IPB. Mulai dari nama yang ingin kamu pakai di komunitas.",
-  "Apa pun jurusanmu, kamu bisa belajar teknologi di sini. Lengkapi dua hal ini untuk profilmu.",
+  "Mahasiswa dari kampus mana pun dan siswa SMK bisa bergabung. Apa pun jurusanmu, kamu bisa belajar teknologi di sini.",
   "Gabung grup WhatsApp untuk kabar kegiatan, teman diskusi, dan ajakan belajar bareng.",
   "Gabung sebagai member di halaman resmi GDGoC IPB. Temukan kegiatan dan daftar acara lewat Google Developer Groups.",
 ];
@@ -36,7 +34,7 @@ export function OnboardingPage() {
   const { isLoading, isAuthenticated } = useConvexAuth();
   const viewer = useQuery(api.auth.viewer, isAuthenticated ? {} : "skip");
   const profile = useQuery(api.members.profile, isAuthenticated ? {} : "skip");
-  // An accepted program participant (e.g. Catalyst) may come from a school rather than a campus, so step 2 asks for either.
+  // An accepted program participant (e.g. Catalyst) is greeted with their program and role on the first screen.
   const invitation = useQuery(api.cohorts.myInvitation, isAuthenticated ? {} : "skip");
   const save = useMutation(api.members.saveStep);
   const router = useRouter();
@@ -55,12 +53,14 @@ export function OnboardingPage() {
 export function OnboardingFlow({ viewer, profile, save, onComplete, invitation = null, finishLabel = "Selesai, ke Dashboard" }: {
   /** The last step's button, which names where onboarding returns to. */
   finishLabel?: string;
-  /** Set for an accepted program participant (cohorts.myInvitation): their program and role, and school-or-campus wording. */
+  /** Set for an accepted program participant (cohorts.myInvitation): their program and role, shown on the first screen. */
   invitation?: { cohort: string; role: string } | null;
   viewer: { name: string; email: string }; profile: Doc<"memberProfiles"> | null; save: SaveStep; onComplete: () => void;
 }) {
   const [step, setStep] = useState<OnboardingStep>(resumeStep(profile?.nextStep));
-  const [values, setValues] = useState<OnboardingValues>({ fullName: profile?.fullName || viewer.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "" });
+  // A profile saved before the kind was asked had a campus; a new one chooses.
+  const [values, setValues] = useState<OnboardingValues>({ fullName: profile?.fullName || viewer.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "", institutionKind: profile?.institutionKind ?? (profile?.campus ? "campus" : undefined) });
+  const [lists, setLists] = useState<Record<InstitutionKind, EducationOption[]>>({ campus: campusOptions, school: [] });
   const [errors, setErrors] = useState<OnboardingErrors>({});
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -71,8 +71,19 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
   const fullName = useRef<HTMLInputElement>(null);
   const campus = useRef<HTMLInputElement>(null);
   const studyProgram = useRef<HTMLInputElement>(null);
+  const kindChoice = useRef<HTMLInputElement>(null);
   const previousStep = useRef(step);
   const position = onboardingSteps.indexOf(step);
+  const kind = values.institutionKind;
+  const labels = educationLabels(kind);
+
+  // The national campus list and the SMK list are long, so they load only when the education screen needs them.
+  useEffect(() => {
+    if (step !== 2 || !kind || (kind === "campus" ? lists.campus.length > campusOptions.length : lists.school.length)) return;
+    let live = true;
+    (kind === "campus" ? loadCampusOptions() : loadSchoolOptions()).then((options) => { if (live) setLists((current) => ({ ...current, [kind]: options })); }).catch(() => {});
+    return () => { live = false; };
+  }, [step, kind, lists]);
 
   useEffect(() => {
     if (previousStep.current !== step) {
@@ -88,21 +99,29 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
     setError("");
   }
 
+  /** Switching between campus and school clears the two answers, which belong to the other list. */
+  function chooseKind(next: InstitutionKind) {
+    if (next === kind) return;
+    setValues((current) => ({ ...current, institutionKind: next, campus: "", studyProgram: "" }));
+    setErrors({}); setError("");
+  }
+
   async function next(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (inFlight.current) return;
-    const nextErrors = validateOnboarding(values, step);
+    const nextErrors = validateOnboarding(values, step, { requireKind: true });
     setErrors(nextErrors); setError("");
     const first = Object.keys(nextErrors)[0] as keyof OnboardingValues | undefined;
     if (first) {
-      ({ fullName, campus, studyProgram })[first].current?.focus();
+      ({ fullName, campus, studyProgram, institutionKind: kindChoice })[first].current?.focus();
       return;
     }
     inFlight.current = true; setBusy(true);
     try {
-      const saved = await save({ step, revision: revision.current, values });
+      const clean = normalizeOnboarding(values);
+      const saved = await save({ step, revision: revision.current, values: clean });
       revision.current = saved.revision;
-      setValues(normalizeOnboarding(values));
+      setValues(clean);
       if (saved.completedAt) onComplete();
       else setStep(stepAfter(step));
     } catch (cause) { setError(readableError(cause)); }
@@ -123,10 +142,10 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
     <main id="main" className="onboard-layout">
       <OnboardingArtwork step={step} />
       <div className="onboard-content">
-        <nav aria-label="Langkah perkenalan"><ol className="onboard-progress">{(invitation ? participantStepLabels : stepLabels).map((label, index) => <li key={label} aria-current={position === index ? "step" : undefined} data-done={position > index}><span className="onboard-progress-line"/><span className="onboard-progress-label"><b>{position > index ? <PixelIcon name="check" size={12} /> : `0${index + 1}`}</b> <span className="onboard-progress-name">{label}</span></span></li>)}</ol></nav>
+        <nav aria-label="Langkah perkenalan"><ol className="onboard-progress">{stepLabels.map((label, index) => <li key={label} aria-current={position === index ? "step" : undefined} data-done={position > index}><span className="onboard-progress-line"/><span className="onboard-progress-label"><b>{position > index ? <PixelIcon name="check" size={12} /> : `0${index + 1}`}</b> <span className="onboard-progress-name">{label}</span></span></li>)}</ol></nav>
         <section className="onboard-step" aria-labelledby="onboard-title" aria-busy={busy}>
           <p className="onboard-step-counter">LANGKAH 0{position + 1} DARI 0{onboardingSteps.length} <span>{step > 2 ? "OPSIONAL" : "TENTANG KAMU"}</span></p>
-          <h1 id="onboard-title" ref={title} tabIndex={-1}>{invitation && step === 2 ? participantHeading : headings[position]}</h1>
+          <h1 id="onboard-title" ref={title} tabIndex={-1}>{headings[position]}</h1>
           <p className="onboard-description">{descriptions[position]}{invitation && step === 1 && <> Kamu terdaftar sebagai peserta {invitation.cohort}, peran {invitation.role}.</>}</p>
           <form onSubmit={next} onKeyDown={(event) => {
             // An unhandled mobile Next key moves fields. Pointer submission must
@@ -137,7 +156,20 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
             }
           }} noValidate>
             {step === 1 && <div className="onboard-field"><label htmlFor="fullName">Nama kamu <span aria-hidden="true">*</span></label><input id="fullName" ref={fullName} name="name" autoComplete="name" inputMode="text" enterKeyHint="next" autoCapitalize="words" maxLength={120} required disabled={busy} value={values.fullName} onChange={(event) => update("fullName", event.target.value)} aria-invalid={Boolean(errors.fullName)} aria-describedby={errors.fullName ? "name-hint name-error" : "name-hint"} placeholder="Nama yang ingin kamu pakai"/><p id="name-hint" className="onboard-hint">Kami isi dari akun Google. Kamu boleh menggantinya.</p>{errors.fullName && <p className="onboard-field-error" id="name-error">{errors.fullName}</p>}</div>}
-            {step === 2 && <div className="onboard-education"><EducationCombobox id="campus" label={invitation ? "Sekolah atau kampus" : "Kampus"} options={campusOptions} inputRef={campus} value={values.campus} onChange={(value) => update("campus", value)} error={errors.campus} disabled={busy} enterKeyHint="next"/><EducationCombobox id="studyProgram" label={invitation ? "Jurusan atau program studi" : "Program studi"} options={studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="done"/></div>}
+            {step === 2 && <div className="onboard-education">
+              <fieldset className="onboard-kind" aria-describedby={errors.institutionKind ? "kind-error" : undefined} aria-invalid={Boolean(errors.institutionKind)}>
+                <legend>Saat ini kamu <span aria-hidden="true">*</span></legend>
+                <div className="onboard-kind-options">{institutionKinds.map((option, index) => <label key={option} className="onboard-kind-option" data-checked={kind === option}>
+                  <input ref={index === 0 ? kindChoice : undefined} type="radio" name="institutionKind" value={option} checked={kind === option} disabled={busy} onChange={() => chooseKind(option)} />
+                  <span>{institutionKindLabels[option]}</span><small>{option === "campus" ? "Kampus mana pun, di Bogor atau luar Bogor" : "SMK atau MAK"}</small>
+                </label>)}</div>
+                {errors.institutionKind && <p className="onboard-field-error" id="kind-error">{errors.institutionKind}</p>}
+              </fieldset>
+              {kind && <>
+                <EducationCombobox key={`institution-${kind}`} id="campus" label={labels.institution} options={lists[kind].length ? lists[kind] : kind === "campus" ? campusOptions : []} inputRef={campus} value={values.campus} onChange={(value) => update("campus", value)} error={errors.campus} disabled={busy} enterKeyHint="next" hint={kind === "school" ? "Cari nama atau kotanya, misalnya “SMKN 1 Bogor”. Belum ada? Ketik nama lengkapnya." : undefined}/>
+                <EducationCombobox key={`program-${kind}`} id="studyProgram" label={labels.program} options={kind === "school" ? schoolProgramOptions : studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="done"/>
+              </>}
+            </div>}
             {step === 4 && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>}
             {step === finalStep && <div className="onboard-invitation"><div className="onboard-invite-icon gdg-icon" aria-hidden="true"><PixelIcon name="code" size={24} /></div><div><strong>GDG on Campus IPB University</strong><p>Buka halaman chapter, lalu pilih <b>Join us</b> untuk menjadi member.</p></div><a className="button onboard-external" href={communityLinks.membership} target="_blank" rel="noopener noreferrer">Gabung di GDG Community <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Sudah jadi member? Kamu bisa langsung menyelesaikan perkenalan.</p></div>}
             {error && <p className="onboard-notice" role="alert">{error} Isianmu tetap ada di halaman ini.</p>}

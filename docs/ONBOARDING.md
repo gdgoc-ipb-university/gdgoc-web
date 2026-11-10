@@ -5,7 +5,7 @@ The first authenticated visit to any `/dashboard` page redirects accounts withou
 ## Four screens
 
 1. **Kenalan:** a name prefilled from Google, editable before saving.
-2. **Kampus:** searchable campus and study-program comboboxes. Both accept names outside the suggestions.
+2. **Sekolah/kampus:** membership is open to university students anywhere and to SMK students (oprec member 2026/27). The member first says whether they are a **Mahasiswa** or a **Siswa SMK** (`memberProfiles.institutionKind`: `campus` or `school`), then picks from a searchable list: every campus in the national registry with the Bogor campuses first, or every SMK and MAK in West Java, Jakarta and Banten with Bogor first. The second field lists study programs or SMK majors (found by their old short names too: TKJ, RPL, Multimedia, OTKP). Both fields accept names outside the suggestions. Switching between Mahasiswa and Siswa SMK clears both answers.
 3. **WhatsApp:** an optional invitation to the group supplied by the community owner.
 4. **Jadi member:** an optional invitation to the official GDG chapter, followed by completion and a return to the dashboard.
 
@@ -21,7 +21,7 @@ External invitations open a new tab. Opening an invitation is not treated as pro
 
 ## Persistence and access
 
-`memberProfiles` contains the authenticated owner ID, chosen name, campus, study program, community tag and division, next saved screen, revision, update time, and optional completion time. `members.profile` reads only the current verified account's profile; `members.saveStep` derives ownership from the active Better Auth session. No client-supplied owner ID is accepted, and `saveStep` takes no community tag: a call that sends `memberType` or `division` is rejected.
+`memberProfiles` contains the authenticated owner ID, chosen name, school or campus (`campus`), study program or major (`studyProgram`), whether that is a campus or a school (`institutionKind`, unset on profiles saved before it was asked), community tag and division, next saved screen, revision, update time, and optional completion time. `members.profile` reads only the current verified account's profile; `members.saveStep` derives ownership from the active Better Auth session. No client-supplied owner ID is accepted, and `saveStep` takes no community tag: a call that sends `memberType` or `division` is rejected.
 
 Each **Lanjut** saves that screen before advancing. Reload resumes the next saved screen; unsaved keystrokes are not described as saved. Back preserves local values, and a failed save keeps edits on screen. Required fields and lengths are validated on the server, forward skipping is rejected, and revision checks prevent an old tab from overwriting newer data. Identical request retries are safe. Completion does not repeat on later visits. The only return destinations are `/dashboard` and `/dashboard/apresiasi/tinjau`.
 
@@ -42,7 +42,12 @@ Tests include four axe-core checks of the screen semantics, keyboard interaction
 
 ## Suggestion sources
 
-Reviewed 26 September 2026. The campus and study-program options are a curated starting list, not a complete national registry, an official campus/program mapping, or proof of student enrollment. Both controls explicitly permit other values.
+The school and campus lists are suggestions, not proof of enrollment, and both fields still accept any name. The list shows the 50 best matches for what was typed (a name that starts with it, then a word, then anywhere, including the city), so lists of thousands stay quick on a phone. Same-named schools carry their regency in the name, and every option shows its regency and district as a second line.
+
+- **SMK and MAK** (`src/lib/institutions/schools.json`) and **campuses** (`campuses.json`: universities, institutes, polytechnics, colleges and academies) come from the ministry's public reference pages, [referensi.data.kemendikdasmen.go.id](https://referensi.data.kemendikdasmen.go.id/), district by district (`/satpen/dikmen/…/3` and `/satpen/dikti/…/3`, formal track, all statuses). Fetched 10 November 2026. Schools cover West Java, DKI Jakarta and Banten, Bogor and its neighbours first and state schools before private ones; campuses cover every province, Bogor first. Both lists load only when the screen needs them.
+- `node scripts/institutions.mjs` rebuilds both files. It caches every page it reads (pass `--cache <dir>` to reuse a cache), asks four pages at a time with a short pause, and skips districts whose counts show no school.
+- The four Bogor campuses keep their familiar names (IPB University, not Institut Pertanian Bogor) and come first; the national list skips their registry names.
+- Study programs were reviewed 26 September 2026 from the campus pages below. SMK majors follow the konsentrasi keahlian names, with older names as search terms; they are a starting list for the majors most likely to join, not the full spectrum.
 
 - [IPB undergraduate programs](https://www.ipb.ac.id/page/program-studi-sarjana/)
 - [IPB admission and vocational program information](https://admisi.ipb.ac.id/biaya-pendidikan-ipb/)

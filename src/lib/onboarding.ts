@@ -10,15 +10,24 @@ export function memberTagLabel(type: MemberType, division?: string | null) {
   return type !== "member" && division ? `${memberTypeLabels[type]} · ${division}` : memberTypeLabels[type];
 }
 
-export type OnboardingValues = { fullName: string; campus: string; studyProgram: string };
+/** Where the member studies: a campus (university, institute, polytechnic…) or a school (SMK). Both may join since the 2026/27 member intake. */
+export type InstitutionKind = "campus" | "school";
+export const institutionKinds: InstitutionKind[] = ["campus", "school"];
+export const institutionKindLabels: Record<InstitutionKind, string> = { campus: "Mahasiswa", school: "Siswa SMK" };
+/** Field labels per kind; no kind yet reads as either. */
+export function educationLabels(kind: InstitutionKind | undefined) {
+  return kind === "school" ? { institution: "Sekolah", program: "Jurusan" } : kind === "campus" ? { institution: "Kampus", program: "Program studi" } : { institution: "Sekolah atau kampus", program: "Jurusan atau program studi" };
+}
+
+export type OnboardingValues = { fullName: string; campus: string; studyProgram: string; institutionKind?: InstitutionKind };
 export type OnboardingErrors = Partial<Record<keyof OnboardingValues, string>>;
 export type RoleValues = { memberType: MemberType | ""; division: string };
 export type RoleErrors = Partial<Record<keyof RoleValues, string>>;
 
 /**
- * Onboarding screens by id: name, campus, the WhatsApp invitation, the GDG Community invitation. Ids keep their
- * numbers from the five-screen flow so saved progress (`memberProfiles.nextStep`) means the same screen: 3 was the
- * role screen, removed when community tags became staff-assigned (#156).
+ * Onboarding screens by id: name, school or campus, the WhatsApp invitation, the GDG Community invitation. Ids keep
+ * their numbers from the five-screen flow so saved progress (`memberProfiles.nextStep`) means the same screen: 3 was
+ * the role screen, removed when community tags became staff-assigned (#156).
  */
 export const onboardingSteps = [1, 2, 4, 5] as const;
 export type OnboardingStep = (typeof onboardingSteps)[number];
@@ -43,6 +52,7 @@ export function normalizeOnboarding(values: OnboardingValues): OnboardingValues 
     fullName: values.fullName.trim().replace(/\s+/g, " "),
     campus: values.campus.trim().replace(/\s+/g, " "),
     studyProgram: values.studyProgram.trim().replace(/\s+/g, " "),
+    ...(values.institutionKind ? { institutionKind: values.institutionKind } : {}),
   };
 }
 
@@ -54,11 +64,17 @@ export function validateStaffRole(values: RoleValues): RoleErrors {
   return {};
 }
 
-export function validateOnboarding(values: OnboardingValues, step: OnboardingStep): OnboardingErrors {
+/**
+ * Field errors for a screen. The server accepts a profile without a kind (saved before it was asked, or from an older
+ * page during a deploy); the page itself asks for one with `requireKind`.
+ */
+export function validateOnboarding(values: OnboardingValues, step: OnboardingStep, { requireKind = false } = {}): OnboardingErrors {
   const clean = normalizeOnboarding(values);
   const errors: OnboardingErrors = {};
   const fields: (keyof typeof onboardingLimits)[] = step === 1 ? ["fullName"] : step === 2 ? ["campus", "studyProgram"] : ["fullName", "campus", "studyProgram"];
-  const required = { fullName: "Isi nama yang ingin kamu pakai.", campus: "Isi atau pilih nama kampusmu.", studyProgram: "Isi atau pilih program studimu." };
+  const school = clean.institutionKind === "school";
+  const required = { fullName: "Isi nama yang ingin kamu pakai.", campus: school ? "Isi atau pilih nama sekolahmu." : "Isi atau pilih nama kampusmu.", studyProgram: school ? "Isi atau pilih jurusanmu." : "Isi atau pilih program studimu." };
+  if (requireKind && step === 2 && !clean.institutionKind) errors.institutionKind = "Pilih kamu mahasiswa atau siswa SMK.";
   for (const field of fields) {
     if (!clean[field]) errors[field] = required[field];
     else if (clean[field].length > onboardingLimits[field]) errors[field] = `Maksimal ${onboardingLimits[field]} karakter.`;

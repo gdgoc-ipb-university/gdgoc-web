@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { catalyst, catalystCourseJsonLd, catalystEventJsonLd, oprecState } from "./catalyst";
+import { catalyst, catalystCourseJsonLd, catalystDescription, catalystEventJsonLd, oprecState } from "./catalyst";
 import { indexablePaths, siteUrl } from "./site";
+
+/** An ISO date, or a day and month as `dayLabel` and `rangeLabel` write them ("2 November", "2–22 November"). */
+const anyDate = /\d{4}-\d{2}-\d{2}|\d{1,2}(–\d{1,2})? (Januari|Februari|Maret|April|Mei|Juni|Juli|Agustus|September|Oktober|November|Desember)/;
 
 describe("Catalyst schedule", () => {
   it("opens oprec at midnight WIB on 2 November, closes it after 22 November, and announces on 29 November", () => {
@@ -26,18 +29,41 @@ describe("Catalyst schedule", () => {
   });
 });
 
+describe("Catalyst schedule on hold (#210)", () => {
+  it("follows the switch by default, and says where the dates will be without giving one", () => {
+    expect(catalystDescription()).toBe(catalystDescription(catalyst.scheduleOnHold));
+    expect(catalystCourseJsonLd()).toEqual(catalystCourseJsonLd(catalyst.scheduleOnHold));
+    expect(catalyst.scheduleToFollow).toContain("Instagram @gdgoc.ipb");
+    expect(catalyst.scheduleToFollow).not.toMatch(anyDate);
+  });
+
+  it("describes the program without a date while on hold, and with the oprec dates once it is not", () => {
+    expect(catalystDescription(true)).toBe(catalyst.summary);
+    expect(catalystDescription(true)).not.toMatch(anyDate);
+    expect(catalystDescription(false)).toBe(`${catalyst.summary} Pendaftaran 2–22 November 2026.`);
+  });
+
+  it("leaves every date out of the structured data while on hold", () => {
+    const course = catalystCourseJsonLd(true);
+    expect(course).toMatchObject({ "@type": "Course", description: catalyst.summary, isAccessibleForFree: true });
+    expect(course.hasCourseInstance).toBeUndefined();
+    expect(JSON.stringify(course)).not.toMatch(anyDate);
+    expect(catalystEventJsonLd(true)).toBeNull();
+  });
+});
+
 describe("Catalyst structured data", () => {
   it("describes a free online course, provided by the chapter, with nine Sunday sessions", () => {
-    const course = catalystCourseJsonLd();
+    const course = catalystCourseJsonLd(false);
     expect(course).toMatchObject({ "@type": "Course", url: `${siteUrl}/program/catalyst`, isAccessibleForFree: true, offers: { price: 0, category: "Free" } });
     expect(course.provider["@id"]).toBe(`${siteUrl}/#organization`);
     expect(course.hasCourseInstance).toMatchObject({ courseMode: "Online", startDate: "2026-12-06", endDate: "2027-04-18", courseSchedule: { repeatCount: 9 } });
   });
 
   it("describes the sessions as one online event", () => {
-    const event = catalystEventJsonLd();
+    const event = catalystEventJsonLd(false);
     expect(event).toMatchObject({ "@type": "Event", startDate: "2026-12-06", endDate: "2027-04-18", eventAttendanceMode: "https://schema.org/OnlineEventAttendanceMode" });
-    expect(event.location.url).toBe(event.url);
+    expect(event?.location.url).toBe(event?.url);
     expect(indexablePaths).toContain(catalyst.path);
   });
 });

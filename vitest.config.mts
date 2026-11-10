@@ -6,6 +6,6 @@ export default defineConfig({
   esbuild: { jsx: "automatic" },
   test: { projects: [
     { extends: true, test: { name: "backend", environment: "edge-runtime", include: ["convex/**/*.test.ts", "src/*.test.ts", "src/lib/**/*.test.ts"] } },
-    { extends: true, test: { name: "interface", environment: "jsdom", include: ["src/components/**/*.test.tsx"] } },
+    { extends: true, test: { name: "interface", environment: "jsdom", include: ["src/components/**/*.test.tsx", "src/app/**/*.test.tsx"] } },
   ] },
 });

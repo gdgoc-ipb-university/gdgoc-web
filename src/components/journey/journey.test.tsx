@@ -1,10 +1,13 @@
 import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { about } from "@/lib/about";
+import { catalyst } from "@/lib/catalyst";
 import { activationBand, storyQuery } from "@/lib/journey";
+import { dayLabel, rangeLabel } from "@/lib/schedule";
 import { Journey } from "./journey";
 import { TigaMisi } from "./missions";
 import { PilihJalurmu } from "./programs";
+import { SetahunBersama } from "./setahun";
 import { YearTimeline } from "./year-timeline";
 
 const motion = vi.hoisted(() => ({ animated: false }));
@@ -120,6 +123,50 @@ describe("program level select", () => {
       "/program/catalyst", "/program/tech-league", "/program/tech-support", "/program",
     ]);
     expect(observers).toHaveLength(0);
+  });
+
+  it("offers the Catalyst page, not its schedule, while the schedule is on hold", () => {
+    stubBrowser({ wide: false });
+    render(<Journey><PilihJalurmu /></Journey>);
+    const card = screen.getAllByRole("link")[0];
+    expect(card.getAttribute("href")).toBe(catalyst.path);
+    expect(card.querySelector(".level-link")?.textContent?.trim()).toBe("Lihat Catalyst");
+  });
+});
+
+describe("year chapter", () => {
+  /** Every Catalyst date as the timeline would write it, and the ISO dates behind them. */
+  const catalystDates = [...new Set(catalyst.timeline.flatMap((step) => {
+    const end = "end" in step ? step.end : undefined;
+    const days = end ? [step.start, end] : [step.start];
+    return [...days, ...days.map(dayLabel), rangeLabel(step.start, end)];
+  }))];
+  const trackNames = (container: HTMLElement) => Array.from(container.querySelectorAll(".year-track h3"), (heading) => heading.textContent);
+
+  beforeEach(() => {
+    stubBrowser({ wide: false });
+    // A day that is not a Catalyst date, should "Hari ini" be written before the assertions run.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-08-01T05:00:00Z"));
+  });
+  afterEach(() => vi.useRealTimers());
+
+  it("leaves Catalyst's track and dates out while its schedule is on hold, and says they follow on Instagram", () => {
+    const { container } = render(<SetahunBersama />);
+    expect(trackNames(container)).toEqual(["Tech League"]);
+    expect(container.querySelectorAll(".year-lane")).toHaveLength(1);
+    expect(container.querySelector(".chapter-lead")?.textContent).toContain("Jadwal Catalyst menyusul di Instagram @gdgoc.ipb.");
+    for (const step of catalyst.timeline) expect(container.textContent).not.toContain(step.label);
+    for (const date of catalystDates) expect(container.innerHTML).not.toContain(date);
+  });
+
+  it("draws Catalyst's track before Tech League's once the schedule is no longer on hold", () => {
+    const { container } = render(<SetahunBersama catalystOnHold={false} />);
+    expect(trackNames(container)).toEqual(["GDGoC Catalyst", "Tech League"]);
+    expect(container.querySelector(".chapter-lead")?.textContent).toContain("Jadwal Catalyst dan Tech League 2026/2027");
+    const first = container.querySelector(".year-track li");
+    expect(first?.querySelector(".year-date")?.textContent).toBe("2–22 November 2026");
+    expect(first?.querySelector(".year-label")?.textContent).toBe("Pendaftaran (oprec)");
   });
 });
 

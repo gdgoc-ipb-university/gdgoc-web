@@ -1,16 +1,25 @@
-import { startOfDay, windowState } from "./schedule";
+import { rangeLabel, startOfDay, windowState } from "./schedule";
 import { organizationId, siteUrl } from "./site";
 
 /**
- * GDGoC Catalyst 2026/27, shown at /program/catalyst. The dates follow the program plan recorded in issues #32 and #89.
+ * GDGoC Catalyst 2026/27, shown at /program/catalyst. The dates follow the program plan recorded in issues #32 and #89;
+ * they are tentative and on hold (#210), so `scheduleOnHold` keeps them off the site until they are confirmed.
  * Oprec runs on Program & Development's Google Form (#32, decision 1), so `oprecUrl` stays null until it is published:
  * set it here and the page shows "Daftar" while oprec is open (#90).
  */
 export const catalyst = {
   path: "/program/catalyst",
   name: "GDGoC Catalyst 2026/27",
-  description:
-    "GDGoC Catalyst: bootcamp Software Development gratis untuk siswa SMK dan mahasiswa, dengan peran Hacker, Hipster, dan Hustler. Pendaftaran 2–22 November 2026.",
+  /**
+   * True while the 2026/27 dates are tentative (#210): no Catalyst date appears on the site, and the pages say the
+   * schedule follows on Instagram and on the Catalyst page. Set it to false to show the dates below again.
+   */
+  scheduleOnHold: true as boolean,
+  /** What /bergabung and /program say instead of dates while the schedule is on hold. */
+  scheduleToFollow: "Jadwal 2026/27 menyusul. Pantau Instagram @gdgoc.ipb.",
+  /** The program in one sentence, without dates. `catalystDescription` adds the oprec dates unless they are on hold. */
+  summary:
+    "GDGoC Catalyst: bootcamp Software Development gratis untuk siswa SMK dan mahasiswa, dengan peran Hacker, Hipster, dan Hustler.",
   track: "Software Development",
   /** `key` matches the cohort's role key (`catalystCohort`), so the dashboard shows the same icon as this page. */
   roles: [
@@ -44,10 +53,16 @@ export function oprecState(now: number) {
   return windowState(now, catalyst.oprec);
 }
 
+/** The description for search and sharing: the summary, plus the oprec dates unless the schedule is on hold. */
+export function catalystDescription(onHold = catalyst.scheduleOnHold) {
+  const { opensAt, closesAt } = catalyst.oprec;
+  return onHold ? catalyst.summary : `${catalyst.summary} Pendaftaran ${rangeLabel(opensAt, closesAt)}.`;
+}
+
 const organizer = { "@type": "Organization", "@id": organizationId, name: "GDGoC IPB University", url: `${siteUrl}/` };
 
-/** The bootcamp as a free online `Course`, with the 2026/27 sessions as its instance. */
-export function catalystCourseJsonLd() {
+/** The bootcamp as a free online `Course`, with the 2026/27 sessions as its instance unless the schedule is on hold. */
+export function catalystCourseJsonLd(onHold = catalyst.scheduleOnHold) {
   const url = `${siteUrl}${catalyst.path}`;
   const { count, start, end } = catalyst.sessions;
   return {
@@ -55,14 +70,15 @@ export function catalystCourseJsonLd() {
     "@type": "Course",
     "@id": `${url}#course`,
     name: catalyst.name,
-    description: catalyst.description,
+    description: catalystDescription(onHold),
     url,
     inLanguage: "id",
     about: catalyst.track,
     provider: organizer,
     isAccessibleForFree: true,
     offers: { "@type": "Offer", category: "Free", price: 0, priceCurrency: "IDR", url },
-    hasCourseInstance: {
+    // Left out while the schedule is on hold: `JSON.stringify` drops an undefined property.
+    hasCourseInstance: onHold ? undefined : {
       "@type": "CourseInstance",
       courseMode: "Online",
       startDate: start,
@@ -74,17 +90,18 @@ export function catalystCourseJsonLd() {
 }
 
 /**
- * The sessions as one online `Event`, from the first session to the last. The showcase is left out:
- * its venue is not confirmed.
+ * The sessions as one online `Event`, from the first session to the last, or null while the schedule is on hold. The
+ * showcase is left out: its venue is not confirmed.
  */
-export function catalystEventJsonLd() {
+export function catalystEventJsonLd(onHold = catalyst.scheduleOnHold) {
+  if (onHold) return null;
   const url = `${siteUrl}${catalyst.path}`;
   return {
     "@context": "https://schema.org",
     "@type": "Event",
     "@id": `${url}#event`,
     name: catalyst.name,
-    description: catalyst.description,
+    description: catalystDescription(onHold),
     url,
     image: `${siteUrl}/brand/og-image.jpg`,
     inLanguage: "id",

@@ -25,9 +25,10 @@ const statusLabel: Record<MilestoneStatus, string> = { done: "Selesai", current:
 const minStepWidth = 0.03;
 
 /**
- * The year as two tracks on one ruler, drawn to scale from the program modules' dates: Catalyst's items, and Tech
- * League's phases (its page lists every item). Overlapping steps stack in rows. The landing is prerendered, so "today"
- * is read after hydration: until then the steps show no status and the ruler has no pin.
+ * The year as one track per program on one ruler, drawn to scale from the program modules' dates: Catalyst's items
+ * (unless its schedule is on hold), and Tech League's phases (its page lists every item). Overlapping steps stack in
+ * rows. The landing is prerendered, so "today" is read after hydration: until then the steps show no status and the
+ * ruler has no pin.
  */
 export function YearTimeline({ tracks }: { tracks: readonly Track[] }) {
   const [now, setNow] = useState<number | null>(null);

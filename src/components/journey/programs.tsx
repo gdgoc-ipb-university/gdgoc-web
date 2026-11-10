@@ -25,7 +25,7 @@ const programs: {
     title: "GDGoC Catalyst",
     label: "BELAJAR & BANGUN PRODUK",
     text: "Belajar membangun produk lewat tiga peran: Hustler untuk pengelolaan proyek, Hipster untuk desain UI/UX, dan Hacker untuk pengembangan teknologi. Kolaborasi dalam tim, lalu kerjakan capstone dengan pendampingan",
-    cta: "Lihat jadwal Catalyst",
+    cta: catalyst.scheduleOnHold ? "Lihat Catalyst" : "Lihat jadwal Catalyst",
     icon: "code",
     href: catalyst.path,
     scene: "/landing/meja-proyek-tim.svg",

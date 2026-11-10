@@ -2,13 +2,14 @@
 
 The first authenticated visit to any `/dashboard` page redirects accounts without a completed member profile to `/onboarding`. This includes existing Google accounts that have never completed this introduction. The public landing and Google sign-in remain accessible without a profile.
 
-## Five screens
+## Six screens
 
 1. **Kenalan:** a name prefilled from Google, editable before saving.
 2. **Sekolah/kampus:** membership is open to university students anywhere and to SMA, MA, SMK and MAK students (oprec member 2026/27). The member first says whether they are a **Mahasiswa** or a **Siswa SMA/SMK** (`memberProfiles.institutionKind`: `campus` or `school`), then picks from a searchable list: every campus in the national registry with the Bogor campuses first, or every SMA, MA, SMK and MAK in West Java, Jakarta and Banten with Bogor first. The second field lists study programs or SMK majors (found by their old short names too: TKJ, RPL, Multimedia, OTKP). Both fields accept names outside the suggestions. Switching between Mahasiswa and Siswa SMK clears both answers.
-3. **WhatsApp:** an optional invitation to the group supplied by the community owner.
-4. **Jadi member:** an optional invitation to the official GDG chapter.
-5. **Tech Support:** what the program offers (the help kinds from `src/lib/tech-support-request.ts`) and the reply target, with **Ya, ajukan setelah ini** or **Nanti saja** (the default). Finishing completes onboarding; with *Ya* the member lands on `/dashboard/tech-support?ajukan=1`, where the request form is scrolled to and its first field focused. The request itself is sent from that form, because `techSupport.submit` only accepts members who finished onboarding (#92).
+3. **Instagram:** required (#212). The member types their Instagram username (an "@" or a pasted profile link is read too; stored lowercase without "@" as `memberProfiles.instagram`). The screen lists the intake requirements, follow @gdgoc.ipb and keep the twibbon on the feed until registration closes on 30 November, with a "Follow @gdgoc.ipb" button and a link to `/twibbon`, and warns that core team checks the account and may cancel the registration. Staff see the username on the member page and in the owners' CSV.
+4. **WhatsApp:** an optional invitation to the group supplied by the community owner.
+5. **Jadi member:** an optional invitation to the official GDG chapter.
+6. **Tech Support:** what the program offers (the help kinds from `src/lib/tech-support-request.ts`) and the reply target, with **Ya, ajukan setelah ini** or **Nanti saja** (the default). Finishing completes onboarding; with *Ya* the member lands on `/dashboard/tech-support?ajukan=1`, where the request form is scrolled to and its first field focused. The request itself is sent from that form, because `techSupport.submit` only accepts members who finished onboarding (#92).
 
 ## Community tag
 
@@ -16,13 +17,13 @@ Everyone registers as **Member** ([ADR 0007](decisions/0007-staff-assign-communi
 
 The tag grants no permissions by itself; it decides which assignments a member gets and prefills the Apresiasi "Peran" field. Until #156 members chose Member or Core Team themselves. Those tags are kept as they are: a self-declared Core Team tag stays, marked unconfirmed, until staff change or confirm it. Accounts that completed onboarding before tags existed see a one-screen notice on their next dashboard visit and register as Member (`members.registerAsMember`, which never sets another tag).
 
-Screen ids keep their numbers from the earlier flows (1, 2, 4, 5, then 6 for Tech Support), so `memberProfiles.nextStep` needs no migration: a profile saved on the removed role screen (3) resumes at the WhatsApp invitation, and a profile waiting on screen 5 goes on to 6 before it completes.
+Screen ids are compared as numbers, so they ascend: 3 was the role screen until #156 and is the Instagram screen since #212, and 6 is Tech Support (#198). `memberProfiles.nextStep` needs no migration: a profile that is past screen 3 without a username (saved before it was asked, or still on the removed role screen) resumes at screen 3, then goes on through the rest.
 
 External invitations open a new tab. Opening an invitation is not treated as proof of joining. Neither service is queried for membership, and no external join flags are stored. Both invitation screens can be skipped with the normal forward button.
 
 ## Persistence and access
 
-`memberProfiles` contains the authenticated owner ID, chosen name, school or campus (`campus`), study program or major (`studyProgram`), whether that is a campus or a school (`institutionKind`, unset on profiles saved before it was asked), community tag and division, next saved screen, revision, update time, and optional completion time. `members.profile` reads only the current verified account's profile; `members.saveStep` derives ownership from the active Better Auth session. No client-supplied owner ID is accepted, and `saveStep` takes no community tag: a call that sends `memberType` or `division` is rejected.
+`memberProfiles` contains the authenticated owner ID, chosen name, school or campus (`campus`), study program or major (`studyProgram`), whether that is a campus or a school (`institutionKind`, unset on profiles saved before it was asked), the Instagram username (`instagram`, unset on profiles that finished before #212), community tag and division, next saved screen, revision, update time, and optional completion time. `members.profile` reads only the current verified account's profile; `members.saveStep` derives ownership from the active Better Auth session. No client-supplied owner ID is accepted, and `saveStep` takes no community tag: a call that sends `memberType` or `division` is rejected.
 
 Each **Lanjut** saves that screen before advancing. Reload resumes the next saved screen; unsaved keystrokes are not described as saved. Back preserves local values, and a failed save keeps edits on screen. Required fields and lengths are validated on the server, forward skipping is rejected, and revision checks prevent an old tab from overwriting newer data. Identical request retries are safe. Completion does not repeat on later visits. The only return destinations are `/dashboard` and `/dashboard/apresiasi/tinjau`.
 
@@ -59,4 +60,4 @@ The school and campus lists are suggestions, not proof of enrollment, and both f
 
 ## Release
 
-Onboarding ships with the rest of the site: a release to the `release` branch deploys Convex and then the frontend, as described in the Release section of `APRESIASI.md`. CI runs `pnpm check` and `pnpm test` on the pull request to `main` first. No onboarding-specific environment variables or OAuth scopes are required; the schema changes are additive, so the backend-first deploy keeps the previous frontend working. One gap: a member who has the previous page open on screen 4 (Jadi member) during the deploy is not finished by it any more, and stays on that screen until a reload brings the Tech Support screen.
+Onboarding ships with the rest of the site: a release to the `release` branch deploys Convex and then the frontend, as described in the Release section of `APRESIASI.md`. CI runs `pnpm check` and `pnpm test` on the pull request to `main` first. No onboarding-specific environment variables or OAuth scopes are required; the schema changes are additive, so the backend-first deploy keeps the previous frontend working. One gap: a member who has the previous page open on screen 4 (Jadi member) during the deploy is not finished by it any more, and stays on that screen until a reload brings the Tech Support screen. Since #212, a page opened before that deploy cannot save screens 4 to 6 for someone without a username: the server asks for it, and a reload brings screen 3.

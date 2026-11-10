@@ -39,10 +39,12 @@ export const leagueTrack = v.union(v.literal("software"), v.literal("uiux"), v.l
 export default defineSchema({
   memberProfiles: defineTable({
     ownerId: v.string(), fullName: v.string(), campus: v.string(), studyProgram: v.string(),
-    // Onboarding screen ids (src/lib/onboarding.ts); 3 was the role screen and resumes at 4.
+    // Onboarding screen ids (src/lib/onboarding.ts); 3 was the role screen and is the Instagram screen since #212.
     nextStep: v.union(v.literal(1), v.literal(2), v.literal(3), v.literal(4), v.literal(5), v.literal(6)),
-    // Campus or school (SMK), chosen on the education screen; unset on profiles saved before it was asked.
+    // Campus or school (SMA or SMK), chosen on the education screen; unset on profiles saved before it was asked.
     institutionKind: v.optional(institutionKind),
+    // Instagram username without "@", from screen 3; core team checks the follow and the twibbon with it (#212).
+    instagram: v.optional(v.string()),
     revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
     // Community tag: Member from onboarding; Core Team, BoD and divisions only from staff (#156). Tags members chose
     // themselves before that stay until staff change or confirm them; profiles from before this field register as Member once.

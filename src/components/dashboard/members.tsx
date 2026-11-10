@@ -118,7 +118,7 @@ function Members({ viewer }: { viewer: DashboardViewer }) {
             <caption id="members-caption" className="sr-only">Daftar anggota, halaman {data.page} dari {data.pageCount}</caption>
             <thead><tr>
               <SortHeader label="Anggota" direction={direction("name")} onSort={() => sortBy("name")} />
-              <th scope="col">Kampus</th>
+              <th scope="col">Sekolah/kampus</th>
               <th scope="col">Akses &amp; status</th>
               <th scope="col">Komunitas</th>
               <SortHeader label="Bergabung" direction={direction("joined")} onSort={() => sortBy("joined")} />

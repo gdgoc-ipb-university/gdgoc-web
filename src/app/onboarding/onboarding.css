@@ -11,7 +11,7 @@
 .onboard-progress-line { display: block; height: 4px; background: #dfe3db; margin-bottom: 10px; }
 .onboard-progress li[aria-current] .onboard-progress-line { background: var(--blue); }
 .onboard-progress li[data-done="true"] .onboard-progress-line { background: #237443; }
-.onboard-progress-label { font-size: 10px; color: #586573; white-space: nowrap; }
+.onboard-progress-label { display: block; font-size: 10px; color: #586573; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .onboard-progress-label b { font: 500 10px var(--font-mono), monospace; margin-right: 4px; }.onboard-progress-label b svg { vertical-align: -2px; }
 .onboard-progress li[aria-current] .onboard-progress-label { color: #1f54bc; }
 .onboard-progress li[data-done="true"] .onboard-progress-label { color: #23693c; }
@@ -42,6 +42,17 @@
 .onboard-combo-option { min-height: 48px; padding: 12px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; line-height: 1.6; border-radius: 2px; cursor: pointer; outline: none; overflow-wrap: anywhere; }
 .onboard-combo-option[data-focused] { background: #e9efff; box-shadow: inset 3px 0 #2563eb; }
 .onboard-combo-option[data-selected] { font-weight: 600; color: #1d4daf; }
+.onboard-combo-text { display: flex; flex-direction: column; min-width: 0; }.onboard-combo-text small { font-size: 11px; line-height: 1.5; color: #526575; font-weight: 400; }
+/* Campus or school: two large radio cards. */
+.onboard-kind { border: 0; padding: 0; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.onboard-kind legend { font-size: 13px; font-weight: 500; color: var(--ink); padding: 0; margin-bottom: 8px; }.onboard-kind legend span { color: #b9362e; }
+.onboard-kind-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.onboard-kind-option { position: relative; display: flex; flex-direction: column; gap: 2px; min-height: 64px; padding: 12px 14px 12px 44px; border: 1px solid #87968d; border-radius: 3px; background: #fffefa; cursor: pointer; }
+.onboard-kind-option input { position: absolute; left: 14px; top: 15px; width: 20px; height: 20px; margin: 0; accent-color: #2563eb; }
+.onboard-kind-option span { font-size: 14px; font-weight: 600; color: var(--ink); }.onboard-kind-option small { font-size: 11px; line-height: 1.5; color: #526575; }
+.onboard-kind-option[data-checked="true"] { border-color: #2563eb; background: #eef3ff; box-shadow: inset 3px 0 #2563eb; }
+.onboard-kind-option:has(input:focus-visible) { outline: 3px solid #2563eb; outline-offset: 3px; }
+.onboard-kind[aria-invalid="true"] .onboard-kind-option { border-color: #b33228; }
 .onboard-combo-empty { padding: 13px; margin: 0; font-size: 13px; line-height: 1.75; color: #4a5e6c; }
 .onboard-invitation { display: grid; grid-template-columns: 42px 1fr; column-gap: 14px; row-gap: 20px; padding: 24px; border: 1px solid #d1dbcc; background: #f5f7ed; }
 .onboard-invite-icon { width: 42px; height: 42px; display: grid; place-items: center; font: 600 19px var(--font-pixel), monospace; border: 1px solid currentColor; box-shadow: 3px 3px 0 #d1dbcc; }
@@ -95,5 +106,6 @@
 }
 /* Four steps do not fit as words on small phones: keep the current step's name, number the rest. */
 @media (max-width: 480px) {
+  .onboard-kind-options { grid-template-columns: minmax(0, 1fr); }
   .onboard-progress li:not([aria-current]) .onboard-progress-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }

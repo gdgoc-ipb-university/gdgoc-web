@@ -416,6 +416,15 @@ Evidence:
 - Google's [Search Central documentation updates](https://developers.google.com/search/updates): breadcrumbs only on desktop results (22 January 2025); online event properties removed, and events must be bookable by the general public at a physical location (5 June 2025); Course info documentation removed because it is no longer shown (9 September 2025); FAQ rich results no longer shown from 7 May 2026.
 - Not checked: Google's Rich Results Test, which needs a browser. By the updates above it can only report the breadcrumbs and the landing's site data.
 
+## Onboarding for SMK students and campuses outside Bogor — 10 November
+
+Member intake 2026/27 is open to SMK students and to students of any campus (#197). The education screen asks *Mahasiswa* or *Siswa SMK* first, then searches 4,174 SMKs and MAKs in West Java, DKI Jakarta and Banten, or 5,940 campuses nationwide, from the ministry's reference pages fetched on 10 November.
+
+Evidence:
+- `pnpm check`, `pnpm test` (86 files, 754 tests) and `pnpm build` pass on Node 24, and each commit passes lint, typecheck and tests on its own.
+- Headless Chrome at 1280 × 800 and 390 × 844 on a throwaway page that renders the onboarding screens with made-up data and an in-memory save (not committed): "smkn 1 bogor" lists SMKN 1 BOGOR with "Kota Bogor · Tanah Sareal"; "tkj" under Siswa SMK finds Teknik Komputer dan Jaringan; "gadjah" under Mahasiswa finds Universitas Gadjah Mada (Kab. Sleman). On phones the current step's label is cut with an ellipsis ("Sekolah/kam…") so it does not run into the next step's number.
+- Not checked: a real sign-in against Convex, the deployed site, and how quickly the lists load on a slow phone connection (42 KB and 65 KB gzipped).
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

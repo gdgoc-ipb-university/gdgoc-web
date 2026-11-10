@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { toJakartaInput } from "@/lib/assignment";
@@ -30,6 +30,14 @@ export function TechSupportStatusBadge({ status }: { status: TechSupportStatus }
 
 function RequestForm({ disabled }: { disabled: boolean }) {
   const submit = useMutation(api.techSupport.submit);
+  const first = useRef<HTMLInputElement>(null);
+  // Arriving from the onboarding offer (`?ajukan=1`) brings the form into view with the first field focused. Read
+  // from the address directly: a search-params hook would need a Suspense boundary around the whole page.
+  useEffect(() => {
+    if (disabled || new URLSearchParams(window.location.search).get("ajukan") !== "1") return;
+    first.current?.scrollIntoView({ block: "center" });
+    first.current?.focus({ preventScroll: true });
+  }, [disabled]);
   const [values, setValues] = useState(blank);
   const [errors, setErrors] = useState<TechSupportErrors>({});
   const [error, setError] = useState("");
@@ -57,7 +65,7 @@ function RequestForm({ disabled }: { disabled: boolean }) {
     {disabled && <p className="app-notice" role="status">Kamu sudah punya {maxOpenRequests} permintaan yang berjalan. Ajukan lagi setelah salah satunya selesai.</p>}
     <fieldset disabled={busy || disabled}>
       <div className="app-field"><label htmlFor="support-competition">Nama kompetisi {required}</label>
-        <input id="support-competition" required maxLength={techSupportLimits.competition} value={values.competition} onChange={(event) => update("competition", event.target.value)} placeholder="Contoh: Gemastik 2026" aria-invalid={Boolean(errors.competition)} aria-describedby={described("competition")} />{fieldError("competition")}</div>
+        <input id="support-competition" ref={first} required maxLength={techSupportLimits.competition} value={values.competition} onChange={(event) => update("competition", event.target.value)} placeholder="Contoh: Gemastik 2026" aria-invalid={Boolean(errors.competition)} aria-describedby={described("competition")} />{fieldError("competition")}</div>
       <div className="app-field-grid">
         <div className="app-field"><label htmlFor="support-competitionUrl">Tautan kompetisi {required}</label>
           <input id="support-competitionUrl" type="url" inputMode="url" required maxLength={techSupportLimits.competitionUrl} value={values.competitionUrl} onChange={(event) => update("competitionUrl", event.target.value)} placeholder="https://" aria-invalid={Boolean(errors.competitionUrl)} aria-describedby={described("competitionUrl")} />{fieldError("competitionUrl")}</div>

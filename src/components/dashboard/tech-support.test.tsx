@@ -26,6 +26,17 @@ const accessible = async (container: HTMLElement) => {
 afterEach(() => { cleanup(); Object.values(mutations).forEach((fn) => fn.mockClear()); queries["techSupport:mine"] = mine; });
 
 describe("Tech Support request form", () => {
+  it("opens ready to fill when onboarding sends the member here (?ajukan=1), and only then", () => {
+    Element.prototype.scrollIntoView = vi.fn();
+    window.history.replaceState(null, "", "/dashboard/tech-support?ajukan=1");
+    const { unmount } = render(<TechSupportPage />);
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: /Nama kompetisi/ }));
+    unmount();
+    window.history.replaceState(null, "", "/dashboard/tech-support");
+    render(<TechSupportPage />);
+    expect(document.activeElement).toBe(document.body);
+  });
+
   it("lists the member's requests with status and the matched mentor", async () => {
     const { container } = render(<TechSupportPage />);
     const list = screen.getByRole("region", { name: "Permintaanmu" });

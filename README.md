@@ -56,3 +56,4 @@ Never force-push this branch, and never open a pull request from it.
 | `issue-197/sekolah-kampus` | #197 onboarding for SMK students and campuses outside Bogor: "smkn 1 bogor" at 1280 and "gadjah" at 390 before and after, the Mahasiswa or Siswa SMK choice, an SMK major by its old name (made-up account) | #199 |
 | `issue-198/tech-support-onboarding` | #198 Tech Support on the last onboarding screen: Jadi member before and after at 390, the offer at 1280, Ya chosen at 390 (made-up account) | #200 (stacked on #199) |
 | `issue-203/twibbon` | #203 twibbon maker at /twibbon: empty and with a made-up picture at 1280, the phone preview and caption at 390, and the downloaded 1080 × 1440 file (no real person) | #204 |
+| `issue-211/oprec-popup` | #211 member intake popup on the landing at 1280 and 390 | #217 |

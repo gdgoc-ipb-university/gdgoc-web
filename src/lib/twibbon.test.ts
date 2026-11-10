@@ -29,6 +29,7 @@ describe("the twibbon caption", () => {
     expect(caption).toContain("Halo, aku Teman Uji dari SMKN 1 Bogor.");
     expect(caption).toContain("@gdgoc.ipb @satu @dua @tiga");
     expect(caption).toContain("gdgocipb.com/gb-member");
+    expect(caption.split("\n").at(-1)).toMatch(/^#OprecMemberGDGOCIPB2627 /);
   });
 
   it("keeps placeholders for blank fields", () => {

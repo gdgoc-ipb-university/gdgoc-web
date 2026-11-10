@@ -12,6 +12,8 @@ export const twibbon = {
   slideFileName: "gdgoc-ipb-member-2026-27-slide-2.jpg",
   /** How far a photo can be enlarged past filling the canvas. */
   maxZoom: 4,
+  /** Every twibbon post must carry it (#205). */
+  hashtag: "#OprecMemberGDGOCIPB2627",
 } as const;
 
 export type ImageSize = { width: number; height: number };
@@ -61,6 +63,6 @@ export function twibbonCaption({ name, origin, friends }: CaptionFields) {
     "",
     `@gdgoc.ipb ${tags.length ? tags.join(" ") : "@teman1 @teman2 @teman3"}`,
     "",
-    "#GDGoCIPB #GDGoCIPB2627 #GoogleDeveloperGroups",
+    `${twibbon.hashtag} #GDGoCIPB #GoogleDeveloperGroups`,
   ].join("\n");
 }

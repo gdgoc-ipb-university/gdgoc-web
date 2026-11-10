@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 /** The posting rules from the member intake guidebook and the intake posts. */
 const steps = [
   { title: "Unggah dua slide di feed", text: "Twibbon di slide pertama, slide 2 di belakangnya, dalam satu postingan. Bukan story." },
-  { title: "Tempel caption", text: "Tag @gdgoc.ipb dan 3 teman di caption." },
+  { title: "Tempel caption", text: `Tag @gdgoc.ipb dan 3 teman, dan pakai ${twibbon.hashtag} di caption.` },
   { title: "Biarkan akunmu publik", text: "Supaya postinganmu bisa dicek sampai pendaftaran selesai." },
   { title: "Isi form pendaftaran", text: "Masuk dengan akun Google di website ini dan lengkapi perkenalan. Cukup daftar sekali." },
 ];

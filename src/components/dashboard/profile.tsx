@@ -34,9 +34,9 @@ export function MemberTagNotice() {
 export function ProfilePage({ photo }: { photo?: ReactNode }) {
   const viewer = useDashboardViewer();
   const stats = useQuery(api.assignments.list);
-  const facts = [["Email", viewer.email], ["Sekolah/kampus", viewer.campus || "—"], ["Jurusan/program studi", viewer.studyProgram || "—"], ["Akses dashboard", roleLabels[viewer.role]]];
+  const facts = [["Email", viewer.email], ["Sekolah/kampus", viewer.campus || "—"], ["Jurusan/program studi", viewer.studyProgram || "—"], ["Instagram", viewer.instagram ? `@${viewer.instagram}` : "—"], ["Akses dashboard", roleLabels[viewer.role]]];
   return <>
-    <div className="dash-intro"><p className="eyebrow">AKUN</p><h1>Profil.</h1><p>Nama, kampus, dan program studi berasal dari perkenalanmu. Hubungi admin jika perlu mengoreksinya.</p></div>
+    <div className="dash-intro"><p className="eyebrow">AKUN</p><h1>Profil.</h1><p>Nama, sekolah atau kampus, jurusan, dan Instagram berasal dari perkenalanmu. Hubungi admin jika perlu mengoreksinya.</p></div>
     {photo}
     <div className="dash-profile-grid">
       <section className="app-panel" aria-labelledby="profile-facts"><h2 id="profile-facts">{viewer.name}</h2>

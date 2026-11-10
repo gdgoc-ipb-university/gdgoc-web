@@ -22,7 +22,7 @@ vi.mock("convex/react", () => ({
   useMutation: (ref: FunctionReference<"mutation">) => ({ "league:importRegistrations": importRegistrations } as Record<string, unknown>)[getFunctionName(ref)] ?? vi.fn(async () => null),
 }));
 
-const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "admin", active: true, onboarded: true, reviewer: true, memberType: null, division: null, tagConfirmed: false, campus: "", studyProgram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false };
+const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "admin", active: true, onboarded: true, reviewer: true, memberType: null, division: null, tagConfirmed: false, campus: "", studyProgram: "", instagram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false };
 const show = (role: DashboardViewer["role"] = "admin") => render(<ViewerContext.Provider value={{ ...viewer, role }}><TechLeagueTeams /></ViewerContext.Provider>);
 
 afterEach(() => { cleanup(); importRegistrations.mockClear(); });

@@ -19,26 +19,42 @@ export function educationLabels(kind: InstitutionKind | undefined) {
   return kind === "school" ? { institution: "Sekolah", program: "Jurusan" } : kind === "campus" ? { institution: "Kampus", program: "Program studi" } : { institution: "Sekolah atau kampus", program: "Jurusan atau program studi" };
 }
 
-export type OnboardingValues = { fullName: string; campus: string; studyProgram: string; institutionKind?: InstitutionKind };
+/**
+ * `instagram` is the username without "@", lowercase. Optional so a page from before screen 3 asked for it keeps saving
+ * during a deploy; the server requires it from screen 3 on.
+ */
+export type OnboardingValues = { fullName: string; campus: string; studyProgram: string; institutionKind?: InstitutionKind; instagram?: string };
 export type OnboardingErrors = Partial<Record<keyof OnboardingValues, string>>;
 export type RoleValues = { memberType: MemberType | ""; division: string };
 export type RoleErrors = Partial<Record<keyof RoleValues, string>>;
 
 /**
- * Onboarding screens by id: name, school or campus, the WhatsApp invitation, the GDG Community invitation, and the
- * Tech Support offer. Ids keep their numbers from earlier flows so saved progress (`memberProfiles.nextStep`) means the
- * same screen: 3 was the role screen, removed when community tags became staff-assigned (#156); 6 came after (#198).
+ * Onboarding screens by id, in order: name, school or campus, Instagram (the intake's follow and twibbon requirement,
+ * #212), the WhatsApp invitation, the GDG Community invitation, and the Tech Support offer (#198). Ids are compared as
+ * numbers, so they ascend: 3 was the role screen until #156 and is the Instagram screen now.
  */
-export const onboardingSteps = [1, 2, 4, 5, 6] as const;
+export const onboardingSteps = [1, 2, 3, 4, 5, 6] as const;
 export type OnboardingStep = (typeof onboardingSteps)[number];
-export type SavedStep = OnboardingStep | 3;
+export type SavedStep = OnboardingStep;
 export const finalStep = 6 satisfies OnboardingStep;
+export const instagramStep = 3 satisfies OnboardingStep;
 
 export const onboardingLimits = { fullName: 120, campus: 150, studyProgram: 150 } as const;
 
-/** The screen to resume on; a profile saved on the removed role screen continues at the WhatsApp invitation. */
-export function resumeStep(saved: SavedStep | undefined): OnboardingStep {
-  return saved === 3 ? 4 : saved ?? 1;
+/**
+ * The screen to resume on. A profile past screen 3 without an Instagram username (saved before screen 3 asked for it)
+ * goes back to it, so nobody finishes without one.
+ */
+export function resumeStep(saved: SavedStep | undefined, instagram?: string): OnboardingStep {
+  const step = saved ?? 1;
+  return step > instagramStep && !instagram ? instagramStep : step;
+}
+
+/** Instagram's own rule: letters, digits, dots and underscores, at most 30, no two dots in a row, not ending in a dot. */
+const instagramPattern = /^(?!.*\.\.)(?!.*\.$)[a-z0-9._]{1,30}$/;
+/** "@Nama.Kamu", "instagram.com/nama.kamu/" or a profile URL with a query, read as "nama.kamu". */
+export function normalizeInstagram(value: string) {
+  return value.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^(www\.)?instagram\.com\//, "").replace(/[/?#].*$/, "").replace(/^@+/, "");
 }
 export function stepAfter(step: OnboardingStep): OnboardingStep {
   return onboardingSteps[Math.min(onboardingSteps.indexOf(step) + 1, onboardingSteps.length - 1)];
@@ -53,6 +69,7 @@ export function normalizeOnboarding(values: OnboardingValues): OnboardingValues 
     campus: values.campus.trim().replace(/\s+/g, " "),
     studyProgram: values.studyProgram.trim().replace(/\s+/g, " "),
     ...(values.institutionKind ? { institutionKind: values.institutionKind } : {}),
+    ...(values.instagram !== undefined ? { instagram: normalizeInstagram(values.instagram) } : {}),
   };
 }
 
@@ -78,6 +95,10 @@ export function validateOnboarding(values: OnboardingValues, step: OnboardingSte
   for (const field of fields) {
     if (!clean[field]) errors[field] = required[field];
     else if (clean[field].length > onboardingLimits[field]) errors[field] = `Maksimal ${onboardingLimits[field]} karakter.`;
+  }
+  if (step >= instagramStep) {
+    if (!clean.instagram) errors.instagram = "Isi username Instagram-mu.";
+    else if (!instagramPattern.test(clean.instagram)) errors.instagram = "Username Instagram hanya berisi huruf, angka, titik, dan garis bawah, maksimal 30 karakter.";
   }
   return errors;
 }

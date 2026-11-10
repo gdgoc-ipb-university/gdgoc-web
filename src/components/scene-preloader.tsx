@@ -5,8 +5,8 @@ import { useExperience } from "./experience-provider";
 import { PixelDino } from "./icons";
 import type { SceneStatus } from "./campus-environment";
 
-/** Releases on a rendered WebGL frame, or a settled static-image fallback. */
-export function ScenePreloader({ status }: { status: SceneStatus }) {
+/** Releases on a rendered WebGL frame, or a settled static-image fallback. `onFinish` runs once it has closed. */
+export function ScenePreloader({ status, onFinish }: { status: SceneStatus; onFinish?: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const { animated } = useExperience();
   const [finished, setFinished] = useState(false);
@@ -24,6 +24,10 @@ export function ScenePreloader({ status }: { status: SceneStatus }) {
       document.body.style.overflow = previousOverflow;
     };
   }, [finished]);
+
+  useEffect(() => {
+    if (finished) onFinish?.();
+  }, [finished, onFinish]);
 
   useEffect(() => {
     if (status === "loading" || finished) return;

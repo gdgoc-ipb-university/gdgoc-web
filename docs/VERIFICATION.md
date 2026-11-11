@@ -487,6 +487,15 @@ Evidence:
 - `next dev` against a local anonymous Convex backend after the change, same steps: paused at SKOR 035 with REKOR 000, and the next run after the reload showed SKOR 009, REKOR 000, with nothing in `localStorage`.
 - Not checked: production.
 
+## Bogor Run: a paused run survives a reload — 11 November
+
+Part 2 of #223. A paused run was lost to a reload or to a phone discarding the background tab. The runner now keeps it in the tab's `sessionStorage` (seed, token, input log, tick) on pause and on `pagehide`, and when the game mounts again, `resumeRun` rebuilds it at that tick and shows it paused with "Lanjut main", still on its ticket. The kept copy goes when the run resumes, ends or is left, or a new one starts, and is ignored after 12 hours.
+
+Evidence:
+- `pnpm check` and `pnpm test` (818 tests) pass on Node 24 for each commit, and `pnpm build` passes. Tests cover `resumeRun` matching a live run at the paused tick and 3000 ticks later, a run paused by `pagehide`, rebuilt by a new runner and finished on its original ticket with a log that replays to its score, and a kept run that is too old or does not replay being dropped.
+- `next build` and `next start` against a local anonymous Convex backend with an email test account (temporary, uncommitted), Playwright's Chromium as a touch phone at 390 × 844: signed in, tap to start, tap jump, tap pause at SKOR 033 (kept: tick 225, one input, ticket), reload, the run back paused with "Lanjut main", tap it, crash at 56, "Tersimpan · peringkat #1 minggu ini". The backend's log shows `M(bogorRun:submitRun)` for that run.
+- Not checked: a phone discarding a real background tab, and production.
+
 ## Tech League timeline of 11 November — 11 November
 
 Program & Development moved the Tech League before Ramadan (#222): registration runs 7 December 2026 – 6 January 2027, the online final is on 17 January and the offline awarding on 30 January 2027. `src/lib/tech-league.ts` now holds the full timeline for the league page and a separate five-step `milestones` list for the landing's "Setahun bersama", whose registration step ends on 4 January as Program & Development wrote it. `/program`, `/bergabung`, the league FAQ and the `Event` JSON-LD (7 December 2026 – 30 January 2027, still a `VirtualLocation`) read from the same module.

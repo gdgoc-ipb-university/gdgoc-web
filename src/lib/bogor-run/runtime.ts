@@ -1,6 +1,6 @@
 import {
-  applyInput, autopilot, BEST_KEY, BIRD, createRun, DINO, INPUT, LIMITS, OBSTACLES, poseOf, readBest, replayRun, scoreOf,
-  speedOf, startRun, step, TICK_RATE, type InputCode, type ObstacleKind, type Phase,
+  applyInput, autopilot, BEST_KEY, BIRD, createRun, DINO, INPUT, LIMITS, OBSTACLES, poseOf, readBest, replayRun, resumeRun,
+  scoreOf, speedOf, startRun, step, TICK_RATE, type InputCode, type ObstacleKind, type Phase, type Run,
 } from "./engine";
 import { createSound, MILESTONE_EVERY, milestoneCrossed } from "./sound";
 import { SKIN_SHEETS, type DinoSkin } from "./skin";
@@ -66,6 +66,29 @@ const DEMO_TICKS = 90 * TICK_RATE; // the backdrop demo restarts before it gets 
 const RESTART_GUARD = 500; // ms after a crash in which a mashed jump does not restart the run, as in Chrome
 const TICKET_WAIT = 1; // s a run without a ticket holds its first tick for one that is on its way
 export const FINISH_MESSAGE = "Selesai! 1 jam penuh";
+/**
+ * A paused personal run, kept in this tab's sessionStorage so a reload or a phone discarding the background tab does not
+ * lose it (#223): the page comes back with the run paused where it stood, its ticket still attached. Removed once the
+ * run resumes, ends or is left, or a new one starts.
+ */
+export const PAUSED_KEY = "gdgoc:bogor-run:paused:v1";
+/** The server accepts a run until 12 hours after it ends, so a run kept longer could never be saved. */
+export const PAUSED_TTL = 12 * 3_600_000;
+export type PausedRun = { seed: number; token: string | null; inputs: number[]; tick: number; overflow: boolean; pausedAt: number };
+
+const isCount = (value: unknown): value is number => Number.isSafeInteger(value) && (value as number) >= 0;
+
+/** The kept paused run rebuilt at its tick, or null when there is none, it is too old, or it does not replay. */
+export function readPausedRun(raw: string | null, now = Date.now()): { kept: PausedRun; run: Run } | null {
+  try {
+    const kept = JSON.parse(raw ?? "null") as Partial<PausedRun> | null;
+    if (!kept || !isCount(kept.seed) || !isCount(kept.tick) || !isCount(kept.pausedAt) || typeof kept.overflow !== "boolean") return null;
+    if ((kept.token !== null && typeof kept.token !== "string") || !Array.isArray(kept.inputs) || !kept.inputs.every(isCount)) return null;
+    if (now - kept.pausedAt > PAUSED_TTL || kept.pausedAt > now + 60_000) return null;
+    const run = resumeRun(kept.seed, kept.inputs, kept.tick);
+    return run && { kept: { seed: kept.seed, token: kept.token, inputs: kept.inputs, tick: kept.tick, overflow: kept.overflow, pausedAt: kept.pausedAt }, run };
+  } catch { return null; }
+}
 const GROUND: readonly ObstacleKind[] = ["angkot", "talas", "genangan"];
 
 function loadImage(src: string) {
@@ -113,6 +136,13 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
   let crashedAt = -Infinity;
   let hold = 0; // seconds of TICKET_WAIT left
   try { best = readBest(localStorage.getItem(BEST_KEY)); } catch { /* The game also works without storage. */ }
+  let paused: ReturnType<typeof readPausedRun> = null;
+  try { paused = readPausedRun(sessionStorage.getItem(PAUSED_KEY)); } catch { /* No storage, nothing kept. */ }
+  if (paused) {
+    run = paused.run; run.phase = "paused";
+    ticket = paused.kept.token === null ? null : { seed: paused.kept.seed, token: paused.kept.token };
+    inputs = [...paused.kept.inputs]; overflow = paused.kept.overflow; lastScore = scoreOf(run); entrance = 1;
+  } else forget();
 
   const autoplay = () => run.phase === "idle" && !reduced && !ambientPaused && visible && !document.hidden;
   const moving = () => visible && !document.hidden && (run.phase === "running" || autoplay());
@@ -124,12 +154,23 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
     });
   }
 
-  /** Raises REKOR. Only for runs that ended, the runs the leaderboard can receive (#223). */
+  /** Raises REKOR. Only for runs that ended, the runs the leaderboard can receive; a paused run is kept instead (#223). */
   function remember() {
     const score = scoreOf(run);
     if (score <= best) return;
     best = score;
     try { localStorage.setItem(BEST_KEY, String(best)); } catch { /* Private browsing may deny storage. */ }
+  }
+
+  /** Keeps the paused run for a reload. Best effort: without storage it simply is not kept. */
+  function keep() {
+    if (run.phase !== "paused") return;
+    const kept: PausedRun = { seed: run.seed, token: ticket?.token ?? null, inputs, tick: run.tick, overflow, pausedAt: Date.now() };
+    try { sessionStorage.setItem(PAUSED_KEY, JSON.stringify(kept)); } catch { /* Private browsing may deny storage. */ }
+  }
+
+  function forget() {
+    try { sessionStorage.removeItem(PAUSED_KEY); } catch { /* Nothing kept. */ }
   }
 
   /** Applies a player input and logs it for the replay only when it changed the run. */
@@ -141,6 +182,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
 
   function finish() {
     crashedAt = performance.now();
+    forget();
     remember();
     sound.play(run.finished ? "milestone" : "crash");
     const done: FinishedRun = { seed: run.seed, token: ticket && !overflow ? ticket.token : null, inputs: [...inputs], endTick: run.tick, score: scoreOf(run) };
@@ -273,10 +315,11 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
     // Stand up first: inputs are ignored while paused, so a crouch held into the pause could never be released.
     if (run.ducking) input(INPUT.stand);
     run.phase = "paused";
-    schedule(); draw(); publish();
+    keep(); schedule(); draw(); publish();
   }
 
   function begin() {
+    forget();
     ticket = options.ticket?.() ?? null;
     run = startRun(ticket?.seed ?? randomSeed());
     inputs = []; overflow = false; lastScore = 0; flash = 0; flashUntil = 0; acc = 0; prevLift = 0;
@@ -300,7 +343,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
       entrance = run.phase === "idle" && !reduced ? 0 : 1;
       begin();
       result = "start";
-    } else if (run.phase === "paused") { run.phase = "running"; result = "resume"; }
+    } else if (run.phase === "paused") { run.phase = "running"; result = "resume"; forget(); }
     else input(INPUT.jump);
     schedule(); publish();
     return result;
@@ -335,7 +378,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
       step(replay);
     }
     run = replay; entrance = 1; acc = 0; prevLift = 0; ticket = null; flashUntil = 0; crashedAt = -Infinity; hold = 0;
-    remember(); schedule(); draw(); publish();
+    forget(); remember(); schedule(); draw(); publish();
     return true;
   }
 
@@ -357,11 +400,12 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
   observer.observe(canvas);
   document.addEventListener("visibilitychange", visibility);
   window.addEventListener("blur", pause);
+  window.addEventListener("pagehide", pause); // a reload or a navigation away pauses a running run, so it is kept
   resize(); publish();
   return {
     action, duck, pause, adopt, restore,
     togglePause() { if (run.phase === "running") pause(); else if (run.phase === "paused") void action(); },
-    leave() { run = createRun(); entrance = 1; acc = 0; prevLift = 0; schedule(); draw(); publish(); },
+    leave() { forget(); run = createRun(); entrance = 1; acc = 0; prevLift = 0; schedule(); draw(); publish(); },
     toggleAutoplay() { ambientPaused = !ambientPaused; schedule(); publish(); },
     setVisible(value) { visible = value; if (!value) pause(); schedule(); publish(); },
     setReduced(value) { reduced = value; if (value) { entrance = 1; flashUntil = 0; } schedule(); draw(); publish(); },
@@ -374,6 +418,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
       sound.dispose();
       document.removeEventListener("visibilitychange", visibility);
       window.removeEventListener("blur", pause);
+      window.removeEventListener("pagehide", pause);
     },
   };
 }

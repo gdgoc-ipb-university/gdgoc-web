@@ -102,7 +102,7 @@ describe("timeline span", () => {
 });
 
 describe("timeline steps and rows", () => {
-  const span = timelineSpan([...catalyst.timeline, ...techLeague.timeline]);
+  const span = timelineSpan([...catalyst.timeline, ...techLeague.milestones]);
   const rows = (milestones: readonly { label: string; start: string; end?: string }[]) =>
     laneRows(timelineSteps(milestones).map((step) => milestoneExtent(span, step)), 0.03);
 
@@ -110,7 +110,14 @@ describe("timeline steps and rows", () => {
     expect(timelineSteps(catalyst.timeline)).toEqual(catalyst.timeline.map(({ label, start, ...rest }) => ({ label, start, ...("end" in rest ? { end: rest.end } : {}) })));
   });
 
-  it("shows one Tech League step per phase, spanning its items", () => {
+  it("shows each of Tech League's five milestones, from registration to the awarding", () => {
+    expect(timelineSteps(techLeague.milestones)).toEqual(techLeague.milestones);
+    expect(timelineSteps(techLeague.milestones).map((step) => step.label)).toEqual([
+      "Registrasi", "Pengumpulan karya", "Seleksi karya", "Final (daring)", "Awarding (luring)",
+    ]);
+  });
+
+  it("shows one step per phase for a timeline that names them, spanning its items", () => {
     const phases = [...new Set(techLeague.timeline.map((item) => item.phase))];
     const steps = timelineSteps(techLeague.timeline);
     expect(steps.map((step) => step.label)).toEqual(phases);
@@ -126,8 +133,8 @@ describe("timeline steps and rows", () => {
     // A one-day step is drawn wider than its date, so the next day's step moves down.
     expect(laneRows([{ left: 0.5, width: 0.005 }, { left: 0.505, width: 0.1 }], 0.03)).toEqual([0, 1]);
     expect(new Set(rows(catalyst.timeline))).toEqual(new Set([0]));
-    const league = rows(techLeague.timeline);
-    const extents = timelineSteps(techLeague.timeline).map((step) => milestoneExtent(span, step));
+    const league = rows(techLeague.milestones);
+    const extents = timelineSteps(techLeague.milestones).map((step) => milestoneExtent(span, step));
     extents.forEach((a, i) => extents.forEach((b, j) => {
       if (i < j && league[i] === league[j]) expect(a.left + Math.max(a.width, 0.03) <= b.left || b.left + Math.max(b.width, 0.03) <= a.left).toBe(true);
     }));

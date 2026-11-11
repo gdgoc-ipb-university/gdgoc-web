@@ -20,6 +20,7 @@ import type * as cohorts from "../cohorts.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as discord from "../discord.js";
+import type * as discordAuth from "../discordAuth.js";
 import type * as discordLinks from "../discordLinks.js";
 import type * as flags from "../flags.js";
 import type * as gatherings from "../gatherings.js";
@@ -48,6 +49,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   dashboard: typeof dashboard;
   discord: typeof discord;
+  discordAuth: typeof discordAuth;
   discordLinks: typeof discordLinks;
   flags: typeof flags;
   gatherings: typeof gatherings;

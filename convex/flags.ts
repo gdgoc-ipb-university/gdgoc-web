@@ -1,16 +1,12 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
-import { flagMatches, flagPointsFor, nextTryAt, triesAvailable, type FlagPoints } from "../src/lib/flag-task";
+import { flagMatches, flagPointsFor, flagPointsOf, nextTryAt, triesAvailable } from "../src/lib/flag-task";
 
 /** What a member's flag got: a solve with its locked points, or a refusal that still had to be written (#240). */
 export type FlagResult =
   | { ok: true; points: number; place: number; solvedAt: number }
   | { ok: false; code: "WRONG"; message: string; triesLeft: number }
   | { ok: false; code: "LIMITED"; message: string; retryAt: number };
-
-export function flagPointsOf(assignment: Doc<"assignments">): FlagPoints {
-  return { maxPoints: assignment.maxPoints ?? 0, minPoints: assignment.minPoints ?? 0, decrement: assignment.decrement ?? 0 };
-}
 
 /** The flag row of a task. Staff functions and `checkFlag` only: it must never reach a member. */
 export async function flagOf(ctx: QueryCtx | MutationCtx, id: Id<"assignments">) {

@@ -46,6 +46,11 @@ export function parseFlagPoints(input: FlagInput): FlagPoints {
   return { maxPoints: Number(v.maxPoints), minPoints: Number(v.minPoints), decrement: Number(v.decrement) };
 }
 
+/** A stored flag task's points. */
+export function flagPointsOf(task: { maxPoints?: number; minPoints?: number; decrement?: number }): FlagPoints {
+  return { maxPoints: task.maxPoints ?? 0, minPoints: task.minPoints ?? 0, decrement: task.decrement ?? 0 };
+}
+
 /** What the n-th solver (1-based) gets: max(min, max − decrement × (n − 1)). */
 export function flagPointsFor(value: FlagPoints, place: number) {
   return Math.max(value.minPoints, value.maxPoints - value.decrement * (place - 1));

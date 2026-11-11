@@ -29,3 +29,4 @@ Records are not edited after they are accepted, except to mark them superseded. 
 | [0006](0006-production-deploys-from-release.md) | Production deploys from the `release` branch, not `main` | 2026-11-02 |
 | [0007](0007-staff-assign-community-tags.md) | Members register as Member; only staff assign Core Team, BoD and divisions | 2026-11-03 |
 | [0008](0008-league-subdomain-one-app-shared-login.md) | Tech League's subdomain is served by this app, routed by host, with one login across both hosts | 2026-11-08 |
+| [0009](0009-discord-linked-never-sign-in.md) | Discord is linked to a member's Google account for the server, never used to sign in | 2026-11-12 |

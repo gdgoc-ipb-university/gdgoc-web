@@ -159,7 +159,8 @@
   .world[data-playing="true"] .instructions { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   /* The ground is 2px above the buttons (view.ts), so their focus ring stays inside them, off the dino's feet. */
   .world[data-playing="true"] .actions button:focus-visible { outline-offset: -4px; }
-  .hud { top: 220px; left: var(--gutter); right: auto; gap: 22px; }.hud b { font-size: 20px; }
+  /* Three readouts: the gaps shrink on narrow phones, and a 5-digit score on the narrowest wraps WAKTU rather than overflow. */
+  .hud { top: 220px; left: var(--gutter); right: var(--gutter); flex-wrap: wrap; gap: 2px clamp(12px, 4vw, 22px); }.hud b { font-size: 20px; margin-left: clamp(5px, 2vw, 9px); }
   .tapArea, .zones { top: 280px; bottom: 50px; }
   .result { inset: 280px var(--gutter) auto; }.result span { font-size: 11px; }
   /* The open board takes the arena: the title and score step aside (the sheet repeats the score) and the back link moves up. */

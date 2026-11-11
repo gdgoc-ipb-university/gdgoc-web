@@ -176,6 +176,18 @@ describe("saving on a phone (#219)", () => {
     expect(revoke).toHaveBeenCalledWith("blob:twibbon");
   });
 
+  it("shares the second slide too, and shows it", async () => {
+    const { share } = phone(async () => {});
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(new Blob(["slide"], { type: "image/jpeg" }))));
+    const user = userEvent.setup();
+    render(<TwibbonMaker />);
+    await user.click(screen.getByRole("link", { name: /Unduh slide 2/ }));
+    expect(fetch).toHaveBeenCalledWith(twibbon.slide);
+    await waitFor(() => expect(share).toHaveBeenCalledTimes(1));
+    expect((share.mock.calls[0] as unknown as [ShareData])[0].files![0].name).toBe(twibbon.slideFileName);
+    expect(screen.getByRole("img", { name: "Slide 2" }).getAttribute("src")).toBe(twibbon.slide);
+  });
+
   it("suggests leaving an in-app browser", () => {
     vi.spyOn(navigator, "userAgent", "get").mockReturnValue("Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) Mobile/15E148 Instagram 400.0.0.25.88");
     render(<TwibbonMaker />);

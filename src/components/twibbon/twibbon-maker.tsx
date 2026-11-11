@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type KeyboardEvent, type PointerEvent } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type KeyboardEvent, type MouseEvent, type PointerEvent } from "react";
 import {
   clampPlacement, initialPlacement, isInAppBrowser, isMobileBrowser, photoRect, twibbon, twibbonCaption, type CaptionFields, type ImageSize, type Placement,
 } from "@/lib/twibbon";
@@ -78,6 +78,7 @@ export function TwibbonMaker() {
   const [busy, setBusy] = useState(false);
   /** What was saved, shown so a long press can save it where the download or share did not (#219). */
   const [result, setResult] = useState<string | null>(null);
+  const [slideShown, setSlideShown] = useState(false);
   const [touch, setTouch] = useState(false);
   const inApp = useSyncExternalStore(noStore, () => isInAppBrowser(navigator.userAgent), () => false);
 
@@ -149,6 +150,21 @@ export function TwibbonMaker() {
     }, "image/jpeg", .92);
   }
 
+  /** The second slide is a plain file, so the link downloads it, unless a phone can share it to the gallery instead. */
+  async function downloadSlide(event: MouseEvent<HTMLAnchorElement>) {
+    setSlideShown(true);
+    setTouch(touchDevice());
+    if (!touchDevice() || typeof navigator.canShare !== "function") return;
+    event.preventDefault();
+    try {
+      const response = await fetch(twibbon.slide);
+      if (!response.ok) throw new Error(response.statusText);
+      await deliver(await response.blob(), twibbon.slideFileName);
+    } catch {
+      setError("Slide 2 belum bisa diunduh. Tekan lama gambarnya di bawah, lalu Simpan.");
+    }
+  }
+
   return <div className="twibbon-maker">
     <div className="twibbon-stage">
       <div className="twibbon-canvas" data-photo={Boolean(photo)} tabIndex={photo ? 0 : -1} role="group" aria-label="Pratinjau twibbon"
@@ -183,16 +199,18 @@ export function TwibbonMaker() {
         <button type="button" className="button button-blue" disabled={!photo || busy} onClick={download}>
           <PixelIcon name="download" size={18} /> {busy ? "Menyiapkan…" : "Unduh twibbon"}
         </button>
-        <a className="button button-quiet" href={twibbon.slide} download={twibbon.slideFileName}>
+        <a className="button button-quiet" href={twibbon.slide} download={twibbon.slideFileName} onClick={(event) => void downloadSlide(event)}>
           <PixelIcon name="download" size={18} /> Unduh slide 2
         </a>
       </div>
       {error && <p className="field-error" role="alert">{error}</p>}
-      {result && <div className="twibbon-saved">
+      {(result || slideShown) && <div className="twibbon-saved">
         <p className="field-hint">{touch ? "Belum tersimpan? Tekan lama gambar, lalu Simpan." : "Belum terunduh? Klik kanan gambar, lalu Simpan gambar."}</p>
         <div className="twibbon-saved-images">
           {/* eslint-disable-next-line @next/next/no-img-element -- a blob: URL of the member's own twibbon, made in the browser */}
           {result && <img src={result} alt="Twibbon kamu" width={twibbon.width} height={twibbon.height} />}
+          {/* eslint-disable-next-line @next/next/no-img-element -- shown full size so a long press saves the original */}
+          {slideShown && <img src={twibbon.slide} alt="Slide 2" width={twibbon.width} height={twibbon.height} />}
         </div>
       </div>}
       <CaptionComposer />

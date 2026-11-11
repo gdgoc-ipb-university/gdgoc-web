@@ -95,7 +95,7 @@ async function fixture() {
   await owner.mutation(api.gatherings.checkIn, { id: gathering, ownerId: grader.id });
   const checkIn = await t.run(async (ctx) => (await ctx.db.query("checkIns").first())!._id);
   const request = await member.mutation(api.techSupport.submit, { values: {
-    competition: "Gemastik", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-12-31", participation: "solo", teamName: "", helpKinds: ["Ideasi"], progress: "Baru ide.",
+    competition: "Gemastik", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-12-31", participation: "solo", teamName: "", helpKinds: ["Ideasi"], progress: "Baru ide.", whatsapp: "081234567890", discord: "",
   } });
   const values = {
     fullName: "Rania Putri", memberType: "member", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania",

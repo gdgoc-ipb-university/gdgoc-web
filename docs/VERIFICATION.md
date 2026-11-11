@@ -497,6 +497,15 @@ Evidence:
 - Chromium at 1440 × 900 and 390 × 844, on 11 November: the landing's ruler runs from December 2026 to January 2027 with five steps (the selection drops to a second row under the submission day), Catalyst's track stays hidden, the list sits in the left column on desktop and full width on phones; the league page shows four phases, fourteen items and five notes. No horizontal scroll at either width.
 - Not checked: the deployed site, and the landing with Catalyst's schedule switched back on in a browser (covered by the landing tests).
 
+## Bogor Run tickets after the sign-in token expires — 11 November
+
+A member's 19027 run played unranked with "tiket skornya belum sampai" (#226). The game's Convex client carried the player's token on every call, ticket requests included. The token expires after 15 minutes and is only renewed on a save or a board load, and Convex refuses a call that sends it expired, so after a quarter hour without either, ticket renewals failed and the next run started without a ticket. Tickets now come from a second client that never carries the token.
+
+Evidence:
+- `pnpm check` and `pnpm test` pass on Node 24 (three axe tests time out at 5 s under the full run's load and pass alone). The new test in `online.test.ts` signs in, expires the token and checks that renewals still bring a fresh ticket after 20 minutes; it fails before the fix.
+- A local anonymous Convex backend with the token lifetime cut to 30 s, an email test account (both temporary, uncommitted), `next dev` and Playwright's Chromium. Before the fix, once the token had expired and the page clock was moved 10 minutes ahead, `issueRun` returned HTTP 401 "Token expired" and the next run ended with the "tiket" message. After it, `issueRun` went out without the token, returned 200, and the next run was saved.
+- Not checked: production, where the token lasts the full 15 minutes.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

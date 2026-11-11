@@ -468,6 +468,15 @@ Evidence:
 - The header in headless Chrome against `next dev` on `/privasi`, as a guest and as a mocked member with a 14-letter first name: at 1024, 1050, 1051, 1100, 1180, 1181, 1280 and 1440 px no label wraps and nothing scrolls sideways, with at least 25 px between the logo and the links. Before the CSS change the member's greeting pushed "Tentang kami" and "Bogor Run" onto two lines at 961 and 990 px and at 1051–1100 px. At 1000 and 1023 px the menu shows instead; at 390 px it lists all five links.
 - Not checked: the deployed site, a real sign-in, a physical phone, and screen readers.
 
+## Saving the twibbon on phones — 11 November
+
+A member reported that "Unduh twibbon" did nothing (#219): in-app browsers such as Instagram's drop a `blob:` download without an error. On a touch device both images now go to the share sheet when it takes files, a closed sheet is not an error, and anything else falls back to the download. Whatever was saved shows below the buttons to long-press (or right-click on a desktop), and in-app browsers get a note to open the page in Chrome or Safari.
+
+Evidence:
+- `pnpm check`, `pnpm test` (91 files, 804 tests) and `pnpm build` pass on Node 24. Tests cover the in-app and phone user agents, sharing instead of downloading, a cancelled share, a refused share and a file the browser cannot share both falling back to the download, the desktop keeping the download, the shown twibbon's URL revoked when the photo moves or changes, sharing slide 2, and the in-app note.
+- `next start` and Playwright's Chromium, with a made-up landscape picture (no person). At 1280 × 900: both downloads arrive with their file names, both images and the right-click hint show, no note. At 390 × 844 as Instagram on an iPhone (touch, no Web Share in Chromium on Linux): the note sits above the maker, the twibbon and slide 2 fall back to downloads and show with the long-press hint, no horizontal scroll. As Safari on an iPhone with a stand-in `navigator.share`: the twibbon (`image/jpeg`) and slide 2 reach the share sheet, nothing downloads, and a cancel leaves no error.
+- Not checked: a physical phone, the real share sheets of iOS and Android, and long-press saving inside Instagram, Facebook, TikTok and LINE.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

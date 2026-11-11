@@ -81,6 +81,23 @@ describe("dashboard roles and member management", () => {
     expect(rows).toEqual([["admin@example.com", "admin", true], ["member@example.com", "member", false], ["owner@example.com", "owner", true]]);
   });
 
+  it("shows staff when a member last changed their Instagram username, in the list, the member page and the CSV (#235)", async () => {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const admin = await account(t, "admin@example.com", { name: "Admin" });
+    const member = await account(t, "member@example.com", { name: "Anggota" });
+    await owner.mutation(api.dashboard.setRole, { ownerId: admin.id, role: "admin" });
+    const row = async () => (await admin.query(api.dashboard.members, everyone)).rows.find((item) => item.ownerId === member.id)!;
+    expect(await row()).toMatchObject({ instagramChangedAt: null });
+    const values = { fullName: "Anggota", institutionKind: "campus" as const, campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "anggota.baru" };
+    const saved = await member.mutation(api.members.updateProfile, { revision: 4, values });
+    expect(await row()).toMatchObject({ instagram: "anggota.baru", instagramChangedAt: saved.instagramChangedAt });
+    expect(await admin.query(api.dashboard.member, { ownerId: member.id })).toMatchObject({ instagramChangedAt: saved.instagramChangedAt });
+    const exported = (await owner.query(api.dashboard.exportMembers, { paginationOpts: page })).page;
+    expect(exported.find((item) => item.ownerId === member.id)).toMatchObject({ instagramChangedAt: saved.instagramChangedAt });
+    expect(exported.find((item) => item.ownerId === admin.id)).toMatchObject({ instagramChangedAt: null });
+  });
+
   it("shows staff one member's profile, submissions, sent Apresiasi, reviews and last access change", async () => {
     const t = setup();
     const owner = await account(t, "owner@example.com", { name: "Pemilik" });

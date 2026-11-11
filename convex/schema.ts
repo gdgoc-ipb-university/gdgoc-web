@@ -45,6 +45,8 @@ export default defineSchema({
     institutionKind: v.optional(institutionKind),
     // Instagram username without "@", from screen 3; core team checks the follow and the twibbon with it (#212).
     instagram: v.optional(v.string()),
+    // When the username last changed after onboarding (#235), by the member or staff; staff re-check the follow and twibbon.
+    instagramChangedAt: v.optional(v.number()),
     revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
     // Community tag: Member from onboarding; Core Team, BoD and divisions only from staff (#156). Tags members chose
     // themselves before that stay until staff change or confirm them; profiles from before this field register as Member once.

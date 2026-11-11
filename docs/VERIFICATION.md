@@ -477,6 +477,16 @@ Evidence:
 - `next start` and Playwright's Chromium, with a made-up landscape picture (no person). At 1280 × 900: both downloads arrive with their file names, both images and the right-click hint show, no note. At 390 × 844 as Instagram on an iPhone (touch, no Web Share in Chromium on Linux): the note sits above the maker, the twibbon and slide 2 fall back to downloads and show with the long-press hint, no horizontal scroll. As Safari on an iPhone with a stand-in `navigator.share`: the twibbon (`image/jpeg`) and slide 2 reach the share sheet, nothing downloads, and a cancel leaves no error.
 - Not checked: a physical phone, the real share sheets of iOS and Android, and long-press saving inside Instagram, Facebook, TikTok and LINE.
 
+## Tech League timeline of 11 November — 11 November
+
+Program & Development moved the Tech League before Ramadan (#222): registration runs 7 December 2026 – 6 January 2027, the online final is on 17 January and the offline awarding on 30 January 2027. `src/lib/tech-league.ts` now holds the full timeline for the league page and a separate five-step `milestones` list for the landing's "Setahun bersama", whose registration step ends on 4 January as Program & Development wrote it. `/program`, `/bergabung`, the league FAQ and the `Event` JSON-LD (7 December 2026 – 30 January 2027, still a `VirtualLocation`) read from the same module.
+
+Evidence:
+- `pnpm check`, `pnpm test` (92 files, 814 tests) and `pnpm build` with `NEXT_PUBLIC_SITE_URL=https://www.gdgocipb.com` and placeholder Convex URLs pass on Node 24, and each commit passes lint, typecheck and tests on its own. Tests cover the registration window at 23:59:59 WIB on 6 December, 00:00 on 7 December, 23:59:59 on 6 January and 00:00 on 7 January; the full timeline's items, notes and date order within each phase; the five landing steps in order; the `Event` dates; the league page listing every item under its phase with its note; and `/league`, `/program` and `/bergabung` carrying no 1 December or February date in their HTML or JSON-LD.
+- Against `next start`, read with `curl`: `/`, `/league`, `/program/tech-league`, `/program` and `/bergabung` contain none of "1 Desember", 2026-12-01, "Februari" or 2027-02-; the league's `Event` runs 2026-12-07 to 2027-01-30 and its FAQ says registration opens 7 Desember 2026.
+- Chromium at 1440 × 900 and 390 × 844, on 11 November: the landing's ruler runs from December 2026 to January 2027 with five steps (the selection drops to a second row under the submission day), Catalyst's track stays hidden, the list sits in the left column on desktop and full width on phones; the league page shows four phases, fourteen items and five notes. No horizontal scroll at either width.
+- Not checked: the deployed site, and the landing with Catalyst's schedule switched back on in a browser (covered by the landing tests).
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

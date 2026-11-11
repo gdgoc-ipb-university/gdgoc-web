@@ -5,11 +5,12 @@ import axe from "axe-core";
 import { useEffect, useReducer } from "react";
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { compareMembers, matchesFilters, noFilters, pageSlice, type MemberFilters, type MemberSort } from "@/lib/member-table";
+import { instagramChangedLabel } from "@/lib/profile-edit";
 import { MembersPage } from "./members";
 import { ViewerContext, type DashboardViewer } from "./viewer";
 
 // The members page against a fake Convex: the list is cut and sorted the way `dashboard.members` does it.
-type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; techSupportHandler?: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null; photo?: string | null; photoUploaded?: boolean };
+type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; techSupportHandler?: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null; photo?: string | null; photoUploaded?: boolean; instagramChangedAt?: number | null };
 const names = ["Adi", "Bima", "Citra", "Dewi", "Eka", "Fajar", "Gita", "Hana", "Indra", "Joko", "Kiki", "Lina", "Mira", "Nadia", "Oki", "Putri", "Qori", "Rania", "Sari", "Tono", "Umar", "Vina", "Wati", "Xena", "Yusuf", "Zahra", "Agus", "Bayu", "Cahya", "Dina"];
 const rows: Row[] = names.map((fullName, index) => ({
   ownerId: `u${index}`, fullName, email: `${fullName.toLowerCase()}@example.com`, campus: "IPB University", studyProgram: "Ilmu Komputer",
@@ -19,6 +20,8 @@ rows[1] = { ...rows[1], memberType: "core", division: "Technical" };
 rows[2] = { ...rows[2], active: false };
 rows[29] = { ...rows[29], card: { number: "2627-0030", revoked: false } };
 rows[28] = { ...rows[28], photo: "https://example.convex.cloud/api/storage/cahya", photoUploaded: true };
+const instagramChangedAt = Date.UTC(2026, 10, 12, 3);
+rows[27] = { ...rows[27], instagramChangedAt };
 
 const setActive = vi.fn(async () => null);
 const setCardRevoked = vi.fn(async () => null);
@@ -225,6 +228,14 @@ describe("members table", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     await user.click(screen.getByRole("button", { name: "Kelola Dina" }));
     expect(within(screen.getByRole("menu", { name: "Kelola Dina" })).queryByRole("menuitem", { name: "Hapus foto profil" })).toBeNull();
+  });
+
+  it("marks members who changed their Instagram username, with the day (#235)", () => {
+    show("admin");
+    const changed = bodyRows().find((row) => within(row).queryByRole("link", { name: "Bayu" }))!;
+    const label = within(changed).getByText(instagramChangedLabel(instagramChangedAt));
+    expect(label.getAttribute("title")).toBe("12 Nov 2026, 10.00 WIB");
+    expect(bodyRows().filter((row) => within(row).queryByText(/^Instagram diubah/))).toHaveLength(1);
   });
 
   it("offers admins no access changes, and links every row to the member's page", async () => {

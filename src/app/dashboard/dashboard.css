@@ -632,6 +632,8 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 
 .dash-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dash-unconfirmed { font-size: 11px; color: #785511; }
+/* "Instagram diubah 12 Nov" (#235): amber like an unconfirmed tag, since staff check the follow and twibbon again. */
+.dash-table-person .dash-ig-changed, .dash-facts .dash-ig-changed { display: block; font-size: 11px; color: #785511; }
 .dash-confirmed { font-size: 11px; color: #2b5e2a; }
 .dash-profile-tag { margin-block: 4px 14px; }
 .dash-active { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }

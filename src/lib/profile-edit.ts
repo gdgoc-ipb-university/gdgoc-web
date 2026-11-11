@@ -35,3 +35,12 @@ export function profileDraft(profile: Partial<Record<ProfileField, string>> & { 
     institutionKind: profile.institutionKind ?? (profile.campus ? "campus" : undefined),
   };
 }
+
+const dayInWib = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
+const dayAndYearInWib = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
+const yearInWib = new Intl.DateTimeFormat("id-ID", { year: "numeric", timeZone: "Asia/Jakarta" });
+
+/** "Instagram diubah 12 Nov" for staff, the day in WIB, with the year once it is not this year's. */
+export function instagramChangedLabel(at: number, now = Date.now()) {
+  return `Instagram diubah ${(yearInWib.format(at) === yearInWib.format(now) ? dayInWib : dayAndYearInWib).format(at)}`;
+}

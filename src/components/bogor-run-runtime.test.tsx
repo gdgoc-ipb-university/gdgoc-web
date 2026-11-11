@@ -187,6 +187,20 @@ describe("ranked runs", () => {
     expect(replayRun(7, inputs, endTick)).toMatchObject({ ok: true, crashed: true, score });
   });
 
+  it("counts only runs that ended toward REKOR: a paused run left behind never reached the server", async () => {
+    const finish = vi.fn<(run: FinishedRun) => void>();
+    const game = await mount(true, { ticket: () => ({ seed: 3, token: "signed" }), finish });
+    const mirror = startRun(3);
+    game.action(); frame();
+    drive(game, mirror, (run) => scoreOf(run) >= 300);
+    game.pause(); // a blur, a hidden tab or a scroll away
+    expect(snapshot).toMatchObject({ phase: "paused", score: scoreOf(mirror) });
+    game.leave(); // "Kembali ke komunitas"; a reload or a discarded tab loses the paused run the same way
+    expect(finish).not.toHaveBeenCalled();
+    expect(snapshot.best).toBe(0);
+    expect(localStorage.getItem("gdgoc:bogor-run:best:v1")).toBeNull();
+  });
+
   it("plays unranked without a ticket, adopts a late one before the first tick, and guards instant restarts", async () => {
     const finish = vi.fn<(run: FinishedRun) => void>();
     let ticket: Ticket | null = null;

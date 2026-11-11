@@ -10,12 +10,13 @@ import { ViewerContext, type DashboardViewer } from "./viewer";
 const at = (value: string) => Date.parse(`${value}+07:00`);
 const now = at("2026-11-05T10:00:00");
 const member = { name: "Rania Putri", email: "rania@example.com", campus: "IPB University", memberType: "member", division: null };
-const base = { competitionUrl: "https://example.com", deadline: "2026-11-20", participation: "solo", teamName: null, helpKinds: ["Ideasi"], progress: "Prototipe.", mentorName: null, note: null, updatedAt: 0, matchedAt: null, closedAt: null, handledBy: null, ownerId: "u1", member };
+const base = { competitionUrl: "https://example.com", deadline: "2026-11-20", participation: "solo", teamName: null, helpKinds: ["Ideasi"], progress: "Prototipe.", whatsapp: "+6281234567890", discord: "rania.dev", mentorName: null, note: null, updatedAt: 0, matchedAt: null, closedAt: null, handledBy: null, ownerId: "u1", member };
 const requests = [
   // Friday 30 Oct 09.00: Fri, Mon, Tue and Wed have passed, so it is past the 3 working days.
   { ...base, _id: "late", competition: "Gemastik", status: "new", submittedAt: at("2026-10-30T09:00:00") },
   // Tuesday 3 Nov 10.00: two working days.
-  { ...base, _id: "fresh", competition: "Hology", status: "new", submittedAt: at("2026-11-03T10:00:00"), member: { ...member, name: "Bima Sakti" } },
+  // Sent before #251, with no contact.
+  { ...base, _id: "fresh", competition: "Hology", status: "new", whatsapp: null, discord: null, submittedAt: at("2026-11-03T10:00:00"), member: { ...member, name: "Bima Sakti" } },
   // Matched a week ago in one working day: never overdue.
   { ...base, _id: "matched", competition: "Compfest", status: "matched", mentorName: "Dika Aprilio Wibowo", participation: "team", teamName: "Tim Dino", submittedAt: at("2026-10-26T09:00:00"), matchedAt: at("2026-10-27T09:00:00") },
   { ...base, _id: "closed", competition: "Arkavidia", status: "closed", submittedAt: at("2026-10-01T09:00:00") },
@@ -58,6 +59,24 @@ describe("Tech Support queue", () => {
     expect(matched.textContent).toContain("Dicocokkan dalam 1 hari kerja");
     expect(matched.textContent).toContain("Mentor: Dika Aprilio Wibowo");
     await accessible(container);
+  });
+
+  it("links the WhatsApp number to a chat, shows the Discord username, and a dash for older requests", async () => {
+    const { container } = show();
+    const [late, fresh] = within(screen.getByRole("region", { name: "Antrean permintaan" })).getAllByRole("row").slice(1);
+    const chat = within(late).getByRole("link", { name: "Chat WhatsApp Rania Putri, +62 812-3456-7890" });
+    expect(chat.getAttribute("href")).toBe("https://wa.me/6281234567890");
+    expect(chat.getAttribute("target")).toBe("_blank");
+    expect(late.textContent).toContain("Discord: rania.dev");
+    expect(within(fresh).queryByRole("link", { name: /WhatsApp/ })).toBeNull();
+    expect(within(fresh).getAllByRole("cell")[2].textContent).toBe("—");
+    await accessible(container);
+
+    vi.useRealTimers();
+    await userEvent.click(screen.getByRole("button", { name: "Kelola permintaan Rania Putri untuk Gemastik" }));
+    const dialog = screen.getByRole("dialog", { name: "Kelola permintaan" });
+    expect(within(dialog).getByRole("link", { name: "+62 812-3456-7890" }).getAttribute("href")).toBe("https://wa.me/6281234567890");
+    expect(within(dialog).getByRole("button", { name: "Salin username Discord" })).toBeTruthy();
   });
 
   it("records a mentor when matching, and needs one before it saves", async () => {

@@ -69,7 +69,7 @@ describe("Tech Support request form", () => {
     queries["techSupport:mine"] = [mine[0], { ...mine[1], whatsapp: "+6281234567890", discord: "rania.dev" }];
     render(<TechSupportPage />);
     const whatsapp = screen.getByLabelText(/Nomor WhatsApp/) as HTMLInputElement;
-    expect(whatsapp.value).toBe("+6281234567890");
+    expect(whatsapp.value).toBe("+62 812-3456-7890");
     expect((screen.getByLabelText(/Username Discord/) as HTMLInputElement).value).toBe("rania.dev");
     expect(screen.getByText(/Dari permintaanmu sebelumnya/)).toBeTruthy();
     await userEvent.clear(whatsapp);
@@ -109,7 +109,7 @@ describe("Tech Support request form", () => {
     expect((await screen.findByRole("status")).textContent).toContain("Permintaanmu terkirim");
     expect((screen.getByLabelText(/Nama kompetisi/) as HTMLInputElement).value).toBe("");
     // The contact stays for the next request.
-    expect((screen.getByLabelText(/Nomor WhatsApp/) as HTMLInputElement).value).toBe("+6281234567890");
+    expect((screen.getByLabelText(/Nomor WhatsApp/) as HTMLInputElement).value).toBe("+62 812-3456-7890");
   });
 
   it("holds the form while three requests are open", () => {

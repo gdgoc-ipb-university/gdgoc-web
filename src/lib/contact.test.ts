@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { discordError, isDiscord, isWhatsapp, normalizeDiscord, normalizeWhatsapp, whatsappError, whatsappLink } from "./contact";
+import { discordError, isDiscord, isWhatsapp, normalizeDiscord, normalizeWhatsapp, whatsappError, whatsappLabel, whatsappLink } from "./contact";
 
 const whatsapp = (value: string) => { const clean = normalizeWhatsapp(value); return isWhatsapp(clean) ? clean : null; };
 const discord = (value: string) => { const clean = normalizeDiscord(value); return isDiscord(clean) ? clean : null; };
@@ -23,8 +23,11 @@ describe("WhatsApp numbers", () => {
     expect(whatsappError("+6281234567890")).toBe("");
   });
 
-  it("links a stored number to a WhatsApp chat", () => {
+  it("links a stored number to a WhatsApp chat, and groups its digits for reading", () => {
     expect(whatsappLink("+6281234567890")).toBe("https://wa.me/6281234567890");
+    expect(whatsappLabel("+6281234567890")).toBe("+62 812-3456-7890");
+    expect(whatsappLabel("+62812345678")).toBe("+62 812-3456-78");
+    expect(normalizeWhatsapp(whatsappLabel("+628123456789012"))).toBe("+628123456789012");
   });
 });
 

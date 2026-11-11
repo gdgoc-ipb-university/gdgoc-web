@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { toJakartaInput } from "@/lib/assignment";
+import { whatsappLabel } from "@/lib/contact";
 import { readableError } from "@/lib/draft-session";
 import {
   maxOpenRequests, normalizeRequest, participationLabels, techSupportHelpKinds, techSupportLimits, techSupportResponseDays, techSupportStatusLabels,
@@ -57,7 +58,7 @@ function RequestForm({ disabled, contact }: { disabled: boolean; contact: Pick<T
     setBusy(true);
     try {
       await submit({ values: clean });
-      setValues({ ...blank, whatsapp: clean.whatsapp, discord: clean.discord });
+      setValues({ ...blank, whatsapp: whatsappLabel(clean.whatsapp), discord: clean.discord });
       setNotice(`Permintaanmu terkirim. Tim Tech Support membalas paling lama ${techSupportResponseDays} hari kerja.`);
     } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
@@ -117,7 +118,7 @@ export function TechSupportPage() {
     <div className="dash-intro"><p className="eyebrow">TECH SUPPORT</p><h1>Tech Support.</h1>
       <p>Sedang bersiap ikut kompetisi di luar komunitas? Ceritakan lomba dan progresmu, lalu GDGoC IPB mencarikan mentor yang cocok. Permintaan dibalas paling lama {techSupportResponseDays} hari kerja. <Link className="text-link" href="/program/tech-support">Lihat alur dan mentornya</Link>.</p></div>
     {rows === undefined ? <LoadingPanel label="Memuat permintaanmu…" /> : <div className="dash-support-layout">
-      <RequestForm disabled={open >= maxOpenRequests} contact={{ whatsapp: last?.whatsapp ?? "", discord: last?.discord ?? "" }} />
+      <RequestForm disabled={open >= maxOpenRequests} contact={{ whatsapp: last?.whatsapp ? whatsappLabel(last.whatsapp) : "", discord: last?.discord ?? "" }} />
       <section aria-labelledby="support-mine-title" className="dash-support-mine">
         <h2 id="support-mine-title">Permintaanmu</h2>
         {!rows.length ? <div className="app-empty"><h3>Belum ada permintaan.</h3><p>Permintaan yang kamu kirim muncul di sini dengan statusnya dan nama mentor yang dicocokkan.</p></div>

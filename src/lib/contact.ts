@@ -23,6 +23,9 @@ export function whatsappError(value: string) {
 /** The tap-to-chat link for a stored number. */
 export const whatsappLink = (value: string) => `https://wa.me/${value.replace(/^\+/, "")}`;
 
+/** "+6281234567890" → "+62 812-3456-7890", easier to read; normalizeWhatsapp turns it back. */
+export const whatsappLabel = (value: string) => value.replace(/^\+62(\d{3})(\d{4})(\d+)$/, "+62 $1-$2-$3");
+
 /** "@Rania.Dev " → "rania.dev". The fullwidth ＠ of some keyboards is dropped too. */
 export const normalizeDiscord = (value: string) => value.trim().replace(/^[@＠]/, "").toLowerCase();
 

@@ -138,8 +138,10 @@ export default defineSchema({
     .index("by_owner", ["ownerId", "submittedAt"])
     .index("by_submitted", ["submittedAt"]), // bogorRun.pruneRuns deletes rows after 30 days.
   // Each player's best per period ("all" or a week key). `name` is the public short name; `hidden` mirrors gamePlayers.
+  // `endTick` is the best run's server-replayed length (120 ticks a second); bests saved before #232 have none.
   gameBests: defineTable({
     ownerId: v.string(), period: v.string(), score: v.number(), name: v.string(), achievedAt: v.number(), hidden: v.boolean(),
+    endTick: v.optional(v.number()),
   })
     .index("by_owner_period", ["ownerId", "period"])
     .index("by_period_hidden_score", ["period", "hidden", "score"]),

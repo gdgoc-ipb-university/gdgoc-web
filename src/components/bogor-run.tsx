@@ -56,6 +56,13 @@ const loadOnline = () => onlineLoad ??= import("@/lib/bogor-run/online")
   .catch(() => { onlineLoad = null; return null; });
 
 const rankOf = (rank: number | null) => rank === null ? "1000+" : `#${rank}`;
+/** A best's saved run time, or a dash for bests saved before times were kept (#232). */
+function RunTime({ endTick }: { endTick: number | null }) {
+  return <span className={styles.time}>
+    {endTick == null ? <><span aria-hidden="true">–</span><span className={styles.srOnly}>waktu tidak tercatat</span></>
+      : <time dateTime={isoRunTime(endTick)}><span aria-hidden="true">{formatRunTime(endTick)}</span><span className={styles.srOnly}>waktu {spokenRunTime(endTick)}</span></time>}
+  </span>;
+}
 /** The server files a run under the week its ticket was issued in, so a run begun late on Sunday lands on last week. */
 function savedText({ week }: Saved, now = Date.now()) {
   const when = week.key < weekKey(now) ? "minggu lalu" : "minggu ini";
@@ -552,11 +559,12 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
                 {entries.map((entry) => <li key={entry.id} data-you={entry.you || undefined}>
                   <span className={styles.rank}>{String(entry.rank).padStart(2, "0")}</span>
                   <span className={styles.name}>{entry.name}{entry.you && <em> · kamu</em>}</span>
+                  <RunTime endTick={entry.endTick} />
                   <b>{entry.score}</b>
                 </li>)}
               </ol>}
             {shown?.board?.signedIn && !youListed && <p className={styles.you}>
-              {you ? <>Kamu <span>{you.hidden ? "disembunyikan admin" : `peringkat ${rankOf(you.rank)}`}</span><b>{you.score}</b></> : <>Kamu <span>belum ada skor {period === "week" ? "minggu ini" : "tersimpan"}</span></>}
+              {you ? <>Kamu <span>{you.hidden ? "disembunyikan admin" : `peringkat ${rankOf(you.rank)}`}</span><RunTime endTick={you.endTick} /><b>{you.score}</b></> : <>Kamu <span>belum ada skor {period === "week" ? "minggu ini" : "tersimpan"}</span></>}
             </p>}
           </div>
           <Link href="/dashboard/papan-skor" className={styles.more}>Lihat 100 besar <Arrow /></Link>

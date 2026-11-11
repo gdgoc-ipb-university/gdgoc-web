@@ -31,13 +31,13 @@ const thisWeek = weekKey(Date.now());
 const week = (signedIn = false): Board => ({
   key: thisWeek, signedIn,
   entries: [
-    { id: "a" as Board["entries"][number]["id"], rank: 1, name: "Cici L.", score: 677, you: false },
-    { id: "b" as Board["entries"][number]["id"], rank: 2, name: "Bima S.", score: 57, you: signedIn },
-    { id: "c" as Board["entries"][number]["id"], rank: 2, name: "Rania P.", score: 57, you: false },
+    { id: "a" as Board["entries"][number]["id"], rank: 1, name: "Cici L.", score: 677, endTick: 125 * 120, you: false },
+    { id: "b" as Board["entries"][number]["id"], rank: 2, name: "Bima S.", score: 57, endTick: 14 * 120, you: signedIn },
+    { id: "c" as Board["entries"][number]["id"], rank: 2, name: "Rania P.", score: 57, endTick: null, you: false },
   ],
-  you: signedIn ? { rank: 2, score: 57, hidden: false } : null,
+  you: signedIn ? { rank: 2, score: 57, endTick: 14 * 120, hidden: false } : null,
 });
-const allTime: Board = { key: "all", signedIn: true, entries: [{ id: "d" as Board["entries"][number]["id"], rank: 1, name: "Dimas W.", score: 4210, you: false }], you: { rank: 23, score: 1210, hidden: false } };
+const allTime: Board = { key: "all", signedIn: true, entries: [{ id: "d" as Board["entries"][number]["id"], rank: 1, name: "Dimas W.", score: 4210, endTick: 3600 * 120, you: false }], you: { rank: 23, score: 1210, endTick: 95 * 120, hidden: false } };
 const saved: Saved = { ok: true, score: 42, week: { key: thisWeek, best: 42, rank: 3, improved: true }, all: { best: 1204, rank: 17, improved: false } };
 
 beforeEach(() => {
@@ -303,6 +303,12 @@ describe("leaderboard panel", () => {
     const list = await within(panel).findByRole("tabpanel");
     await within(list).findByText("Cici L.");
     expect(within(list).getAllByText("02")).toHaveLength(2); // ties share a rank
+    // Each best shows its saved run time, and older bests saved without one show a dash.
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "01Cici L.02:05waktu 2 menit 5 detik677", "02Bima S.00:14waktu 14 detik57", "02Rania P.–waktu tidak tercatat57",
+    ]);
+    expect(within(rows[0]).getByText("02:05").closest("time")?.getAttribute("datetime")).toBe("PT2M5S");
     expect(online.leaderboard).toHaveBeenCalledWith("week");
     expect(within(panel).getByText(weekLabel(thisWeek))).toBeTruthy();
     expect(within(panel).getByRole("link", { name: /Lihat 100 besar/ }).getAttribute("href")).toBe("/dashboard/papan-skor");
@@ -316,6 +322,8 @@ describe("leaderboard panel", () => {
     expect(online.leaderboard).toHaveBeenLastCalledWith("all");
     await within(panel).findByText("Dimas W.");
     expect(within(panel).getByText("peringkat #23")).toBeTruthy(); // your rank outside the top 10
+    expect(within(panel).getByText("60:00")).toBeTruthy(); // a best that lasted the full hour
+    expect(within(panel).getByText("peringkat #23").parentElement?.textContent).toBe("Kamu peringkat #2301:35waktu 1 menit 35 detik1210");
 
     await user.click(toggle);
     expect(panel.hidden).toBe(true);

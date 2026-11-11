@@ -22,3 +22,33 @@ export const discordScopes = ["identify", "guilds.join"] as const;
 export function discordServerUrl(guildId: string) {
   return `https://discord.com/channels/${guildId}`;
 }
+
+export type DiscordJoinStatus = "pending" | "joined" | "failed";
+export const discordJoinLabels: Record<DiscordJoinStatus, string> = {
+  pending: "Sedang masuk server", joined: "Sudah di server", failed: "Belum masuk server",
+};
+
+const dateInWib = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
+/** "12 November 2026": the day a link was made, in WIB. */
+export function discordLinkedDate(at: number) {
+  return dateInWib.format(at);
+}
+
+/** Where a link attempt returns: the same page with `discord=terhubung`, or with Better Auth's `error` after `discord=gagal`. */
+export function discordReturnUrls(here: string) {
+  const url = new URL(here, "https://site.invalid");
+  for (const key of ["discord", "error", "error_description"]) url.searchParams.delete(key);
+  const back = (status: string) => {
+    const next = new URL(url);
+    next.searchParams.set("discord", status);
+    return `${next.pathname}${next.search}`;
+  };
+  return { callbackURL: back("terhubung"), errorCallbackURL: back("gagal") };
+}
+
+/** The member's message for Better Auth's `error` code after a link attempt failed. */
+export function discordLinkError(code: string | null) {
+  if (code === "account_already_linked_to_different_user") return "Akun Discord ini sudah terhubung ke akun member lain. Masuk ke Discord dengan akun lain, lalu hubungkan lagi.";
+  if (code === "access_denied") return "Kamu membatalkan izin di Discord, jadi Discord belum terhubung.";
+  return "Discord belum bisa dihubungkan. Coba lagi sebentar lagi.";
+}

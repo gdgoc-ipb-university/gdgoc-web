@@ -32,6 +32,12 @@ The maintainer does this once; none of it is code.
 
 Until all four values are set, Profil and onboarding say Discord isn't set up yet, Better Auth has no Discord provider, and nothing else changes. Convex applies environment changes at once, without a redeploy.
 
+## Where members see it
+
+- **Profil** (`/dashboard/profil`), beside the photo: "Hubungkan Discord"; once linked, the Discord username, the link date (WIB), the join status with Discord's last error, "Coba lagi" after a failure, "Buka server" (`https://discord.com/channels/<server ID>`) once in, and "Putuskan" after a confirmation.
+- **Onboarding**, screen 4 (Komunitas): a Discord card beside the WhatsApp group's, with the same weight. It can be skipped and done later from Profil.
+- After Discord's consent page, the member returns to the page they left with `discord=terhubung`, or `discord=gagal` and Better Auth's `error`, which the page turns into an Indonesian message and then removes from the address.
+
 ## Linking
 
 "Hubungkan Discord" calls Better Auth's `linkSocial` for a signed-in member. Discord asks for two scopes only: `identify` (the account's ID and username) and `guilds.join` (leave to add it to the server). The site never asks for the email, the server list or messages. After the consent screen, Discord returns to `/api/auth/callback/discord` on the main host, Better Auth stores the account with its tokens encrypted (`encryptOAuthTokens`), and the member lands back where they started.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampPlacement, friendTags, photoRect, twibbon, twibbonCaption } from "./twibbon";
+import { clampPlacement, friendTags, isInAppBrowser, isMobileBrowser, photoRect, twibbon, twibbonCaption } from "./twibbon";
 
 const landscape = { width: 4000, height: 3000 };
 const portrait = { width: 1080, height: 1920 };
@@ -50,5 +50,34 @@ describe("the twibbon caption", () => {
     expect(caption).toContain("aku [nama] dari [sekolah/kampus]");
     expect(caption).toContain("@gdgoc.ipb @teman1 @teman2 @teman3");
     expect(friendTags(" , ")).toEqual([]);
+  });
+});
+
+const agents = {
+  chrome: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36",
+  safariIphone: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Mobile/15E148 Safari/604.1",
+  chromeAndroid: "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Mobile Safari/537.36",
+  instagramIphone: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 400.0.0.25.88 (iPhone15,2; iOS 18_6; id_ID; id; scale=3.00; 1179x2556; 789012345)",
+  instagramAndroid: "Mozilla/5.0 (Linux; Android 14; SM-A546E Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/142.0.0.0 Mobile Safari/537.36 Instagram 400.0.0.25.88 Android",
+  facebook: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 [FBAN/FBIOS;FBAV/500.0.0.40.100;FBBV/1;FBDV/iPhone15,2;FBMD/iPhone;FBSN/iOS;FBSV/18.6;FBSS/3;FBID/phone;FBLC/id_ID;FBOP/5]",
+  tiktok: "Mozilla/5.0 (Linux; Android 13; 2201117TG Build/TKQ1.221114.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/142.0.0.0 Mobile Safari/537.36 trill_380000 JsSdk/1.0 NetType/WIFI Channel/googleplay AppName/musical_ly app_version/38.0.0 ByteLocale/id ByteFullLocale/id Region/ID BytedanceWebview/d8a21c6",
+  line: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Safari Line/15.0.0",
+  webView: "Mozilla/5.0 (Linux; Android 12; Redmi Note 11 Build/SKQ1.211103.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/142.0.0.0 Mobile Safari/537.36",
+};
+
+describe("the browser saving the twibbon", () => {
+  it("spots the in-app browsers that drop downloads", () => {
+    for (const agent of [agents.instagramIphone, agents.instagramAndroid, agents.facebook, agents.tiktok, agents.line, agents.webView]) {
+      expect(isInAppBrowser(agent), agent).toBe(true);
+    }
+    for (const agent of [agents.chrome, agents.safariIphone, agents.chromeAndroid]) expect(isInAppBrowser(agent), agent).toBe(false);
+    // "Online/" is not LINE.
+    expect(isInAppBrowser(`${agents.chrome} Online/1.0`)).toBe(false);
+  });
+
+  it("tells phones from desktops", () => {
+    expect(isMobileBrowser(agents.safariIphone)).toBe(true);
+    expect(isMobileBrowser(agents.chromeAndroid)).toBe(true);
+    expect(isMobileBrowser(agents.chrome)).toBe(false);
   });
 });

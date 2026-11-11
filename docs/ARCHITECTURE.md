@@ -56,7 +56,7 @@ One login covers both hosts. With `AUTH_COOKIE_DOMAIN` set, Better Auth writes i
 
 ## Bogor Run replay
 
-The game runs in the browser on the fixed-tick engine in `src/lib/bogor-run/`. Before a signed-in run, `bogorRun.issueRun` returns a server-signed seed token; when the run ends, the client sends `bogorRun.submitRun` its recorded inputs and score. The mutation replays the inputs on the same engine with that seed and saves the score only if the replay matches. The tokens are signed with a key derived from `BETTER_AUTH_SECRET`; without it the game plays unranked.
+The game runs in the browser on the fixed-tick engine in `src/lib/bogor-run/`. Before a signed-in run, `bogorRun.issueRun` returns a server-signed seed token; when the run ends, the client sends `bogorRun.submitRun` its recorded inputs and score. The mutation replays the inputs on the same engine with that seed and saves the score only if the replay matches. The tokens are signed with a key derived from `BETTER_AUTH_SECRET`; without it the game plays unranked. Tickets come from a Convex client that never carries the player's token, because that token expires after 15 minutes and Convex refuses calls that send it expired (#226); saves and the board use the signed-in client, whose token is renewed before each save and board load.
 
 ## Staging VM and Cloudflare tunnel
 

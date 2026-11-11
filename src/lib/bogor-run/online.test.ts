@@ -2,10 +2,19 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { weekKey, weekStart } from "./leaderboard";
 
-const convex = vi.hoisted(() => ({ mutation: vi.fn(), query: vi.fn(), setAuth: vi.fn(), clearAuth: vi.fn() }));
+const convex = vi.hoisted(() => ({ mutation: vi.fn(), query: vi.fn(), setAuth: vi.fn(), clearAuth: vi.fn(), expired: new Set<string>() }));
 const auth = vi.hoisted(() => ({ getSession: vi.fn(), token: vi.fn(), social: vi.fn() }));
 vi.mock("convex/browser", () => ({
-  ConvexHttpClient: class { mutation = convex.mutation; query = convex.query; setAuth = convex.setAuth; clearAuth = convex.clearAuth; },
+  ConvexHttpClient: class {
+    token: string | null = null;
+    setAuth = (token: string) => { this.token = token; convex.setAuth(token); };
+    clearAuth = () => { this.token = null; convex.clearAuth(); };
+    // Like Convex, refuses every call that carries an expired token, even one that needs no sign-in.
+    call = (fn: (...args: unknown[]) => unknown) => (...args: unknown[]) => this.token && convex.expired.has(this.token)
+      ? Promise.reject(new Error("InvalidAuthHeader: Token expired")) : fn(...args);
+    mutation = this.call(convex.mutation);
+    query = this.call(convex.query);
+  },
 }));
 vi.mock("@/lib/auth-client", () => ({ authClient: { getSession: auth.getSession, convex: { token: auth.token }, signIn: { social: auth.social } } }));
 
@@ -19,7 +28,7 @@ beforeEach(async () => {
   vi.useFakeTimers({ now: Date.UTC(2026, 8, 30, 3) }); // a Wednesday
   vi.resetModules();
   vi.clearAllMocks();
-  hidden = false; issued = 0;
+  hidden = false; issued = 0; convex.expired.clear();
   vi.spyOn(document, "hidden", "get").mockImplementation(() => hidden);
   convex.mutation.mockImplementation(async () => { issued += 1; return { token: `t${issued}`, seed: issued, issuedAt: Date.now() }; });
   sessionStorage.clear();
@@ -91,6 +100,18 @@ describe("tickets", () => {
     await online.prefetchTicket();
     await vi.advanceTimersByTimeAsync(2);
     expect(online.takeTicket()).toBeNull();
+  });
+
+  it("asks for tickets without the player's sign-in, so its 15-minute token never makes a run unranked", async () => {
+    auth.getSession.mockResolvedValue({ data: { user: { id: "u" } }, error: null });
+    auth.token.mockResolvedValue({ data: { token: "jwt" }, error: null });
+    await online.signedIn(true); // a save signs the client in
+    const stop = online.keepTicketFresh();
+    await vi.advanceTimersByTimeAsync(0);
+    convex.expired.add("jwt"); // no save or board load for 15 minutes: a break, a long pause or a long run
+    await vi.advanceTimersByTimeAsync(20 * MINUTE);
+    expect(online.takeTicket()).toEqual({ seed: 3, token: "t3" }); // renewed at 9.5 and 19 minutes
+    stop();
   });
 
   it("reports a ticket on its way, and keeps playing when ranking is off", async () => {

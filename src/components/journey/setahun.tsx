@@ -5,9 +5,12 @@ import { techLeague } from "@/lib/tech-league";
 import { Chapter, ChapterTitle } from "./chapter";
 import { YearTimeline, type Track } from "./year-timeline";
 
-/** The dates come from the program modules, so the landing follows their pages. */
+/**
+ * The dates come from the program modules, so the landing follows their pages. Tech League shows its five milestones;
+ * the league page lists the full timeline (#222).
+ */
 const catalystTrack: Track = { name: "GDGoC Catalyst", href: catalyst.path, color: "blue", milestones: catalyst.timeline };
-const techLeagueTrack: Track = { name: "Tech League", href: techLeague.href, color: "green", milestones: techLeague.timeline };
+const techLeagueTrack: Track = { name: "Tech League", href: techLeague.href, color: "green", milestones: techLeague.milestones };
 
 /**
  * Chapter 4: the 2026/27 year of Catalyst and Tech League on one timeline. While Catalyst's schedule is on hold

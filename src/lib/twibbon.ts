@@ -72,3 +72,18 @@ export function twibbonCaption({ name, origin, friends }: CaptionFields) {
     `${twibbon.hashtag} #GDGoCIPB #GoogleDeveloperGroups`,
   ].join("\n");
 }
+
+/**
+ * Instagram, Facebook, TikTok and LINE open links in their own browser, as do Android apps built on a WebView (`; wv)`).
+ * Those can drop a download without a word (#219), so the page suggests opening it in Chrome or Safari instead.
+ */
+const inAppBrowsers = /Instagram|FBAN\/|FBAV\/|TikTok|musical_ly|BytedanceWebview|\bLine\/|; wv\)/i;
+
+export function isInAppBrowser(userAgent: string) {
+  return inAppBrowsers.test(userAgent);
+}
+
+/** Phones and tablets, whose share sheet saves a picture to the gallery where a download would land in Files or nowhere. */
+export function isMobileBrowser(userAgent: string) {
+  return /Android|iPhone|iPad|iPod|Mobi/i.test(userAgent);
+}

@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState, type DragEvent, type KeyboardEvent, type PointerEvent } from "react";
-import { clampPlacement, initialPlacement, photoRect, twibbon, twibbonCaption, type CaptionFields, type ImageSize, type Placement } from "@/lib/twibbon";
+import { useEffect, useRef, useState, useSyncExternalStore, type DragEvent, type KeyboardEvent, type PointerEvent } from "react";
+import {
+  clampPlacement, initialPlacement, isInAppBrowser, isMobileBrowser, photoRect, twibbon, twibbonCaption, type CaptionFields, type ImageSize, type Placement,
+} from "@/lib/twibbon";
 import { PixelIcon } from "../pixel-icons";
 
 /** A chosen photo, decoded once and upright (EXIF rotation applied). It never leaves the browser. */
@@ -43,6 +45,24 @@ function save(blob: Blob, name: string) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+/** Touch screens and phone browsers, where the share sheet is how a picture reaches the gallery. Desktops keep the download. */
+const touchDevice = () => Boolean(window.matchMedia?.("(pointer: coarse)").matches) || isMobileBrowser(navigator.userAgent);
+
+/**
+ * Saves an image (#219). On a phone it goes to the share sheet, whose "Simpan gambar" puts it in the gallery: in-app and
+ * older browsers drop a `blob:` download without a word, and iOS files a download under Files. Closing the sheet is the
+ * member's choice, not an error. Where sharing is unavailable or fails, the image downloads as before.
+ */
+async function deliver(blob: Blob, name: string) {
+  const files = [new File([blob], name, { type: blob.type })];
+  if (touchDevice() && navigator.canShare?.({ files })) {
+    try { await navigator.share({ files }); return; } catch (error) { if ((error as Error).name === "AbortError") return; }
+  }
+  save(blob, name);
+}
+
+const noStore = () => () => {};
+
 /**
  * Puts a photo under the 2026/27 member frame (#203): choose or drop a photo, drag it (or use the arrow keys) and zoom,
  * then download a 1080 × 1440 JPEG. The second slide and a caption to copy sit beside it.
@@ -56,6 +76,10 @@ export function TwibbonMaker() {
   const [place, setPlace] = useState<Placement>(initialPlacement);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  /** What was saved, shown so a long press can save it where the download or share did not (#219). */
+  const [result, setResult] = useState<string | null>(null);
+  const [touch, setTouch] = useState(false);
+  const inApp = useSyncExternalStore(noStore, () => isInAppBrowser(navigator.userAgent), () => false);
 
   useEffect(() => {
     const image = new Image();
@@ -68,6 +92,8 @@ export function TwibbonMaker() {
   }, [frame, photo, place]);
 
   useEffect(() => () => photo?.bitmap.close(), [photo]);
+  // The finished twibbon's object URL lives while it is shown: until the photo moves or changes, or the page closes.
+  useEffect(() => () => { if (result) URL.revokeObjectURL(result); }, [result]);
 
   async function choose(file: File | undefined) {
     if (!file) return;
@@ -76,9 +102,10 @@ export function TwibbonMaker() {
     if (typeof opened === "string") { setError(opened); return; }
     setPhoto(opened);
     setPlace(initialPlacement);
+    setResult(null);
   }
 
-  const update = (next: Placement) => { if (photo) setPlace(clampPlacement(photo, next)); };
+  const update = (next: Placement) => { if (photo) { setPlace(clampPlacement(photo, next)); setResult(null); } };
   /** Canvas pixels per screen pixel, since the canvas is shown smaller than its 1080 px width. */
   const ratio = () => twibbon.width / (canvas.current?.getBoundingClientRect().width || twibbon.width);
 
@@ -113,10 +140,12 @@ export function TwibbonMaker() {
     const target = canvas.current;
     if (!target || !photo) return;
     setBusy(true);
-    target.toBlob((blob) => {
-      setBusy(false);
-      if (blob) save(blob, twibbon.fileName);
-      else setError("Twibbon belum bisa diunduh di browser ini. Coba browser lain.");
+    setError("");
+    target.toBlob(async (blob) => {
+      if (!blob) { setBusy(false); setError("Twibbon belum bisa diunduh di browser ini. Coba browser lain."); return; }
+      setResult(URL.createObjectURL(blob));
+      setTouch(touchDevice());
+      try { await deliver(blob, twibbon.fileName); } finally { setBusy(false); }
     }, "image/jpeg", .92);
   }
 
@@ -141,6 +170,10 @@ export function TwibbonMaker() {
     </div>
 
     <div className="twibbon-side">
+      {inApp && <p className="twibbon-in-app" role="note">
+        Halaman ini terbuka di dalam aplikasi (misalnya Instagram), yang kadang tidak bisa menyimpan gambar. Kalau twibbon tidak
+        tersimpan, ketuk menu ⋯ di pojok kanan atas, lalu buka di Chrome atau Safari.
+      </p>}
       <div className="twibbon-actions">
         <input ref={input} type="file" accept={photoTypes.join(",")} className="sr-only" tabIndex={-1} aria-hidden="true"
           onChange={(event) => { void choose(event.target.files?.[0]); event.target.value = ""; }} />
@@ -155,6 +188,13 @@ export function TwibbonMaker() {
         </a>
       </div>
       {error && <p className="field-error" role="alert">{error}</p>}
+      {result && <div className="twibbon-saved">
+        <p className="field-hint">{touch ? "Belum tersimpan? Tekan lama gambar, lalu Simpan." : "Belum terunduh? Klik kanan gambar, lalu Simpan gambar."}</p>
+        <div className="twibbon-saved-images">
+          {/* eslint-disable-next-line @next/next/no-img-element -- a blob: URL of the member's own twibbon, made in the browser */}
+          {result && <img src={result} alt="Twibbon kamu" width={twibbon.width} height={twibbon.height} />}
+        </div>
+      </div>}
       <CaptionComposer />
     </div>
   </div>;

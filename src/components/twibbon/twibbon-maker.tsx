@@ -166,6 +166,10 @@ export function TwibbonMaker() {
   }
 
   return <div className="twibbon-maker">
+    {inApp && <p className="twibbon-in-app" role="note">
+      Halaman ini terbuka di dalam aplikasi (misalnya Instagram), yang kadang tidak bisa menyimpan gambar. Kalau twibbon tidak
+      tersimpan, ketuk menu ⋯ di pojok kanan atas, lalu buka di Chrome atau Safari.
+    </p>}
     <div className="twibbon-stage">
       <div className="twibbon-canvas" data-photo={Boolean(photo)} tabIndex={photo ? 0 : -1} role="group" aria-label="Pratinjau twibbon"
         aria-describedby="twibbon-hint" onPointerDown={down} onPointerMove={move} onPointerUp={() => { drag.current = null; }}
@@ -186,10 +190,6 @@ export function TwibbonMaker() {
     </div>
 
     <div className="twibbon-side">
-      {inApp && <p className="twibbon-in-app" role="note">
-        Halaman ini terbuka di dalam aplikasi (misalnya Instagram), yang kadang tidak bisa menyimpan gambar. Kalau twibbon tidak
-        tersimpan, ketuk menu ⋯ di pojok kanan atas, lalu buka di Chrome atau Safari.
-      </p>}
       <div className="twibbon-actions">
         <input ref={input} type="file" accept={photoTypes.join(",")} className="sr-only" tabIndex={-1} aria-hidden="true"
           onChange={(event) => { void choose(event.target.files?.[0]); event.target.value = ""; }} />

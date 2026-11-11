@@ -1,10 +1,14 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
-import type { api } from "../../../convex/_generated/api";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
 import { readableError } from "@/lib/draft-session";
-import { dateLabel } from "../appreciation/shared";
+import { LoadingPanel, dateLabel } from "../appreciation/shared";
+import { Arrow } from "../icons";
 import { flagLimits, flagPointsOf, flagPreview, parseFlagPoints, validateFlag, type FlagErrors, type FlagInput } from "@/lib/flag-task";
 
 /** Flag tasks (#240): the kind switch, the flag with its points and the staff summary in Kelola tugas, and the member's panel. */
@@ -120,16 +124,13 @@ export function MemberFlag({ challenge, open, closedText, onSubmit }: { challeng
   }
   const { mine, firstBlood } = challenge;
   return <>
-    <dl className="dash-stats dash-flag-stats">
-      <div><dt>Poin sekarang</dt><dd>{number.format(challenge.pointsNow)}</dd><dd className="dash-flag-note">Untuk solver ke-{challenge.solves + 1}{challenge.pointsNow === challenge.minPoints && challenge.solves ? ", sudah minimum" : ""}.</dd></div>
-      <div><dt>Solve</dt><dd>{number.format(challenge.solves)}</dd><dd className="dash-flag-note">Member yang sudah memecahkannya.</dd></div>
-      <div><dt>First blood</dt><dd className="dash-flag-blood">{firstBlood?.name ?? "—"}</dd><dd className="dash-flag-note">{firstBlood?.you ? "Itu kamu!" : firstBlood ? "Solver pertama." : "Belum ada. Jadilah yang pertama."}</dd></div>
-    </dl>
+    <FlagStats challenge={challenge} />
     {mine ? <section className="app-panel dash-result dash-flag-solved" aria-labelledby="solved-title">
       <p className="eyebrow">TERPECAHKAN</p>
       <h2 id="solved-title" tabIndex={-1} ref={solvedHeading}>{solvedHere ? "Flag-mu tepat!" : "Kamu sudah memecahkan tugas ini."}</h2>
       <p className="dash-score">{number.format(mine.points)}<small>poin</small></p>
       <p className="app-small">Solver ke-{mine.order}{firstBlood?.you ? " · first blood" : ""} · {dateLabel(mine.solvedAt)}. Poinnya terkunci dan tidak berubah, meski poin tugas ini turun atau diubah.</p>
+      <Link className="text-button" href="/dashboard/papan-skor#challenge">Lihat papan Challenge <Arrow /></Link>
     </section>
       : !open ? <section className="app-form-section dash-closed" aria-labelledby="closed-title"><h2 id="closed-title">Flag tidak diterima lagi.</h2><p>{closedText}</p></section>
       : <form className="app-form-section dash-flag-form" onSubmit={submit} noValidate aria-labelledby="flag-form-title">
@@ -145,4 +146,36 @@ export function MemberFlag({ challenge, open, closedText, onSubmit }: { challeng
         </div>
       </form>}
   </>;
+}
+
+/** Points now, solves and first blood, for members and staff alike. */
+export function FlagStats({ challenge }: { challenge: Challenge }) {
+  const { firstBlood } = challenge;
+  return <dl className="dash-stats dash-flag-stats">
+    <div><dt>Poin sekarang</dt><dd>{number.format(challenge.pointsNow)}</dd><dd className="dash-flag-note">Untuk solver ke-{challenge.solves + 1}{challenge.pointsNow === challenge.minPoints && challenge.solves ? ", sudah minimum" : ""}.</dd></div>
+    <div><dt>Solve</dt><dd>{number.format(challenge.solves)}</dd><dd className="dash-flag-note">Member yang sudah memecahkannya.</dd></div>
+    <div><dt>First blood</dt><dd className="dash-flag-blood">{firstBlood?.name ?? "—"}</dd><dd className="dash-flag-note">{firstBlood?.you ? "Itu kamu!" : firstBlood ? "Solver pertama." : "Belum ada. Jadilah yang pertama."}</dd></div>
+  </dl>;
+}
+
+/** Staff: who solved the task, when and for how many points, with the wrong tries per solver and in all. */
+export function FlagSolves({ id }: { id: Id<"assignments"> }) {
+  const data = useQuery(api.flags.solves, { id });
+  return <section className="dash-flag-solves" aria-labelledby="solves-title">
+    <div className="app-section-heading"><div><p className="eyebrow">KHUSUS ADMIN</p><h2 id="solves-title">Yang sudah memecahkan</h2></div>
+      {data && <span className="app-small">{number.format(data.solves.length)} solve · {number.format(data.wrong)} flag salah dari {number.format(data.wrongMembers)} member</span>}</div>
+    {data === undefined ? <LoadingPanel label="Memuat solve…" /> : !data?.solves.length ? <p className="app-small">Belum ada yang memecahkan tugas ini.</p>
+      : <div className="dash-board-wrap"><table className="dash-board">
+        <caption className="sr-only">Solve tugas ini menurut urutan waktu</caption>
+        <thead><tr><th scope="col" className="dash-board-rank"><span>Urutan</span></th><th scope="col">Member</th><th scope="col" className="dash-board-score">Poin</th><th scope="col" className="dash-board-when">Waktu (WIB)</th></tr></thead>
+        <tbody>{data.solves.map((row) => <tr key={row.order}>
+          <td className="dash-board-rank"><span className="dash-rank" data-top={row.order === 1 ? 1 : undefined}>{row.order}</span></td>
+          <th scope="row"><span className="dash-board-player"><span className="dash-board-name">{row.name}</span>{row.inactive && <span className="app-status dash-status" data-status="missing">Nonaktif</span>}</span>
+            <span className="dash-board-why">{row.order === 1 ? "First blood · " : ""}{row.wrong ? `${number.format(row.wrong)} flag salah sebelumnya` : "Tanpa flag salah"}</span>
+            <span className="dash-board-when-inline">{dateLabel(row.solvedAt)}</span></th>
+          <td className="dash-board-score">{number.format(row.points)}</td>
+          <td className="dash-board-when">{dateLabel(row.solvedAt)}</td>
+        </tr>)}</tbody>
+      </table></div>}
+  </section>;
 }

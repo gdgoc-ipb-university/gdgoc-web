@@ -483,6 +483,14 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-flag-row input { flex: 1; min-width: 0; }
 .dash-flag-row .button { flex-shrink: 0; }
 .dash-flag-solved .dash-score small { margin-left: 8px; }
+.dash-flag-solved .text-button { margin-top: 12px; }
+.dash-flag-solves { margin-top: 28px; max-width: 860px; }
+/* Papan skor's two boards (#240): a segmented switch above the Bogor Run period tabs. */
+.dash-game-tabs { display: inline-flex; gap: 0; margin-bottom: 22px; border: 1px solid var(--line); background: #fffefa; }
+.dash-game-tabs .dash-tab { min-height: 44px; padding: 10px 20px; margin: 0; border-bottom: 0; font-weight: 600; }
+.dash-game-tabs .dash-tab[aria-selected="true"] { background: var(--ink); color: #fff; }
+@media (max-width: 640px) { .dash-game-tabs { display: flex; } }
+@media (forced-colors: active) { .dash-game-tabs .dash-tab[aria-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; } }
 @media (max-width: 640px) {
   .dash-flag-row { flex-direction: column; }
   .dash-flag-stats { grid-template-columns: 1fr 1fr; }

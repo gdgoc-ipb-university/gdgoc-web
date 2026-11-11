@@ -58,6 +58,8 @@ One login covers both hosts. With `AUTH_COOKIE_DOMAIN` set, Better Auth writes i
 
 The game runs in the browser on the fixed-tick engine in `src/lib/bogor-run/`. Before a signed-in run, `bogorRun.issueRun` returns a server-signed seed token; when the run ends, the client sends `bogorRun.submitRun` its recorded inputs and score. The mutation replays the inputs on the same engine with that seed and saves the score only if the replay matches. The tokens are signed with a key derived from `BETTER_AUTH_SECRET`; without it the game plays unranked.
 
+A paused run is kept in the tab's `sessionStorage` (seed, token, input log and tick) and rebuilt with `resumeRun` after a reload, so it can still end and be saved on its own ticket. The local REKOR counts only runs that ended, the same runs the leaderboard can receive (#223).
+
 ## Staging VM and Cloudflare tunnel
 
 A preview runs `next dev` on another VM against the Convex development deployment, reached at `gdgoc-ipb.yorhagarden.xyz` through a Cloudflare tunnel, and at a second tunnel host for the league once `NEXT_PUBLIC_LEAGUE_URL`, `LEAGUE_URL` and `AUTH_COOKIE_DOMAIN` are set for it. `DEV_ALLOWED_ORIGINS` lets that hostname reach the dev server, and the tunnel's origin is set as `NEXT_PUBLIC_SITE_URL` and as `SITE_URL` on the development deployment, with its callback registered on the Google OAuth client. The VM follows `main`, so it previews the next release; Vercel builds production only. It is also the place to check a branch before it merges.

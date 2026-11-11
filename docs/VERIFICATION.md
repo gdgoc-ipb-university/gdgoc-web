@@ -477,6 +477,16 @@ Evidence:
 - `next start` and Playwright's Chromium, with a made-up landscape picture (no person). At 1280 × 900: both downloads arrive with their file names, both images and the right-click hint show, no note. At 390 × 844 as Instagram on an iPhone (touch, no Web Share in Chromium on Linux): the note sits above the maker, the twibbon and slide 2 fall back to downloads and show with the long-press hint, no horizontal scroll. As Safari on an iPhone with a stand-in `navigator.share`: the twibbon (`image/jpeg`) and slide 2 reach the share sheet, nothing downloads, and a cancel leaves no error.
 - Not checked: a physical phone, the real share sheets of iOS and Android, and long-press saving inside Instagram, Facebook, TikTok and LINE.
 
+## Bogor Run: REKOR from ended runs, and a paused run that survives a reload — 11 November
+
+A member's REKOR read 15133 while the leaderboard had 605 (#223): pausing wrote the running score to REKOR, but only a run that ends is sent, so a paused run lost to a reload, a discarded background tab or "Kembali ke komunitas" left REKOR above anything saved. REKOR now counts only runs that ended, and a paused run is kept in the tab's `sessionStorage` and rebuilt by replay after a reload, still on its ticket.
+
+Evidence:
+- `pnpm check` and `pnpm test` pass on Node 24. Tests cover REKOR staying put through a pause and a leave, a run paused by `pagehide`, rebuilt by a new runner and finished on its original ticket with a log that replays to its score, `resumeRun` matching a live run at the paused tick and afterwards, and a kept run that is too old or does not replay being dropped.
+- Staging before the change (guest, headless Chromium): a run paused at 35 and a reload left REKOR at 35 with no `submitRun` in the browser or in the dev deployment's logs.
+- A local anonymous Convex backend with an email test account (temporary, uncommitted), `next dev` and Playwright's Chromium, at 1280 × 900 and 390 × 844: a signed-in run paused at SKOR 031 kept REKOR at 000, came back paused at 031 with "Lanjut main" after a reload, and once resumed and crashed was saved ("Tersimpan · peringkat #1 minggu ini").
+- Not checked: a phone discarding a real background tab, and production.
+
 ## Tech League timeline of 11 November — 11 November
 
 Program & Development moved the Tech League before Ramadan (#222): registration runs 7 December 2026 – 6 January 2027, the online final is on 17 January and the offline awarding on 30 January 2027. `src/lib/tech-league.ts` now holds the full timeline for the league page and a separate five-step `milestones` list for the landing's "Setahun bersama", whose registration step ends on 4 January as Program & Development wrote it. `/program`, `/bergabung`, the league FAQ and the `Event` JSON-LD (7 December 2026 – 30 January 2027, still a `VirtualLocation`) read from the same module.

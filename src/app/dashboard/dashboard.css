@@ -473,6 +473,21 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-flag-facts dt { font-size: 12px; color: var(--muted); }
 .dash-flag-facts dd { margin: 0; font-size: 14px; }
 .dash-flag-code { overflow-wrap: anywhere; background: #eceee4; padding: 2px 6px; }
+.dash-flag-stats { max-width: 860px; }
+.dash-flag-stats > div:nth-child(3) { box-shadow: inset 0 3px 0 var(--red); }
+.dash-flag-stats dd.dash-flag-blood { font: 600 22px/1.15 var(--font-pixel), monospace; overflow-wrap: anywhere; padding-top: 10px; }
+.dash-flag-stats dd.dash-flag-note { margin-top: 10px; font: 400 12px/1.5 var(--font-body), sans-serif; color: var(--muted); }
+.dash-flag-form { max-width: 860px; }
+.dash-flag-form h2 { font-size: 20px; margin: 0 0 14px; }
+.dash-flag-row { display: flex; gap: 10px; }
+.dash-flag-row input { flex: 1; min-width: 0; }
+.dash-flag-row .button { flex-shrink: 0; }
+.dash-flag-solved .dash-score small { margin-left: 8px; }
+@media (max-width: 640px) {
+  .dash-flag-row { flex-direction: column; }
+  .dash-flag-stats { grid-template-columns: 1fr 1fr; }
+  .dash-flag-stats > div:nth-child(3) { grid-column: 1 / -1; }
+}
 @media (max-width: 640px) { .dash-flag-points { grid-template-columns: 1fr; gap: 0; } .dash-flag-points .app-field { margin-bottom: 16px; } .dash-flag-facts > div { grid-template-columns: 1fr; gap: 2px; } }
 
 /* Export */

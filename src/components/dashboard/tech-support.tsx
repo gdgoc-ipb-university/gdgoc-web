@@ -17,7 +17,7 @@ import { useNow } from "./shared";
 export const techSupportPath = "/dashboard/tech-support";
 export const techSupportQueuePath = "/dashboard/tech-support/antrean";
 
-const blank: TechSupportValues = { competition: "", competitionUrl: "", deadline: "", participation: "", teamName: "", helpKinds: [], progress: "" };
+const blank: TechSupportValues = { competition: "", competitionUrl: "", deadline: "", participation: "", teamName: "", helpKinds: [], progress: "", whatsapp: "", discord: "" };
 
 /** "20 Nov 2026" for a YYYY-MM-DD deadline. */
 export function deadlineLabel(value: string) {
@@ -92,6 +92,14 @@ function RequestForm({ disabled }: { disabled: boolean }) {
       <div className="app-field"><label htmlFor="support-progress">Progres saat ini {required}</label>
         <textarea data-lenis-prevent id="support-progress" required rows={5} maxLength={techSupportLimits.progress} value={values.progress} onChange={(event) => update("progress", event.target.value)} placeholder="Kondisi ide atau proyekmu sekarang, dan bagian yang ingin dibahas dengan mentor." aria-invalid={Boolean(errors.progress)} aria-describedby={described("progress", "support-progress-hint")} />
         <p className="field-hint" id="support-progress-hint">{values.progress.length}/{techSupportLimits.progress} karakter.</p>{fieldError("progress")}</div>
+      <div className="app-field-grid">
+        <div className="app-field"><label htmlFor="support-whatsapp">Nomor WhatsApp {required}</label>
+          <input id="support-whatsapp" type="tel" inputMode="tel" autoComplete="tel" required maxLength={24} value={values.whatsapp} onChange={(event) => update("whatsapp", event.target.value)} placeholder="0812 3456 7890" aria-invalid={Boolean(errors.whatsapp)} aria-describedby={described("whatsapp", "support-whatsapp-hint")} />
+          <p className="field-hint" id="support-whatsapp-hint">Nomor HP Indonesia. Pengelola Tech Support menghubungimu lewat WhatsApp.</p>{fieldError("whatsapp")}</div>
+        <div className="app-field"><label htmlFor="support-discord">Username Discord <span className="field-optional">opsional</span></label>
+          <input id="support-discord" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={40} value={values.discord} onChange={(event) => update("discord", event.target.value)} placeholder="username" aria-invalid={Boolean(errors.discord)} aria-describedby={described("discord", "support-discord-hint")} />
+          <p className="field-hint" id="support-discord-hint">Tanpa @. Kosongkan kalau tidak ada.</p>{fieldError("discord")}</div>
+      </div>
     </fieldset>
     {error && <p className="field-error" role="alert">{error}</p>}
     {notice && <p className="app-small" role="status">{notice}</p>}

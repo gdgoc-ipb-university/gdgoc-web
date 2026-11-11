@@ -1,4 +1,5 @@
 import { toJakartaInput } from "./assignment";
+import { discordError, normalizeDiscord, normalizeWhatsapp, whatsappError } from "./contact";
 
 /**
  * Tech Support requests from the dashboard (#92): what a member asks for, the statuses the queue moves a request
@@ -34,10 +35,13 @@ export const techSupportLimits = { competition: 160, competitionUrl: 300, teamNa
 export type Participation = "team" | "solo";
 export const participationLabels: Record<Participation, string> = { team: "Tim", solo: "Sendiri" };
 
-/** The form's values; `deadline` is a WIB date from a date input (YYYY-MM-DD). */
+/**
+ * The form's values; `deadline` is a WIB date from a date input (YYYY-MM-DD). `whatsapp` and `discord` are how handlers
+ * reach the member (#251), normalised by src/lib/contact.ts; `discord` may be empty.
+ */
 export type TechSupportValues = {
   competition: string; competitionUrl: string; deadline: string; participation: Participation | "";
-  teamName: string; helpKinds: string[]; progress: string;
+  teamName: string; helpKinds: string[]; progress: string; whatsapp: string; discord: string;
 };
 export type TechSupportErrors = Partial<Record<keyof TechSupportValues, string>>;
 
@@ -48,6 +52,7 @@ export function normalizeRequest(values: TechSupportValues): TechSupportValues {
     competition: squash(values.competition), competitionUrl: values.competitionUrl.trim(), deadline: values.deadline.trim(),
     participation: values.participation, teamName: values.participation === "team" ? squash(values.teamName) : "",
     helpKinds: techSupportHelpKinds.filter((kind) => values.helpKinds.includes(kind)), progress: values.progress.trim(),
+    whatsapp: normalizeWhatsapp(values.whatsapp), discord: normalizeDiscord(values.discord),
   };
 }
 
@@ -78,6 +83,9 @@ export function validateRequest(values: TechSupportValues, now: number): TechSup
   if (!values.helpKinds.length) errors.helpKinds = "Pilih minimal satu bentuk bantuan.";
   if (!values.progress) errors.progress = "Ceritakan progres ide atau proyekmu sejauh ini.";
   else if (values.progress.length > techSupportLimits.progress) errors.progress = `Maksimal ${techSupportLimits.progress} karakter.`;
+  const whatsapp = whatsappError(values.whatsapp), discord = discordError(values.discord);
+  if (whatsapp) errors.whatsapp = whatsapp;
+  if (discord) errors.discord = discord;
   return errors;
 }
 

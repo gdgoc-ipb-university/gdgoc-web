@@ -7,7 +7,7 @@ const hour = 3600000, day = 24 * hour;
 const wib = (value: string) => Date.parse(`${value}:00+07:00`);
 const values = (extra: Partial<TechSupportValues> = {}): TechSupportValues => ({
   competition: "Gemastik", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2026-11-20", participation: "solo",
-  teamName: "", helpKinds: ["Ideasi"], progress: "Baru ide.", ...extra,
+  teamName: "", helpKinds: ["Ideasi"], progress: "Baru ide.", whatsapp: "+6281234567890", discord: "", ...extra,
 });
 
 describe("Tech Support working days", () => {
@@ -41,8 +41,9 @@ describe("Tech Support request form", () => {
   const now = wib("2026-11-01T10:00");
 
   it("asks for every field", () => {
-    const errors = validateRequest(normalizeRequest({ competition: " ", competitionUrl: "", deadline: "", participation: "", teamName: "", helpKinds: [], progress: " " }), now);
-    expect(Object.keys(errors).sort()).toEqual(["competition", "competitionUrl", "deadline", "helpKinds", "participation", "progress"]);
+    const errors = validateRequest(normalizeRequest({ competition: " ", competitionUrl: "", deadline: "", participation: "", teamName: "", helpKinds: [], progress: " ", whatsapp: " ", discord: "" }), now);
+    // The Discord username is the only optional field.
+    expect(Object.keys(errors).sort()).toEqual(["competition", "competitionUrl", "deadline", "helpKinds", "participation", "progress", "whatsapp"]);
     expect(validateRequest(normalizeRequest(values({ participation: "team", teamName: " " })), now)).toEqual({ teamName: "Tulis nama timnya." });
   });
 

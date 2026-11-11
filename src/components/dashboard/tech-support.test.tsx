@@ -53,7 +53,7 @@ describe("Tech Support request form", () => {
     render(<TechSupportPage />);
     await userEvent.click(screen.getByRole("button", { name: "Kirim permintaan" }));
     expect(mutations["techSupport:submit"]).not.toHaveBeenCalled();
-    for (const name of ["Nama kompetisi", "Tautan kompetisi", "Tenggat", "Progres saat ini"]) {
+    for (const name of ["Nama kompetisi", "Tautan kompetisi", "Tenggat", "Progres saat ini", "Nomor WhatsApp"]) {
       expect(screen.getByLabelText(new RegExp(name)).getAttribute("aria-invalid"), name).toBe("true");
     }
     expect(screen.getByText("Pilih ikut sebagai tim atau sendiri.")).toBeTruthy();
@@ -74,10 +74,18 @@ describe("Tech Support request form", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Review pitch deck" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Ideasi" }));
     await userEvent.type(screen.getByLabelText(/Progres saat ini/), "Sudah ada prototipe.");
+    // A landline is refused before anything is sent.
+    await userEvent.type(screen.getByLabelText(/Nomor WhatsApp/), "0251 862 1234");
+    await userEvent.type(screen.getByLabelText(/Username Discord/), "@Rania.Dev");
+    await userEvent.click(screen.getByRole("button", { name: "Kirim permintaan" }));
+    expect(screen.getByText("Tulis nomor HP Indonesia, misalnya 0812 3456 7890.")).toBeTruthy();
+    expect(mutations["techSupport:submit"]).not.toHaveBeenCalled();
+    await userEvent.clear(screen.getByLabelText(/Nomor WhatsApp/));
+    await userEvent.type(screen.getByLabelText(/Nomor WhatsApp/), "0812-3456-7890");
     await userEvent.click(screen.getByRole("button", { name: "Kirim permintaan" }));
     expect(mutations["techSupport:submit"]).toHaveBeenCalledWith({ values: {
       competition: "Gemastik 2026", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-11-20", participation: "team",
-      teamName: "Tim Dino", helpKinds: ["Ideasi", "Review pitch deck"], progress: "Sudah ada prototipe.",
+      teamName: "Tim Dino", helpKinds: ["Ideasi", "Review pitch deck"], progress: "Sudah ada prototipe.", whatsapp: "+6281234567890", discord: "rania.dev",
     } });
     expect((await screen.findByRole("status")).textContent).toContain("Permintaanmu terkirim");
     expect((screen.getByLabelText(/Nama kompetisi/) as HTMLInputElement).value).toBe("");

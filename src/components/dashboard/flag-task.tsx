@@ -1,8 +1,16 @@
 "use client";
 
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import type { FunctionReturnType } from "convex/server";
+import type { api } from "../../../convex/_generated/api";
+import { readableError } from "@/lib/draft-session";
+import { dateLabel } from "../appreciation/shared";
 import { flagLimits, flagPointsOf, flagPreview, parseFlagPoints, validateFlag, type FlagErrors, type FlagInput } from "@/lib/flag-task";
 
-/** Flag tasks (#240) in Kelola tugas: the kind switch, the flag with its points, and the staff summary. */
+/** Flag tasks (#240): the kind switch, the flag with its points and the staff summary in Kelola tugas, and the member's panel. */
+
+const number = new Intl.NumberFormat("id-ID");
+const clock = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: "Asia/Jakarta" });
 
 export function FlagBadge() {
   return <span className="app-status dash-status" data-status="flag">Flag</span>;
@@ -56,4 +64,85 @@ export function FlagSummary({ task, flag }: { task: { maxPoints?: number; minPoi
     </dl>
     <p className="app-small">Member tidak pernah menerima flag ini. Mereka mengirim tebakan, dan situs yang mencocokkannya.</p>
   </section>;
+}
+
+/** A member's state on a flag task, in place of the submission badge. */
+export function SolveBadge({ points }: { points: number | null }) {
+  return points === null ? <span className="app-status dash-status" data-status="missing">Belum dipecahkan</span>
+    : <span className="app-status dash-status" data-status="scored">Terpecahkan · {number.format(points)} poin</span>;
+}
+
+export type Challenge = NonNullable<NonNullable<FunctionReturnType<typeof api.assignments.get>>["challenge"]>;
+export type SubmitFlag = (flag: string) => Promise<FunctionReturnType<typeof api.assignments.submitFlag>>;
+type Feedback = { tone: "error" | "status"; text: string } | null;
+
+/** Re-renders when `until` passes, so a rate-limited form opens on time rather than on the next minute tick. */
+function useOpensAt(until: number) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (until <= now) return;
+    const timer = setTimeout(() => setNow(Date.now()), until - now + 50);
+    return () => clearTimeout(timer);
+  }, [until, now]);
+  return now;
+}
+
+/**
+ * The member's side of a flag task: what the next solver gets, the solves and first blood, then the flag form, or their
+ * own solve with its locked points. Only correct solves lower the points; wrong flags are limited per member and task.
+ */
+export function MemberFlag({ challenge, open, closedText, onSubmit }: { challenge: Challenge; open: boolean; closedText: string; onSubmit: SubmitFlag }) {
+  const [flag, setFlag] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [feedback, setFeedback] = useState<Feedback>(null);
+  const [retryAt, setRetryAt] = useState(0);
+  const [solvedHere, setSolvedHere] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+  const solvedHeading = useRef<HTMLHeadingElement>(null);
+  const solved = Boolean(challenge.mine);
+  // Focus moves to the result once the solve shows, whichever arrives first: the query update or the mutation's answer.
+  useEffect(() => { if (solvedHere && solved) solvedHeading.current?.focus(); }, [solvedHere, solved]);
+  const limitedUntil = Math.max(retryAt, challenge.nextTryAt ?? 0);
+  const now = useOpensAt(limitedUntil);
+  const limited = limitedUntil > now;
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!flag.trim()) { setFeedback({ tone: "error", text: "Tulis flag yang kamu temukan." }); input.current?.focus(); return; }
+    setBusy(true); setFeedback(null);
+    try {
+      const result = await onSubmit(flag);
+      if (result.ok) { setSolvedHere(true); return; }
+      if (result.code === "LIMITED") { setRetryAt(result.retryAt); setFeedback({ tone: "error", text: result.message }); }
+      else setFeedback({ tone: "error", text: `${result.message} ${result.triesLeft ? `Sisa ${result.triesLeft} percobaan sebelum harus menunggu.` : "Tunggu sebentar sebelum mencoba lagi."}` });
+      input.current?.select();
+    } catch (cause) { setFeedback({ tone: "error", text: readableError(cause) }); }
+    finally { setBusy(false); }
+  }
+  const { mine, firstBlood } = challenge;
+  return <>
+    <dl className="dash-stats dash-flag-stats">
+      <div><dt>Poin sekarang</dt><dd>{number.format(challenge.pointsNow)}</dd><dd className="dash-flag-note">Untuk solver ke-{challenge.solves + 1}{challenge.pointsNow === challenge.minPoints && challenge.solves ? ", sudah minimum" : ""}.</dd></div>
+      <div><dt>Solve</dt><dd>{number.format(challenge.solves)}</dd><dd className="dash-flag-note">Member yang sudah memecahkannya.</dd></div>
+      <div><dt>First blood</dt><dd className="dash-flag-blood">{firstBlood?.name ?? "—"}</dd><dd className="dash-flag-note">{firstBlood?.you ? "Itu kamu!" : firstBlood ? "Solver pertama." : "Belum ada. Jadilah yang pertama."}</dd></div>
+    </dl>
+    {mine ? <section className="app-panel dash-result dash-flag-solved" aria-labelledby="solved-title">
+      <p className="eyebrow">TERPECAHKAN</p>
+      <h2 id="solved-title" tabIndex={-1} ref={solvedHeading}>{solvedHere ? "Flag-mu tepat!" : "Kamu sudah memecahkan tugas ini."}</h2>
+      <p className="dash-score">{number.format(mine.points)}<small>poin</small></p>
+      <p className="app-small">Solver ke-{mine.order}{firstBlood?.you ? " · first blood" : ""} · {dateLabel(mine.solvedAt)}. Poinnya terkunci dan tidak berubah, meski poin tugas ini turun atau diubah.</p>
+    </section>
+      : !open ? <section className="app-form-section dash-closed" aria-labelledby="closed-title"><h2 id="closed-title">Flag tidak diterima lagi.</h2><p>{closedText}</p></section>
+      : <form className="app-form-section dash-flag-form" onSubmit={submit} noValidate aria-labelledby="flag-form-title">
+        <h2 id="flag-form-title">Kirim flag</h2>
+        <div className="app-field"><label htmlFor="flag-answer">Flag</label>
+          <div className="dash-flag-row">
+            <input id="flag-answer" ref={input} className="dash-flag-input" value={flag} onChange={(event) => { setFlag(event.target.value); if (feedback?.tone === "error" && !limited) setFeedback(null); }}
+              maxLength={flagLimits.flag * 2} autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} aria-invalid={feedback?.tone === "error" || undefined} aria-describedby={feedback ? "flag-answer-hint flag-feedback" : "flag-answer-hint"} placeholder="GDGOC{…}" readOnly={busy} />
+            <button className="button button-blue" type="submit" disabled={busy || limited}>{busy ? "Memeriksa…" : "Kirim flag"}</button>
+          </div>
+          <p className="field-hint" id="flag-answer-hint">Huruf besar dan kecil dibedakan; spasi di awal dan akhir diabaikan.{limited ? ` ${feedback ? "" : "Terlalu banyak flag yang belum tepat. "}Percobaan berikutnya pukul ${clock.format(limitedUntil)} WIB.` : ""}</p>
+          {feedback && <p className={feedback.tone === "error" ? "field-error" : "app-small"} id="flag-feedback" role={feedback.tone === "error" ? "alert" : "status"}>{feedback.text}</p>}
+        </div>
+      </form>}
+  </>;
 }

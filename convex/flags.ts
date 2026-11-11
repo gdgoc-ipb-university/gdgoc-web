@@ -1,6 +1,7 @@
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 import { flagMatches, flagPointsFor, flagPointsOf, nextTryAt, triesAvailable } from "../src/lib/flag-task";
+import { shortName } from "../src/lib/bogor-run/leaderboard";
 
 /** What a member's flag got: a solve with its locked points, or a refusal that still had to be written (#240). */
 export type FlagResult =
@@ -20,6 +21,37 @@ export async function solvesOf(ctx: QueryCtx | MutationCtx, id: Id<"assignments"
 
 export async function solveOf(ctx: QueryCtx | MutationCtx, id: Id<"assignments">, ownerId: string) {
   return ctx.db.query("flagSolves").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", id).eq("ownerId", ownerId)).unique();
+}
+
+/**
+ * The name other members see for a solver: the short name Papan skor uses ("Aldio L."), or null for an account that is
+ * deactivated or gone, which other members don't see.
+ */
+export async function solverName(ctx: QueryCtx | MutationCtx, ownerId: string) {
+  const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique();
+  return profile && !profile.deactivatedAt ? shortName(profile.fullName) : null;
+}
+
+/**
+ * What a member sees of a flag task (#240): the points the next solver gets, how many solved it, first blood (the earliest
+ * solver still shown), their own solve with its order by time, and when their next try opens if they ran out. Never the flag.
+ */
+export async function flagSummary(ctx: QueryCtx, assignment: Doc<"assignments">, ownerId: string) {
+  const solves = await solvesOf(ctx, assignment._id);
+  let firstBlood: { name: string; you: boolean } | null = null;
+  for (const solve of solves) {
+    const name = await solverName(ctx, solve.ownerId);
+    if (name) { firstBlood = { name, you: solve.ownerId === ownerId }; break; }
+  }
+  const index = solves.findIndex((solve) => solve.ownerId === ownerId);
+  const attempts = index < 0 ? await ctx.db.query("flagAttempts").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", ownerId)).unique() : null;
+  const points = flagPointsOf(assignment);
+  return {
+    ...points, pointsNow: flagPointsFor(points, solves.length + 1), solves: solves.length, firstBlood,
+    mine: index < 0 ? null : { points: solves[index].points, solvedAt: solves[index].solvedAt, order: index + 1 },
+    // From the stored bucket alone, so the query stays the same as time passes; the page compares it with its clock.
+    nextTryAt: attempts && attempts.tokens < 1 ? nextTryAt(attempts.tokens, attempts.tokensAt) : null,
+  };
 }
 
 /** Sets a task's flag. Earlier solves stay: a new flag applies to later tries only. */

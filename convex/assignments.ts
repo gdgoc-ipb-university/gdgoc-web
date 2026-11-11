@@ -12,7 +12,7 @@ import { inCohortRoles } from "../src/lib/cohort";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 import { flagPointsOf, normalizeFlag, parseFlagPoints, validateFlag, type FlagInput } from "../src/lib/flag-task";
-import { checkFlag, flagOf, removeFlagRows, setFlag, solveOf, solvesOf, type FlagResult } from "./flags";
+import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solvesOf, type FlagResult } from "./flags";
 
 // `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
 // An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
@@ -504,9 +504,12 @@ export const list = query({
     ]);
     return Promise.all([...open, ...ended].filter((assignment) => reaches(assignment, access)).map(async (assignment) => {
       const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
+      // A solved flag task counts as handed in, at its solve time, with its locked points.
+      const solve = assignment.kind === "flag" ? await solveOf(ctx, assignment._id, user._id) : null;
       return {
         _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
-        submittedAt: mine?.submittedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
+        kind: assignment.kind ?? null, points: solve?.points ?? null,
+        submittedAt: mine?.submittedAt ?? solve?.solvedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
         maxScore: assignmentMaxScore(assignment), score: mine?.score ?? null, reviewedAt: mine?.reviewedAt ?? null, stale: mine ? isStaleReview(mine) : false,
         revisionRequestedAt: mine?.revisionRequestedAt ?? null,
       };
@@ -531,8 +534,9 @@ export const get = query({
       assignment, canManage, canReview: reviews, cohort: reviews ? await cohortOf(ctx, assignment) : null,
       // Staff see who reviews this assignment; reviewers do not need the list.
       reviewers: canManage ? await Promise.all((assignment.reviewers ?? []).map(async (ownerId) => ({ ownerId, name: (await nameOf(ctx, ownerId)).name }))) : [],
-      // A flag task's flag, for staff only (#240); members never get it from any query.
+      // A flag task's flag, for staff only (#240); members never get it from any query. Everyone gets its points and solves.
       flag: canManage && assignment.kind === "flag" ? (await flagOf(ctx, assignment._id))?.flag ?? "" : null,
+      challenge: assignment.kind === "flag" ? await flagSummary(ctx, assignment, user._id) : null,
       submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt), ...(await reviewView(ctx, submission)) },
       files: await Promise.all(files.map((file) => fileView(ctx, file))),
     };

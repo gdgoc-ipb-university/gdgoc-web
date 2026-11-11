@@ -158,6 +158,25 @@ describe("solving a flag task", () => {
     expect(await t.run((ctx) => ctx.db.query("flagAttempts").collect())).toEqual([]);
   });
 
+  it("shows members the next solver's points, the solves, first blood and their own solve", async () => {
+    const { t, a, b, c, id } = await world();
+    const view = async (member: typeof a) => (await member.query(api.assignments.get, { id }))!.challenge;
+    expect(await view(a)).toMatchObject({ pointsNow: 100, solves: 0, firstBlood: null, mine: null, nextTryAt: null });
+    await solve(b, id);
+    await solve(a, id);
+    expect(await view(a)).toMatchObject({ pointsNow: 80, solves: 2, firstBlood: { name: "Nama B.", you: false }, mine: { points: 90, order: 2 } });
+    expect((await view(b))?.firstBlood).toEqual({ name: "Nama B.", you: true });
+    // A deactivated first solver is not shown; their solve still counts toward the points.
+    await t.run(async (ctx) => { const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", b.id)).unique(); await ctx.db.patch(profile!._id, { deactivatedAt: Date.now() }); });
+    expect(await view(c)).toMatchObject({ pointsNow: 80, solves: 2, firstBlood: { name: "Nama A.", you: false } });
+    // Out of tries: when the next one opens, from the stored bucket alone.
+    vi.useFakeTimers({ now: Date.now() });
+    for (let i = 0; i < 5; i++) await solve(c, id, "salah");
+    expect((await view(c))?.nextTryAt).toBe(Date.now() + 60000);
+    const [listed] = await a.query(api.assignments.list);
+    expect(listed).toMatchObject({ kind: "flag", points: 90, submittedAt: expect.any(Number), score: null });
+  });
+
   it("never sends the flag to a member", async () => {
     const { a, id } = await world();
     await solve(a, id, "salah");

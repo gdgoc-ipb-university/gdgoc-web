@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { getFunctionName, type FunctionReference } from "convex/server";
 import { EditAssignmentPage, NewAssignmentPage } from "./assignments";
 import { AssignmentDetail } from "./assignment-detail";
 import { ViewerContext, type DashboardViewer } from "./viewer";
+import { MemberFlag, type Challenge, type SubmitFlag } from "./flag-task";
 
 // Flag tasks (#240) in Kelola tugas against a fake Convex.
 const task = {
@@ -27,7 +28,11 @@ const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya
 const show = (page: React.ReactNode) => render(<ViewerContext.Provider value={viewer}>{page}</ViewerContext.Provider>);
 const field = (name: RegExp | string) => screen.getByRole("spinbutton", { name }) as HTMLInputElement;
 
-afterEach(() => { cleanup(); create.mockClear(); update.mockClear(); });
+afterEach(() => { cleanup(); create.mockClear(); update.mockClear(); vi.useRealTimers(); });
+const accessible = async (container: HTMLElement) => {
+  const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] }, rules: { "color-contrast": { enabled: false } } });
+  expect(result.violations.map(({ id }) => id)).toEqual([]);
+};
 
 describe("flag tasks in Kelola tugas", () => {
   it("swaps the score and rubric for a flag and its points, with a live preview", async () => {
@@ -83,5 +88,59 @@ describe("flag tasks in Kelola tugas", () => {
     expect(summary.textContent).toContain("Solver ke-1: 100, ke-2: 90, ke-5: 60, minimum 20 mulai solver ke-9.");
     expect(screen.getByText("Member dari sasaran bisa mengirim flag sampai tenggat.")).toBeTruthy();
     for (const name of ["Penilai tugas ini", "Kiriman", "Siapa yang belum"]) expect(screen.queryByRole("heading", { name })).toBeNull();
+  });
+});
+
+describe("a flag task for members", () => {
+  const fresh: Challenge = { maxPoints: 100, minPoints: 20, decrement: 10, pointsNow: 100, solves: 0, firstBlood: null, mine: null, nextTryAt: null };
+  const member = (challenge: Challenge, onSubmit: SubmitFlag = vi.fn(), open = true) => render(<MemberFlag challenge={challenge} open={open} closedText="Tenggatnya sudah lewat." onSubmit={onSubmit} />);
+  const stat = (name: string) => screen.getByText(name).parentElement!.textContent;
+
+  it("shows the next solver's points, the solves and first blood, and keeps a wrong flag to fix", async () => {
+    const onSubmit = vi.fn<SubmitFlag>(async () => ({ ok: false as const, code: "WRONG" as const, message: "Flag belum tepat.", triesLeft: 4 }));
+    const { container } = member(fresh, onSubmit);
+    expect(stat("Poin sekarang")).toBe("Poin sekarang100Untuk solver ke-1.");
+    expect(stat("First blood")).toBe("First blood—Belum ada. Jadilah yang pertama.");
+    await userEvent.click(screen.getByRole("button", { name: "Kirim flag" }));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert").textContent).toBe("Tulis flag yang kamu temukan.");
+    await userEvent.type(screen.getByRole("textbox", { name: "Flag" }), "GDGOC{{tebak}");
+    await userEvent.click(screen.getByRole("button", { name: "Kirim flag" }));
+    expect(onSubmit).toHaveBeenCalledWith("GDGOC{tebak}");
+    expect(screen.getByRole("alert").textContent).toBe("Flag belum tepat. Sisa 4 percobaan sebelum harus menunggu.");
+    expect((screen.getByRole("textbox", { name: "Flag" }) as HTMLInputElement).value).toBe("GDGOC{tebak}");
+    await accessible(container);
+  });
+
+  it("holds the form while the member is out of tries, then opens it on time", () => {
+    vi.useFakeTimers({ now: Date.parse("2026-11-11T10:00:00+07:00") });
+    member({ ...fresh, pointsNow: 90, solves: 1, firstBlood: { name: "Rania P.", you: false }, nextTryAt: Date.now() + 30000 });
+    expect(stat("First blood")).toBe("First bloodRania P.Solver pertama.");
+    expect(screen.getByRole("button", { name: "Kirim flag" }).hasAttribute("disabled")).toBe(true);
+    expect(screen.getByText(/Percobaan berikutnya pukul 10\.00\.30 WIB/)).toBeTruthy();
+    act(() => { vi.advanceTimersByTime(30100); });
+    expect(screen.getByRole("button", { name: "Kirim flag" }).hasAttribute("disabled")).toBe(false);
+  });
+
+  it("shows a solve with its locked points and first blood, and moves focus to it", async () => {
+    const onSubmit = vi.fn<SubmitFlag>(async () => ({ ok: true as const, points: 100, place: 1, solvedAt: Date.parse("2026-11-11T10:42:00+07:00") }));
+    const { rerender } = member(fresh, onSubmit);
+    await userEvent.type(screen.getByRole("textbox", { name: "Flag" }), "GDGOC{{join-discord}");
+    await userEvent.click(screen.getByRole("button", { name: "Kirim flag" }));
+    const solved: Challenge = { ...fresh, pointsNow: 90, solves: 1, firstBlood: { name: "Saya S.", you: true }, mine: { points: 100, order: 1, solvedAt: Date.parse("2026-11-11T10:42:00+07:00") } };
+    rerender(<MemberFlag challenge={solved} open closedText="" onSubmit={onSubmit} />);
+    expect(document.activeElement).toBe(screen.getByRole("heading", { name: "Flag-mu tepat!" }));
+    const result = screen.getByRole("region", { name: "Flag-mu tepat!" });
+    expect(result.textContent).toContain("100poin");
+    expect(result.textContent).toContain("Solver ke-1 · first blood · 11 Nov 2026");
+    expect(stat("First blood")).toBe("First bloodSaya S.Itu kamu!");
+    expect(screen.queryByRole("textbox", { name: "Flag" })).toBeNull();
+  });
+
+  it("says when a task no longer takes flags", () => {
+    member({ ...fresh, pointsNow: 20, solves: 12 }, vi.fn(), false);
+    expect(stat("Poin sekarang")).toBe("Poin sekarang20Untuk solver ke-13, sudah minimum.");
+    expect(screen.getByRole("region", { name: "Flag tidak diterima lagi." }).textContent).toContain("Tenggatnya sudah lewat.");
+    expect(screen.queryByRole("button", { name: "Kirim flag" })).toBeNull();
   });
 });

@@ -27,6 +27,9 @@ export const accessChange = v.union(
   v.literal("cohortMentor"),
   // Staff issued a member's card for the chapter year from the print page (the old number or "none" → the new one).
   v.literal("cardIssued"),
+  // Staff corrected a member's profile answers (#235): the fields that changed, comma-separated, in both `from` and `to`;
+  // the values are not kept, like a corrected enrolment email.
+  v.literal("profile"),
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));
@@ -45,6 +48,8 @@ export default defineSchema({
     institutionKind: v.optional(institutionKind),
     // Instagram username without "@", from screen 3; core team checks the follow and the twibbon with it (#212).
     instagram: v.optional(v.string()),
+    // When the username last changed after onboarding (#235), by the member or staff; staff re-check the follow and twibbon.
+    instagramChangedAt: v.optional(v.number()),
     revision: v.number(), updatedAt: v.number(), completedAt: v.optional(v.number()),
     // Community tag: Member from onboarding; Core Team, BoD and divisions only from staff (#156). Tags members chose
     // themselves before that stay until staff change or confirm them; profiles from before this field register as Member once.

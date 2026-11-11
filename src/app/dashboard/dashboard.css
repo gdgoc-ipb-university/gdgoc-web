@@ -161,6 +161,26 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-facts > div { display: grid; gap: 3px; padding-block: 11px; border-bottom: 1px solid #e8ece4; }
 .dash-facts dt { font-size: 11px; color: var(--muted); }
 .dash-facts dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+/* Ubah profil (#235): onboarding's answers as dashboard fields. The education picker is onboarding's combobox drawn as
+   a field, with the shared Select's list; Instagram has an "@" in front, like the slug field. */
+.dash-profile-layout { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
+.dash-profile-side { display: grid; gap: 24px; min-width: 0; }
+.dash-profile-form > fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.dash-profile-education { margin-bottom: 22px; }
+.dash-profile-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 26px; }
+.dash-saved { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: #2e692e; }
+.dash-combo-control, .dash-at-field { display: flex; align-items: stretch; height: var(--control-h); border: 1px solid var(--control-line); background: white; }
+.dash-combo-control:focus-within, .dash-at-field:focus-within { border-color: var(--blue); outline: 2px solid #4285f43d; outline-offset: 2px; }
+.dash-combobox[data-invalid] .dash-combo-control, .dash-at-field:has([aria-invalid="true"]) { border-color: #c24032; }
+.app-field .dash-combo-control input, .app-field .dash-at-field input { flex: 1; min-width: 0; height: auto; border: 0; outline: none; background: transparent; }
+.app-field .dash-at-field input { padding-left: 2px; }
+.dash-at-field > span { display: flex; align-items: center; padding-left: 13px; font-size: 14px; color: var(--muted); }
+.dash-combo-trigger { flex: none; width: 44px; display: grid; place-items: center; padding: 0; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+.dash-combo-trigger:hover, .dash-combobox[data-open] .dash-combo-trigger { color: var(--blue); }
+.dash-combo-popover { width: var(--trigger-width); }
+.dash-combo-text { display: grid; gap: 1px; min-width: 0; }
+.dash-combo-text small { font-size: 11px; line-height: 1.5; font-weight: 400; color: var(--muted); }
+.dash-combo-empty { margin: 0; padding: 10px; font-size: 13px; line-height: 1.6; color: var(--muted); }
 
 /* Rich text, shared by the answer editor and rendered answers. */
 .rich-text { font-size: 14px; line-height: 1.75; color: var(--ink); overflow-wrap: anywhere; }
@@ -450,6 +470,10 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* Assignment reviewers */
 .dash-reviewers { margin-top: 28px; }
 .dash-reviewers > p { margin-bottom: 14px; }
+/* Koreksi profil on the member page (#235): a note and a button, opening the profile form in a panel. */
+.dash-correct-profile { margin-block: 20px 8px; }
+.dash-correct-profile > p.app-small { max-width: 72ch; margin-bottom: 14px; }
+.dash-correct-profile > .app-panel { max-width: 760px; }
 .dash-delete-account { margin-top: 40px; }
 .dash-delete-account > p { margin-bottom: 14px; }
 .dash-delete-account .app-field { margin-bottom: 10px; }
@@ -613,6 +637,8 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 
 .dash-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .dash-unconfirmed { font-size: 11px; color: #785511; }
+/* "Instagram diubah 12 Nov" (#235): amber like an unconfirmed tag, since staff check the follow and twibbon again. */
+.dash-table-person .dash-ig-changed, .dash-facts .dash-ig-changed { display: block; font-size: 11px; color: #785511; }
 .dash-confirmed { font-size: 11px; color: #2b5e2a; }
 .dash-profile-tag { margin-block: 4px 14px; }
 .dash-active { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }

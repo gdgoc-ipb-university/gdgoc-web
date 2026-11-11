@@ -71,6 +71,13 @@ describe("access log sentences", () => {
     expect(accessSentence(entry("photo", "uploaded", "removed"))).toBe("Aldio Lisafron menghapus foto profil Rania Putri.");
   });
 
+  it("describes a profile correction by the fields it changed, without their values (#235)", () => {
+    expect(accessSentence(entry("profile", "fullName", "fullName"))).toBe("Aldio Lisafron mengoreksi nama di profil Rania Putri.");
+    expect(accessSentence(entry("profile", "fullName,instagram", "fullName,instagram"))).toBe("Aldio Lisafron mengoreksi nama dan username Instagram di profil Rania Putri.");
+    expect(accessSentence(entry("profile", "institutionKind,campus,studyProgram", "institutionKind,campus,studyProgram")))
+      .toBe("Aldio Lisafron mengoreksi jenjang (mahasiswa atau siswa), sekolah/kampus, dan jurusan/program studi di profil Rania Putri.");
+  });
+
   it("describes mentors added to and removed from a cohort role", () => {
     const cohort = { name: "GDGoC Catalyst 2026/27", roles: [{ key: "hacker", name: "Hacker" }] };
     expect([entry("cohortMentor", "off", "hacker", { cohort }), entry("cohortMentor", "hacker", "off", { cohort })].map(accessSentence)).toEqual([

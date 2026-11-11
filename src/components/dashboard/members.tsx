@@ -10,6 +10,7 @@ import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { roleLabels } from "@/lib/assignment";
 import { divisions, memberTagLabel, memberTypeLabels, type MemberType } from "@/lib/onboarding";
+import { instagramChangedLabel } from "@/lib/profile-edit";
 import { readableError } from "@/lib/draft-session";
 import { membersCsv, membersFileName, type MemberExportRow } from "@/lib/member-export";
 import { activeFilterCount, DEFAULT_PAGE_SIZE as defaultPageSize, DEFAULT_SORT as defaultSort, listQueryString, noFilters, readListState, type MemberFilters, type MemberListState, type MemberSort } from "@/lib/member-table";
@@ -142,7 +143,7 @@ function MemberTableRow({ row, viewer, pick }: { row: Row; viewer: DashboardView
     <th scope="row" className="dash-table-member"><div className="dash-table-person">
       {pick && <input type="checkbox" className="dash-pick" checked={pick.checked} onChange={(event) => pick.onChange(event.target.checked)} aria-label={`Pilih ${row.fullName} untuk dicetak`} />}
       <MemberAvatar name={row.fullName} photo={row.photo} size={34} />
-      <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small title={row.email}>{row.email}</small></span>
+      <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small title={row.email}>{row.email}</small><InstagramChanged at={row.instagramChangedAt} /></span>
     </div></th>
     <td><span className="dash-table-stack">{row.campus || "—"}{row.studyProgram && <small>{row.studyProgram}</small>}</span></td>
     <td><span className="dash-badges"><AccessBadges row={row} />{!row.active && <ActiveBadge active={false} />}</span></td>
@@ -165,6 +166,11 @@ export function CommunityBadge({ row }: { row: Pick<Row, "memberType" | "divisio
   if (!row.memberType) return <span className="app-small">—</span>;
   return <span className="dash-badges"><span className="dash-role" data-role={row.memberType}>{row.memberType === "core" ? `Core · ${row.division ?? "—"}` : memberTagLabel(row.memberType, row.division)}</span>
     {row.memberType !== "member" && !row.tagConfirmed && <span className="dash-unconfirmed">belum dikonfirmasi</span>}</span>;
+}
+
+/** When the member last changed their Instagram username (#235), so staff check the follow and twibbon again. */
+export function InstagramChanged({ at }: { at: number | null }) {
+  return at ? <small className="dash-ig-changed" title={dateLabel(at)}>{instagramChangedLabel(at)}</small> : null;
 }
 
 export function ActiveBadge({ active }: { active: boolean }) {

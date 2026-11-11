@@ -515,6 +515,15 @@ Evidence:
 - A local anonymous Convex backend with the token lifetime cut to 30 s, an email test account (both temporary, uncommitted), `next dev` and Playwright's Chromium. Before the fix, once the token had expired and the page clock was moved 10 minutes ahead, `issueRun` returned HTTP 401 "Token expired" and the next run ended with the "tiket" message. After it, `issueRun` went out without the token, returned 200, and the next run was saved.
 - Not checked: production, where the token lasts the full 15 minutes.
 
+## Members edit their profile, and admins correct it — 11 November
+
+Members change their name, campus or school, study program and Instagram from "Ubah profil" on `/dashboard/profil`, staff see when an Instagram username changed, and admins correct a member's answers from the member page, logged by field (#235).
+
+Evidence:
+- `pnpm check` and `pnpm test` (94 files, 850 tests) pass on Node 24 at the top of the stack, and each commit passes lint, typecheck and tests on its own.
+- `pnpm build` and `next start` against a local anonymous Convex backend, with made-up accounts signed up by email and password through a temporary, uncommitted auth patch (Google cannot return to a local address), and profiles seeded by a temporary internal mutation; both removed afterwards. Chromium at 390 × 844 and 1440 × 900: a member saved a new name and Instagram username (the campus list searched "pakuan", a school search found SMKN 1 BOGOR, and switching back to Mahasiswa brought the saved campus back), and saw the field errors for an empty name and "rania..putri"; an admin saw "Instagram diubah 11 Nov" on the members table and the member page (11 Nov 2026, 22.29 WIB on hover), corrected the campus from the list at 1440 and the study program at 390, and was offered no correction on the owner's page; the owner's access log showed both corrections by field, the owner was offered a correction on the admin's page, the downloaded CSV had the "Instagram diubah (WIB)" column, and the member's own form showed the corrected answers.
+- Not checked: Google sign-in, the deployed site, and a real phone.
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

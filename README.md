@@ -59,3 +59,4 @@ Never force-push this branch, and never open a pull request from it.
 | `issue-211/oprec-popup` | #211 member intake popup on the landing at 1280 and 390 | #217 |
 | `issue-219/mobile-save` | #219 saving the twibbon on phones: desktop after saving with the right-click hint at 1280, and Instagram on an iPhone (emulated) at 390 with the in-app note and the twibbon and slide 2 to long-press (made-up picture, no real person) | #220 |
 | `issue-222/timeline-1111` | #222 Tech League timeline of 11 November: the landing's five steps in Setahun bersama at 1440 and 390, the league page at 1440, and its schedule and FAQ at 390 | #224 |
+| `issue-223/paused-run` | #223 Bogor Run paused runs: staging before (a paused 35 kept as REKOR after a reload, guest), and after, signed in with a made-up local account: the run back paused after a reload at 1280 and 390, then resumed and saved | #228 |

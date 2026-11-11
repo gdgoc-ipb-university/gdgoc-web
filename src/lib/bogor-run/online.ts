@@ -30,8 +30,17 @@ const RENEW_RETRY = 60_000;
 const SESSION_TTL = 60_000;
 const WEEK = 7 * 86_400_000;
 
+const connect = () => new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!, { logger: false });
 let client: ConvexHttpClient | null = null;
-const convex = () => client ??= new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!, { logger: false });
+/** Saves and the board: signedIn() gives it the player's token, renewing it before each save and board load. */
+const convex = () => client ??= connect();
+let anonymous: ConvexHttpClient | null = null;
+/**
+ * Tickets need no sign-in, so they come from a client that never carries the player's token (#226). That token expires
+ * after 15 minutes and Convex refuses any call that sends it expired, so renewals would fail and the next run start
+ * unranked. The HTTP client also runs mutations one at a time, so a ticket never waits behind a save either.
+ */
+const tickets = () => anonymous ??= connect();
 
 let auth: { at: number; signedIn: Promise<boolean> } | null = null;
 
@@ -61,7 +70,7 @@ export const isOutdated = () => outdated;
 
 /** A signed seed for the next run, or null when the server cannot rank runs (then the game plays unranked). */
 export async function issueRun(): Promise<FreshTicket | null> {
-  const ticket = await convex().mutation(api.bogorRun.issueRun, { engine: ENGINE_VERSION });
+  const ticket = await tickets().mutation(api.bogorRun.issueRun, { engine: ENGINE_VERSION });
   if (ticket && "outdated" in ticket) { outdated = true; return null; }
   return ticket && { ...ticket, fetchedAt: Date.now() };
 }

@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applyInput, autopilot, LIMITS, replayRun, scoreOf, startRun, step, type InputCode, type Run } from "@/lib/bogor-run/engine";
-import { FINISH_MESSAGE, mountRunner, type FinishedRun, type Runner, type RunnerOptions, type Snapshot, type Ticket } from "@/lib/bogor-run/runtime";
+import { FINISH_MESSAGE, mountRunner, PAUSED_KEY, PAUSED_TTL, readPausedRun, type FinishedRun, type Runner, type RunnerOptions, type Snapshot, type Ticket } from "@/lib/bogor-run/runtime";
 
 const sound = vi.hoisted(() => {
   const fake = { play: vi.fn(), unlock: vi.fn(), dispose: vi.fn(), enabled: true, setEnabled: vi.fn((on: boolean) => { fake.enabled = on; }) };
@@ -62,7 +62,7 @@ beforeEach(() => {
     observe() {} disconnect() {}
   });
   vi.spyOn(document, "hidden", "get").mockReturnValue(false);
-  localStorage.clear();
+  localStorage.clear(); sessionStorage.clear();
   saved = vi.spyOn(Storage.prototype, "setItem");
   sound.enabled = true;
   vi.clearAllMocks();
@@ -185,6 +185,62 @@ describe("ranked runs", () => {
     expect(inputs.filter((_, i) => i % 2 === 1)).toEqual([2, 3]);
     expect(inputs[2] - inputs[0]).toBe(24); // 0.2 s of crouching, then the stand logged at the pause
     expect(replayRun(7, inputs, endTick)).toMatchObject({ ok: true, crashed: true, score });
+  });
+
+  it("counts only runs that ended toward REKOR: a paused run left behind never reached the server", async () => {
+    const finish = vi.fn<(run: FinishedRun) => void>();
+    const game = await mount(true, { ticket: () => ({ seed: 3, token: "signed" }), finish });
+    const mirror = startRun(3);
+    game.action(); frame();
+    drive(game, mirror, (run) => scoreOf(run) >= 300);
+    game.pause(); // a blur, a hidden tab or a scroll away
+    expect(snapshot).toMatchObject({ phase: "paused", score: scoreOf(mirror), best: 0 });
+    expect(sessionStorage.getItem(PAUSED_KEY)).not.toBeNull();
+    game.leave(); // "Kembali ke komunitas" gives the run up
+    expect(finish).not.toHaveBeenCalled();
+    expect(snapshot.best).toBe(0);
+    expect(localStorage.getItem("gdgoc:bogor-run:best:v1")).toBeNull();
+    expect(sessionStorage.getItem(PAUSED_KEY)).toBeNull();
+  });
+
+  it("keeps a paused run through a reload and finishes it exactly, on its own ticket", async () => {
+    const finish = vi.fn<(run: FinishedRun) => void>();
+    const first = await mount(true, { ticket: () => ({ seed: 9, token: "signed" }), finish });
+    const mirror = startRun(9);
+    first.action(); frame();
+    drive(first, mirror, (run) => scoreOf(run) >= 300);
+    window.dispatchEvent(new Event("pagehide")); // the reload
+    if (mirror.ducking) applyInput(mirror, 3); // a pause stands the dino up, and logs it
+    expect(snapshot.phase).toBe("paused");
+    first.dispose();
+
+    const game = await mount(true, { ticket: () => null, finish }); // the reloaded page has no ticket ready yet
+    expect(snapshot).toMatchObject({ phase: "paused", score: scoreOf(mirror), best: 0 });
+    expect(game.action()).toBe("resume");
+    expect(sessionStorage.getItem(PAUSED_KEY)).toBeNull();
+    frame(); // the first frame after a resume only sets the clock
+    while (mirror.phase === "running") { frame(); step(mirror); step(mirror); }
+
+    expect(finish).toHaveBeenCalledOnce();
+    const run = finish.mock.calls[0][0];
+    expect(run).toMatchObject({ seed: 9, token: "signed", score: scoreOf(mirror), endTick: mirror.tick });
+    expect(replayRun(9, run.inputs, run.endTick)).toMatchObject({ ok: true, crashed: true, score: run.score });
+    expect(snapshot.best).toBe(run.score);
+  });
+
+  it("drops a kept run that is too old to save or does not replay", async () => {
+    const now = Date.now(), live = startRun(2);
+    for (let i = 0; i < 120; i++) step(live);
+    const kept = { seed: 2, token: "signed", inputs: [], tick: 120, overflow: false, pausedAt: now };
+    expect(readPausedRun(JSON.stringify(kept), now)?.run).toEqual(live);
+    expect(readPausedRun(JSON.stringify({ ...kept, pausedAt: now - PAUSED_TTL - 1 }), now)).toBeNull();
+    for (const broken of ["{", "null", JSON.stringify({ ...kept, inputs: [200, 1] }), JSON.stringify({ ...kept, token: 5 }), JSON.stringify({ ...kept, tick: 99_999 })]) {
+      expect(readPausedRun(broken, now)).toBeNull();
+    }
+    sessionStorage.setItem(PAUSED_KEY, JSON.stringify({ ...kept, inputs: [200, 1] }));
+    await mount(true);
+    expect(snapshot.phase).toBe("idle");
+    expect(sessionStorage.getItem(PAUSED_KEY)).toBeNull();
   });
 
   it("plays unranked without a ticket, adopts a late one before the first tick, and guards instant restarts", async () => {

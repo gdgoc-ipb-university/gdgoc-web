@@ -477,6 +477,25 @@ Evidence:
 - `next start` and Playwright's Chromium, with a made-up landscape picture (no person). At 1280 × 900: both downloads arrive with their file names, both images and the right-click hint show, no note. At 390 × 844 as Instagram on an iPhone (touch, no Web Share in Chromium on Linux): the note sits above the maker, the twibbon and slide 2 fall back to downloads and show with the long-press hint, no horizontal scroll. As Safari on an iPhone with a stand-in `navigator.share`: the twibbon (`image/jpeg`) and slide 2 reach the share sheet, nothing downloads, and a cancel leaves no error.
 - Not checked: a physical phone, the real share sheets of iOS and Android, and long-press saving inside Instagram, Facebook, TikTok and LINE.
 
+## Bogor Run: REKOR from runs that ended — 11 November
+
+A member's REKOR read 15133 while the leaderboard had their best at 605 (#223). Pausing wrote the running score to REKOR, but only a run that crashes or finishes is sent, so a paused run lost to a reload, a discarded background tab or "Kembali ke komunitas" left REKOR above anything saved. REKOR now rises only in `finish()` and `restore()`. Part 1 of 2; part 2 keeps the paused run through a reload.
+
+Evidence:
+- `pnpm check` and `pnpm test` pass on Node 24 for each commit. The test that pauses a ranked run at 300 and leaves it went in first as `it.fails` (REKOR became 300), and the fix turns it into a plain test.
+- Staging before the change (guest, Playwright's Chromium at 1280 × 900): a run paused at 35, then a reload; the next run showed SKOR 009, REKOR 035, with no `submitRun` in the browser or in the Convex dev deployment's logs.
+- `next dev` against a local anonymous Convex backend after the change, same steps: paused at SKOR 035 with REKOR 000, and the next run after the reload showed SKOR 009, REKOR 000, with nothing in `localStorage`.
+- Not checked: production.
+
+## Bogor Run: a paused run survives a reload — 11 November
+
+Part 2 of #223. A paused run was lost to a reload or to a phone discarding the background tab. The runner now keeps it in the tab's `sessionStorage` (seed, token, input log, tick) on pause and on `pagehide`, and when the game mounts again, `resumeRun` rebuilds it at that tick and shows it paused with "Lanjut main", still on its ticket. The kept copy goes when the run resumes, ends or is left, or a new one starts, and is ignored after 12 hours.
+
+Evidence:
+- `pnpm check` and `pnpm test` (818 tests) pass on Node 24 for each commit, and `pnpm build` passes. Tests cover `resumeRun` matching a live run at the paused tick and 3000 ticks later, a run paused by `pagehide`, rebuilt by a new runner and finished on its original ticket with a log that replays to its score, and a kept run that is too old or does not replay being dropped.
+- `next build` and `next start` against a local anonymous Convex backend with an email test account (temporary, uncommitted), Playwright's Chromium as a touch phone at 390 × 844: signed in, tap to start, tap jump, tap pause at SKOR 033 (kept: tick 225, one input, ticket), reload, the run back paused with "Lanjut main", tap it, crash at 56, "Tersimpan · peringkat #1 minggu ini". The backend's log shows `M(bogorRun:submitRun)` for that run.
+- Not checked: a phone discarding a real background tab, and production.
+
 ## Tech League timeline of 11 November — 11 November
 
 Program & Development moved the Tech League before Ramadan (#222): registration runs 7 December 2026 – 6 January 2027, the online final is on 17 January and the offline awarding on 30 January 2027. `src/lib/tech-league.ts` now holds the full timeline for the league page and a separate five-step `milestones` list for the landing's "Setahun bersama", whose registration step ends on 4 January as Program & Development wrote it. `/program`, `/bergabung`, the league FAQ and the `Event` JSON-LD (7 December 2026 – 30 January 2027, still a `VirtualLocation`) read from the same module.
@@ -486,6 +505,15 @@ Evidence:
 - Against `next start`, read with `curl`: `/`, `/league`, `/program/tech-league`, `/program` and `/bergabung` contain none of "1 Desember", 2026-12-01, "Februari" or 2027-02-; the league's `Event` runs 2026-12-07 to 2027-01-30 and its FAQ says registration opens 7 Desember 2026.
 - Chromium at 1440 × 900 and 390 × 844, on 11 November: the landing's ruler runs from December 2026 to January 2027 with five steps (the selection drops to a second row under the submission day), Catalyst's track stays hidden, the list sits in the left column on desktop and full width on phones; the league page shows four phases, fourteen items and five notes. No horizontal scroll at either width.
 - Not checked: the deployed site, and the landing with Catalyst's schedule switched back on in a browser (covered by the landing tests).
+
+## Bogor Run tickets after the sign-in token expires — 11 November
+
+A member's 19027 run played unranked with "tiket skornya belum sampai" (#226). The game's Convex client carried the player's token on every call, ticket requests included. The token expires after 15 minutes and is only renewed on a save or a board load, and Convex refuses a call that sends it expired, so after a quarter hour without either, ticket renewals failed and the next run started without a ticket. Tickets now come from a second client that never carries the token.
+
+Evidence:
+- `pnpm check` and `pnpm test` pass on Node 24 (three axe tests time out at 5 s under the full run's load and pass alone). The new test in `online.test.ts` signs in, expires the token and checks that renewals still bring a fresh ticket after 20 minutes; it fails before the fix.
+- A local anonymous Convex backend with the token lifetime cut to 30 s, an email test account (both temporary, uncommitted), `next dev` and Playwright's Chromium. Before the fix, once the token had expired and the page clock was moved 10 minutes ahead, `issueRun` returned HTTP 401 "Token expired" and the next run ended with the "tiket" message. After it, `issueRun` went out without the token, returned 200, and the next run was saved.
+- Not checked: production, where the token lasts the full 15 minutes.
 
 ## Evidence boundaries
 

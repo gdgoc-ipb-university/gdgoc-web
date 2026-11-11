@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
   applyInput, autopilot, BIRD, collides, createRun, DINO, ENGINE_VERSION, FIELD, HITBOX, INPUT, LATE, LIMITS, OBSTACLES, poseOf, pressureAt, readBest,
-  replayRun, scoreOf, speedAt, speedOf, SPEED, startRun, step, TICK_RATE, type BirdLane, type InputCode, type Obstacle, type ObstacleKind,
+  replayRun, resumeRun, scoreOf, speedAt, speedOf, SPEED, startRun, step, TICK_RATE, type BirdLane, type InputCode, type Obstacle, type ObstacleKind,
   type Run,
 } from "./engine";
 import { MAX_AHEAD } from "./view";
@@ -436,6 +436,25 @@ describe("Bogor Run engine", () => {
         [8, log.slice(0, -2), end, "crashed-early"],
       ];
       for (const [seed, inputs, endTick, reason] of cases) expect(replayRun(seed, inputs, endTick), reason).toEqual({ ok: false, reason });
+    });
+
+    it("rebuilds a paused run exactly where it stood, and refuses logs that cannot reach it", () => {
+      const live = startRun(11), log: number[] = [];
+      const play = (run: Run, record: boolean) => {
+        for (const code of autopilot(run)) if (applyInput(run, code) && record) log.push(run.tick, code);
+        step(run);
+      };
+      while (live.tick < 6000) play(live, true);
+      if (applyInput(live, INPUT.duck)) log.push(live.tick, INPUT.duck); // pressed after the last step, before the pause
+      const paused = resumeRun(11, log, live.tick);
+      expect(paused).toEqual(live);
+      for (let i = 0; i < 3000; i++) { play(live, false); play(paused!, false); }
+      expect(paused).toEqual(live); // and it plays on identically
+      expect(resumeRun(11, [...log, 6001, INPUT.jump], 6000)).toBeNull(); // an input after the pause
+      expect(resumeRun(11, [10, 9], 6000)).toBeNull();
+      expect(resumeRun(-1, [], 10)).toBeNull();
+      expect(resumeRun(11, [], LIMITS.maxTicks)).toBeNull();
+      expect(resumeRun(11, [], 6000)).toBeNull(); // without inputs it crashed long before
     });
 
     it("replays a finished hour well inside Convex's 1 s mutation budget", () => {

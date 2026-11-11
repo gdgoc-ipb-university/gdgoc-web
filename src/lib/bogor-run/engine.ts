@@ -302,12 +302,8 @@ export type ReplayResult =
 export function replayRun(seed: number, inputs: readonly number[], endTick: number): ReplayResult {
   if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff) return { ok: false, reason: "bad-seed" };
   if (!Number.isInteger(endTick) || endTick < 1 || endTick > LIMITS.maxTicks) return { ok: false, reason: "bad-end-tick" };
-  if (!Array.isArray(inputs) || inputs.length % 2 || inputs.length > LIMITS.maxInputNumbers) return { ok: false, reason: "bad-length" };
-  for (let i = 0; i < inputs.length; i += 2) {
-    const tick = inputs[i], code = inputs[i + 1];
-    if (!Number.isInteger(tick) || tick < 0 || tick >= endTick || (i > 0 && tick < inputs[i - 2])) return { ok: false, reason: "bad-tick" };
-    if (code !== INPUT.jump && code !== INPUT.duck && code !== INPUT.stand) return { ok: false, reason: "bad-code" };
-  }
+  const problem = logProblem(inputs, endTick);
+  if (problem) return { ok: false, reason: problem };
   const run = startRun(seed);
   for (let i = 0; run.tick < endTick;) {
     while (i < inputs.length && inputs[i] === run.tick) { applyInput(run, inputs[i + 1] as InputCode); i += 2; }
@@ -317,6 +313,34 @@ export function replayRun(seed: number, inputs: readonly number[], endTick: numb
   return run.finished
     ? { ok: true, crashed: false, finished: true, tick: run.tick, score: scoreOf(run), hit: null }
     : { ok: true, crashed: run.phase === "over", tick: run.tick, score: scoreOf(run), hit: run.hit };
+}
+
+/** Why an input log cannot be replayed: its length, a tick outside [0, before) or out of order, or an unknown code. */
+function logProblem(inputs: readonly number[], before: number) {
+  if (!Array.isArray(inputs) || inputs.length % 2 || inputs.length > LIMITS.maxInputNumbers) return "bad-length";
+  for (let i = 0; i < inputs.length; i += 2) {
+    const tick = inputs[i], code = inputs[i + 1];
+    if (!Number.isInteger(tick) || tick < 0 || tick >= before || (i > 0 && tick < inputs[i - 2])) return "bad-tick";
+    if (code !== INPUT.jump && code !== INPUT.duck && code !== INPUT.stand) return "bad-code";
+  }
+  return null;
+}
+
+/**
+ * Rebuilds a paused run: the run after `tick` steps with the inputs logged at `tick` applied, exactly where it stood when
+ * it was paused, and still running. Null for a malformed log or a run that ended before `tick`.
+ */
+export function resumeRun(seed: number, inputs: readonly number[], tick: number): Run | null {
+  if (!Number.isInteger(seed) || seed < 0 || seed > 0xffffffff || !Number.isInteger(tick) || tick < 0 || tick >= LIMITS.maxTicks) return null;
+  if (logProblem(inputs, tick + 1)) return null;
+  const run = startRun(seed);
+  let i = 0;
+  while (run.phase === "running") {
+    while (i < inputs.length && inputs[i] === run.tick) { applyInput(run, inputs[i + 1] as InputCode); i += 2; }
+    if (run.tick === tick) return run;
+    step(run);
+  }
+  return null;
 }
 
 export const BEST_KEY = "gdgoc:bogor-run:best:v1";

@@ -112,7 +112,7 @@ export function TechSupportQueue() {
           <td><a className="dash-support-competition" href={request.competitionUrl} target="_blank" rel="noreferrer"><strong>{request.competition}</strong><PixelIcon name="external-link" size={14} /></a>
             <small className="app-small dash-support-clock">Tenggat {deadlineLabel(request.deadline)} · {request.participation === "team" ? `Tim: ${request.teamName}` : "Sendiri"} · {request.helpKinds.join(", ")}</small></td>
           <td>{request.member.name}<small className="app-small dash-support-clock">{request.member.campus}</small></td>
-          <td>{request.whatsapp ? <a className="dash-support-competition" href={whatsappLink(request.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${request.member.name}, ${whatsappLabel(request.whatsapp)}`}>{whatsappLabel(request.whatsapp)}<PixelIcon name="external-link" size={14} /></a> : "—"}
+          <td>{request.whatsapp ? <a className="dash-support-competition dash-support-whatsapp" href={whatsappLink(request.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${request.member.name}, ${whatsappLabel(request.whatsapp)}`}>{whatsappLabel(request.whatsapp)}<PixelIcon name="external-link" size={14} /></a> : "—"}
             {request.discord && <small className="app-small dash-support-clock">Discord: {request.discord}</small>}</td>
           <td>{dateLabel(request.submittedAt)}<ResponseClock request={request} now={now} /></td>
           <td><TechSupportStatusBadge status={request.status} />{request.mentorName && <small className="app-small dash-support-clock">Mentor: {request.mentorName}</small>}</td>

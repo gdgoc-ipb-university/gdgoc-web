@@ -102,4 +102,15 @@ describe("Discord link record", () => {
     }));
     expect(await linkRow(t, member.id)).toBeNull();
   });
+
+  it("goes with a deleted account, counted", async () => {
+    vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com");
+    const t = setup();
+    const owner = await account(t, "owner@example.com");
+    const member = await account(t, "anggota@example.com");
+    await linkDiscord(t, member.id, "111");
+    expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "anggota" })).toMatchObject({ discordLinks: 1, accounts: 2 });
+    expect(await t.run((ctx) => ctx.db.query("discordLinks").collect())).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("accountDeletions").first())).toMatchObject({ counts: { discordLinks: 1, accounts: 2 } });
+  });
 });

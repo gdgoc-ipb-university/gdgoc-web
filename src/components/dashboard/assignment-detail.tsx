@@ -18,7 +18,7 @@ import { AssignmentStatusBadge, AudienceBadge, CopyLinkButton, DueLabel, FileLin
 import { RichTextView } from "../rich-text-view";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
 import { PixelIcon } from "../pixel-icons";
-import { FlagBadge, FlagSummary, MemberFlag, SolveBadge, type Challenge } from "./flag-task";
+import { FlagBadge, FlagSolves, FlagStats, FlagSummary, MemberFlag, SolveBadge, type Challenge } from "./flag-task";
 
 type Detail = NonNullable<FunctionReturnType<typeof api.assignments.get>>;
 
@@ -42,7 +42,7 @@ export function AssignmentDetail({ id }: { id: string }) {
       {assignment.rubric && assignment.rubric.length > 0 && <div className="dash-rubric" aria-labelledby="rubric-title"><p className="eyebrow" id="rubric-title">RUBRIK PENILAIAN · {assignmentMaxScore(assignment)} POIN</p>
         <ol className="dash-rubric-list">{assignment.rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{criterion.max} poin</b></li>)}</ol></div>}
     </article>
-    {data.canManage && assignment.kind === "flag" ? <><StaffControls assignment={assignment} /><FlagSummary task={assignment} flag={data.flag} /></>
+    {data.canManage && assignment.kind === "flag" ? <><StaffControls assignment={assignment} />{data.challenge && <FlagStats challenge={data.challenge} />}<FlagSummary task={assignment} flag={data.flag} /><FlagSolves id={assignment._id} /></>
       : data.canManage ? <><StaffControls assignment={assignment} /><AssignmentReviewers assignment={assignment} reviewers={data.reviewers} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
       : data.canReview ? <><p className="app-notice">{data.cohort ? `Kamu menilai tugas ini sebagai mentor ${data.cohort.name} atau penilai yang ditunjuk.` : "Kamu ditunjuk sebagai penilai tugas ini."} Kamu bisa menilai kiriman dan meminta revisi, tetapi tidak bisa mengubah atau menutup tugas. Email member tidak ditampilkan.</p><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
       : data.challenge ? <MemberFlagTask assignment={assignment} challenge={data.challenge} now={now} />

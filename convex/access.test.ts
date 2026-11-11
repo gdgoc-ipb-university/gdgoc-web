@@ -128,6 +128,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cards.printSelection", api.cards.printSelection, STAFF, () => ({ selection: { kind: "filters", search: "", filters: {} }, paginationOpts: page })],
   ["cards.printCards", api.cards.printCards, STAFF, (ids) => ({ ownerIds: [ids.member] })],
   ["assignments.adminList", api.assignments.adminList, STAFF, () => ({ paginationOpts: page })],
+  ["flags.solves", api.flags.solves, STAFF, (ids) => ({ id: ids.flagTask })],
   ["cohorts.list", api.cohorts.list, STAFF, () => ({})],
   ["cohorts.roster", api.cohorts.roster, STAFF, () => ({ slug: "catalyst-2026" })],
   ["assignments.slugPreview", api.assignments.slugPreview, STAFF, () => ({ slug: "tugas-baru" })],
@@ -148,6 +149,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.mine", api.cohorts.mine, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
   ["bogorRun.board", api.bogorRun.board, MEMBERS, () => ({ period: "all" })],
+  ["flags.board", api.flags.board, MEMBERS, () => ({})],
   ["league.invite", api.league.invite, MEMBERS, () => ({ code: "ABCD2345" })],
 ];
 

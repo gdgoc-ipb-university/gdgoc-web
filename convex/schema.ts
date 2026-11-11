@@ -290,6 +290,8 @@ export default defineSchema({
       photos: v.optional(v.number()),
       // Added with Tech League teams: the teams the account left.
       leagueTeams: v.optional(v.number()),
+      // Added with flag tasks (#240): solves and wrong-try counts.
+      flagSolves: v.optional(v.number()), flagAttempts: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

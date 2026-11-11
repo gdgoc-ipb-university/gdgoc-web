@@ -14,10 +14,14 @@ const task = {
   status: "published", revision: 3, createdBy: "me", createdAt: 1, updatedAt: 1, audience: ["member"], kind: "flag", maxPoints: 100, minPoints: 20, decrement: 10,
 };
 const detail = { assignment: task, canManage: true, canReview: true, cohort: null, reviewers: [], flag: "GDGOC{join-discord}", submission: null, files: [] };
+const solves = { solves: [
+  { order: 1, name: "Rania Putri", inactive: false, solvedAt: Date.parse("2026-11-11T10:42:00+07:00"), points: 100, wrong: 2 },
+  { order: 2, name: "Bima Sakti", inactive: true, solvedAt: Date.parse("2026-11-11T11:05:00+07:00"), points: 90, wrong: 0 },
+], wrong: 9, wrongMembers: 4 };
 const create = vi.fn(async () => "a2");
 const update = vi.fn(async () => "join-discord");
 vi.mock("convex/react", () => ({
-  useQuery: (ref: FunctionReference<"query">, args: unknown) => args === "skip" ? undefined : ({ "assignments:get": detail, "assignments:slugPreview": "join-discord" } as Record<string, unknown>)[getFunctionName(ref)],
+  useQuery: (ref: FunctionReference<"query">, args: unknown) => args === "skip" ? undefined : ({ "assignments:get": detail, "assignments:slugPreview": "join-discord", "flags:solves": solves } as Record<string, unknown>)[getFunctionName(ref)],
   useMutation: (ref: FunctionReference<"mutation">) => ({ "assignments:create": create, "assignments:update": update } as Record<string, unknown>)[getFunctionName(ref)] ?? vi.fn(async () => null),
   usePaginatedQuery: () => ({ results: [], status: "Exhausted", loadMore: vi.fn() }),
   useConvex: () => ({}),
@@ -88,6 +92,12 @@ describe("flag tasks in Kelola tugas", () => {
     expect(summary.textContent).toContain("Solver ke-1: 100, ke-2: 90, ke-5: 60, minimum 20 mulai solver ke-9.");
     expect(screen.getByText("Member dari sasaran bisa mengirim flag sampai tenggat.")).toBeTruthy();
     for (const name of ["Penilai tugas ini", "Kiriman", "Siapa yang belum"]) expect(screen.queryByRole("heading", { name })).toBeNull();
+    const list = screen.getByRole("region", { name: "Yang sudah memecahkan" });
+    expect(list.textContent).toContain("2 solve · 9 flag salah dari 4 member");
+    expect(screen.getAllByRole("row").slice(1).map((row) => row.textContent)).toEqual([
+      "1Rania PutriFirst blood · 2 flag salah sebelumnya11 Nov 2026, 10.42 WIB10011 Nov 2026, 10.42 WIB",
+      "2Bima SaktiNonaktifTanpa flag salah11 Nov 2026, 11.05 WIB9011 Nov 2026, 11.05 WIB",
+    ]);
   });
 });
 

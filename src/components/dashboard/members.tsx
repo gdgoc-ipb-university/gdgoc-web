@@ -143,7 +143,7 @@ function MemberTableRow({ row, viewer, pick }: { row: Row; viewer: DashboardView
     <th scope="row" className="dash-table-member"><div className="dash-table-person">
       {pick && <input type="checkbox" className="dash-pick" checked={pick.checked} onChange={(event) => pick.onChange(event.target.checked)} aria-label={`Pilih ${row.fullName} untuk dicetak`} />}
       <MemberAvatar name={row.fullName} photo={row.photo} size={34} />
-      <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small title={row.email}>{row.email}</small><InstagramChanged at={row.instagramChangedAt} /></span>
+      <span><span><Link href={memberPath(row.ownerId)}>{row.fullName}</Link>{self && <span className="app-small"> (kamu)</span>}</span><small title={row.email}>{row.email}</small><DiscordHandle discord={row.discord} /><InstagramChanged at={row.instagramChangedAt} /></span>
     </div></th>
     <td><span className="dash-table-stack">{row.campus || "—"}{row.studyProgram && <small>{row.studyProgram}</small>}</span></td>
     <td><span className="dash-badges"><AccessBadges row={row} />{!row.active && <ActiveBadge active={false} />}</span></td>
@@ -171,6 +171,14 @@ export function CommunityBadge({ row }: { row: Pick<Row, "memberType" | "divisio
 /** When the member last changed their Instagram username (#235), so staff check the follow and twibbon again. */
 export function InstagramChanged({ at }: { at: number | null }) {
   return at ? <small className="dash-ig-changed" title={dateLabel(at)}>{instagramChangedLabel(at)}</small> : null;
+}
+
+/** The member's linked Discord account (#242), so staff know who is behind a Discord name; nothing until they link one. */
+export function DiscordHandle({ discord }: { discord: Row["discord"] }) {
+  if (!discord) return null;
+  return <small className="dash-discord-handle" title={discord.username ? `Discord: ${discord.username}` : "Discord terhubung"}>
+    <PixelIcon name="discord" size={12} /><span className="sr-only">Discord: </span>{discord.username ?? "terhubung"}
+  </small>;
 }
 
 export function ActiveBadge({ active }: { active: boolean }) {

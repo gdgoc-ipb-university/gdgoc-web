@@ -128,6 +128,20 @@ describe("Discord link record", () => {
     expect(await linkRow(t, member.id)).toBeNull();
   });
 
+  it("shows staff who linked Discord, with the username and join status but not the Discord ID", async () => {
+    vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com");
+    const t = setup();
+    mockDiscord([{ status: 201, body: {} }]);
+    const owner = await account(t, "owner@example.com");
+    const member = await account(t, "anggota@example.com");
+    await linkDiscord(t, member.id, "111");
+    await runDue(t);
+    const row = await owner.query(api.dashboard.member, { ownerId: member.id });
+    expect(row?.discord).toEqual({ username: "temanuji", linkedAt: Date.now(), joinStatus: "joined", lastError: null });
+    const list = await owner.query(api.dashboard.members, { search: "", filters: {}, page: 1, pageSize: 25 });
+    expect(list.rows.map((entry) => entry.discord?.username ?? null).sort()).toEqual([null, "temanuji"]);
+  });
+
   it("goes with a deleted account, counted", async () => {
     vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com");
     const t = setup();

@@ -167,7 +167,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-discord-panel .dash-photo-buttons .app-small { flex-basis: 100%; margin: 0; }
 .dash-discord-facts { margin-bottom: 0; }
 .dash-discord-facts dd { display: grid; gap: 6px; justify-items: start; }
-.dash-discord-status { font-size: 11px; font-weight: 500; padding: 3px 9px; background: #fff0c5; color: #6d4d0c; }
+.dash-discord-status { display: inline-block; font-size: 11px; font-weight: 500; padding: 3px 9px; background: #fff0c5; color: #6d4d0c; }
 .dash-discord-status[data-status="joined"] { background: #dfeedd; color: #2e692e; }
 .dash-discord-status[data-status="failed"] { background: #fbe4df; color: #9b3024; }
 .dash-discord-panel .discord-notice { margin-block: 14px 0; padding: 12px 16px; font-size: 13px; background: #e3efdd; border: 1px solid #b9d3ae; color: #2b5e2a; }
@@ -692,6 +692,12 @@ th[aria-sort="ascending"] .dash-sort, th[aria-sort="descending"] .dash-sort { co
 .dash-unconfirmed { font-size: 11px; color: #785511; }
 /* "Instagram diubah 12 Nov" (#235): amber like an unconfirmed tag, since staff check the follow and twibbon again. */
 .dash-table-person .dash-ig-changed, .dash-facts .dash-ig-changed { display: block; font-size: 11px; color: #785511; }
+/* A member's linked Discord account for staff (#242): under the email in the table, a fact on the member's page. */
+.dash-table-person .dash-discord-handle { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; color: #3940a0; }
+.dash-discord-handle svg { flex: none; }
+.dash-discord-fact { display: grid; gap: 4px; justify-items: start; }
+.dash-discord-fact .dash-fact-row { flex-wrap: wrap; gap: 6px 10px; }
+.dash-discord-fact small { font-size: 11px; color: #9b3024; }
 .dash-confirmed { font-size: 11px; color: #2b5e2a; }
 .dash-profile-tag { margin-block: 4px 14px; }
 .dash-active { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; white-space: nowrap; }

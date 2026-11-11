@@ -10,7 +10,7 @@ import { MembersPage } from "./members";
 import { ViewerContext, type DashboardViewer } from "./viewer";
 
 // The members page against a fake Convex: the list is cut and sorted the way `dashboard.members` does it.
-type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; techSupportHandler?: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null; photo?: string | null; photoUploaded?: boolean; instagramChangedAt?: number | null };
+type Row = { ownerId: string; fullName: string; email: string; campus: string; studyProgram: string; role: "owner" | "admin" | "member"; active: boolean; joinedAt: number; memberType: "member" | "core" | "bod" | null; division: string | null; reviewer: boolean; techSupportHandler?: boolean; tagConfirmed: boolean; reviewsByTag: boolean; card?: { number: string; revoked: boolean } | null; photo?: string | null; photoUploaded?: boolean; instagramChangedAt?: number | null; discord?: { username: string | null; linkedAt: number; joinStatus: "pending" | "joined" | "failed"; lastError: string | null } | null };
 const names = ["Adi", "Bima", "Citra", "Dewi", "Eka", "Fajar", "Gita", "Hana", "Indra", "Joko", "Kiki", "Lina", "Mira", "Nadia", "Oki", "Putri", "Qori", "Rania", "Sari", "Tono", "Umar", "Vina", "Wati", "Xena", "Yusuf", "Zahra", "Agus", "Bayu", "Cahya", "Dina"];
 const rows: Row[] = names.map((fullName, index) => ({
   ownerId: `u${index}`, fullName, email: `${fullName.toLowerCase()}@example.com`, campus: "IPB University", studyProgram: "Ilmu Komputer",
@@ -22,6 +22,7 @@ rows[29] = { ...rows[29], card: { number: "2627-0030", revoked: false } };
 rows[28] = { ...rows[28], photo: "https://example.convex.cloud/api/storage/cahya", photoUploaded: true };
 const instagramChangedAt = Date.UTC(2026, 10, 12, 3);
 rows[27] = { ...rows[27], instagramChangedAt };
+rows[26] = { ...rows[26], discord: { username: "agus.dev", linkedAt: instagramChangedAt, joinStatus: "joined", lastError: null } };
 
 const setActive = vi.fn(async () => null);
 const setCardRevoked = vi.fn(async () => null);
@@ -236,6 +237,15 @@ describe("members table", () => {
     const label = within(changed).getByText(instagramChangedLabel(instagramChangedAt));
     expect(label.getAttribute("title")).toBe("12 Nov 2026, 10.00 WIB");
     expect(bodyRows().filter((row) => within(row).queryByText(/^Instagram diubah/))).toHaveLength(1);
+  });
+
+  it("shows the Discord account of members who linked one (#242)", () => {
+    show("admin");
+    const linked = bodyRows().find((row) => within(row).queryByRole("link", { name: "Agus" }))!;
+    const handle = within(linked).getByText("agus.dev");
+    expect(handle.textContent).toBe("Discord: agus.dev");
+    expect(handle.getAttribute("title")).toBe("Discord: agus.dev");
+    expect(bodyRows().filter((row) => within(row).queryByTitle(/^Discord/))).toHaveLength(1);
   });
 
   it("offers admins no access changes, and links every row to the member's page", async () => {

@@ -11,7 +11,7 @@ import { syncBoardVisibility } from "./bogorRun";
 import { clearPhoto, photoUrl } from "./photos";
 import { removeRow } from "./league";
 import { deleteFlagRows } from "./flags";
-import { removeLink } from "./discordLinks";
+import { linkOf, removeLink } from "./discordLinks";
 import { editProfile, profileValues } from "./members";
 import { divisions, validateStaffRole } from "../src/lib/onboarding";
 import { normalizeEmail } from "../src/lib/cohort";
@@ -43,6 +43,7 @@ export const viewer = query({
 async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfiles">) {
   const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
   const card = await ctx.db.query("memberCards").withIndex("by_owner", (q) => q.eq("ownerId", profile.ownerId)).unique();
+  const discord = await linkOf(ctx, profile.ownerId);
   const role = roleOf(user?.email ?? "", Boolean(user?.emailVerified), profile);
   return {
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
@@ -62,6 +63,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     card: card ? { number: card.number, revoked: Boolean(card.revokedAt) } : null,
     // Their photo, and whether they uploaded it, which staff can remove (photos.removeFor).
     photo: await photoUrl(ctx, profile, user?.image), photoUploaded: Boolean(profile.photoStorageId),
+    // Their linked Discord account (#242), so staff know who is behind a Discord name; null until they link one.
+    discord: discord ? { username: discord.username ?? null, linkedAt: discord.linkedAt, joinStatus: discord.joinStatus, lastError: discord.lastError ?? null } : null,
   };
 }
 

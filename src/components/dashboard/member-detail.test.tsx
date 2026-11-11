@@ -13,7 +13,7 @@ const instagramChangedAt = Date.UTC(2026, 10, 12, 3);
 const member: Member = {
   ownerId: "u1", fullName: "Rania Putri", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania", instagramChangedAt, institutionKind: "campus", revision: 4,
   email: "rania@example.com", role: "member", active: true, joinedAt: Date.UTC(2026, 8, 1), memberType: "member", division: null, reviewer: false, techSupportHandler: false,
-  tagConfirmed: false, reviewsByTag: false, card: null, photo: null, photoUploaded: false, accessUpdatedBy: null, submissions: [], appreciations: [], drafts: 0, reviewing: [],
+  tagConfirmed: false, reviewsByTag: false, card: null, photo: null, photoUploaded: false, accessUpdatedBy: null, submissions: [], appreciations: [], drafts: 0, reviewing: [], discord: null,
 };
 const mocks = vi.hoisted(() => ({ member: null as unknown, correct: vi.fn() }));
 vi.mock("convex/react", () => ({
@@ -97,5 +97,22 @@ describe("Koreksi profil on the member page (#235)", () => {
     mocks.member = { ...member, instagramChangedAt: null };
     show();
     expect(screen.queryByText(/^Instagram diubah/)).toBeNull();
+  });
+});
+
+describe("Discord on the member page (#242)", () => {
+  const fact = () => screen.getByText("Discord", { selector: "dt" }).parentElement!;
+  it("says when a member hasn't linked Discord", () => {
+    show();
+    expect(within(fact()).getByRole("definition").textContent).toBe("Belum terhubung");
+  });
+
+  it("shows the username, the link date and the server join, with why it failed", () => {
+    mocks.member = { ...member, discord: { username: "raniaputri", linkedAt: Date.UTC(2026, 10, 12, 3), joinStatus: "failed", lastError: "Akun Discord ini diblokir dari server GDGoC IPB. Hubungi pengurus." } };
+    show();
+    expect(within(fact()).getByText("raniaputri")).toBeTruthy();
+    expect(within(fact()).getByText("Terhubung 12 November 2026")).toBeTruthy();
+    expect(within(fact()).getByText("Belum masuk server")).toBeTruthy();
+    expect(within(fact()).getByText(/diblokir dari server/)).toBeTruthy();
   });
 });

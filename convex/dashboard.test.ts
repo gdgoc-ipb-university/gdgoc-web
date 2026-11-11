@@ -444,3 +444,81 @@ describe("dashboard roles and member management", () => {
     expect(await member.query(api.dashboard.viewer)).toMatchObject({ memberType: "member", division: null });
   });
 });
+
+describe("staff correcting a member's profile (#235)", () => {
+  const values = { fullName: "Rania Putri", institutionKind: "campus" as const, campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania" };
+  const logRows = (t: ReturnType<typeof setup>) => t.run((ctx) => ctx.db.query("accessLog").collect()).then((rows) => rows.filter((row) => row.change === "profile"));
+  const profileOf = (t: ReturnType<typeof setup>, ownerId: string) => t.run((ctx) => ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).unique());
+
+  async function people() {
+    const t = setup();
+    const owner = await account(t, "owner@example.com", { name: "Pemilik" });
+    const admin = await account(t, "admin@example.com", { name: "Admin Satu" });
+    const other = await account(t, "other-admin@example.com", { name: "Admin Dua" });
+    const member = await account(t, "member@example.com", { name: "Rania" });
+    const fresh = await account(t, "fresh@example.com", { onboarded: false });
+    for (const id of [admin.id, other.id]) await owner.mutation(api.dashboard.setRole, { ownerId: id, role: "admin" });
+    return { t, owner, admin, other, member, fresh };
+  }
+
+  it("lets an admin correct a member, normalised like onboarding, and logs which fields changed", async () => {
+    const { t, owner, admin, member } = await people();
+    await expect(member.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 4, values })).rejects.toThrow("hanya untuk admin");
+    expect(await admin.query(api.dashboard.member, { ownerId: member.id })).toMatchObject({ revision: 4, institutionKind: null });
+    expect(await admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 4, values: { ...values, fullName: " Rania   Putri ", instagram: "@Rania" } })).toEqual({ revision: 5 });
+    const profile = await profileOf(t, member.id);
+    expect(profile).toMatchObject({ fullName: "Rania Putri", institutionKind: "campus", instagram: "rania", revision: 5, instagramChangedAt: expect.any(Number) });
+    const [row] = await logRows(t);
+    expect(row).toMatchObject({ actorId: admin.id, targetId: member.id, from: "fullName,institutionKind,instagram", to: "fullName,institutionKind,instagram", at: expect.any(Number) });
+    // The log keeps which fields, never the values.
+    expect(JSON.stringify(row)).not.toMatch(/Rania|rania/);
+    const [entry] = (await owner.query(api.dashboard.accessLog, { ownerId: member.id, paginationOpts: page })).page;
+    expect(entry).toMatchObject({ change: "profile", actor: "Admin Satu", target: "Rania Putri" });
+    // The member's own edits are not logged.
+    await member.mutation(api.members.updateProfile, { revision: 5, values: { ...values, studyProgram: "Statistika" } });
+    expect(await logRows(t)).toHaveLength(1);
+  });
+
+  it("follows the member hierarchy: admins correct members, owners also admins, no one an owner or themselves", async () => {
+    const { t, owner, admin, other, member, fresh } = await people();
+    await expect(admin.mutation(api.dashboard.correctProfile, { ownerId: other.id, revision: 4, values })).rejects.toThrow("Hanya pemilik");
+    await expect(admin.mutation(api.dashboard.correctProfile, { ownerId: owner.id, revision: 4, values })).rejects.toThrow("Profil pemilik");
+    await expect(admin.mutation(api.dashboard.correctProfile, { ownerId: admin.id, revision: 4, values })).rejects.toThrow("halaman Profil");
+    await expect(owner.mutation(api.dashboard.correctProfile, { ownerId: owner.id, revision: 4, values })).rejects.toThrow("halaman Profil");
+    await expect(owner.mutation(api.dashboard.correctProfile, { ownerId: fresh.id, revision: 4, values })).rejects.toThrow("tidak ditemukan");
+    expect(await logRows(t)).toHaveLength(0);
+    await owner.mutation(api.dashboard.correctProfile, { ownerId: other.id, revision: 4, values: { ...values, fullName: "Admin Dua Benar" } });
+    await owner.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 4, values });
+    expect((await logRows(t)).map((row) => [row.actorId, row.targetId])).toEqual([[owner.id, other.id], [owner.id, member.id]]);
+    // A deactivated member can still be corrected.
+    await owner.mutation(api.dashboard.setActive, { ownerId: member.id, active: false });
+    await admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 5, values: { ...values, campus: "Universitas Pakuan" } });
+    expect(await profileOf(t, member.id)).toMatchObject({ campus: "Universitas Pakuan" });
+  });
+
+  it("refuses a stale revision and answers onboarding refuses, and logs nothing for no change", async () => {
+    const { t, admin, member } = await people();
+    await member.mutation(api.members.updateProfile, { revision: 4, values });
+    await expect(admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 4, values: { ...values, fullName: "Tab Lama" } })).rejects.toThrow("Profil berubah di tab atau perangkat lain");
+    await expect(admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 5, values: { ...values, instagram: "a..b" } })).rejects.toThrow("Periksa isian");
+    await expect(admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 5, values: { ...values, fullName: "" } })).rejects.toThrow("Periksa isian");
+    expect(await admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 5, values })).toEqual({ revision: 5 });
+    expect(await logRows(t)).toHaveLength(0);
+    expect(await profileOf(t, member.id)).toMatchObject({ fullName: "Rania Putri", revision: 5 });
+  });
+
+  it("leaves nothing personal behind when the account is deleted, with the same counts", async () => {
+    const { t, owner, admin, member } = await people();
+    await member.mutation(api.members.updateProfile, { revision: 4, values });
+    await admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 5, values: { ...values, instagram: "rania.putri" } });
+    expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "Rania Putri" })).toEqual({
+      appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 1, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0,
+    });
+    // The profile with its Instagram time is gone; the correction's log row keeps the account ID and field names only.
+    expect(await profileOf(t, member.id)).toBeNull();
+    const [row] = await logRows(t);
+    expect(row).toMatchObject({ targetId: member.id, from: "instagram", to: "instagram" });
+    const [entry] = (await owner.query(api.dashboard.accessLog, { ownerId: member.id, paginationOpts: page })).page.filter((item) => item.change === "profile");
+    expect(entry).toMatchObject({ actor: "Admin Satu", target: null });
+  });
+});

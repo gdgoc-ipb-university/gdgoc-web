@@ -27,6 +27,9 @@ export const accessChange = v.union(
   v.literal("cohortMentor"),
   // Staff issued a member's card for the chapter year from the print page (the old number or "none" → the new one).
   v.literal("cardIssued"),
+  // Staff corrected a member's profile answers (#235): the fields that changed, comma-separated, in both `from` and `to`;
+  // the values are not kept, like a corrected enrolment email.
+  v.literal("profile"),
 );
 export const gatheringStatus = v.union(v.literal("draft"), v.literal("open"), v.literal("closed"));
 export const rubricBreakdown = v.array(v.object({ name: v.string(), max: v.number(), points: v.number() }));

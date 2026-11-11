@@ -10,6 +10,7 @@ import { memberType } from "./schema";
 import { syncBoardVisibility } from "./bogorRun";
 import { clearPhoto, photoUrl } from "./photos";
 import { removeRow } from "./league";
+import { editProfile, profileValues } from "./members";
 import { divisions, validateStaffRole } from "../src/lib/onboarding";
 import { normalizeEmail } from "../src/lib/cohort";
 import { assignmentMaxScore, isLate, isStaleReview } from "../src/lib/assignment";
@@ -171,6 +172,8 @@ export const member = query({
     const updaterAccount = profile.accessUpdatedBy && !updater ? await authComponent.getAnyUserById(ctx, profile.accessUpdatedBy) : null;
     return {
       ...row,
+      // For the correction form (#235): the kind as stored, and the revision a correction must match.
+      institutionKind: profile.institutionKind ?? null, revision: profile.revision,
       accessUpdatedBy: profile.accessUpdatedBy ? updater?.fullName || updaterAccount?.name || "Pengurus" : null,
       submissions: tasks.filter((task) => task !== null).sort((a, b) => b.submittedAt - a.submittedAt),
       appreciations: appreciations.filter((doc) => doc.status !== "draft").map((doc) => ({
@@ -410,5 +413,26 @@ export const setMemberType = mutation({
     await ctx.db.patch(profile._id, { memberType: args.memberType, division: division || undefined, tagConfirmedAt: Date.now(), tagConfirmedBy: actor.user._id });
     if (from !== to) await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "memberType", from, to });
     else if (!profile.tagConfirmedAt) await logAccess(ctx, { actorId: actor.user._id, targetId: args.ownerId, change: "tagConfirmed", from: "unconfirmed", to });
+  },
+});
+
+/**
+ * Staff correct a member's profile answers from the member page (#235), under the hierarchy of the other tools there:
+ * admins correct members, owners also admins, and no one an owner or themselves (members edit their own on Profil).
+ * Onboarding's rules and the revision check apply, as in the member's own edit. Each correction is logged with the
+ * fields it changed, not their values; a correction that changes nothing is not logged.
+ */
+export const correctProfile = mutation({
+  args: { ownerId: v.string(), revision: v.number(), values: profileValues },
+  handler: async (ctx, { ownerId, revision, values }) => {
+    const actor = await requireStaff(ctx);
+    if (ownerId === actor.user._id) throw new ConvexError("Ubah profilmu sendiri dari halaman Profil.");
+    const { profile, row } = await target(ctx, ownerId);
+    if (row.role === "owner") throw new ConvexError("Profil pemilik tidak bisa dikoreksi dari dashboard.");
+    if (row.role === "admin" && actor.role !== "owner") throw new ConvexError("Hanya pemilik yang bisa mengelola akun admin.");
+    const edit = await editProfile(ctx, profile, revision, values);
+    const fields = edit.changed.join(",");
+    if (fields) await logAccess(ctx, { actorId: actor.user._id, targetId: ownerId, change: "profile", from: fields, to: fields });
+    return { revision: edit.profile.revision };
   },
 });

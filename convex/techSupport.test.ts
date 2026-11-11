@@ -26,7 +26,7 @@ async function account(t: Test, email: string, name: string) {
 }
 const values = (extra: Partial<TechSupportValues> = {}): TechSupportValues => ({
   competition: "Gemastik 2026", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-11-20", participation: "team",
-  teamName: "Tim Dino", helpKinds: ["Review pitch deck", "Ideasi"], progress: "Sudah ada prototipe dan proposal awal.", ...extra,
+  teamName: "Tim Dino", helpKinds: ["Review pitch deck", "Ideasi"], progress: "Sudah ada prototipe dan proposal awal.", whatsapp: "0812-3456-7890", discord: "", ...extra,
 });
 
 async function world() {
@@ -61,6 +61,36 @@ describe("Tech Support requests", () => {
     expect(await member.query(api.techSupport.mine, {})).toHaveLength(1);
     // A solo request keeps no team name.
     expect((await other.query(api.techSupport.mine, {}))[0]).toMatchObject({ participation: "solo", teamName: null });
+  });
+
+  it("needs a WhatsApp number, keeps an optional Discord username, and stores both normalised (#251)", async () => {
+    const { t, handler, member, other } = await world();
+    // A page loaded before the fields existed sends neither and is asked to reload.
+    const { whatsapp: _whatsapp, discord: _discord, ...outdated } = values();
+    await expect(member.mutation(api.techSupport.submit, { values: outdated })).rejects.toThrow(/Muat ulang halaman/);
+    for (const extra of [{ whatsapp: " " }, { whatsapp: "0251 862 1234" }, { whatsapp: "+1 415 555 0100" }, { discord: "rania dev" }, { discord: "a" }]) {
+      await expect(member.mutation(api.techSupport.submit, { values: values(extra) }), JSON.stringify(extra)).rejects.toThrow(/Lengkapi/);
+    }
+    expect(await t.run((ctx) => ctx.db.query("techSupportRequests").collect())).toEqual([]);
+
+    const id = await member.mutation(api.techSupport.submit, { values: values({ whatsapp: "62 812.3456.7890", discord: " @Rania.Dev " }) });
+    await other.mutation(api.techSupport.submit, { values: values({ whatsapp: "+6285712345678", discord: "" }) });
+    expect(await t.run((ctx) => ctx.db.get(id))).toMatchObject({ whatsapp: "+6281234567890", discord: "rania.dev" });
+    expect((await member.query(api.techSupport.mine, {}))[0]).toMatchObject({ whatsapp: "+6281234567890", discord: "rania.dev" });
+    const [withoutDiscord] = await t.run((ctx) => ctx.db.query("techSupportRequests").filter((q) => q.neq(q.field("_id"), id)).collect());
+    expect(withoutDiscord).not.toHaveProperty("discord");
+
+    // A request sent before #251 has neither, and the queue says so.
+    await t.run((ctx) => ctx.db.insert("techSupportRequests", {
+      ownerId: member.id, competition: "Hology", competitionUrl: "https://hology.ub.ac.id", deadline: "2099-12-01", participation: "solo",
+      helpKinds: ["Ideasi"], progress: "Ide.", status: "closed", submittedAt: 1, updatedAt: 1,
+    }));
+    const queue = (await handler.query(api.techSupport.queue, {})).requests.map(({ competition, whatsapp, discord }) => ({ competition, whatsapp, discord }));
+    expect(queue).toEqual([
+      { competition: "Gemastik 2026", whatsapp: "+6285712345678", discord: null },
+      { competition: "Gemastik 2026", whatsapp: "+6281234567890", discord: "rania.dev" },
+      { competition: "Hology", whatsapp: null, discord: null },
+    ]);
   });
 
   it("limits how many requests a member has open at once", async () => {
@@ -148,9 +178,11 @@ describe("Tech Support requests", () => {
     expect((await handler.query(api.techSupport.queue, {})).kpis).toMatchObject({ facilitated: 4, teams: 2 });
   });
 
-  it("deletes a member's requests with their account", async () => {
+  it("deletes a member's requests, with their contact, with their account", async () => {
     const { t, owner, member } = await world();
-    await member.mutation(api.techSupport.submit, { values: values() });
+    await member.mutation(api.techSupport.submit, { values: values({ discord: "rania.dev" }) });
+    // The contact lives on the request, so it goes with it.
+    expect(await t.run((ctx) => ctx.db.query("techSupportRequests").collect())).toMatchObject([{ whatsapp: "+6281234567890", discord: "rania.dev" }]);
     expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "Rania Member" })).toMatchObject({ techSupportRequests: 1 });
     expect(await t.run((ctx) => ctx.db.query("techSupportRequests").collect())).toEqual([]);
   });

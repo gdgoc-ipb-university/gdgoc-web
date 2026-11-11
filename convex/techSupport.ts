@@ -14,9 +14,14 @@ import {
 const requestInput = v.object({
   competition: v.string(), competitionUrl: v.string(), deadline: v.string(), participation: v.union(v.literal("team"), v.literal("solo"), v.literal("")),
   teamName: v.string(), helpKinds: v.array(v.string()), progress: v.string(),
+  // Optional only so a page loaded before #251 reaches `submit` and is asked to reload, instead of failing validation.
+  whatsapp: v.optional(v.string()), discord: v.optional(v.string()),
 });
 
-/** The caller's own requests, newest first, with the status and the matched mentor. Handler notes stay in the queue. */
+/**
+ * The caller's own requests, newest first, with the status and the matched mentor. Handler notes stay in the queue. The
+ * form prefills the contact from the newest request that has one.
+ */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
@@ -25,7 +30,7 @@ export const mine = query({
     return rows.map((row) => ({
       _id: row._id, competition: row.competition, competitionUrl: row.competitionUrl, deadline: row.deadline, participation: row.participation,
       teamName: row.teamName ?? null, helpKinds: row.helpKinds, progress: row.progress, status: row.status,
-      mentorName: row.mentorName ?? null, submittedAt: row.submittedAt, updatedAt: row.updatedAt,
+      whatsapp: row.whatsapp ?? null, discord: row.discord ?? null, mentorName: row.mentorName ?? null, submittedAt: row.submittedAt, updatedAt: row.updatedAt,
     }));
   },
 });
@@ -34,8 +39,9 @@ export const submit = mutation({
   args: { values: requestInput },
   handler: async (ctx, { values }) => {
     const { user } = await requireTechSupportRequester(ctx);
+    if (values.whatsapp === undefined) throw new ConvexError({ code: "OUTDATED", message: "Form ini sudah diperbarui. Muat ulang halaman, lalu kirim lagi dengan nomor WhatsApp-mu." });
     const now = Date.now();
-    const normal = normalizeRequest(values);
+    const normal = normalizeRequest({ ...values, whatsapp: values.whatsapp, discord: values.discord ?? "" });
     const errors = validateRequest(normal, now);
     if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
     const open = (await ctx.db.query("techSupportRequests").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).collect()).filter((row) => row.status !== "closed");
@@ -43,7 +49,7 @@ export const submit = mutation({
     return ctx.db.insert("techSupportRequests", {
       ownerId: user._id, competition: normal.competition, competitionUrl: normal.competitionUrl, deadline: normal.deadline,
       participation: normal.participation || "solo", ...(normal.teamName ? { teamName: normal.teamName } : {}), helpKinds: normal.helpKinds,
-      progress: normal.progress, status: "new", submittedAt: now, updatedAt: now,
+      progress: normal.progress, whatsapp: normal.whatsapp, ...(normal.discord ? { discord: normal.discord } : {}), status: "new", submittedAt: now, updatedAt: now,
     });
   },
 });
@@ -67,7 +73,7 @@ export const queue = query({
       return {
         _id: row._id, ownerId: row.ownerId, competition: row.competition, competitionUrl: row.competitionUrl, deadline: row.deadline,
         participation: row.participation, teamName: row.teamName ?? null, helpKinds: row.helpKinds, progress: row.progress, status: row.status,
-        mentorName: row.mentorName ?? null, note: row.note ?? null, submittedAt: row.submittedAt, updatedAt: row.updatedAt,
+        whatsapp: row.whatsapp ?? null, discord: row.discord ?? null, mentorName: row.mentorName ?? null, note: row.note ?? null, submittedAt: row.submittedAt, updatedAt: row.updatedAt,
         matchedAt: row.matchedAt ?? null, closedAt: row.closedAt ?? null, handledBy: row.handledBy ? names.get(row.handledBy) ?? null : null,
         member: { name: profile?.fullName ?? "Anggota", email: account?.email ?? "", campus: profile?.campus ?? "", memberType: profile?.memberType ?? null, division: profile?.division ?? null },
       };

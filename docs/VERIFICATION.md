@@ -533,6 +533,15 @@ Evidence:
 - `pnpm build` and `next start` against a local anonymous Convex backend, with made-up accounts signed up by email and password through a temporary, uncommitted auth patch (Google cannot return to a local address), and profiles seeded by a temporary internal mutation; both removed afterwards. Chromium at 390 × 844 and 1440 × 900: the owner created "Join Discord" (max 100, min 20, decrement 10) with the live preview "Solver ke-1: 100, ke-2: 90, ke-5: 60, minimum 20 mulai solver ke-9." after the form refused a minimum of 150 and trimmed the flag; the first member solved it with spaces around the flag and got 100 and first blood; the second member sent a lower-case flag and four other wrong ones ("Sisa 4 … 1 percobaan", then "Tunggu sebentar"), the button stayed locked across a reload with the next try's time, and opened about a minute later; the third member got 90 while it was locked, and the second then got 80. On a second task (10, 10, 0) a member out of tries forced the button open and the server still answered "Terlalu banyak flag yang belum tepat". The Challenge board ranked 100, 90 and 90 with the earlier 90 first, the staff page listed the three solves with 5 wrong flags from 1 member, and the Bogor Run tab was unchanged under the new switch.
 - Not checked: Google sign-in, the deployed site, a real phone, and two members solving within the same instant against a real deployment (convex-test serializes mutations as Convex does; the concurrency test runs there).
 
+## Tech Support contact: WhatsApp and Discord — 12 November
+
+A Tech Support request asks for a WhatsApp number (required) and a Discord username (optional), prefilled from the member's last request, and handlers open a chat from the queue (#251).
+
+Evidence:
+- `pnpm check` and `pnpm test` (98 files, 890 tests) pass on Node 24, and each commit passes lint, typecheck and tests on its own.
+- `pnpm build` and `next start` against a local anonymous Convex backend, with made-up accounts signed up by email and password through a temporary, uncommitted auth patch (Google cannot return to a local address), and profiles and one request from before #251 seeded by a temporary internal mutation; both removed afterwards. Chromium at 390 × 844: the form refused "0251 862 1234" with "Tulis nomor HP Indonesia, misalnya 0812 3456 7890.", took "0812-0000-1234" and "@Rania.Dev", kept both after sending, and prefilled "+62 812-0000-1234" and "rania.dev" after a reload. At 1440 × 900 the owner's queue linked the number to `https://wa.me/6281200001234` in a new tab with "Discord: rania.dev" under it, showed "—" for the older request, and the Kelola dialog showed both, and "—" twice for the older one.
+- Not checked: Google sign-in, the deployed site, a real phone, opening the `wa.me` link in WhatsApp, and a page loaded before the change sending a request to the new backend (covered by `convex/techSupport.test.ts`).
+
 ## Evidence boundaries
 
 The scene is an original geometric illustration guided by the selected generated image and the supplied building photographs. It is not a measured digital twin or a pixel-identical rendering of the generated artwork.

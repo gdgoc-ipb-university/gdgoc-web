@@ -5,6 +5,7 @@ import { useState, type FormEvent } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
+import { whatsappLabel, whatsappLink } from "@/lib/contact";
 import { readableError } from "@/lib/draft-session";
 import { memberTagLabel } from "@/lib/onboarding";
 import {
@@ -57,6 +58,8 @@ function HandleDialog({ request, onClose }: { request: Request; onClose: () => v
       <dl className="dash-support-detail">
         <dt>Pemohon</dt><dd>{request.member.name}{request.member.memberType && ` · ${memberTagLabel(request.member.memberType, request.member.division)}`}{request.member.campus && ` · ${request.member.campus}`}</dd>
         {request.member.email && <><dt>Email</dt><dd className="dash-support-email">{request.member.email} <CopyIconButton text={request.member.email} label="Salin email" /></dd></>}
+        <dt>WhatsApp</dt><dd>{request.whatsapp ? <a href={whatsappLink(request.whatsapp)} target="_blank" rel="noreferrer">{whatsappLabel(request.whatsapp)}</a> : "—"}</dd>
+        <dt>Discord</dt><dd className="dash-support-email">{request.discord ? <>{request.discord} <CopyIconButton text={request.discord} label="Salin username Discord" /></> : "—"}</dd>
         <dt>Kompetisi</dt><dd><a href={request.competitionUrl} target="_blank" rel="noreferrer">{request.competition}</a>, tenggat {deadlineLabel(request.deadline)}</dd>
         <dt>Ikut sebagai</dt><dd>{request.participation === "team" ? `Tim: ${request.teamName}` : participationLabels.solo}</dd>
         <dt>Bantuan</dt><dd>{request.helpKinds.join(", ")}</dd>
@@ -104,11 +107,13 @@ export function TechSupportQueue() {
     <Select className="dash-support-filter" label="Tampilkan" value={filter} onChange={setFilter} options={filters.map((option) => ({ ...option, label: option.value in data.kpis.byStatus ? `${option.label} (${data.kpis.byStatus[option.value as TechSupportStatus]})` : option.label }))} />
     {!rows.length ? <div className="app-empty"><h2>{data.requests.length ? "Tidak ada permintaan dengan status ini." : "Belum ada permintaan."}</h2><p>Permintaan dari form Tech Support di dashboard member muncul di sini.</p></div>
       : <div className="dash-table-wrap" tabIndex={0} role="region" aria-label="Antrean permintaan"><table className="dash-table">
-        <thead><tr><th scope="col">Kompetisi</th><th scope="col">Pemohon</th><th scope="col">Masuk</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Aksi</span></th></tr></thead>
+        <thead><tr><th scope="col">Kompetisi</th><th scope="col">Pemohon</th><th scope="col">Kontak</th><th scope="col">Masuk</th><th scope="col">Status</th><th scope="col"><span className="sr-only">Aksi</span></th></tr></thead>
         <tbody>{rows.map((request) => <tr key={request._id} data-overdue={isOverdue(request, now) || undefined}>
           <td><a className="dash-support-competition" href={request.competitionUrl} target="_blank" rel="noreferrer"><strong>{request.competition}</strong><PixelIcon name="external-link" size={14} /></a>
             <small className="app-small dash-support-clock">Tenggat {deadlineLabel(request.deadline)} · {request.participation === "team" ? `Tim: ${request.teamName}` : "Sendiri"} · {request.helpKinds.join(", ")}</small></td>
           <td>{request.member.name}<small className="app-small dash-support-clock">{request.member.campus}</small></td>
+          <td>{request.whatsapp ? <a className="dash-support-competition dash-support-whatsapp" href={whatsappLink(request.whatsapp)} target="_blank" rel="noreferrer" aria-label={`Chat WhatsApp ${request.member.name}, ${whatsappLabel(request.whatsapp)}`}>{whatsappLabel(request.whatsapp)}<PixelIcon name="external-link" size={14} /></a> : "—"}
+            {request.discord && <small className="app-small dash-support-clock">Discord: {request.discord}</small>}</td>
           <td>{dateLabel(request.submittedAt)}<ResponseClock request={request} now={now} /></td>
           <td><TechSupportStatusBadge status={request.status} />{request.mentorName && <small className="app-small dash-support-clock">Mentor: {request.mentorName}</small>}</td>
           <td><button type="button" className="text-button" onClick={() => setHandling(request)} aria-label={`Kelola permintaan ${request.member.name} untuk ${request.competition}`}>Kelola</button></td>

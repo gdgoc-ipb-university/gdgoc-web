@@ -188,3 +188,50 @@ describe("solving a flag task", () => {
     expect(JSON.stringify(seen)).not.toContain(FLAG);
   });
 });
+
+describe("the Challenge board, staff solves and deletion", () => {
+  it("ranks members by total locked points, ties to whoever reached the total first", async () => {
+    const { t, owner, a, b, c, d, id: x } = await world();
+    const y = await owner.mutation(api.assignments.create, { values: task(), publish: true });
+    vi.useFakeTimers({ now: Date.now() });
+    for (const [member, id] of [[a, x], [b, y], [b, x], [a, y], [c, x]] as const) { await solve(member, id); vi.advanceTimersByTime(1000); }
+    // A 0-point solve leaves the time the total was reached alone.
+    const z = await owner.mutation(api.assignments.create, { values: task({ flag: { flag: FLAG, maxPoints: "0", minPoints: "0", decrement: "0" } }), publish: true });
+    await solve(b, z);
+    const board = await a.query(api.flags.board);
+    expect(board.entries.map((row) => [row.rank, row.name, row.points, row.tasks, row.firstBloods, row.you])).toEqual([
+      [1, "Nama B.", 190, 3, 2, false], [2, "Nama A.", 190, 2, 1, true], [3, "Nama C.", 80, 1, 0, false],
+    ]);
+    expect(board.you).toEqual({ rank: 2, points: 190, tasks: 2 });
+    expect(board.stats).toEqual({ players: 3, solves: 6 });
+    expect(await d.query(api.flags.board)).toMatchObject({ you: null });
+    expect(JSON.stringify(board)).not.toMatch(new RegExp(`${a.id}|${b.id}|example\\.com`));
+    // A deactivated member leaves the board; the others keep their places and points.
+    await owner.mutation(api.dashboard.setActive, { ownerId: b.id, active: false });
+    expect((await a.query(api.flags.board)).entries.map((row) => [row.rank, row.name, row.points])).toEqual([[1, "Nama A.", 190], [2, "Nama C.", 80]]);
+    expect(await t.run((ctx) => ctx.db.query("flagSolves").collect())).toHaveLength(6);
+  });
+
+  it("lists a task's solves and wrong tries for staff", async () => {
+    const { owner, a, b, id } = await world();
+    await solve(a, id, "salah"); await solve(a, id, "salah lagi"); await solve(a, id);
+    await solve(b, id);
+    const list = await owner.query(api.flags.solves, { id });
+    expect(list?.solves.map((row) => [row.order, row.name, row.points, row.wrong])).toEqual([[1, "Nama a", 100, 2], [2, "Nama b", 90, 0]]);
+    expect(list).toMatchObject({ wrong: 2, wrongMembers: 1 });
+    const hand = await owner.mutation(api.assignments.create, { values: task({ flag: undefined }), publish: true });
+    expect(await owner.query(api.flags.solves, { id: hand })).toBeNull();
+  });
+
+  it("removes a deleted member's solves and tries: first blood passes on and others keep their points", async () => {
+    const { t, owner, a, b, c, id } = await world();
+    await solve(a, id, "salah"); await solve(a, id); await solve(b, id); await solve(c, id, "salah");
+    const counts = await owner.mutation(api.dashboard.deleteAccount, { ownerId: a.id, confirmName: "Nama a" });
+    expect(counts).toMatchObject({ flagSolves: 1, flagAttempts: 1 });
+    expect(await t.run((ctx) => ctx.db.query("accountDeletions").first())).toMatchObject({ counts: { flagSolves: 1, flagAttempts: 1 } });
+    const view = (await b.query(api.assignments.get, { id }))!.challenge;
+    expect(view).toMatchObject({ firstBlood: { name: "Nama B.", you: true }, solves: 1, pointsNow: 90, mine: { points: 90, order: 1 } });
+    expect((await c.query(api.flags.board)).entries.map((row) => [row.name, row.points, row.firstBloods])).toEqual([["Nama B.", 90, 1]]);
+    expect(await t.run(async (ctx) => (await ctx.db.query("flagAttempts").collect()).map((row) => row.ownerId))).toEqual([c.id]);
+  });
+});

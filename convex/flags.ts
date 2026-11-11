@@ -1,7 +1,9 @@
-import type { MutationCtx, QueryCtx } from "./_generated/server";
+import { v } from "convex/values";
+import { query, type MutationCtx, type QueryCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
+import { requireMember, requireStaff } from "./access";
 import { flagMatches, flagPointsFor, flagPointsOf, nextTryAt, triesAvailable } from "../src/lib/flag-task";
-import { shortName } from "../src/lib/bogor-run/leaderboard";
+import { BOARD_SIZE, shortName } from "../src/lib/bogor-run/leaderboard";
 
 /** What a member's flag got: a solve with its locked points, or a refusal that still had to be written (#240). */
 export type FlagResult =
@@ -89,4 +91,64 @@ export async function checkFlag(ctx: MutationCtx, assignment: Doc<"assignments">
   const points = flagPointsFor(flagPointsOf(assignment), place);
   await ctx.db.insert("flagSolves", { assignmentId: assignment._id, ownerId, points, place, solvedAt: now });
   return { ok: true, points, place, solvedAt: now };
+}
+
+/**
+ * The Challenge board on Papan skor (#240): members ranked by their total locked points from flag tasks. A tie goes to whoever
+ * reached the total first, the time of their last solve that added points. Deactivated accounts are left off, as on the
+ * Bogor Run boards. Short names only, never account IDs.
+ */
+export const board = query({
+  args: {},
+  handler: async (ctx) => {
+    const { user } = await requireMember(ctx);
+    const solves = (await ctx.db.query("flagSolves").collect()).sort((a, b) => a.solvedAt - b.solvedAt);
+    const names = new Map<string, string | null>();
+    for (const solve of solves) if (!names.has(solve.ownerId)) names.set(solve.ownerId, await solverName(ctx, solve.ownerId));
+    const totals = new Map<string, { points: number; tasks: number; firstBloods: number; reachedAt: number }>();
+    const blooded = new Set<string>();
+    for (const solve of solves) {
+      if (!names.get(solve.ownerId)) continue;
+      const row = totals.get(solve.ownerId) ?? { points: 0, tasks: 0, firstBloods: 0, reachedAt: solve.solvedAt };
+      row.points += solve.points; row.tasks++;
+      if (solve.points > 0) row.reachedAt = solve.solvedAt;
+      if (!blooded.has(solve.assignmentId)) { blooded.add(solve.assignmentId); row.firstBloods++; }
+      totals.set(solve.ownerId, row);
+    }
+    const ranked = [...totals].sort(([, a], [, b]) => b.points - a.points || a.reachedAt - b.reachedAt)
+      .map(([ownerId, row], index) => ({ ownerId, rank: index + 1, name: names.get(ownerId)!, ...row }));
+    const you = ranked.find((row) => row.ownerId === user._id);
+    return {
+      entries: ranked.slice(0, BOARD_SIZE).map(({ ownerId, ...row }) => ({ ...row, you: ownerId === user._id })),
+      you: you ? { rank: you.rank, points: you.points, tasks: you.tasks } : null,
+      stats: { players: ranked.length, solves: ranked.reduce((sum, row) => sum + row.tasks, 0) },
+    };
+  },
+});
+
+/** Staff: one flag task's solves (who, when, points, in order) with each solver's wrong tries, and the task's wrong tries. */
+export const solves = query({
+  args: { id: v.id("assignments") },
+  handler: async (ctx, { id }) => {
+    await requireStaff(ctx);
+    const assignment = await ctx.db.get(id);
+    if (!assignment || assignment.kind !== "flag") return null;
+    const attempts = await ctx.db.query("flagAttempts").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", id)).collect();
+    const wrong = new Map(attempts.map((row) => [row.ownerId, row.wrong]));
+    return {
+      solves: await Promise.all((await solvesOf(ctx, id)).map(async (solve, index) => {
+        const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", solve.ownerId)).unique();
+        return { order: index + 1, name: profile?.fullName ?? "Member", inactive: Boolean(profile?.deactivatedAt), solvedAt: solve.solvedAt, points: solve.points, wrong: wrong.get(solve.ownerId) ?? 0 };
+      })),
+      wrong: attempts.reduce((sum, row) => sum + row.wrong, 0), wrongMembers: attempts.length,
+    };
+  },
+});
+
+/** Account deletion: the member's solves and wrong-try counts. Others keep their points; first blood passes to the next solver. */
+export async function deleteFlagRows(ctx: MutationCtx, ownerId: string) {
+  const counts = { flagSolves: 0, flagAttempts: 0 };
+  for (const row of await ctx.db.query("flagSolves").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(row._id); counts.flagSolves++; }
+  for (const row of await ctx.db.query("flagAttempts").withIndex("by_owner", (q) => q.eq("ownerId", ownerId)).collect()) { await ctx.db.delete(row._id); counts.flagAttempts++; }
+  return counts;
 }

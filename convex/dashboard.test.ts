@@ -258,7 +258,7 @@ describe("dashboard roles and member management", () => {
     await expect(owner.mutation(api.dashboard.deleteAccount, { ownerId: owner.id, confirmName: "Pemilik" })).rejects.toThrow("akunmu sendiri");
     await expect(owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "anggota" })).rejects.toThrow("Ketik nama");
     expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: " Anggota Hapus " })).toEqual({
-      appreciations: 1, appreciationReviews: 1, submissions: 1, submissionReviews: 1, files: 2, gameRuns: 1, gameBests: 1, reviewerGrants: 1, sessions: 1, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 1, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0,
+      appreciations: 1, appreciationReviews: 1, submissions: 1, submissionReviews: 1, files: 2, gameRuns: 1, gameBests: 1, reviewerGrants: 1, sessions: 1, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 1, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0, flagSolves: 0, flagAttempts: 0,
     });
 
     const left = await t.run(async (ctx) => {
@@ -512,7 +512,7 @@ describe("staff correcting a member's profile (#235)", () => {
     await member.mutation(api.members.updateProfile, { revision: 4, values });
     await admin.mutation(api.dashboard.correctProfile, { ownerId: member.id, revision: 5, values: { ...values, instagram: "rania.putri" } });
     expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "Rania Putri" })).toEqual({
-      appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 1, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0,
+      appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 1, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0, flagSolves: 0, flagAttempts: 0,
     });
     // The profile with its Instagram time is gone; the correction's log row keeps the account ID and field names only.
     expect(await profileOf(t, member.id)).toBeNull();

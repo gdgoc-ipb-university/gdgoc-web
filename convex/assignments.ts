@@ -11,13 +11,17 @@ import { storedFileInUse } from "./photos";
 import { inCohortRoles } from "../src/lib/cohort";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
+import { flagPointsOf, normalizeFlag, parseFlagPoints, validateFlag, type FlagInput } from "../src/lib/flag-task";
+import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solvesOf, type FlagResult } from "./flags";
 
 // `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
 // An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
+// `flag` makes a flag task on create (#240); an update of a flag task without it keeps the flag and points, and the kind never changes.
 const assignmentInput = v.object({
   title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()),
   rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))), audience: v.optional(v.array(memberType)),
   cohortId: v.optional(v.union(v.id("cohorts"), v.null())), cohortRoles: v.optional(v.array(v.string())),
+  flag: v.optional(v.object({ flag: v.string(), maxPoints: v.string(), minPoints: v.string(), decrement: v.string() })),
 });
 
 function notFound(): never { throw new ConvexError({ code: "NOT_FOUND", message: "Tugas tidak ditemukan." }); }
@@ -36,6 +40,13 @@ function cleanAssignment(values: { title: string; slug?: string; description: st
     values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
     cohortRoles: clean.cohortRoles ?? [],
   };
+}
+
+/** A flag task's flag and points, checked like the other fields. Flag tasks carry no score or rubric. */
+function cleanFlag(input: FlagInput) {
+  const errors = validateFlag(input);
+  if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian flag yang ditandai.", fields: errors });
+  return { flag: normalizeFlag(input).flag, fields: { kind: "flag" as const, ...parseFlagPoints(input), maxScore: undefined, rubric: undefined } };
 }
 
 /**
@@ -78,9 +89,11 @@ function reaches(assignment: Doc<"assignments">, access: Reach) {
   return inAudience(assignment, access.profile?.memberType);
 }
 
-/** Staff, a reviewer staff added to this assignment, or a mentor of one of its cohort roles. */
+/** Staff, a reviewer staff added to this assignment, or a mentor of one of its cohort roles. Flag tasks grade themselves, so only staff. */
 async function canReview(ctx: QueryCtx | MutationCtx, assignment: Doc<"assignments">, access: { role: DashboardRole; user: { _id: string } }) {
-  if (access.role !== "member" || (assignment.reviewers ?? []).includes(access.user._id)) return true;
+  if (access.role !== "member") return true;
+  if (assignment.kind === "flag") return false;
+  if ((assignment.reviewers ?? []).includes(access.user._id)) return true;
   return Boolean(assignment.cohortId) && mentors(assignment, await mentoredRoles(ctx, access.user._id));
 }
 
@@ -183,7 +196,8 @@ export const adminList = query({
       page: await Promise.all(result.page.map(async (assignment) => {
         const submissions = await submissionsOf(ctx, assignment._id);
         return {
-          ...assignment, cohort: await cohortOf(ctx, assignment), submissionCount: submissions.length, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
+          ...assignment, cohort: await cohortOf(ctx, assignment), submissionCount: submissions.length,
+          solveCount: assignment.kind === "flag" ? (await solvesOf(ctx, assignment._id)).length : 0, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
           reviewedCount: submissions.filter((item) => item.reviewedAt !== undefined && !isStaleReview(item) && !item.revisionRequestedAt).length,
         };
       })),
@@ -206,12 +220,14 @@ export const create = mutation({
     const { user } = await requireStaff(ctx);
     const now = Date.now();
     const { values: clean, cohortRoles } = cleanAssignment(values);
+    const flag = values.flag && cleanFlag(values.flag);
     const slug = await availableSlug(ctx, clean.slug);
     const id = await ctx.db.insert("assignments", {
-      ...clean, ...(await cohortTarget(ctx, values.cohortId, cohortRoles)), slug, status: publish ? "published" : "draft", revision: 0,
+      ...clean, ...flag?.fields, ...(await cohortTarget(ctx, values.cohortId, cohortRoles)), slug, status: publish ? "published" : "draft", revision: 0,
       createdBy: user._id, createdAt: now, updatedAt: now, ...(publish ? { publishedAt: now } : {}),
     });
     await claimSlug(ctx, id, slug);
+    if (flag) await setFlag(ctx, id, flag.flag, user._id);
     return id;
   },
 });
@@ -219,23 +235,30 @@ export const create = mutation({
 export const update = mutation({
   args: { id: v.id("assignments"), revision: v.number(), values: assignmentInput },
   handler: async (ctx, args) => {
-    await requireStaff(ctx);
+    const { user } = await requireStaff(ctx);
     const doc = await ctx.db.get(args.id);
     if (!doc) notFound();
     const { values: clean, cohortRoles } = cleanAssignment(args.values);
+    if (args.values.flag && doc.kind !== "flag") throw new ConvexError({ code: "VALIDATION", message: "Jenis tugas tidak bisa diubah setelah dibuat." });
+    // A flag task keeps its flag and points when the tab sends none; new points apply to later solves only.
+    const stored = doc.kind === "flag" ? await flagOf(ctx, doc._id) : null;
+    const flag = doc.kind !== "flag" ? null : args.values.flag ? cleanFlag(args.values.flag)
+      : { flag: stored?.flag ?? "", fields: { kind: "flag" as const, ...flagPointsOf(doc), maxScore: undefined, rubric: undefined } };
     // Keep the current slug unless a different one was requested.
     const slug = args.values.slug === undefined && doc.slug ? doc.slug : await availableSlug(ctx, clean.slug, doc._id);
     // A tab from before audiences or cohorts sends none; it must not move the assignment to the default.
     const target = args.values.cohortId === undefined ? { cohortId: doc.cohortId, cohortRoles: doc.cohortRoles } : await cohortTarget(ctx, args.values.cohortId, cohortRoles);
-    const values = { ...clean, slug, audience: args.values.audience === undefined ? assignmentAudience(doc) : clean.audience, ...target };
+    const values = { ...clean, ...flag?.fields, slug, audience: args.values.audience === undefined ? assignmentAudience(doc) : clean.audience, ...target };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && assignmentMaxScore(doc) === values.maxScore && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)
-        && doc.cohortId === values.cohortId && JSON.stringify(doc.cohortRoles ?? null) === JSON.stringify(values.cohortRoles ?? null)) return doc.slug;
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && (flag || assignmentMaxScore(doc) === values.maxScore) && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)
+        && doc.cohortId === values.cohortId && JSON.stringify(doc.cohortRoles ?? null) === JSON.stringify(values.cohortRoles ?? null)
+        && (!flag || (JSON.stringify(flagPointsOf(doc)) === JSON.stringify(flagPointsOf({ ...doc, ...flag.fields })) && stored?.flag === flag.flag))) return doc.slug;
       conflict();
     }
     await ctx.db.patch(doc._id, { ...values, revision: doc.revision + 1, updatedAt: Date.now() });
     await claimSlug(ctx, doc._id, slug);
+    if (flag) await setFlag(ctx, doc._id, flag.flag, user._id);
     return slug;
   },
 });
@@ -251,6 +274,9 @@ export const setStatus = mutation({
     if (args.status === "draft" && (await submissionsOf(ctx, doc._id)).length) {
       throw new ConvexError("Tugas yang sudah menerima kiriman tidak bisa dikembalikan ke draft. Tutup tugas untuk menghentikan pengumpulan.");
     }
+    if (args.status === "draft" && (await solvesOf(ctx, doc._id)).length) {
+      throw new ConvexError("Tugas yang sudah dipecahkan tidak bisa dikembalikan ke draft. Tutup tugas untuk menghentikan pengumpulan flag.");
+    }
     const now = Date.now();
     await ctx.db.patch(doc._id, { status: args.status, revision: doc.revision + 1, updatedAt: now, publishedAt: doc.publishedAt ?? (args.status === "published" ? now : undefined) });
   },
@@ -264,7 +290,9 @@ export const remove = mutation({
     if (!doc) return;
     if (doc.revision !== args.revision) conflict();
     if ((await submissionsOf(ctx, doc._id)).length) throw new ConvexError("Tugas yang sudah menerima kiriman tidak bisa dihapus. Tutup tugas sebagai gantinya.");
+    if ((await solvesOf(ctx, doc._id)).length) throw new ConvexError("Tugas yang sudah dipecahkan tidak bisa dihapus. Tutup tugas sebagai gantinya.");
     await removeFiles(ctx, await ctx.db.query("submissionFiles").withIndex("by_assignment", (q) => q.eq("assignmentId", doc._id)).collect());
+    await removeFlagRows(ctx, doc._id);
     for (const slug of await ctx.db.query("assignmentSlugs").withIndex("by_assignment", (q) => q.eq("assignmentId", doc._id)).collect()) await ctx.db.delete(slug._id);
     await ctx.db.delete(doc._id);
   },
@@ -319,6 +347,8 @@ export const missing = query({
   args: { id: v.id("assignments") },
   handler: async (ctx, { id }) => {
     const { staff, assignment } = await requireReviewer(ctx, id);
+    // A flag task is solved, not submitted; staff see its solves instead (#240).
+    if (assignment.kind === "flag") return { active: 0, submitted: 0, missing: [] };
     // This assignment's reviewers judge it rather than submit to it.
     const reviewers = new Set(assignment.reviewers ?? []);
     const submitted = new Set((await submissionsOf(ctx, id)).map((item) => item.ownerId));
@@ -432,6 +462,7 @@ export const setReviewer = mutation({
       return;
     }
     if (current.includes(args.ownerId)) return;
+    if (assignment.kind === "flag") throw new ConvexError("Tugas flag dinilai otomatis, jadi tidak memakai penilai.");
     const profile = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId)).unique();
     if (!profile?.completedAt) throw new ConvexError({ code: "NOT_FOUND", message: "Member tidak ditemukan." });
     if (profile.deactivatedAt) throw new ConvexError("Aktifkan kembali akun ini sebelum menjadikannya penilai.");
@@ -451,7 +482,7 @@ export const reviewing = query({
     if (role !== "member") return [];
     const recent = await ctx.db.query("assignments").withIndex("by_updated").order("desc").take(200);
     const mentored = await mentoredRoles(ctx, user._id);
-    const mine = recent.filter((assignment) => assignment.reviewers?.includes(user._id) || mentors(assignment, mentored));
+    const mine = recent.filter((assignment) => assignment.kind !== "flag" && (assignment.reviewers?.includes(user._id) || mentors(assignment, mentored)));
     return Promise.all(mine.map(async (assignment) => {
       const submissions = await submissionsOf(ctx, assignment._id);
       const waiting = submissions.filter((item) => item.reviewedAt === undefined || isStaleReview(item)).length;
@@ -473,9 +504,12 @@ export const list = query({
     ]);
     return Promise.all([...open, ...ended].filter((assignment) => reaches(assignment, access)).map(async (assignment) => {
       const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
+      // A solved flag task counts as handed in, at its solve time, with its locked points.
+      const solve = assignment.kind === "flag" ? await solveOf(ctx, assignment._id, user._id) : null;
       return {
         _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
-        submittedAt: mine?.submittedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
+        kind: assignment.kind ?? null, points: solve?.points ?? null,
+        submittedAt: mine?.submittedAt ?? solve?.solvedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
         maxScore: assignmentMaxScore(assignment), score: mine?.score ?? null, reviewedAt: mine?.reviewedAt ?? null, stale: mine ? isStaleReview(mine) : false,
         revisionRequestedAt: mine?.revisionRequestedAt ?? null,
       };
@@ -500,6 +534,9 @@ export const get = query({
       assignment, canManage, canReview: reviews, cohort: reviews ? await cohortOf(ctx, assignment) : null,
       // Staff see who reviews this assignment; reviewers do not need the list.
       reviewers: canManage ? await Promise.all((assignment.reviewers ?? []).map(async (ownerId) => ({ ownerId, name: (await nameOf(ctx, ownerId)).name }))) : [],
+      // A flag task's flag, for staff only (#240); members never get it from any query. Everyone gets its points and solves.
+      flag: canManage && assignment.kind === "flag" ? (await flagOf(ctx, assignment._id))?.flag ?? "" : null,
+      challenge: assignment.kind === "flag" ? await flagSummary(ctx, assignment, user._id) : null,
       submission: submission && { _id: submission._id, answer: submission.answer, answerDoc: submission.answerDoc ?? null, revision: submission.revision, submittedAt: submission.submittedAt, late: isLate(submission.submittedAt, assignment.dueAt), ...(await reviewView(ctx, submission)) },
       files: await Promise.all(files.map((file) => fileView(ctx, file))),
     };
@@ -517,9 +554,31 @@ async function acceptsFrom(ctx: MutationCtx, assignment: Doc<"assignments">, own
 async function openAssignment(ctx: MutationCtx, id: Id<"assignments">, access: Awaited<ReturnType<typeof requireMember>>) {
   const assignment = await ctx.db.get(id);
   if (!assignment || assignment.status === "draft" || !reaches(assignment, await reachOf(ctx, access))) notFound();
+  if (assignment.kind === "flag") flagOnly();
   if (!(await acceptsFrom(ctx, assignment, access.user._id))) closed();
   return assignment;
 }
+
+function flagOnly(): never { throw new ConvexError({ code: "FLAG", message: "Tugas ini dijawab dengan flag, bukan kiriman." }); }
+
+/**
+ * A member's flag for a flag task (#240). Refusals that write nothing throw, as `submit` does; a wrong flag and the rate
+ * limit are returned instead, so the wrong try is counted. Staff set the flag, so they don't solve.
+ */
+export const submitFlag = mutation({
+  args: { assignmentId: v.id("assignments"), flag: v.string() },
+  handler: async (ctx, args): Promise<FlagResult> => {
+    const access = await requireMember(ctx);
+    if (access.role !== "member") throw new ConvexError({ code: "FORBIDDEN", message: "Tugas flag hanya untuk member; admin dan pemilik tidak ikut memecahkannya." });
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment || assignment.kind !== "flag" || assignment.status === "draft" || !reaches(assignment, await reachOf(ctx, access))) notFound();
+    if (await solveOf(ctx, assignment._id, access.user._id)) throw new ConvexError({ code: "SOLVED", message: "Kamu sudah memecahkan tugas ini." });
+    if (assignment.status !== "published") closed();
+    // Unlike a submission, a solve has no late mark, so the due date ends the task.
+    if (Date.now() > assignment.dueAt) throw new ConvexError({ code: "CLOSED", message: "Tenggat tugas ini sudah lewat, jadi flag tidak diterima lagi." });
+    return checkFlag(ctx, assignment, access.user._id, args.flag);
+  },
+});
 
 export const generateUploadUrl = mutation({
   args: { assignmentId: v.id("assignments") },
@@ -545,6 +604,7 @@ export const attachFile = mutation({
     const reject = async (error: string) => { await ctx.storage.delete(args.storageId); return { error }; };
     const assignment = await ctx.db.get(args.assignmentId);
     if (!assignment || assignment.status === "draft" || !reaches(assignment, access)) return reject("Tugas tidak ditemukan.");
+    if (assignment.kind === "flag") return reject("Tugas ini dijawab dengan flag, bukan kiriman.");
     if (!(await acceptsFrom(ctx, assignment, user._id))) return reject("Pengumpulan tugas ini sudah ditutup.");
     const name = cleanFileName(args.name);
     const problem = fileProblem(name, metadata.contentType, metadata.size);

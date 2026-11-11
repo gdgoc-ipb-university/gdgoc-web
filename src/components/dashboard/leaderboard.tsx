@@ -10,12 +10,13 @@ import type { Id } from "../../../convex/_generated/dataModel";
 import { BOARD_SIZE, weekKey, weekLabel } from "@/lib/bogor-run/leaderboard";
 import { readableError } from "@/lib/draft-session";
 import { LoadingPanel } from "../appreciation/shared";
-import { Arrow, PixelDino } from "../icons";
+import { Arrow, PixelDino, PixelSpark } from "../icons";
 import { useNow } from "./shared";
 import { useDashboardViewer, type DashboardViewer } from "./viewer";
 import { PixelIcon } from "../pixel-icons";
 
 export type Board = FunctionReturnType<typeof api.bogorRun.board>;
+export type ChallengeBoardData = FunctionReturnType<typeof api.flags.board>;
 export type BoardPeriod = "week" | "all";
 export type SetHidden = (entryId: Id<"gameBests">, hidden: boolean) => Promise<unknown>;
 type Role = DashboardViewer["role"];
@@ -23,6 +24,8 @@ type Entry = Board["entries"][number];
 type HiddenEntry = Board["hiddenEntries"][number];
 
 const tabs: { value: BoardPeriod; label: string }[] = [{ value: "week", label: "Minggu ini" }, { value: "all", label: "Sepanjang masa" }];
+type Game = "run" | "challenge";
+const games: { value: Game; label: string }[] = [{ value: "run", label: "Bogor Run" }, { value: "challenge", label: "Challenge" }];
 const number = new Intl.NumberFormat("id-ID");
 const day = new Intl.DateTimeFormat("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Jakarta" });
 const clock = new Intl.DateTimeFormat("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta" });
@@ -44,18 +47,32 @@ function watchNarrow(change: () => void) {
 }
 const isNarrow = () => typeof window.matchMedia === "function" && window.matchMedia(NARROW).matches;
 
+/** The board in view lives in the URL hash, so "#challenge" links straight to the Challenge board (#240). */
+function watchHash(change: () => void) {
+  window.addEventListener("hashchange", change);
+  return () => window.removeEventListener("hashchange", change);
+}
+const hashGame = (): Game => window.location.hash === "#challenge" ? "challenge" : "run";
+function showGame(game: Game) {
+  window.history.replaceState(null, "", game === "challenge" ? "#challenge" : window.location.pathname + window.location.search);
+  window.dispatchEvent(new HashChangeEvent("hashchange"));
+}
+
 export function LeaderboardPage() {
   const viewer = useDashboardViewer();
   // The week is passed explicitly: query results don't re-run as time passes, but useNow does, across Monday 00:00 WIB.
   const week = weekKey(useNow());
   // Both periods stay subscribed so switching tabs is instant.
   const boards = { week: useQuery(api.bogorRun.board, { period: "week", week }), all: useQuery(api.bogorRun.board, { period: "all" }) };
+  const challenge = useQuery(api.flags.board);
   const setHidden = useMutation(api.bogorRun.setHidden);
-  return <Leaderboard week={week} role={viewer.role} boards={boards} onSetHidden={(entryId, hidden) => setHidden({ entryId, hidden })} />;
+  return <Leaderboard week={week} role={viewer.role} boards={boards} challenge={challenge} onSetHidden={(entryId, hidden) => setHidden({ entryId, hidden })} />;
 }
 
 /** The page body, driven by props so it can be tested and previewed without Convex. */
-export function Leaderboard({ week, role, boards, onSetHidden }: { week: string; role: Role; boards: Record<BoardPeriod, Board | undefined>; onSetHidden: SetHidden }) {
+export function Leaderboard({ week, role, boards, challenge, onSetHidden }: { week: string; role: Role; boards: Record<BoardPeriod, Board | undefined>; challenge?: ChallengeBoardData; onSetHidden: SetHidden }) {
+  const game = useSyncExternalStore(watchHash, hashGame, () => "run" as const);
+  const gameRefs = useRef<Partial<Record<Game, HTMLButtonElement | null>>>({});
   const [period, setPeriod] = useState<BoardPeriod>("week");
   const [announcement, setAnnouncement] = useState("");
   const tabRefs = useRef<Partial<Record<BoardPeriod, HTMLButtonElement | null>>>({});
@@ -71,10 +88,26 @@ export function Leaderboard({ week, role, boards, onSetHidden }: { week: string;
     select(tab);
     tabRefs.current[tab]?.focus();
   }
+  function moveGame(event: KeyboardEvent<HTMLDivElement>) {
+    const next = ({ ArrowRight: 1, ArrowLeft: 1, Home: 0, End: 1 } as Record<string, number>)[event.key];
+    if (next === undefined) return;
+    event.preventDefault();
+    const target = event.key.startsWith("Arrow") ? games.find((item) => item.value !== game)!.value : games[next].value;
+    showGame(target);
+    gameRefs.current[target]?.focus();
+  }
   return <div className="dash-board-area">
-    <div className="dash-intro dash-intro-action"><div><p className="eyebrow">BOGOR RUN · PAPAN SKOR</p><h1>Papan skor.</h1>
-      <p>Skor terbaik Bogor Run, game lari di beranda GDGoC IPB. Papan mingguan dimulai lagi tiap Senin pukul 00.00 WIB.{staffNote[role]}</p></div>
-      <Link className="button button-quiet" href="/#join">Main Bogor Run <Arrow /></Link></div>
+    <div className="dash-intro dash-intro-action"><div><p className="eyebrow">{game === "run" ? "BOGOR RUN" : "CHALLENGE"} · PAPAN SKOR</p><h1>Papan skor.</h1>
+      {game === "run" ? <p>Skor terbaik Bogor Run, game lari di beranda GDGoC IPB. Papan mingguan dimulai lagi tiap Senin pukul 00.00 WIB.{staffNote[role]}</p>
+        : <p>Total poin dari tugas flag. Poin dikunci saat kamu memecahkan tugas, dan kalau totalnya sama, yang lebih dulu mencapainya ada di atas.</p>}</div>
+      {game === "run" ? <Link className="button button-quiet" href="/#join">Main Bogor Run <Arrow /></Link> : <Link className="button button-quiet" href="/dashboard/tugas">Lihat tugas <Arrow /></Link>}</div>
+    <div className="dash-tabs dash-game-tabs" role="tablist" aria-label="Papan skor" onKeyDown={moveGame}>
+      {games.map((item) => <button key={item.value} ref={(element) => { gameRefs.current[item.value] = element; }} id={`game-tab-${item.value}`} type="button" role="tab" className="dash-tab"
+        aria-selected={game === item.value} aria-controls={item.value === "run" ? "board-panel" : "game-panel-challenge"} tabIndex={game === item.value ? 0 : -1} onClick={() => showGame(item.value)}>{item.label}</button>)}
+    </div>
+    {game === "challenge" ? <div id="game-panel-challenge" className="dash-board-panel" role="tabpanel" aria-labelledby="game-tab-challenge" tabIndex={0}>
+      {challenge ? <ChallengeBoard board={challenge} /> : <LoadingPanel label="Memuat papan Challenge…" />}
+    </div> : <div>
     <div className="dash-tabs" role="tablist" aria-label="Periode papan skor" onKeyDown={move}>
       {tabs.map((tab) => <button key={tab.value} ref={(element) => { tabRefs.current[tab.value] = element; }} id={`board-tab-${tab.value}`} type="button" role="tab" className="dash-tab"
         aria-selected={period === tab.value} aria-controls="board-panel" tabIndex={period === tab.value ? 0 : -1} onClick={() => select(tab.value)}>
@@ -84,6 +117,7 @@ export function Leaderboard({ week, role, boards, onSetHidden }: { week: string;
     <div id="board-panel" className="dash-board-panel" role="tabpanel" aria-labelledby={`board-tab-${period}`} tabIndex={0}>
       {board ? <BoardView key={period} board={board} period={period} week={week} role={role} onSetHidden={onSetHidden} onAnnounce={setAnnouncement} /> : <LoadingPanel label="Memuat papan skor…" />}
     </div>
+    </div>}
     <p className="sr-only" role="status">{announcement}</p>
   </div>;
 }
@@ -242,5 +276,33 @@ function BoardRow({ entry, mod }: { entry: Entry | HiddenEntry; mod: Moderation 
         <button type="button" className="text-button" disabled={busy} onClick={cancel}>Batal</button></div>}
       {error && <p className="field-error" role="alert">{error}</p>}
     </td></tr>}
+  </>;
+}
+
+/** The Challenge board (#240): total locked points from flag tasks, the solved tasks and first bloods, and when the total was reached. */
+function ChallengeBoard({ board }: { board: ChallengeBoardData }) {
+  const { entries, you, stats } = board;
+  const mine = entries.find((entry) => entry.you);
+  return <>
+    <dl className="dash-stats dash-board-stats">
+      <div><dt>Peringkatmu</dt><dd>{you ? rankText(you.rank) : "—"}</dd>
+        <dd className="dash-board-note">{you ? `${number.format(you.points)} poin dari ${number.format(you.tasks)} tugas${mine ? "" : ` · di luar ${BOARD_SIZE} besar`}` : "Pecahkan tugas flag untuk masuk papan ini."}{mine && mine.rank > 10 && <> · <a href="#challenge-you">Lihat barismu</a></>}</dd></div>
+      <div><dt>Member</dt><dd>{number.format(stats.players)}</dd></div>
+      <div><dt>Solve</dt><dd>{number.format(stats.solves)}</dd></div>
+    </dl>
+    {entries.length ? <div className="dash-board-wrap"><table className="dash-board">
+      <caption className="sr-only">{BOARD_SIZE} besar Challenge, menurut total poin tugas flag</caption>
+      <thead><tr><th scope="col" className="dash-board-rank"><span>Peringkat</span></th><th scope="col">Member</th><th scope="col" className="dash-board-score">Poin</th><th scope="col" className="dash-board-when">Dicapai (WIB)</th></tr></thead>
+      <tbody>{entries.map((entry) => <tr key={entry.rank} id={entry.you ? "challenge-you" : undefined} data-you={entry.you || undefined}>
+        <td className="dash-board-rank"><span className="dash-rank" data-top={entry.rank <= 3 ? entry.rank : undefined}>{entry.rank}</span></td>
+        <th scope="row"><span className="dash-board-player"><span className="dash-board-name">{entry.name}</span>{entry.you && <span className="app-status dash-status" data-status="you">Kamu</span>}</span>
+          <span className="dash-board-why">{number.format(entry.tasks)} tugas{entry.firstBloods ? ` · ${number.format(entry.firstBloods)} first blood` : ""}</span>
+          <When at={entry.reachedAt} className="dash-board-when-inline" zone /></th>
+        <td className="dash-board-score">{number.format(entry.points)}</td>
+        <td className="dash-board-when"><When at={entry.reachedAt} /></td>
+      </tr>)}</tbody>
+    </table></div>
+      : <div className="app-empty"><PixelSpark /><h2>Belum ada yang memecahkan tugas flag.</h2><p>Tugas flag ada di halaman Tugas. Yang pertama memecahkannya mendapat poin terbanyak dan first blood.</p>
+        <Link className="button button-blue" href="/dashboard/tugas">Lihat tugas <Arrow /></Link></div>}
   </>;
 }

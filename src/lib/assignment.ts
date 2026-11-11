@@ -1,3 +1,5 @@
+import type { FlagInput } from "./flag-task";
+
 export const assignmentLimits = { title: 160, description: 6000, answer: 5000, fileName: 120, feedback: 2000, maxScore: 1000, rubricCriteria: 8, rubricName: 80 } as const;
 /** Assignments created before scores existed have no `maxScore`; they are graded out of this. */
 export const defaultMaxScore = 100;
@@ -31,7 +33,8 @@ export type RubricScore = RubricCriterion & { points: number };
 export type RubricInput = { name: string; max: string };
 // `maxScore` and the rubric maxes are the form's text; they become numbers on the server. With a rubric, maxScore is the sum of its maxes.
 // A cohort task (`cohortId`) goes to the participants of `cohortRoles` instead of `audience`; null targets community tags again.
-export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[]; cohortId?: string | null; cohortRoles?: string[] };
+// `flag` makes a flag task (#240, src/lib/flag-task.ts); hand-graded tasks have none.
+export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[]; cohortId?: string | null; cohortRoles?: string[]; flag?: FlagInput };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
 
 /** The community tags an assignment can be given to, in display order. Ticking all three gives it to everyone. Staff are never in an audience. */

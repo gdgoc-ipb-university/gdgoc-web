@@ -461,6 +461,43 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-review-fields[data-rubric="true"] { grid-template-columns: 1fr; }
 @media (max-width: 640px) { .dash-rubric-row { grid-template-columns: 1fr 100px; } .dash-rubric-remove { grid-column: 1 / -1; justify-self: start; padding-bottom: 0; } }
 
+/* Flag tasks (#240) */
+.dash-status[data-status="flag"] { background: #172d43; color: #fff; }
+.dash-flag-input, .dash-flag-code { font-family: var(--font-mono), monospace; }
+.dash-flag-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px; }
+.dash-flag-points .app-field { margin-bottom: 0; }
+.dash-flag-preview { margin: 4px 0 0; padding: 12px 14px; background: #f6f7f1; border-left: 3px solid var(--green); font: 500 13px/1.5 var(--font-mono), monospace; }
+.dash-flag-summary { margin-top: 28px; }
+.dash-flag-facts { display: grid; gap: 10px; margin: 0 0 10px; padding: 16px 18px; background: #fffefa; border: 1px solid var(--line); max-width: 860px; }
+.dash-flag-facts > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
+.dash-flag-facts dt { font-size: 12px; color: var(--muted); }
+.dash-flag-facts dd { margin: 0; font-size: 14px; }
+.dash-flag-code { overflow-wrap: anywhere; background: #eceee4; padding: 2px 6px; }
+.dash-flag-stats { max-width: 860px; }
+.dash-flag-stats > div:nth-child(3) { box-shadow: inset 0 3px 0 var(--red); }
+.dash-flag-stats dd.dash-flag-blood { font: 600 22px/1.15 var(--font-pixel), monospace; overflow-wrap: anywhere; padding-top: 10px; }
+.dash-flag-stats dd.dash-flag-note { margin-top: 10px; font: 400 12px/1.5 var(--font-body), sans-serif; color: var(--muted); }
+.dash-flag-form { max-width: 860px; }
+.dash-flag-form h2 { font-size: 20px; margin: 0 0 14px; }
+.dash-flag-row { display: flex; gap: 10px; }
+.dash-flag-row input { flex: 1; min-width: 0; }
+.dash-flag-row .button { flex-shrink: 0; }
+.dash-flag-solved .dash-score small { margin-left: 8px; }
+.dash-flag-solved .text-button { margin-top: 12px; }
+.dash-flag-solves { margin-top: 28px; max-width: 860px; }
+/* Papan skor's two boards (#240): a segmented switch above the Bogor Run period tabs. */
+.dash-game-tabs { display: inline-flex; gap: 0; margin-bottom: 22px; border: 1px solid var(--line); background: #fffefa; }
+.dash-game-tabs .dash-tab { min-height: 44px; padding: 10px 20px; margin: 0; border-bottom: 0; font-weight: 600; }
+.dash-game-tabs .dash-tab[aria-selected="true"] { background: var(--ink); color: #fff; }
+@media (max-width: 640px) { .dash-game-tabs { display: flex; } }
+@media (forced-colors: active) { .dash-game-tabs .dash-tab[aria-selected="true"] { outline: 2px solid Highlight; outline-offset: -2px; } }
+@media (max-width: 640px) {
+  .dash-flag-row { flex-direction: column; }
+  .dash-flag-stats { grid-template-columns: 1fr 1fr; }
+  .dash-flag-stats > div:nth-child(3) { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) { .dash-flag-points { grid-template-columns: 1fr; gap: 0; } .dash-flag-points .app-field { margin-bottom: 16px; } .dash-flag-facts > div { grid-template-columns: 1fr; gap: 2px; } }
+
 /* Export */
 .dash-submissions-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 16px; }
 .dash-export { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }

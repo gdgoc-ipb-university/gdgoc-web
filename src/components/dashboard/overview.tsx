@@ -10,6 +10,7 @@ import { Arrow, PixelSpark } from "../icons";
 import { PixelIcon } from "../pixel-icons";
 import { AssignmentStatusBadge, DueLabel, SubmissionBadge, useNow } from "./shared";
 import { isStaff, useDashboardViewer } from "./viewer";
+import { SolveBadge } from "./flag-task";
 
 export function DashboardOverview() {
   const viewer = useDashboardViewer();
@@ -46,7 +47,7 @@ function ProgramOverview() {
         <div><h3>Tugas yang dibuka</h3>
           {program.tasks.length ? <ul className="dash-member-activity">{program.tasks.map((task) => <li key={task._id}>
             <div><Link href={assignmentPath(task)}>{task.title}</Link><DueLabel dueAt={task.dueAt} now={now} open /></div>
-            {task.revisionRequestedAt !== null ? <span className="app-status dash-status" data-status="revision">Revisi diminta</span> : <SubmissionBadge submittedAt={task.submittedAt} late={task.late} />}
+            {task.revisionRequestedAt !== null ? <span className="app-status dash-status" data-status="revision">Revisi diminta</span> : task.kind === "flag" ? <SolveBadge points={task.points} /> : <SubmissionBadge submittedAt={task.submittedAt} late={task.late} />}
           </li>)}</ul> : <p className="app-small">Belum ada tugas yang dibuka untuk peranmu.</p>}
         </div>
       </div>
@@ -61,7 +62,8 @@ function MemberOverview() {
   const open = assignments.filter((item) => item.status === "published");
   const pending = open.filter((item) => !item.submittedAt);
   const next = pending.filter((item) => item.dueAt >= now).slice(0, 3);
-  const overdue = pending.filter((item) => item.dueAt < now);
+  // Late work is still taken for hand-graded tasks only; a flag task stops at its due date.
+  const overdue = pending.filter((item) => item.dueAt < now && item.kind !== "flag");
   const revisions = assignments.filter((item) => item.revisionRequestedAt !== null);
   return <>
     <dl className="dash-stats">
@@ -72,7 +74,7 @@ function MemberOverview() {
     {revisions.length > 0 && <p className="app-notice">Revisi diminta untuk {revisions.map((item, index) => <span key={item._id}>{index ? ", " : ""}<Link href={assignmentPath(item)}>{item.title}</Link></span>)}. Perbaiki kirimanmu, lalu kirim lagi.</p>}
     {overdue.length > 0 && <p className="app-notice">{overdue.length} tugas sudah lewat tenggat tetapi masih dibuka. Kiriman tetap diterima dan akan ditandai terlambat.</p>}
     <section aria-labelledby="next-title"><div className="app-section-heading"><div><p className="eyebrow">BERIKUTNYA</p><h2 id="next-title">Tenggat terdekat</h2></div><Link className="text-button" href="/dashboard/tugas">Semua tugas <Arrow /></Link></div>
-      {next.length ? <div className="dash-card-grid">{next.map((item) => <article className="app-record" key={item._id}><div className="app-record-top"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /></div><h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open /></article>)}</div>
+      {next.length ? <div className="dash-card-grid">{next.map((item) => <article className="app-record" key={item._id}><div className="app-record-top">{item.kind === "flag" ? <SolveBadge points={item.points} /> : <SubmissionBadge submittedAt={item.submittedAt} late={item.late} />}</div><h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open /></article>)}</div>
         : <div className="app-empty"><PixelSpark /><h3>Tidak ada tenggat yang menunggu.</h3><p>{open.length ? "Semua tugas yang dibuka sudah kamu kumpulkan. Mantap!" : "Belum ada tugas yang dibuka. Tugas baru akan muncul di sini."}</p></div>}
     </section>
   </>;

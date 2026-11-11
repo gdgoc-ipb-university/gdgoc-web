@@ -19,6 +19,7 @@ import type * as cards from "../cards.js";
 import type * as cohorts from "../cohorts.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
+import type * as flags from "../flags.js";
 import type * as gatherings from "../gatherings.js";
 import type * as http from "../http.js";
 import type * as league from "../league.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   cohorts: typeof cohorts;
   crons: typeof crons;
   dashboard: typeof dashboard;
+  flags: typeof flags;
   gatherings: typeof gatherings;
   http: typeof http;
   league: typeof league;

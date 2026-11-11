@@ -26,6 +26,8 @@ const GRADERS: Role[] = ["grader", "admin", "owner"];
 const APRESIASI: Role[] = ["apresiasi", "media", "admin", "owner"];
 const HANDLERS: Role[] = ["handler", "admin", "owner"];
 const MEMBERS: Role[] = ["member", "mediaSelf", "media", "apresiasi", "grader", "participant", "mentor", "handler", "admin", "owner"];
+/** Flag tasks (#240): members solve them; staff set the flag, so they don't. */
+const SOLVERS: Role[] = MEMBERS.filter((role) => role !== "admin" && role !== "owner");
 
 function setup() { const t = convexTest(schema, modules); betterAuthTest.register(t); return t; }
 type Test = ReturnType<typeof setup>;
@@ -82,6 +84,7 @@ async function fixture() {
   const due = new Date(Date.now() + 55 * 3600000).toISOString().slice(0, 16);
   const assignment = await owner.mutation(api.assignments.create, { values: { title: "Tugas", description: "Kerjakan.", dueAt: due }, publish: true });
   const draft = await owner.mutation(api.assignments.create, { values: { title: "Draft", description: "Belum.", dueAt: due }, publish: false });
+  const flagTask = await owner.mutation(api.assignments.create, { values: { title: "Flag", description: "Cari.", dueAt: due, audience: ["member", "core", "bod"], flag: { flag: "GDGOC{flag}", maxPoints: "100", minPoints: "20", decrement: "10" } }, publish: true });
   await owner.mutation(api.assignments.setReviewer, { id: assignment, ownerId: grader.id, reviewer: true });
   await member.mutation(api.assignments.submit, { assignmentId: assignment, revision: 0, answer: "Selesai", fileIds: [] });
   await member.mutation(api.cards.ensure, {});
@@ -108,7 +111,7 @@ async function fixture() {
     return { submission, appreciation, entry, draftRevision: (await ctx.db.get(draft))!.revision };
   });
   const callers: Record<Role, Caller> = { guest: t, fresh, inactive, member, mediaSelf, media, apresiasi, grader, participant, mentor, handler, admin, owner };
-  return { t, callers, ids: { member: member.id, request, gathering, draftGathering, gatheringValues, checkIn, cohort, enrolment, team, assignment, draft, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
+  return { t, callers, ids: { member: member.id, request, gathering, draftGathering, gatheringValues, checkIn, cohort, enrolment, team, assignment, draft, flagTask, submission: ids.submission._id as Id<"assignmentSubmissions">, submissionRevision: ids.submission.revision, appreciation: ids.appreciation, entry: ids.entry, draftRevision: ids.draftRevision } };
 }
 type Fixture = Awaited<ReturnType<typeof fixture>>;
 type Ids = Fixture["ids"];
@@ -125,6 +128,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cards.printSelection", api.cards.printSelection, STAFF, () => ({ selection: { kind: "filters", search: "", filters: {} }, paginationOpts: page })],
   ["cards.printCards", api.cards.printCards, STAFF, (ids) => ({ ownerIds: [ids.member] })],
   ["assignments.adminList", api.assignments.adminList, STAFF, () => ({ paginationOpts: page })],
+  ["flags.solves", api.flags.solves, STAFF, (ids) => ({ id: ids.flagTask })],
   ["cohorts.list", api.cohorts.list, STAFF, () => ({})],
   ["cohorts.roster", api.cohorts.roster, STAFF, () => ({ slug: "catalyst-2026" })],
   ["assignments.slugPreview", api.assignments.slugPreview, STAFF, () => ({ slug: "tugas-baru" })],
@@ -145,6 +149,7 @@ const queries: [string, Any, Role[], (ids: Ids) => object][] = [
   ["cohorts.mine", api.cohorts.mine, MEMBERS, () => ({})],
   ["assignments.get", api.assignments.get, MEMBERS, (ids) => ({ id: ids.assignment })],
   ["bogorRun.board", api.bogorRun.board, MEMBERS, () => ({ period: "all" })],
+  ["flags.board", api.flags.board, MEMBERS, () => ({})],
   ["league.invite", api.league.invite, MEMBERS, () => ({ code: "ABCD2345" })],
 ];
 
@@ -188,6 +193,7 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["assignments.cancelRevision", api.assignments.cancelRevision, GRADERS, (ids) => ({ submissionId: ids.submission })],
   ["appreciations.review", api.appreciations.review, APRESIASI, (ids) => ({ id: ids.appreciation, revision: 1, status: "reviewing", note: "", postUrl: "" })],
   ["league.importRegistrations", api.league.importRegistrations, STAFF, () => ({ rows: [{ email: "kapten@example.com", paid: true }] })],
+  ["assignments.submitFlag", api.assignments.submitFlag, SOLVERS, (ids) => ({ assignmentId: ids.flagTask, flag: "GDGOC{tebak}" })],
   ["league.create", api.league.create, MEMBERS, () => ({ name: "Tim Baru", track: "software" })],
   ["techSupport.handle", api.techSupport.handle, HANDLERS, (ids) => ({ id: ids.request, status: "matched", mentorName: "Dika Aprilio Wibowo", note: "" })],
 ];

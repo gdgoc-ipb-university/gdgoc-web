@@ -18,6 +18,7 @@ import { AssignmentStatusBadge, AudienceBadge, CopyLinkButton, DueLabel, FileLin
 import { RichTextView } from "../rich-text-view";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
 import { PixelIcon } from "../pixel-icons";
+import { FlagBadge, FlagSolves, FlagStats, FlagSummary, MemberFlag, SolveBadge, type Challenge } from "./flag-task";
 
 type Detail = NonNullable<FunctionReturnType<typeof api.assignments.get>>;
 
@@ -34,17 +35,26 @@ export function AssignmentDetail({ id }: { id: string }) {
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />{data.canReview ? "Kelola tugas" : "Semua tugas"}</Link>
     <article className="dash-assignment" aria-labelledby="assignment-title">
-      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{data.canReview && <AudienceBadge audience={assignmentAudience(assignment)} cohort={data.cohort} cohortRoles={assignment.cohortRoles} />}{!data.canReview && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
+      <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{assignment.kind === "flag" && <FlagBadge />}{data.canReview && <AudienceBadge audience={assignmentAudience(assignment)} cohort={data.cohort} cohortRoles={assignment.cohortRoles} />}{!data.canReview && data.challenge && <SolveBadge points={data.challenge.mine?.points ?? null} />}{!data.canReview && !data.challenge && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
       <div className="dash-instructions">{assignment.description}</div>
       {assignment.rubric && assignment.rubric.length > 0 && <div className="dash-rubric" aria-labelledby="rubric-title"><p className="eyebrow" id="rubric-title">RUBRIK PENILAIAN · {assignmentMaxScore(assignment)} POIN</p>
         <ol className="dash-rubric-list">{assignment.rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{criterion.max} poin</b></li>)}</ol></div>}
     </article>
-    {data.canManage ? <><StaffControls assignment={assignment} /><AssignmentReviewers assignment={assignment} reviewers={data.reviewers} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
+    {data.canManage && assignment.kind === "flag" ? <><StaffControls assignment={assignment} />{data.challenge && <FlagStats challenge={data.challenge} />}<FlagSummary task={assignment} flag={data.flag} /><FlagSolves id={assignment._id} /></>
+      : data.canManage ? <><StaffControls assignment={assignment} /><AssignmentReviewers assignment={assignment} reviewers={data.reviewers} /><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
       : data.canReview ? <><p className="app-notice">{data.cohort ? `Kamu menilai tugas ini sebagai mentor ${data.cohort.name} atau penilai yang ditunjuk.` : "Kamu ditunjuk sebagai penilai tugas ini."} Kamu bisa menilai kiriman dan meminta revisi, tetapi tidak bisa mengubah atau menutup tugas. Email member tidak ditampilkan.</p><SubmissionList assignment={assignment} now={now} />{assignment.status !== "draft" && <MissingList assignment={assignment} />}</>
+      : data.challenge ? <MemberFlagTask assignment={assignment} challenge={data.challenge} now={now} />
       : <MemberSubmission data={data} now={now} />}
   </>;
+}
+
+/** A flag task (#240) takes flags while it is open and before its due date. */
+function MemberFlagTask({ assignment, challenge, now }: { assignment: Doc<"assignments">; challenge: Challenge; now: number }) {
+  const submitFlag = useMutation(api.assignments.submitFlag);
+  const open = assignment.status === "published" && now <= assignment.dueAt;
+  return <MemberFlag challenge={challenge} open={open} closedText={assignment.status === "closed" ? "Tugas ini sudah ditutup." : "Tenggatnya sudah lewat."} onSubmit={(flag) => submitFlag({ assignmentId: assignment._id, flag })} />;
 }
 
 function MemberSubmission({ data, now }: { data: Detail; now: number }) {
@@ -127,7 +137,8 @@ function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
     try { await action(); } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
   const change = (status: Doc<"assignments">["status"]) => run(() => setStatus({ id: assignment._id, revision: assignment.revision, status }));
-  const hint = { draft: "Draft hanya terlihat oleh admin.", published: assignment.cohortId ? "Peserta aktif dari peran sasaran bisa melihat dan mengumpulkan tugas ini." : "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
+  const hint = assignment.kind === "flag" && assignment.status !== "draft" ? (assignment.status === "published" ? "Member dari sasaran bisa mengirim flag sampai tenggat." : "Member bisa melihat tugas ini, tetapi tidak bisa mengirim flag lagi.")
+    : { draft: "Draft hanya terlihat oleh admin.", published: assignment.cohortId ? "Peserta aktif dari peran sasaran bisa melihat dan mengumpulkan tugas ini." : "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
   return <section className="dash-controls" aria-label="Kelola tugas">
     <p className="app-small">{hint}</p>
     <div className="app-inline-actions">

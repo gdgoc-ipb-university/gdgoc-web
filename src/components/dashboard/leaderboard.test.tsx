@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor, within } from "@testing-library/react
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { Leaderboard, type Board, type SetHidden } from "./leaderboard";
+import { Leaderboard, type Board, type ChallengeBoardData, type SetHidden } from "./leaderboard";
 
 vi.mock("@/lib/auth-client", () => ({ authClient: { signOut: vi.fn() } }));
 
@@ -295,5 +295,49 @@ describe("Bogor Run leaderboard page", () => {
     expect(screen.queryByText(/disembunyikan dari papan minggu ini\. Lihat/)).toBeNull();
     expect(screen.getByText("Tidak ada pemain yang disembunyikan dari papan minggu ini.")).toBeTruthy();
     expect(tables().length).toBe(1);
+  });
+});
+
+describe("Challenge board", () => {
+  const solvedAt = Date.parse("2026-11-11T10:42:00+07:00");
+  const challenge: ChallengeBoardData = {
+    entries: [
+      { rank: 1, name: "Bima S.", points: 190, tasks: 2, firstBloods: 1, reachedAt: solvedAt, you: false },
+      { rank: 2, name: "Rania P.", points: 190, tasks: 2, firstBloods: 1, reachedAt: solvedAt + 60000, you: true },
+      { rank: 3, name: "Cici L.", points: 80, tasks: 1, firstBloods: 0, reachedAt: solvedAt + 120000, you: false },
+    ],
+    you: { rank: 2, points: 190, tasks: 2 }, stats: { players: 3, solves: 5 },
+  };
+  const page = (data: ChallengeBoardData | "loading" = challenge) => render(<Leaderboard week={week} role="member" boards={{ week: weekBoard, all: allBoard }} challenge={data === "loading" ? undefined : data} onSetHidden={vi.fn()} />);
+  afterEach(() => window.history.replaceState(null, "", "/dashboard/papan-skor"));
+
+  it("sits next to Bogor Run, ranks by locked points with ties in order, and shows your rank", async () => {
+    const { container } = page();
+    expect(screen.getByRole("tab", { name: "Bogor Run" }).getAttribute("aria-selected")).toBe("true");
+    await userEvent.click(screen.getByRole("tab", { name: "Challenge" }));
+    expect(window.location.hash).toBe("#challenge");
+    expect(screen.queryByRole("tab", { name: /Minggu ini/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Main Bogor Run/ })).toBeNull();
+    expect(rows().map((row) => row.textContent)).toEqual([
+      "1Bima S.2 tugas · 1 first blood11 Nov 2026, 10.42 WIB19011 Nov 2026, 10.42",
+      "2Rania P.Kamu2 tugas · 1 first blood11 Nov 2026, 10.43 WIB19011 Nov 2026, 10.43",
+      "3Cici L.1 tugas11 Nov 2026, 10.44 WIB8011 Nov 2026, 10.44",
+    ]);
+    expect(screen.getByText("Peringkatmu").parentElement!.textContent).toBe("Peringkatmu#2190 poin dari 2 tugas");
+    expect(await audit(container)).toEqual([]);
+    await userEvent.keyboard("{ArrowLeft}");
+    expect(document.activeElement).toBe(screen.getByRole("tab", { name: "Bogor Run" }));
+    expect(screen.getByRole("tab", { name: /Minggu ini/ })).toBeTruthy();
+  });
+
+  it("opens from a #challenge link, with loading and empty states", () => {
+    window.history.replaceState(null, "", "/dashboard/papan-skor#challenge");
+    const { unmount } = page("loading");
+    expect(screen.getByRole("tab", { name: "Challenge" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getAllByRole("status").some((status) => status.textContent?.includes("Memuat papan Challenge…"))).toBe(true);
+    unmount();
+    page({ entries: [], you: null, stats: { players: 0, solves: 0 } });
+    expect(screen.getByRole("heading", { name: "Belum ada yang memecahkan tugas flag." })).toBeTruthy();
+    expect(screen.getByText("Peringkatmu").parentElement!.textContent).toBe("Peringkatmu—Pecahkan tugas flag untuk masuk papan ini.");
   });
 });

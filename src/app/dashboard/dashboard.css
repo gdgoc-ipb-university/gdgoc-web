@@ -166,6 +166,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-profile-layout { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
 .dash-profile-side { display: grid; gap: 24px; min-width: 0; }
 .dash-profile-form > fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.dash-profile-education { margin-bottom: 22px; }
 .dash-profile-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 26px; }
 .dash-saved { display: inline-flex; align-items: center; gap: 6px; margin: 0; font-size: 13px; color: #2e692e; }
 .dash-combo-control, .dash-at-field { display: flex; align-items: stretch; height: var(--control-h); border: 1px solid var(--control-line); background: white; }

@@ -1,0 +1,87 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { cleanup, render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import axe from "axe-core";
+import { getFunctionName, type FunctionReference } from "convex/server";
+import { EditAssignmentPage, NewAssignmentPage } from "./assignments";
+import { AssignmentDetail } from "./assignment-detail";
+import { ViewerContext, type DashboardViewer } from "./viewer";
+
+// Flag tasks (#240) in Kelola tugas against a fake Convex.
+const task = {
+  _id: "a1", _creationTime: 1, title: "Join Discord", slug: "join-discord", description: "Flag-nya ada di #pengumuman.", dueAt: Date.parse("2026-11-20T23:59:00+07:00"),
+  status: "published", revision: 3, createdBy: "me", createdAt: 1, updatedAt: 1, audience: ["member"], kind: "flag", maxPoints: 100, minPoints: 20, decrement: 10,
+};
+const detail = { assignment: task, canManage: true, canReview: true, cohort: null, reviewers: [], flag: "GDGOC{join-discord}", submission: null, files: [] };
+const create = vi.fn(async () => "a2");
+const update = vi.fn(async () => "join-discord");
+vi.mock("convex/react", () => ({
+  useQuery: (ref: FunctionReference<"query">, args: unknown) => args === "skip" ? undefined : ({ "assignments:get": detail, "assignments:slugPreview": "join-discord" } as Record<string, unknown>)[getFunctionName(ref)],
+  useMutation: (ref: FunctionReference<"mutation">) => ({ "assignments:create": create, "assignments:update": update } as Record<string, unknown>)[getFunctionName(ref)] ?? vi.fn(async () => null),
+  usePaginatedQuery: () => ({ results: [], status: "Exhausted", loadMore: vi.fn() }),
+  useConvex: () => ({}),
+}));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }));
+
+const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya", email: "me@example.com", role: "admin", active: true, onboarded: true, reviewer: true, memberType: null, division: null, tagConfirmed: false, campus: "", studyProgram: "", instagram: "", doorHelper: false, photo: null, photoUploaded: false, techSupportHandler: false };
+const show = (page: React.ReactNode) => render(<ViewerContext.Provider value={viewer}>{page}</ViewerContext.Provider>);
+const field = (name: RegExp | string) => screen.getByRole("spinbutton", { name }) as HTMLInputElement;
+
+afterEach(() => { cleanup(); create.mockClear(); update.mockClear(); });
+
+describe("flag tasks in Kelola tugas", () => {
+  it("swaps the score and rubric for a flag and its points, with a live preview", async () => {
+    const { container } = show(<NewAssignmentPage />);
+    expect(screen.queryByRole("textbox", { name: "Flag" })).toBeNull();
+    await userEvent.click(screen.getByRole("radio", { name: "Flag, dinilai otomatis" }));
+    expect(screen.queryByRole("spinbutton", { name: /Nilai maksimal/ })).toBeNull();
+    expect(screen.queryByRole("group", { name: /Rubrik/ })).toBeNull();
+    expect(screen.getByText("Solver ke-1: 100, ke-2: 90, ke-5: 60, minimum 20 mulai solver ke-9.")).toBeTruthy();
+    await userEvent.clear(field("Turun per solve"));
+    await userEvent.type(field("Turun per solve"), "40");
+    expect(screen.getByText("Solver ke-1: 100, ke-2: 60, minimum 20 mulai solver ke-3.")).toBeTruthy();
+    await userEvent.clear(field("Poin minimal"));
+    expect(screen.getByText("Isi ketiga angka poin untuk melihat pratinjaunya.")).toBeTruthy();
+    const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] }, rules: { "color-contrast": { enabled: false } } });
+    expect(result.violations.map(({ id }) => id)).toEqual([]);
+  });
+
+  it("checks the flag and points before saving, then sends them trimmed", async () => {
+    show(<NewAssignmentPage />);
+    await userEvent.click(screen.getByRole("radio", { name: "Flag, dinilai otomatis" }));
+    await userEvent.type(screen.getByRole("textbox", { name: /Judul tugas/ }), "Join Discord");
+    await userEvent.type(screen.getByRole("textbox", { name: /Instruksi/ }), "Cari flag-nya di Discord.");
+    await userEvent.clear(field("Poin minimal"));
+    await userEvent.type(field("Poin minimal"), "150");
+    await userEvent.click(screen.getByRole("button", { name: "Buka untuk sasaran" }));
+    expect(create).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Flag" }));
+    expect(screen.getByText("Isi flag yang harus ditemukan member.")).toBeTruthy();
+    expect(screen.getByText("Poin minimal tidak boleh melebihi poin maksimal.")).toBeTruthy();
+    await userEvent.type(screen.getByRole("textbox", { name: "Flag" }), "  GDGOC{{join-discord} "); // "{{" types a literal brace
+    await userEvent.clear(field("Poin minimal"));
+    await userEvent.type(field("Poin minimal"), "20");
+    await userEvent.click(screen.getByRole("button", { name: "Buka untuk sasaran" }));
+    expect(create).toHaveBeenCalledWith({ values: expect.objectContaining({ title: "Join Discord", flag: { flag: "GDGOC{join-discord}", maxPoints: "100", minPoints: "20", decrement: "10" } }), publish: true });
+  });
+
+  it("edits a flag task without the kind switch, starting from its flag and points", async () => {
+    show(<EditAssignmentPage id="join-discord" />);
+    expect(screen.queryByRole("radio", { name: "Flag, dinilai otomatis" })).toBeNull();
+    expect((screen.getByRole("textbox", { name: "Flag" }) as HTMLInputElement).value).toBe("GDGOC{join-discord}");
+    expect(screen.getByText("Flag tidak diterima lagi setelah tenggat.")).toBeTruthy();
+    await userEvent.clear(field("Poin maksimal"));
+    await userEvent.type(field("Poin maksimal"), "200");
+    await userEvent.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ id: "a1", revision: 3, values: expect.objectContaining({ flag: { flag: "GDGOC{join-discord}", maxPoints: "200", minPoints: "20", decrement: "10" } }) }));
+  });
+
+  it("shows staff the flag and points instead of submissions and reviewers", () => {
+    show(<AssignmentDetail id="join-discord" />);
+    const summary = screen.getByRole("region", { name: "Flag dan poin" });
+    expect(summary.textContent).toContain("GDGOC{join-discord}");
+    expect(summary.textContent).toContain("Solver ke-1: 100, ke-2: 90, ke-5: 60, minimum 20 mulai solver ke-9.");
+    expect(screen.getByText("Member dari sasaran bisa mengirim flag sampai tenggat.")).toBeTruthy();
+    for (const name of ["Penilai tugas ini", "Kiriman", "Siapa yang belum"]) expect(screen.queryByRole("heading", { name })).toBeNull();
+  });
+});

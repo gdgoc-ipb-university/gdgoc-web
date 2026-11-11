@@ -461,6 +461,20 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-review-fields[data-rubric="true"] { grid-template-columns: 1fr; }
 @media (max-width: 640px) { .dash-rubric-row { grid-template-columns: 1fr 100px; } .dash-rubric-remove { grid-column: 1 / -1; justify-self: start; padding-bottom: 0; } }
 
+/* Flag tasks (#240) */
+.dash-status[data-status="flag"] { background: #172d43; color: #fff; }
+.dash-flag-input, .dash-flag-code { font-family: var(--font-mono), monospace; }
+.dash-flag-points { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px; }
+.dash-flag-points .app-field { margin-bottom: 0; }
+.dash-flag-preview { margin: 4px 0 0; padding: 12px 14px; background: #f6f7f1; border-left: 3px solid var(--green); font: 500 13px/1.5 var(--font-mono), monospace; }
+.dash-flag-summary { margin-top: 28px; }
+.dash-flag-facts { display: grid; gap: 10px; margin: 0 0 10px; padding: 16px 18px; background: #fffefa; border: 1px solid var(--line); max-width: 860px; }
+.dash-flag-facts > div { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 12px; }
+.dash-flag-facts dt { font-size: 12px; color: var(--muted); }
+.dash-flag-facts dd { margin: 0; font-size: 14px; }
+.dash-flag-code { overflow-wrap: anywhere; background: #eceee4; padding: 2px 6px; }
+@media (max-width: 640px) { .dash-flag-points { grid-template-columns: 1fr; gap: 0; } .dash-flag-points .app-field { margin-bottom: 16px; } .dash-flag-facts > div { grid-template-columns: 1fr; gap: 2px; } }
+
 /* Export */
 .dash-submissions-summary { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px 16px; }
 .dash-export { display: inline-flex; flex-direction: column; align-items: flex-end; gap: 4px; }

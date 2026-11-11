@@ -11,8 +11,8 @@ import { storedFileInUse } from "./photos";
 import { inCohortRoles } from "../src/lib/cohort";
 import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
-import { normalizeFlag, parseFlagPoints, validateFlag, type FlagInput } from "../src/lib/flag-task";
-import { checkFlag, flagOf, flagPointsOf, removeFlagRows, setFlag, solveOf, solvesOf, type FlagResult } from "./flags";
+import { flagPointsOf, normalizeFlag, parseFlagPoints, validateFlag, type FlagInput } from "../src/lib/flag-task";
+import { checkFlag, flagOf, removeFlagRows, setFlag, solveOf, solvesOf, type FlagResult } from "./flags";
 
 // `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
 // An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
@@ -196,7 +196,8 @@ export const adminList = query({
       page: await Promise.all(result.page.map(async (assignment) => {
         const submissions = await submissionsOf(ctx, assignment._id);
         return {
-          ...assignment, cohort: await cohortOf(ctx, assignment), submissionCount: submissions.length, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
+          ...assignment, cohort: await cohortOf(ctx, assignment), submissionCount: submissions.length,
+          solveCount: assignment.kind === "flag" ? (await solvesOf(ctx, assignment._id)).length : 0, lateCount: submissions.filter((item) => isLate(item.submittedAt, assignment.dueAt)).length,
           reviewedCount: submissions.filter((item) => item.reviewedAt !== undefined && !isStaleReview(item) && !item.revisionRequestedAt).length,
         };
       })),

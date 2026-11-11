@@ -56,8 +56,10 @@ describe("Discord link record", () => {
     const member = await account(t, "anggota@example.com");
     vi.stubEnv("DISCORD_BOT_TOKEN", "");
     expect(await member.query(api.discord.mine)).toEqual({ configured: false, serverUrl: null, link: null });
+    expect(await t.query(internal.discord.linkProblem, { userId: member.id })).toBe("Discord belum disiapkan pengurus.");
     vi.stubEnv("DISCORD_BOT_TOKEN", "bot-token");
     expect(await member.query(api.discord.mine)).toEqual({ configured: true, serverUrl: `https://discord.com/channels/${guild}`, link: null });
+    expect(await t.query(internal.discord.linkProblem, { userId: member.id })).toBeNull();
   });
 
   it("is written with Better Auth's account row, once per member and once per Discord account", async () => {
@@ -66,6 +68,7 @@ describe("Discord link record", () => {
     const other = await account(t, "lain@example.com");
     await linkDiscord(t, member.id, "111");
     expect(await member.query(api.discord.mine)).toMatchObject({ link: { username: null, joinStatus: "pending", linkedAt: Date.now(), lastSyncedAt: null, lastError: null } });
+    expect(await t.query(internal.discord.linkProblem, { userId: member.id })).toContain("sudah terhubung ke Discord");
 
     // Another member, or a second Discord account for the same member, is refused and Better Auth's insert undone.
     await expect(linkDiscord(t, other.id, "111")).rejects.toThrow("akun member lain");
@@ -73,6 +76,12 @@ describe("Discord link record", () => {
     expect(await accounts(t, other.id)).toEqual(["google"]);
     expect(await accounts(t, member.id)).toEqual(["discord", "google"]);
     expect(await t.run((ctx) => ctx.db.query("discordLinks").collect())).toHaveLength(1);
+  });
+
+  it("refuses linking for a deactivated account", async () => {
+    const t = setup();
+    const member = await account(t, "nonaktif@example.com", { deactivated: true });
+    expect(await t.query(internal.discord.linkProblem, { userId: member.id })).toContain("dinonaktifkan");
   });
 
   it("unlinks the record and Better Auth's account together, leaving Google", async () => {
@@ -92,5 +101,16 @@ describe("Discord link record", () => {
       onDeleteHandle: await createFunctionHandle(internal.auth.onDelete),
     }));
     expect(await linkRow(t, member.id)).toBeNull();
+  });
+
+  it("goes with a deleted account, counted", async () => {
+    vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com");
+    const t = setup();
+    const owner = await account(t, "owner@example.com");
+    const member = await account(t, "anggota@example.com");
+    await linkDiscord(t, member.id, "111");
+    expect(await owner.mutation(api.dashboard.deleteAccount, { ownerId: member.id, confirmName: "anggota" })).toMatchObject({ discordLinks: 1, accounts: 2 });
+    expect(await t.run((ctx) => ctx.db.query("discordLinks").collect())).toEqual([]);
+    expect(await t.run((ctx) => ctx.db.query("accountDeletions").first())).toMatchObject({ counts: { discordLinks: 1, accounts: 2 } });
   });
 });

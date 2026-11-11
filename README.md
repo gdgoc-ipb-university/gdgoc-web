@@ -66,6 +66,10 @@ Before you change anything, read `docs/CONTRIBUTING.md`: how work starts on an i
 | `GOOGLE_CLIENT_ID` | Convex deployment | Google OAuth web client | Yes for sign-in; until set, the sign-in button is disabled |
 | `GOOGLE_CLIENT_SECRET` | Convex deployment | Its secret | Yes for sign-in |
 | `APPRECIATION_ADMIN_EMAILS` | Convex deployment | Comma-separated verified emails of the owners | Optional; the Apresiasi review queue stays locked until set |
+| `DISCORD_CLIENT_ID` | Convex deployment | The chapter's Discord application, for linking Discord to an account (never for sign-in); setup in `docs/DISCORD.md` | Optional; until all four Discord values are set, Profil and onboarding say Discord isn't set up yet |
+| `DISCORD_CLIENT_SECRET` | Convex deployment | Its OAuth2 client secret | With the other Discord values |
+| `DISCORD_BOT_TOKEN` | Convex deployment | The application's bot, which adds linked members to the server | With the other Discord values |
+| `DISCORD_GUILD_ID` | Convex deployment | The chapter server's ID | With the other Discord values |
 
 Production also needs `CONVEX_DEPLOY_KEY` on Vercel (see Deployment).
 
@@ -170,7 +174,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 ### `convex/`: backend
 
 - `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments, teams and mentors, member cards and their per-year counters, gatherings and check-ins, Tech Support requests, the access log, and account deletions.
-- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `techSupport`, `bogorRun` and `bogorRunToken`.
+- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `techSupport`, `bogorRun` and `bogorRunToken`, and `discord` with `discordAuth` and `discordLinks` (see `docs/DISCORD.md`).
 - `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
 - `_generated/` is produced by Convex; do not edit it.
 - Tests (`*.test.ts`) run against `convex-test`, with no deployment.
@@ -179,7 +183,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `public/`: `brand/` (logo SVG, Open Graph image), `environments/` (fallback still of the 3D scene) and `games/bogor-run/` (SVG sprites and scenery, with their own README).
 - `design/`: generated direction images (`environments/`, `footer-directions/`), reference material, prompts, and the `.mjs` scripts that capture the scene still and the Open Graph image. `.vercelignore` keeps this out of CLI uploads.
-- `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow), `CONTRIBUTING.md` (issues, commits and pull requests), `ARCHITECTURE.md` (how the services connect), and `decisions/` (one record per settled decision).
+- `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DISCORD.md` (linking Discord and its setup), `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow), `CONTRIBUTING.md` (issues, commits and pull requests), `ARCHITECTURE.md` (how the services connect), and `decisions/` (one record per settled decision).
 - `.github/`: `ci.yml` (lint, typecheck and test), `project-board.yml`, issue forms (bug, feature, task) and the pull request template.
 - Root config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` (two projects: `backend` and `interface`), `vercel.json`, `pnpm-workspace.yaml`, `.env.example`.
 

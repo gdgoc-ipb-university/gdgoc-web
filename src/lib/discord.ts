@@ -15,6 +15,9 @@ export function discordSettings(env: DiscordEnv): DiscordSettings | null {
   return clientId && clientSecret && botToken && guildId ? { clientId, clientSecret, botToken, guildId } : null;
 }
 
+/** What the site asks Discord for: who the account is, and leave to add it to the chapter server. Never the email. */
+export const discordScopes = ["identify", "guilds.join"] as const;
+
 /** "Buka server": the server in Discord's app or web client, for a member the site has added. */
 export function discordServerUrl(guildId: string) {
   return `https://discord.com/channels/${guildId}`;

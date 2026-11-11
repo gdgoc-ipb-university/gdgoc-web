@@ -120,7 +120,7 @@ export function ProfileForm({ id, initial, revision: savedRevision, save, who = 
         </label>)}</div>
         {fieldError("institutionKind")}
       </fieldset>
-      {kind && <div onFocus={() => setWantsLists(true)}>
+      {kind && <div className="dash-profile-education" onFocus={() => setWantsLists(true)}>
         <EducationCombobox appearance="field" key={`institution-${kind}`} id={fieldId("campus")} label={labels.institution} options={lists[kind].length ? lists[kind] : kind === "campus" ? campusOptions : []} inputRef={campus} value={values.campus} onChange={(value) => update("campus", value)} error={errors.campus} disabled={busy} enterKeyHint="next" hint={kind === "school" ? "Cari nama atau kotanya, misalnya “SMKN 1 Bogor”. Belum ada? Ketik nama lengkapnya." : undefined} />
         <EducationCombobox appearance="field" key={`program-${kind}`} id={fieldId("studyProgram")} label={labels.program} options={kind === "school" ? schoolProgramOptions : studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="next" />
       </div>}

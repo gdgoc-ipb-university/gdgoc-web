@@ -36,6 +36,7 @@ Until all four values are set, Profil and onboarding say Discord isn't set up ye
 
 - **Profil** (`/dashboard/profil`), beside the photo: "Hubungkan Discord"; once linked, the Discord username, the link date (WIB), the join status with Discord's last error, "Coba lagi" after a failure, "Buka server" (`https://discord.com/channels/<server ID>`) once in, and "Putuskan" after a confirmation.
 - **Onboarding**, screen 4 (Komunitas): a Discord card beside the WhatsApp group's, with the same weight. It can be skipped and done later from Profil.
+- **Staff** (owners and admins) see the linked Discord username under the member's email on `/dashboard/anggota`, and a Discord fact on the member's page with the link date, the join status and the last error. The Discord ID stays on the server.
 - After Discord's consent page, the member returns to the page they left with `discord=terhubung`, or `discord=gagal` and Better Auth's `error`, which the page turns into an Indonesian message and then removes from the address.
 
 ## Linking

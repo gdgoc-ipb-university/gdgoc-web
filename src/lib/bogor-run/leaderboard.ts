@@ -73,3 +73,25 @@ export function unpackInputs(packed: string, maxNumbers: number): number[] | nul
   }
   return inputs;
 }
+
+/** engine.TICK_RATE, kept here so the landing bundle can show times without loading the engine (a test pins them equal). */
+const TICKS_PER_SECOND = 120;
+const wholeSeconds = (ticks: number) => Number.isFinite(ticks) && ticks > 0 ? Math.floor(ticks / TICKS_PER_SECOND) : 0;
+
+/** A run's length on the stopwatch, "mm:ss", counted in whole seconds of game time. The 1-hour finish is "60:00". */
+export function formatRunTime(ticks: number) {
+  const seconds = wholeSeconds(ticks);
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+}
+
+/** The same length read aloud: "1 menit 5 detik", "45 detik", "60 menit". */
+export function spokenRunTime(ticks: number) {
+  const seconds = wholeSeconds(ticks), minutes = Math.floor(seconds / 60), rest = seconds % 60;
+  return [minutes ? `${minutes} menit` : "", rest || !minutes ? `${rest} detik` : ""].filter(Boolean).join(" ");
+}
+
+/** The same length as an ISO 8601 duration for `<time dateTime>`: "PT1M5S". */
+export function isoRunTime(ticks: number) {
+  const seconds = wholeSeconds(ticks);
+  return `PT${Math.floor(seconds / 60)}M${seconds % 60}S`;
+}

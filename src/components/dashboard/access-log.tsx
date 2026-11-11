@@ -36,7 +36,7 @@ export function AccessLogPage() {
   return <>
     {back}
     <div className="dash-intro"><p className="eyebrow">PEMILIK · ANGGOTA</p><h1>Riwayat akses.</h1>
-      <p>Setiap perubahan peran admin, peninjau apresiasi, status akun, peran komunitas, penilai tugas, peserta program, dan penghapusan akun di dashboard, beserta siapa yang mengubahnya. Akun yang sudah dihapus tidak lagi bernama.</p></div>
+      <p>Setiap perubahan peran admin, peninjau apresiasi, status akun, peran komunitas, penilai tugas, peserta program, koreksi profil oleh pengurus, dan penghapusan akun di dashboard, beserta siapa yang mengubahnya. Akun yang sudah dihapus tidak lagi bernama.</p></div>
     <AccessLogList />
   </>;
 }

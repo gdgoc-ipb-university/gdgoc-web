@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { changedProfileFields, instagramChangedLabel, normalizeProfile, profileDraft, validateProfile } from "./profile-edit";
+import { changedProfileFields, instagramChangedLabel, normalizeProfile, profileDraft, profileFieldsLabel, validateProfile } from "./profile-edit";
 
 const values = { fullName: "Rania Putri", institutionKind: "campus" as const, campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania.putri" };
 
@@ -14,6 +14,12 @@ describe("profile edits", () => {
   it("lists the answers that differ from the stored profile, in form order", () => {
     expect(changedProfileFields(values, values)).toEqual([]);
     expect(changedProfileFields({ ...values, institutionKind: undefined, instagram: undefined }, { ...values, fullName: "Rania P." })).toEqual(["fullName", "institutionKind", "instagram"]);
+  });
+
+  it("names logged fields in words, in form order", () => {
+    expect(profileFieldsLabel("instagram,fullName")).toBe("nama dan username Instagram");
+    expect(profileFieldsLabel("campus")).toBe("sekolah/kampus");
+    expect(profileFieldsLabel("")).toBe("profil");
   });
 
   it("reads a stored profile as form values, a campus where the kind was never asked", () => {

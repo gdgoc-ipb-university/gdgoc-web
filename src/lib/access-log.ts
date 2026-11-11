@@ -1,7 +1,8 @@
 import { memberTagLabel, type MemberType } from "./onboarding";
+import { profileFieldsLabel } from "./profile-edit";
 
 export type AccessEntry = {
-  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail" | "card" | "gatheringHelper" | "techSupportHandler" | "photo" | "cohortMentor" | "cardIssued";
+  change: "role" | "reviewer" | "active" | "memberType" | "assignmentReviewer" | "deleted" | "tagConfirmed" | "tagSelfChanged" | "enrolmentRole" | "enrolmentStatus" | "enrolmentEmail" | "card" | "gatheringHelper" | "techSupportHandler" | "photo" | "cohortMentor" | "cardIssued" | "profile";
   from: string; to: string; actor: string | null; target: string | null; assignment: { title: string | null } | null;
   cohort?: { name: string | null; roles: { key: string; name: string }[] } | null;
   gathering?: { title: string | null } | null;
@@ -40,6 +41,7 @@ export function accessSentence(entry: AccessEntry) {
     }
     case "techSupportHandler": return entry.to === "on" ? `${actor} memberi ${target} akses antrean Tech Support.` : `${actor} mencabut akses antrean Tech Support dari ${target}.`;
     case "photo": return `${actor} menghapus foto profil ${target}.`;
+    case "profile": return `${actor} mengoreksi ${profileFieldsLabel(entry.to)} di profil ${target}.`;
     case "cardIssued": return entry.from === "none" ? `${actor} menerbitkan kartu anggota ${target} dengan nomor ${entry.to}.` : `${actor} menerbitkan kartu anggota ${target} untuk tahun chapter ini dengan nomor ${entry.to} (sebelumnya ${entry.from}).`;
     case "card": return entry.to === "revoked" ? `${actor} memblokir kartu anggota ${target}.` : `${actor} membuka blokir kartu anggota ${target}.`;
   }

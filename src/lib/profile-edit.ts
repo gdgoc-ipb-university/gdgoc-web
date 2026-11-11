@@ -11,6 +11,17 @@ export type ProfileDraft = Omit<ProfileValues, "institutionKind"> & { institutio
 export const profileFields = ["fullName", "institutionKind", "campus", "studyProgram", "instagram"] as const;
 export type ProfileField = (typeof profileFields)[number];
 
+/** The fields as an access log sentence names them (#235). */
+export const profileFieldLabels: Record<ProfileField, string> = {
+  fullName: "nama", institutionKind: "jenjang (mahasiswa atau siswa)", campus: "sekolah/kampus", studyProgram: "jurusan/program studi", instagram: "username Instagram",
+};
+
+/** A correction's logged fields ("fullName,instagram") in words: "nama dan username Instagram". Unknown keys are skipped. */
+export function profileFieldsLabel(fields: string) {
+  const names = profileFields.filter((field) => fields.split(",").includes(field)).map((field) => profileFieldLabels[field]);
+  return names.length > 1 ? `${names.slice(0, -1).join(", ")}${names.length > 2 ? "," : ""} dan ${names.at(-1)}` : names[0] ?? "profil";
+}
+
 /** Onboarding's normalisation, so an edit stores exactly what onboarding would have. */
 export function normalizeProfile(values: ProfileValues): ProfileValues {
   const clean = normalizeOnboarding(values);
@@ -29,7 +40,7 @@ export function changedProfileFields(stored: Partial<Record<ProfileField, string
 }
 
 /** A stored profile as form values; a profile from before the kind was asked had a campus, as onboarding assumes. */
-export function profileDraft(profile: Partial<Record<ProfileField, string>> & { institutionKind?: InstitutionKind }): ProfileDraft {
+export function profileDraft(profile: Partial<Record<Exclude<ProfileField, "institutionKind">, string>> & { institutionKind?: InstitutionKind | null }): ProfileDraft {
   return {
     fullName: profile.fullName ?? "", campus: profile.campus ?? "", studyProgram: profile.studyProgram ?? "", instagram: profile.instagram ?? "",
     institutionKind: profile.institutionKind ?? (profile.campus ? "campus" : undefined),

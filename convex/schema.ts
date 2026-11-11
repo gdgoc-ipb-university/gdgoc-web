@@ -96,6 +96,10 @@ export default defineSchema({
     // A cohort assignment (cohorts.ts) goes to that cohort's active participants instead of an audience, and only to these
     // role keys; absent or empty means every role. Its role's mentors review it like assignment reviewers.
     cohortId: v.optional(v.id("cohorts")), cohortRoles: v.optional(v.array(v.string())),
+    // A flag task (#240) is graded by the site: the member submits a flag and gets points that drop with each solve. Without
+    // `kind` the task is graded by hand. Its points are here; the flag itself is in assignmentFlags, away from this row.
+    kind: v.optional(v.literal("flag")),
+    maxPoints: v.optional(v.number()), minPoints: v.optional(v.number()), decrement: v.optional(v.number()),
   })
     .index("by_status_due", ["status", "dueAt"])
     .index("by_updated", ["updatedAt"])
@@ -134,6 +138,23 @@ export default defineSchema({
     .index("by_submission", ["submissionId", "createdAt"])
     .index("by_owner_assignment", ["ownerId", "assignmentId"])
     .index("by_assignment", ["assignmentId"]),
+  // A flag task's flag, one row per task. Only staff functions and the solve mutation read it, so no query that returns an
+  // assignment row can hand the flag to a member.
+  assignmentFlags: defineTable({ assignmentId: v.id("assignments"), flag: v.string(), updatedAt: v.number(), updatedBy: v.string() })
+    .index("by_assignment", ["assignmentId"]),
+  // One correct flag per member and task, with the points locked at solve time. `place` is the n of the points formula:
+  // the solves that existed before it, plus one.
+  flagSolves: defineTable({ assignmentId: v.id("assignments"), ownerId: v.string(), points: v.number(), place: v.number(), solvedAt: v.number() })
+    .index("by_assignment", ["assignmentId", "solvedAt"])
+    .index("by_assignment_owner", ["assignmentId", "ownerId"])
+    .index("by_owner", ["ownerId"]),
+  // Wrong flags per member and task: how many for staff, and the rate limit's bucket (src/lib/flag-task.ts). The guesses
+  // themselves are not kept.
+  flagAttempts: defineTable({
+    assignmentId: v.id("assignments"), ownerId: v.string(), wrong: v.number(), lastWrongAt: v.number(), tokens: v.number(), tokensAt: v.number(),
+  })
+    .index("by_assignment_owner", ["assignmentId", "ownerId"])
+    .index("by_owner", ["ownerId"]),
   // Bogor Run: one row per accepted, server-replayed run. `week` comes from when the run's token was issued.
   gameRuns: defineTable({
     ownerId: v.string(), nonce: v.string(), seed: v.number(), issuedAt: v.number(),

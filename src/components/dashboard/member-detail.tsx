@@ -13,7 +13,7 @@ import { PixelIcon } from "../pixel-icons";
 import { StaffOnly } from "./assignments";
 import { AccessLogList } from "./access-log";
 import { MemberAvatar } from "../member-avatar";
-import { AccessBadges, ActiveBadge, CommunityBadge, MemberActions, useMembersListHref } from "./members";
+import { AccessBadges, ActiveBadge, CommunityBadge, InstagramChanged, MemberActions, useMembersListHref } from "./members";
 import { AssignmentStatusBadge, ScoreBadge, SubmissionBadge } from "./shared";
 import { CopyIconButton } from "./data-table";
 import { isStaff, useDashboardViewer } from "./viewer";
@@ -41,7 +41,7 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
       <div><dt>Peran komunitas</dt><dd><CommunityBadge row={member} /></dd></div>
       <div><dt>Sekolah/kampus</dt><dd>{member.campus || "—"}</dd></div>
       <div><dt>Jurusan/program studi</dt><dd>{member.studyProgram || "—"}</dd></div>
-      <div><dt>Instagram</dt><dd>{member.instagram ? <a href={`https://www.instagram.com/${member.instagram}/`} target="_blank" rel="noreferrer">@{member.instagram}</a> : "—"}</dd></div>
+      <div><dt>Instagram</dt><dd>{member.instagram ? <a href={`https://www.instagram.com/${member.instagram}/`} target="_blank" rel="noreferrer">@{member.instagram}</a> : "—"}<InstagramChanged at={member.instagramChangedAt} /></dd></div>
       <div><dt>Bergabung</dt><dd>{dateLabel(member.joinedAt)}</dd></div>
       <div><dt>Kartu anggota</dt><dd>{member.card ? `${member.card.number}${member.card.revoked ? " · Diblokir" : ""}` : "Belum dibuka"}</dd></div>
       <div><dt>Perubahan akses terakhir</dt><dd>{member.accessUpdatedBy ?? "Belum pernah diubah"}</dd></div>

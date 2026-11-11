@@ -45,6 +45,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
     // For core team to check the intake's follow and twibbon (#212); empty for members who onboarded before it was asked.
     instagram: profile.instagram ?? "",
+    // When the username last changed after onboarding (#235), so staff know to check the follow and twibbon again.
+    instagramChangedAt: profile.instagramChangedAt ?? null,
     email: user?.email ?? "", role, active: isActive(role, profile), joinedAt: profile.completedAt ?? profile._creationTime,
     memberType: profile.memberType ?? null, division: profile.division ?? null,
     // The granted permission only; owners and admins review by role and are not flagged here.

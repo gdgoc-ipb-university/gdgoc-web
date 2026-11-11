@@ -33,8 +33,8 @@ export function nextActiveStep(inBand: readonly boolean[], current: number, keep
 }
 
 /**
- * A dated step of a program, as `catalyst.timeline` and `techLeague.timeline` list them (YYYY-MM-DD, WIB). Tech
- * League's items also name the `phase` they belong to.
+ * A dated step of a program, as `catalyst.timeline`, `techLeague.milestones` and `techLeague.timeline` list them
+ * (YYYY-MM-DD, WIB). The items of Tech League's full timeline also name the `phase` they belong to.
  */
 export type Milestone = { readonly label: string; readonly start: string; readonly end?: string; readonly phase?: string };
 export type MilestoneStatus = "done" | "current" | "upcoming";
@@ -91,9 +91,9 @@ export function milestoneExtent(span: { start: number; end: number }, milestone:
 }
 
 /**
- * The steps a track shows on the landing. A timeline that names phases (Tech League) shows one step per phase, from
- * its first item's start to its last item's end, in the order the phases first appear; one without (Catalyst) shows
- * each item.
+ * The steps a track shows on the landing. A timeline that names phases shows one step per phase, from its first
+ * item's start to its last item's end, in the order the phases first appear; one without (Catalyst's, and Tech
+ * League's five milestones) shows each item.
  */
 export function timelineSteps(milestones: readonly Milestone[]): Milestone[] {
   const groups = new Map<string, Milestone[]>();

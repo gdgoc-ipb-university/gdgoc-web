@@ -160,6 +160,21 @@ describe("year chapter", () => {
     for (const date of catalystDates) expect(container.innerHTML).not.toContain(date);
   });
 
+  it("lists Tech League's five steps, not its full timeline, with a dot or bar for each", () => {
+    const { container } = render(<SetahunBersama />);
+    const track = container.querySelector(".year-track[data-color='green']")!;
+    expect(Array.from(track.querySelectorAll("li"), (item) => [item.querySelector(".year-date")?.textContent, item.querySelector(".year-label")?.textContent])).toEqual([
+      ["7 Desember 2026 – 4 Januari 2027", "Registrasi"],
+      ["6 Januari 2027", "Pengumpulan karya"],
+      ["7–12 Januari 2027", "Seleksi karya"],
+      ["17 Januari 2027", "Final (daring)"],
+      ["30 Januari 2027", "Awarding (luring)"],
+    ]);
+    expect(container.querySelectorAll(".year-lane[data-color='green'] > span")).toHaveLength(5);
+    expect(container.querySelector(".year-months")?.textContent).toBe("Des 2026Jan 2027");
+    expect(container.textContent).not.toContain("Registrasi gelombang awal");
+  });
+
   it("draws Catalyst's track before Tech League's once the schedule is no longer on hold", () => {
     const { container } = render(<SetahunBersama catalystOnHold={false} />);
     expect(trackNames(container)).toEqual(["GDGoC Catalyst", "Tech League"]);

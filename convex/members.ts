@@ -1,8 +1,14 @@
 import { ConvexError, v } from "convex/values";
 import { authComponent } from "./auth";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, type MutationCtx } from "./_generated/server";
+import type { Doc } from "./_generated/dataModel";
 import { institutionKind } from "./schema";
+import { requireMember } from "./access";
 import { finalStep, instagramStep, normalizeOnboarding, resumeStep, stepAfter, validateOnboarding, type OnboardingStep } from "../src/lib/onboarding";
+import { changedProfileFields, normalizeProfile, validateProfile, type ProfileValues } from "../src/lib/profile-edit";
+
+/** Why a save from an older tab is refused, in onboarding and in profile edits alike. */
+const staleProfile = "Profil berubah di tab atau perangkat lain. Muat ulang halaman untuk memakai versi terbaru.";
 
 export const profile = query({
   args: {},
@@ -47,7 +53,7 @@ export const saveStep = mutation({
       // Accept a repeated acknowledged request, but never overwrite another tab's edits.
       const same = existing && (["fullName", "campus", "studyProgram"] as const).every((field) => data[field] === existing[field]) && kind === existing.institutionKind && instagram === existing.instagram;
       if (existing && resume >= nextStep && same) return existing;
-      throw new ConvexError("Profil berubah di tab atau perangkat lain. Muat ulang halaman untuk memakai versi terbaru.");
+      throw new ConvexError(staleProfile);
     }
     // Finishing registers the account as Member, unless staff already gave it a tag.
     const completion = step === finalStep ? { completedAt: Date.now(), ...(existing?.memberType ? {} : { memberType: "member" as const }) } : {};
@@ -70,5 +76,38 @@ export const registerAsMember = mutation({
     const existing = await ctx.db.query("memberProfiles").withIndex("by_owner", (q) => q.eq("ownerId", user._id)).unique();
     if (!existing?.completedAt) throw new ConvexError("Selesaikan perkenalan terlebih dahulu.");
     if (!existing.memberType) await ctx.db.patch(existing._id, { memberType: "member", updatedAt: Date.now() });
+  },
+});
+
+/** The answers a completed profile can change (#235); the kind is required here, as the education screen asks for it. */
+export const profileValues = v.object({ fullName: v.string(), institutionKind, campus: v.string(), studyProgram: v.string(), instagram: v.string() });
+
+/**
+ * Changes a completed profile's answers, for the member (`updateProfile`) or for staff correcting it: onboarding's
+ * normalisation and rules, and its revision check, so two tabs never overwrite each other. `instagramChangedAt` is set
+ * only when the normalised username differs. Returns the profile and the fields that changed; no change writes nothing,
+ * and a retried save that already went through is accepted.
+ */
+export async function editProfile(ctx: MutationCtx, profile: Doc<"memberProfiles">, revision: number, values: ProfileValues) {
+  const clean = normalizeProfile(values);
+  const errors = validateProfile(clean);
+  if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Periksa isian yang ditandai, lalu simpan lagi.", fields: errors });
+  const changed = changedProfileFields(profile, clean);
+  if (!changed.length) return { profile, changed };
+  if (revision !== profile.revision) throw new ConvexError(staleProfile);
+  const now = Date.now();
+  await ctx.db.patch(profile._id, { ...clean, revision: revision + 1, updatedAt: now, ...(changed.includes("instagram") ? { instagramChangedAt: now } : {}) });
+  return { profile: (await ctx.db.get(profile._id))!, changed };
+}
+
+/**
+ * A member edits their own completed profile from /dashboard/profil (#235): name, school or campus, study program and
+ * Instagram. Onboarding stays with `saveStep`, which never changes a completed profile. Not logged beyond the Instagram time.
+ */
+export const updateProfile = mutation({
+  args: { revision: v.number(), values: profileValues },
+  handler: async (ctx, { revision, values }) => {
+    const { profile } = await requireMember(ctx);
+    return (await editProfile(ctx, profile, revision, values)).profile;
   },
 });

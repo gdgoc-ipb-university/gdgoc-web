@@ -184,3 +184,69 @@ describe("first-time member onboarding", () => {
     expect(await owner.query(api.members.profile)).toMatchObject({ memberType: "bod", division: "Technical" });
   });
 });
+
+describe("editing a completed profile (#235)", () => {
+  const edit = { ...values, institutionKind: "campus" as const };
+  const read = (t: ReturnType<typeof setup>) => t.run(async (ctx) => (await ctx.db.query("memberProfiles").first())!);
+
+  it("lets a member change their own answers, normalised as onboarding does", async () => {
+    const t = setup(); const owner = await member(t);
+    await onboard(owner);
+    const before = await read(t);
+    const saved = await owner.mutation(api.members.updateProfile, { revision: 6, values: {
+      fullName: "  Rania   Putri ", institutionKind: "school", campus: " SMKN 1   BOGOR ", studyProgram: "Rekayasa Perangkat Lunak", instagram: " https://www.instagram.com/Rania.Putri/ ",
+    } });
+    expect(saved).toMatchObject({ fullName: "Rania Putri", institutionKind: "school", campus: "SMKN 1 BOGOR", studyProgram: "Rekayasa Perangkat Lunak", instagram: "rania.putri", revision: 7 });
+    // Onboarding's state, the tag and completion stay as they were.
+    expect(saved).toMatchObject({ nextStep: 6, memberType: "member", completedAt: before.completedAt });
+    expect((await owner.query(api.dashboard.viewer))?.name).toBe("Rania Putri");
+    // Only the caller's own profile: there is no owner argument, and no tag or access field.
+    for (const extra of [{ ownerId: "someone-else" }, { memberType: "core" }, { role: "admin" }]) {
+      await expect(owner.mutation(api.members.updateProfile, { revision: 7, values: edit, ...extra } as never)).rejects.toThrow();
+    }
+    // saveStep still never changes a completed profile.
+    expect(await owner.mutation(api.members.saveStep, { step: 1, revision: 7, values: { ...values, fullName: "Nama Lain" } })).toMatchObject({ fullName: "Rania Putri" });
+  });
+
+  it("refuses a stale revision with onboarding's message, but accepts a retry of a save that went through", async () => {
+    const t = setup(); const owner = await member(t);
+    await onboard(owner);
+    const renamed = { ...edit, fullName: "Nama Baru" };
+    expect(await owner.mutation(api.members.updateProfile, { revision: 6, values: renamed })).toMatchObject({ revision: 7 });
+    expect(await owner.mutation(api.members.updateProfile, { revision: 6, values: renamed })).toMatchObject({ revision: 7, fullName: "Nama Baru" });
+    await expect(owner.mutation(api.members.updateProfile, { revision: 6, values: { ...edit, fullName: "Tab Lama" } })).rejects.toThrow("Profil berubah di tab atau perangkat lain");
+    expect(await read(t)).toMatchObject({ fullName: "Nama Baru", revision: 7 });
+  });
+
+  it("refuses an unfinished profile, a signed-out caller, and answers onboarding would refuse", async () => {
+    const t = setup(); const owner = await member(t); const halfway = await member(t, "halfway@example.com");
+    await expect(t.mutation(api.members.updateProfile, { revision: 0, values: edit })).rejects.toThrow("Masuk kembali");
+    for (const [index, step] of ([1, 2] as const).entries()) await halfway.mutation(api.members.saveStep, { step, revision: index, values });
+    await expect(halfway.mutation(api.members.updateProfile, { revision: 2, values: edit })).rejects.toThrow("Selesaikan perkenalan");
+    await onboard(owner);
+    for (const wrong of [{ fullName: " " }, { campus: "" }, { studyProgram: "x".repeat(151) }, { instagram: "" }, { instagram: "nama..kamu" }, { fullName: "x".repeat(121) }]) {
+      await expect(owner.mutation(api.members.updateProfile, { revision: 6, values: { ...edit, ...wrong } }), JSON.stringify(wrong)).rejects.toThrow("Periksa isian");
+    }
+    await expect(owner.mutation(api.members.updateProfile, { revision: 6, values: { ...edit, institutionKind: "kantor" } } as never)).rejects.toThrow();
+    expect(await owner.query(api.members.profile)).toMatchObject({ revision: 6, fullName: values.fullName });
+  });
+
+  it("records when the Instagram username changes, and only when it really does", async () => {
+    const t = setup(); const owner = await member(t);
+    await onboard(owner);
+    // Onboarding's first username is not a change.
+    expect((await read(t)).instagramChangedAt).toBeUndefined();
+    await owner.mutation(api.members.updateProfile, { revision: 6, values: { ...edit, fullName: "Nama Baru" } });
+    expect((await read(t)).instagramChangedAt).toBeUndefined();
+    // The same username typed with "@" and capitals normalises to the stored one: nothing is written.
+    expect(await owner.mutation(api.members.updateProfile, { revision: 7, values: { ...edit, fullName: "Nama Baru", instagram: "@TEMAN.UJI" } })).toMatchObject({ revision: 7 });
+    expect((await read(t)).instagramChangedAt).toBeUndefined();
+    const changed = await owner.mutation(api.members.updateProfile, { revision: 7, values: { ...edit, fullName: "Nama Baru", instagram: "teman.baru" } });
+    expect(changed).toMatchObject({ instagram: "teman.baru", instagramChangedAt: changed.updatedAt });
+    await owner.mutation(api.members.updateProfile, { revision: 8, values: { ...edit, fullName: "Nama Lagi", instagram: "teman.baru" } });
+    expect((await read(t)).instagramChangedAt).toBe(changed.updatedAt);
+    // A profile that finished before the username was asked gets one, which counts as a change.
+    await t.run(async (ctx) => ctx.db.patch((await ctx.db.query("memberProfiles").first())!._id, { instagram: undefined, instagramChangedAt: undefined }));
+    expect(await owner.mutation(api.members.updateProfile, { revision: 9, values: { ...edit, fullName: "Nama Lagi", instagram: "teman.baru" } })).toMatchObject({ instagramChangedAt: expect.any(Number) });
+  });
+});

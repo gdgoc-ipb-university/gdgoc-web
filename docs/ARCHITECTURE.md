@@ -6,7 +6,7 @@ One Next.js app on Vercel, one Convex backend, and Google sign-in through Better
 flowchart LR
   browser["Browser<br/>www.gdgocipb.com and league.gdgocipb.com"]
   google["Google OAuth"]
-  discord["Discord OAuth"]
+  discord["Discord OAuth and API"]
 
   subgraph vercel["Vercel: production, from release"]
     next["Next.js App Router<br/>pages, src/app/league by host,<br/>and /api/auth/[...all]"]
@@ -31,6 +31,7 @@ flowchart LR
   browser -- "queries and mutations" --> fns
   browser -- "Bogor Run: issueRun, submitRun" --> fns
   fns --> db
+  fns -- "Add Guild Member, with the bot token" --> discord
   auth --> db
   browser -. "preview" .-> tunnel --> dev
   dev -.-> convexdev
@@ -48,7 +49,7 @@ Both hosts reach the same deployment ([ADR 0008](decisions/0008-league-subdomain
 
 ## Convex functions and database
 
-The queries, mutations and crons in `convex/` are the application API: the frontend calls them by name through the generated `api` object, and each checks access itself (`convex/access.ts`). `convex/schema.ts` defines every table, and file uploads use Convex storage. Tests run them against `convex-test` with no deployment.
+The queries, mutations and crons in `convex/` are the application API: the frontend calls them by name through the generated `api` object, and each checks access itself (`convex/access.ts`). Actions call outside services: Discord's REST API, only through `convex/discordApi.ts`, to add a linked member to the chapter server. `convex/schema.ts` defines every table, and file uploads use Convex storage. Tests run them against `convex-test` with no deployment.
 
 ## Better Auth with Google OAuth
 

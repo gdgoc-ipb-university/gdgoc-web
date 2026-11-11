@@ -50,6 +50,19 @@ Until all four values are set, Profil and onboarding say Discord isn't set up ye
 
 Linking needs Discord in `trustedProviders` (it is never asked for an email that could vouch for the account) and `allowDifferentEmails`.
 
+## Joining the server
+
+Recording a link schedules `discord.join`, a Convex action:
+
+1. It reads the member's Discord token through Better Auth's `getAccessToken`, which refreshes it when it has expired, and checks with `/users/@me` that the token belongs to the linked account. That call also gives the username.
+2. It calls Discord's [Add Guild Member](https://discord.com/developers/docs/resources/guild#add-guild-member) (`PUT /guilds/{server}/members/{user}`) with the member's token and the bot's. 201 (added) and 204 (already a member) both count as joined, and set `lastSyncedAt`.
+3. A 429 waits as long as Discord's `retry_after` asks. A 5xx or a network failure retries after 5 s, 30 s, 2 min, 10 min and 30 min, then the join is marked failed. Meanwhile Profil says Discord is busy and the site keeps trying.
+4. Any other refusal is recorded at once in Indonesian, for example a ban (40007), the 100-server limit (30001), a bot without permission (403) or an unknown server (404). A deactivated account, or a token that no longer works, is not added.
+
+"Coba lagi" on Profil (`discord.retryJoin`) starts a new round after a failure. A join scheduled for a link that has since gone finds nothing and stops.
+
+Every Discord REST call goes through `convex/discordApi.ts`, which returns the status, Discord's error code and the wait for a 429 instead of throwing. Tests stub `fetch` there (`convex/discordApi.test.ts`, `convex/discord.test.ts`). The role sync (#243) adds its calls to that module.
+
 ## Data
 
 `discordLinks` holds one row per linked member: the Discord user ID, the username (from Discord on the first sync), when it was linked, the server join status, how many join attempts were made, the last successful sync, and the last error. Account triggers in `convex/auth.ts` write and remove it in the same transaction as Better Auth's account row, so the two never disagree. Staff views and the role sync (#243 to #245) read this table, never Better Auth's.

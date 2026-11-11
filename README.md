@@ -174,7 +174,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 ### `convex/`: backend
 
 - `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments, teams and mentors, member cards and their per-year counters, gatherings and check-ins, Tech Support requests, the access log, and account deletions.
-- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `techSupport`, `bogorRun` and `bogorRunToken`, and `discord` with `discordAuth` and `discordLinks` (see `docs/DISCORD.md`).
+- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `techSupport`, `bogorRun` and `bogorRunToken`, and `discord` with `discordAuth`, `discordLinks` and `discordApi`, the one module that calls Discord (see `docs/DISCORD.md`).
 - `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
 - `_generated/` is produced by Convex; do not edit it.
 - Tests (`*.test.ts`) run against `convex-test`, with no deployment.

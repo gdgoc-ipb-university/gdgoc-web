@@ -1,6 +1,7 @@
 import { ConvexError } from "convex/values";
 import type { MutationCtx, QueryCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
+import { internal } from "./_generated/api";
 
 /**
  * The site's record of a member's Discord account (#242), kept in step with Better Auth's `discord` account row: the
@@ -13,8 +14,9 @@ export function linkOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
 }
 
 /**
- * Records a new Discord account. One Discord account per member and one member per Discord account: throwing here
- * undoes Better Auth's insert.
+ * Records a new Discord account and starts the server join. One Discord account per member and one member per Discord
+ * account: Better Auth already refuses a Discord account linked to someone else, and `/link-social` refuses a member
+ * who has one (discordAuth.ts), so throwing here, which undoes Better Auth's insert, only settles a race.
  */
 export async function recordLink(ctx: MutationCtx, account: { userId: string; accountId: string }) {
   const [mine, holder] = await Promise.all([
@@ -27,6 +29,7 @@ export async function recordLink(ctx: MutationCtx, account: { userId: string; ac
     throw new ConvexError({ code: "DISCORD_LINKED", message: "Akunmu sudah terhubung ke akun Discord lain. Putuskan dulu, lalu hubungkan lagi." });
   }
   const linkId = await ctx.db.insert("discordLinks", { ownerId: account.userId, discordId: account.accountId, linkedAt: Date.now(), joinStatus: "pending", attempts: 0 });
+  await ctx.scheduler.runAfter(0, internal.discord.join, { linkId, attempt: 0 });
   return linkId;
 }
 
@@ -36,7 +39,7 @@ export async function recordLink(ctx: MutationCtx, account: { userId: string; ac
  */
 const afterUnlink: ((ctx: MutationCtx, link: Doc<"discordLinks">) => Promise<void>)[] = [];
 
-/** Removes a member's link, if any, and returns how many rows went. */
+/** Removes a member's link, if any, and returns how many rows went. A join still scheduled finds no link and stops. */
 export async function removeLink(ctx: MutationCtx, ownerId: string) {
   const link = await linkOf(ctx, ownerId);
   if (!link) return 0;

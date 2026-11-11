@@ -158,7 +158,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-photo-crop-side .field-error { margin: 0; }
 .account-avatar-photo { display: block; object-fit: cover; padding: 0; }
 /* Foto profil and Discord (#242) side by side where there is room, stacked below. */
-.dash-profile-top { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-bottom: 24px; }
+.dash-profile-top { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 24px; align-items: start; margin-bottom: 24px; }
 .dash-profile-top > .dash-photo-panel { margin-bottom: 0; }
 .dash-discord-panel h2 { display: flex; align-items: center; gap: 12px; font-size: 26px; margin-block: 0 12px; }
 .dash-discord-mark { display: grid; place-items: center; width: 40px; height: 40px; flex: none; color: #3940a0; background: #e4e6fb; border: 1px solid currentColor; box-shadow: 3px 3px 0 #c8ccf3; }

@@ -20,7 +20,7 @@ export function DiscordPanel() {
         <dl className="dash-facts dash-discord-facts">
           <div><dt>Akun Discord</dt><dd>{link.username ?? "Menunggu nama dari Discord…"}</dd></div>
           <div><dt>Terhubung</dt><dd>{discordLinkedDate(link.linkedAt)}</dd></div>
-          <div><dt>Server</dt><dd><span className="dash-discord-status" data-status={link.joinStatus}>{discordJoinLabels[link.joinStatus]}</span><span className="dash-discord-line">{joinLine(link)}</span></dd></div>
+          <div><dt>Server</dt><dd><span className="dash-discord-status" data-status={link.joinStatus}>{discordJoinLabels[link.joinStatus]}</span>{link.joinStatus !== "joined" && <span>{joinLine(link)}</span>}</dd></div>
         </dl>
         <div className="dash-photo-buttons">
           {link.joinStatus === "joined" && state?.serverUrl && serverLink(state.serverUrl, "button button-blue")}

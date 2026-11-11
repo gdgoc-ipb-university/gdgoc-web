@@ -80,7 +80,7 @@ export function DiscordOnboardingCard() {
   const link = state?.link ?? null;
   return <div className="onboard-invitation onboard-discord">
     <div className="onboard-invite-icon discord-icon" aria-hidden="true"><PixelIcon name="discord" size={24} /></div>
-    <div><strong>Server Discord GDGoC IPB</strong><p>Ngobrol, kanal belajar, dan kanal khusus member. Hubungkan akunmu supaya kamu langsung masuk ke server.</p></div>
+    <div><strong>Server Discord GDGoC IPB</strong><p>Ngobrol, kanal belajar, dan kanal khusus member.{!link && " Hubungkan akunmu supaya kamu langsung masuk ke server."}</p></div>
     {link ? <p className="onboard-discord-linked" role="status"><PixelIcon name="check" size={18} /><span>Terhubung sebagai <b>{link.username ?? "akun Discord-mu"}</b>. {joinLine(link)}</span></p>
       : state && !state.configured ? <p className="onboard-external-note">Server Discord sedang disiapkan. Kamu bisa menghubungkannya nanti dari Profil.</p>
       : <button type="button" className="button onboard-external" disabled={state === undefined || busy !== null} onClick={() => void connect()}>{busy === "connect" ? "Membuka Discord…" : "Hubungkan Discord"} <Arrow /></button>}

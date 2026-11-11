@@ -8,8 +8,8 @@ import { TechSupportPage } from "./tech-support";
 // The Tech Support pages against a fake Convex.
 const at = (value: string) => Date.parse(`${value}+07:00`);
 const mine = [
-  { _id: "r2", competition: "Gemastik 2026", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-11-20", participation: "team", teamName: "Tim Dino", helpKinds: ["Ideasi", "Review pitch deck"], progress: "Prototipe.", status: "matched", mentorName: "Dika Aprilio Wibowo", submittedAt: at("2026-10-28T10:00:00"), updatedAt: 0 },
-  { _id: "r1", competition: "Hology", competitionUrl: "https://hology.ub.ac.id", deadline: "2099-12-01", participation: "solo", teamName: null, helpKinds: ["Mock judging"], progress: "Ide.", status: "new", mentorName: null, submittedAt: at("2026-10-30T10:00:00"), updatedAt: 0 },
+  { _id: "r2", competition: "Gemastik 2026", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-11-20", participation: "team", teamName: "Tim Dino", helpKinds: ["Ideasi", "Review pitch deck"], progress: "Prototipe.", status: "matched", whatsapp: null, discord: null, mentorName: "Dika Aprilio Wibowo", submittedAt: at("2026-10-28T10:00:00"), updatedAt: 0 },
+  { _id: "r1", competition: "Hology", competitionUrl: "https://hology.ub.ac.id", deadline: "2099-12-01", participation: "solo", teamName: null, helpKinds: ["Mock judging"], progress: "Ide.", status: "new", whatsapp: null, discord: null, mentorName: null, submittedAt: at("2026-10-30T10:00:00"), updatedAt: 0 },
 ];
 const queries: Record<string, unknown> = { "techSupport:mine": mine };
 const mutations: Record<string, ReturnType<typeof vi.fn>> = { "techSupport:submit": vi.fn(async () => "r3") };
@@ -64,6 +64,25 @@ describe("Tech Support request form", () => {
     expect(screen.getByText("Tulis nama timnya.")).toBeTruthy();
   });
 
+  it("prefills the contact from the newest request that has one, and keeps it editable", async () => {
+    // The newest request is from before #251; the one under it has a number and a username.
+    queries["techSupport:mine"] = [mine[0], { ...mine[1], whatsapp: "+6281234567890", discord: "rania.dev" }];
+    render(<TechSupportPage />);
+    const whatsapp = screen.getByLabelText(/Nomor WhatsApp/) as HTMLInputElement;
+    expect(whatsapp.value).toBe("+6281234567890");
+    expect((screen.getByLabelText(/Username Discord/) as HTMLInputElement).value).toBe("rania.dev");
+    expect(screen.getByText(/Dari permintaanmu sebelumnya/)).toBeTruthy();
+    await userEvent.clear(whatsapp);
+    await userEvent.type(whatsapp, "0857 1234 5678");
+    expect(whatsapp.value).toBe("0857 1234 5678");
+  });
+
+  it("starts with an empty contact when no request has one", () => {
+    render(<TechSupportPage />);
+    expect((screen.getByLabelText(/Nomor WhatsApp/) as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(/Username Discord/) as HTMLInputElement).value).toBe("");
+  });
+
   it("sends a complete request and clears the form", async () => {
     render(<TechSupportPage />);
     await userEvent.type(screen.getByLabelText(/Nama kompetisi/), "Gemastik 2026");
@@ -89,6 +108,8 @@ describe("Tech Support request form", () => {
     } });
     expect((await screen.findByRole("status")).textContent).toContain("Permintaanmu terkirim");
     expect((screen.getByLabelText(/Nama kompetisi/) as HTMLInputElement).value).toBe("");
+    // The contact stays for the next request.
+    expect((screen.getByLabelText(/Nomor WhatsApp/) as HTMLInputElement).value).toBe("+6281234567890");
   });
 
   it("holds the form while three requests are open", () => {

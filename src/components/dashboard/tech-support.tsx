@@ -28,7 +28,8 @@ export function TechSupportStatusBadge({ status }: { status: TechSupportStatus }
   return <span className="app-status dash-status" data-status={`support-${status}`}>{techSupportStatusLabels[status]}</span>;
 }
 
-function RequestForm({ disabled }: { disabled: boolean }) {
+/** `contact` prefills the WhatsApp number and Discord username, from the member's newest request that has them. */
+function RequestForm({ disabled, contact }: { disabled: boolean; contact: Pick<TechSupportValues, "whatsapp" | "discord"> }) {
   const submit = useMutation(api.techSupport.submit);
   const first = useRef<HTMLInputElement>(null);
   // Arriving from the onboarding offer (`?ajukan=1`) brings the form into view with the first field focused. Read
@@ -38,7 +39,7 @@ function RequestForm({ disabled }: { disabled: boolean }) {
     first.current?.scrollIntoView({ block: "center" });
     first.current?.focus({ preventScroll: true });
   }, [disabled]);
-  const [values, setValues] = useState(blank);
+  const [values, setValues] = useState<TechSupportValues>(() => ({ ...blank, ...contact }));
   const [errors, setErrors] = useState<TechSupportErrors>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -56,7 +57,7 @@ function RequestForm({ disabled }: { disabled: boolean }) {
     setBusy(true);
     try {
       await submit({ values: clean });
-      setValues(blank);
+      setValues({ ...blank, whatsapp: clean.whatsapp, discord: clean.discord });
       setNotice(`Permintaanmu terkirim. Tim Tech Support membalas paling lama ${techSupportResponseDays} hari kerja.`);
     } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
@@ -95,7 +96,7 @@ function RequestForm({ disabled }: { disabled: boolean }) {
       <div className="app-field-grid">
         <div className="app-field"><label htmlFor="support-whatsapp">Nomor WhatsApp {required}</label>
           <input id="support-whatsapp" type="tel" inputMode="tel" autoComplete="tel" required maxLength={24} value={values.whatsapp} onChange={(event) => update("whatsapp", event.target.value)} placeholder="0812 3456 7890" aria-invalid={Boolean(errors.whatsapp)} aria-describedby={described("whatsapp", "support-whatsapp-hint")} />
-          <p className="field-hint" id="support-whatsapp-hint">Nomor HP Indonesia. Pengelola Tech Support menghubungimu lewat WhatsApp.</p>{fieldError("whatsapp")}</div>
+          <p className="field-hint" id="support-whatsapp-hint">{contact.whatsapp ? "Dari permintaanmu sebelumnya. Ubah kalau nomormu berganti." : "Nomor HP Indonesia. Pengelola Tech Support menghubungimu lewat WhatsApp."}</p>{fieldError("whatsapp")}</div>
         <div className="app-field"><label htmlFor="support-discord">Username Discord <span className="field-optional">opsional</span></label>
           <input id="support-discord" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={40} value={values.discord} onChange={(event) => update("discord", event.target.value)} placeholder="username" aria-invalid={Boolean(errors.discord)} aria-describedby={described("discord", "support-discord-hint")} />
           <p className="field-hint" id="support-discord-hint">Tanpa @. Kosongkan kalau tidak ada.</p>{fieldError("discord")}</div>
@@ -111,11 +112,12 @@ function RequestForm({ disabled }: { disabled: boolean }) {
 export function TechSupportPage() {
   const rows = useQuery(api.techSupport.mine, {});
   const open = rows?.filter((row) => row.status !== "closed").length ?? 0;
+  const last = rows?.find((row) => row.whatsapp);
   return <>
     <div className="dash-intro"><p className="eyebrow">TECH SUPPORT</p><h1>Tech Support.</h1>
       <p>Sedang bersiap ikut kompetisi di luar komunitas? Ceritakan lomba dan progresmu, lalu GDGoC IPB mencarikan mentor yang cocok. Permintaan dibalas paling lama {techSupportResponseDays} hari kerja. <Link className="text-link" href="/program/tech-support">Lihat alur dan mentornya</Link>.</p></div>
     {rows === undefined ? <LoadingPanel label="Memuat permintaanmu…" /> : <div className="dash-support-layout">
-      <RequestForm disabled={open >= maxOpenRequests} />
+      <RequestForm disabled={open >= maxOpenRequests} contact={{ whatsapp: last?.whatsapp ?? "", discord: last?.discord ?? "" }} />
       <section aria-labelledby="support-mine-title" className="dash-support-mine">
         <h2 id="support-mine-title">Permintaanmu</h2>
         {!rows.length ? <div className="app-empty"><h3>Belum ada permintaan.</h3><p>Permintaan yang kamu kirim muncul di sini dengan statusnya dan nama mentor yang dicocokkan.</p></div>

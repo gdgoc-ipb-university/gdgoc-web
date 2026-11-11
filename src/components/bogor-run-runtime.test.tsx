@@ -187,8 +187,7 @@ describe("ranked runs", () => {
     expect(replayRun(7, inputs, endTick)).toMatchObject({ ok: true, crashed: true, score });
   });
 
-  // Fails today: pausing writes the running score to REKOR (#223). The fix turns this back into a plain `it`.
-  it.fails("counts only runs that ended toward REKOR: a paused run left behind never reached the server", async () => {
+  it("counts only runs that ended toward REKOR: a paused run left behind never reached the server", async () => {
     const finish = vi.fn<(run: FinishedRun) => void>();
     const game = await mount(true, { ticket: () => ({ seed: 3, token: "signed" }), finish });
     const mirror = startRun(3);

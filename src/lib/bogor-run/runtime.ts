@@ -124,6 +124,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
     });
   }
 
+  /** Raises REKOR. Only for runs that ended, the runs the leaderboard can receive (#223). */
   function remember() {
     const score = scoreOf(run);
     if (score <= best) return;
@@ -272,7 +273,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
     // Stand up first: inputs are ignored while paused, so a crouch held into the pause could never be released.
     if (run.ducking) input(INPUT.stand);
     run.phase = "paused";
-    remember(); schedule(); draw(); publish();
+    schedule(); draw(); publish();
   }
 
   function begin() {
@@ -360,7 +361,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
   return {
     action, duck, pause, adopt, restore,
     togglePause() { if (run.phase === "running") pause(); else if (run.phase === "paused") void action(); },
-    leave() { remember(); run = createRun(); entrance = 1; acc = 0; prevLift = 0; schedule(); draw(); publish(); },
+    leave() { run = createRun(); entrance = 1; acc = 0; prevLift = 0; schedule(); draw(); publish(); },
     toggleAutoplay() { ambientPaused = !ambientPaused; schedule(); publish(); },
     setVisible(value) { visible = value; if (!value) pause(); schedule(); publish(); },
     setReduced(value) { reduced = value; if (value) { entrance = 1; flashUntil = 0; } schedule(); draw(); publish(); },

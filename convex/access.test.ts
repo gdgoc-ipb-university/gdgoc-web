@@ -224,6 +224,7 @@ const OPEN: Record<string, string> = {
   "league.handOver": "own team, its captain (league.test.ts)", "league.removeMember": "own team, its captain",
   "league.rotateInvite": "own team, its captain", "league.rename": "own team, its captain", "league.changeTrack": "own team, its captain",
   "techSupport.mine": "own requests, active members", "techSupport.submit": "own request, active members (techSupport.test.ts)",
+  "discord.mine": "own Discord link, during onboarding too", "discord.unlink": "own Discord link, any signed-in account (discord.test.ts)",
 };
 
 beforeEach(() => vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "owner@example.com"));

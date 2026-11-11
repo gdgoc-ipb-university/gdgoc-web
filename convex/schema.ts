@@ -38,6 +38,7 @@ export const techSupportStatus = v.union(v.literal("new"), v.literal("matched"),
 export const cohortStatus = v.union(v.literal("setup"), v.literal("active"), v.literal("ended"));
 export const cohortRole = v.object({ key: v.string(), name: v.string() });
 export const leagueTrack = v.union(v.literal("software"), v.literal("uiux"), v.literal("business"));
+export const discordJoinStatus = v.union(v.literal("pending"), v.literal("joined"), v.literal("failed"));
 
 export default defineSchema({
   memberProfiles: defineTable({
@@ -267,6 +268,16 @@ export default defineSchema({
   leagueTeamMembers: defineTable({ teamId: v.id("leagueTeams"), season: v.string(), ownerId: v.string(), joinedAt: v.number() })
     .index("by_team", ["teamId", "joinedAt"])
     .index("by_owner", ["ownerId", "season"]),
+  // A member's linked Discord account (#242): one per member and one per Discord account. Written in the same transaction
+  // as Better Auth's account row (discordLinks.ts); the dashboard, staff and the role sync (#243) read this, never Better
+  // Auth's table. `username` comes from Discord on the first sync. `joinStatus` is the server join; `lastError` the last
+  // failure, in Indonesian, kept while retrying. `lastSyncedAt` is the last call to Discord that succeeded.
+  discordLinks: defineTable({
+    ownerId: v.string(), discordId: v.string(), username: v.optional(v.string()), linkedAt: v.number(),
+    joinStatus: discordJoinStatus, attempts: v.number(), lastSyncedAt: v.optional(v.number()), lastError: v.optional(v.string()),
+  })
+    .index("by_owner", ["ownerId"])
+    .index("by_discord", ["discordId"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,
@@ -295,6 +306,8 @@ export default defineSchema({
       leagueTeams: v.optional(v.number()),
       // Added with flag tasks (#240): solves and wrong-try counts.
       flagSolves: v.optional(v.number()), flagAttempts: v.optional(v.number()),
+      // Added with Discord linking (#242): the site's link; the Discord account itself counts under `accounts`.
+      discordLinks: v.optional(v.number()),
     }),
   }).index("by_deleted", ["deletedAt"]),
 });

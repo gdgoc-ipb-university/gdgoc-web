@@ -1,12 +1,28 @@
-import { createClient, type GenericCtx } from "@convex-dev/better-auth";
+import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth/minimal";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
+import { recordLink, removeLink } from "./discordLinks";
 
-export const authComponent = createClient<DataModel>(components.betterAuth);
+const authFunctions: AuthFunctions = internal.auth;
+
+/**
+ * Better Auth's tables live in its component. A Discord account row (#242) carries the site's `discordLinks` row with
+ * it: these triggers run in the same transaction as Better Auth's insert or delete.
+ */
+export const authComponent = createClient<DataModel>(components.betterAuth, {
+  authFunctions,
+  triggers: {
+    account: {
+      onCreate: async (ctx, doc) => { if (doc.providerId === "discord") await recordLink(ctx, doc); },
+      onDelete: async (ctx, doc) => { if (doc.providerId === "discord") await removeLink(ctx, doc.userId); },
+    },
+  },
+});
+export const { onCreate, onDelete } = authComponent.triggersApi();
 
 /** Owners are the verified emails in APPRECIATION_ADMIN_EMAILS; they are never stored in the database. */
 export function isOwner(email: string, verified: boolean) {

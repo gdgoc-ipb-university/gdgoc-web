@@ -4,9 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
+import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import { assignmentPath } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
+import { profileDraft } from "@/lib/profile-edit";
 import { LoadingPanel, StatusBadge, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
@@ -16,6 +18,7 @@ import { MemberAvatar } from "../member-avatar";
 import { AccessBadges, ActiveBadge, CommunityBadge, InstagramChanged, MemberActions, useMembersListHref } from "./members";
 import { AssignmentStatusBadge, ScoreBadge, SubmissionBadge } from "./shared";
 import { CopyIconButton } from "./data-table";
+import { ProfileForm } from "./profile-form";
 import { isStaff, useDashboardViewer } from "./viewer";
 
 /** One member's profile and activity for staff: submissions, Apresiasi, assignments they review, and the last access change. */
@@ -46,6 +49,8 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
       <div><dt>Kartu anggota</dt><dd>{member.card ? `${member.card.number}${member.card.revoked ? " · Diblokir" : ""}` : "Belum dibuka"}</dd></div>
       <div><dt>Perubahan akses terakhir</dt><dd>{member.accessUpdatedBy ?? "Belum pernah diubah"}</dd></div>
     </dl>
+    {/* The member hierarchy of the other tools here, which the server checks too (dashboard.correctProfile). */}
+    {member.ownerId !== viewer.id && (member.role === "member" || (viewer.role === "owner" && member.role === "admin")) && <CorrectProfile member={member} />}
 
     <section aria-labelledby="member-tasks"><div className="app-section-heading"><div><p className="eyebrow">TUGAS</p><h2 id="member-tasks">Kiriman tugas</h2></div><span className="app-small">{member.submissions.length} kiriman</span></div>
       {!member.submissions.length ? <p className="app-small">Belum ada kiriman tugas.</p>
@@ -74,6 +79,21 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
 
     {viewer.role === "owner" && member.role !== "owner" && member.ownerId !== viewer.id && <DeleteAccount ownerId={member.ownerId} fullName={member.fullName} />}
   </>;
+}
+
+/** Staff correct a member's name, school or campus, study program or Instagram (#235); each correction is logged for owners. */
+function CorrectProfile({ member }: { member: NonNullable<FunctionReturnType<typeof api.dashboard.member>> }) {
+  const correctProfile = useMutation(api.dashboard.correctProfile);
+  const [open, setOpen] = useState(false);
+  const [done, setDone] = useState(false);
+  return <section className="dash-correct-profile" aria-labelledby="correct-profile-title">
+    <div className="app-section-heading"><div><p className="eyebrow">STAF</p><h2 id="correct-profile-title">Koreksi profil</h2></div></div>
+    <p className="app-small">Perbaiki nama, sekolah atau kampus, jurusan, atau username Instagram, misalnya ejaan nama yang salah. Member bisa mengubahnya sendiri dari halaman Profil. Setiap koreksi dari sini tercatat di riwayat akses: siapa, kapan, dan bagian mana yang diubah.</p>
+    {open ? <div className="app-panel"><ProfileForm id="correct" who="staff" initial={profileDraft(member)} revision={member.revision} submitLabel="Simpan koreksi" savedLabel="Koreksi tersimpan."
+      save={(values, revision) => correctProfile({ ownerId: member.ownerId, revision, values })} onSaved={() => { setOpen(false); setDone(true); }} onCancel={() => setOpen(false)} /></div>
+      : <button type="button" className="dash-tool-button" onClick={() => { setOpen(true); setDone(false); }}><PixelIcon name="pencil" size={18} />Koreksi profil</button>}
+    <p className="app-small" role="status">{done && `Profil ${member.fullName} sudah dikoreksi.`}</p>
+  </section>;
 }
 
 /** Owners delete an account on the member's request (/privasi). Typing the name is the confirmation; the server checks it too. */

@@ -469,6 +469,10 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 /* Assignment reviewers */
 .dash-reviewers { margin-top: 28px; }
 .dash-reviewers > p { margin-bottom: 14px; }
+/* Koreksi profil on the member page (#235): a note and a button, opening the profile form in a panel. */
+.dash-correct-profile { margin-block: 20px 8px; }
+.dash-correct-profile > p.app-small { max-width: 72ch; margin-bottom: 14px; }
+.dash-correct-profile > .app-panel { max-width: 760px; }
 .dash-delete-account { margin-top: 40px; }
 .dash-delete-account > p { margin-bottom: 14px; }
 .dash-delete-account .app-field { margin-bottom: 10px; }

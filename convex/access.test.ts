@@ -155,6 +155,7 @@ const mutations: [string, Any, Role[], (ids: Ids) => object][] = [
   ["dashboard.deleteAccount", api.dashboard.deleteAccount, OWNER, (ids) => ({ ownerId: ids.member, confirmName: "Rania Putri" })],
   ["dashboard.setActive", api.dashboard.setActive, STAFF, (ids) => ({ ownerId: ids.member, active: false })],
   ["dashboard.setMemberType", api.dashboard.setMemberType, STAFF, (ids) => ({ ownerId: ids.member, memberType: "core", division: "Technical" })],
+  ["dashboard.correctProfile", api.dashboard.correctProfile, STAFF, (ids) => ({ ownerId: ids.member, revision: 4, values: { fullName: "Rania Putri Lestari", institutionKind: "campus", campus: "IPB University", studyProgram: "Ilmu Komputer", instagram: "rania" } })],
   ["assignments.create", api.assignments.create, STAFF, () => ({ values: { title: "Baru", description: "Isi.", dueAt: new Date(Date.now() + 99 * 3600000).toISOString().slice(0, 16) }, publish: false })],
   ["assignments.update", api.assignments.update, STAFF, (ids) => ({ id: ids.draft, revision: ids.draftRevision, values: { title: "Draft baru", description: "Belum.", dueAt: new Date(Date.now() + 99 * 3600000).toISOString().slice(0, 16) } })],
   ["assignments.setStatus", api.assignments.setStatus, STAFF, (ids) => ({ id: ids.draft, revision: ids.draftRevision, status: "published" })],

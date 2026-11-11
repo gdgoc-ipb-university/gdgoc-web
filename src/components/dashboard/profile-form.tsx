@@ -16,8 +16,12 @@ type Props = {
   revision: number;
   /** Saves normalised values against `revision` and returns the new revision; throws the server's refusal. */
   save: (values: ProfileValues, revision: number) => Promise<{ revision: number }>;
+  /** `self` speaks to the member about their own profile; `staff` to an admin correcting someone else's (#235). */
+  who?: "self" | "staff";
   submitLabel: string;
   savedLabel: string;
+  /** Called after a save, e.g. to close a correction form; the saved note shows until the next edit otherwise. */
+  onSaved?: () => void;
   onCancel?: () => void;
 };
 
@@ -31,9 +35,10 @@ function serverErrors(cause: unknown): OnboardingErrors | null {
 
 /**
  * Onboarding's answers as one dashboard form (#235): name, campus or school with onboarding's picker and lists, study
- * program, and Instagram, checked with onboarding's rules before saving.
+ * program, and Instagram, checked with onboarding's rules before saving. Used by the member on /dashboard/profil and by
+ * staff on the member page.
  */
-export function ProfileForm({ id, initial, revision: savedRevision, save, submitLabel, savedLabel, onCancel }: Props) {
+export function ProfileForm({ id, initial, revision: savedRevision, save, who = "self", submitLabel, savedLabel, onSaved, onCancel }: Props) {
   const [values, setValues] = useState<ProfileDraft>(initial);
   const [lists, setLists] = useState<Record<InstitutionKind, EducationOption[]>>({ campus: campusOptions, school: [] });
   const [wantsLists, setWantsLists] = useState(false);
@@ -88,6 +93,7 @@ export function ProfileForm({ id, initial, revision: savedRevision, save, submit
       revision.current = (await save(clean, revision.current)).revision;
       stored.current = clean;
       setValues(clean); setSaved(true);
+      onSaved?.();
     } catch (cause) {
       setErrors(serverErrors(cause) ?? {});
       setError(readableError(cause));
@@ -103,12 +109,12 @@ export function ProfileForm({ id, initial, revision: savedRevision, save, submit
     if (event.target === campus.current && event.key === "Enter" && !event.defaultPrevented && !event.nativeEvent.isComposing) { event.preventDefault(); studyProgram.current?.focus(); }
   }}>
     <fieldset disabled={busy}>
-      <div className="app-field"><label htmlFor={fieldId("fullName")}>Nama kamu {required}</label>
-        <input id={fieldId("fullName")} ref={fullName} name="name" autoComplete="name" autoCapitalize="words" enterKeyHint="next" maxLength={onboardingLimits.fullName} required value={values.fullName} onChange={(event) => update("fullName", event.target.value)} aria-invalid={Boolean(errors.fullName)} aria-describedby={described("fullName", true)} />
+      <div className="app-field"><label htmlFor={fieldId("fullName")}>{who === "self" ? "Nama kamu" : "Nama"} {required}</label>
+        <input id={fieldId("fullName")} ref={fullName} name="name" autoComplete={who === "self" ? "name" : "off"} autoCapitalize="words" enterKeyHint="next" maxLength={onboardingLimits.fullName} required value={values.fullName} onChange={(event) => update("fullName", event.target.value)} aria-invalid={Boolean(errors.fullName)} aria-describedby={described("fullName", true)} />
         <p className="field-hint" id={fieldId("fullName", "-hint")}>Nama ini dicetak di kartu anggota dan dipakai di sertifikat, Apresiasi, dan halaman tim. Tulis nama lengkap dengan ejaan yang benar.</p>
         {fieldError("fullName")}</div>
       <fieldset className="dash-audience-editor" aria-describedby={described("institutionKind")}>
-        <legend>Saat ini kamu {required}</legend>
+        <legend>{who === "self" ? "Saat ini kamu" : "Mahasiswa atau siswa"} {required}</legend>
         <div className="dash-audience-options">{institutionKinds.map((option, index) => <label className="dash-audience-option" key={option}>
           <input ref={index === 0 ? kindChoice : undefined} type="radio" name={fieldId("institutionKind")} checked={kind === option} onChange={() => chooseKind(option)} />{institutionKindLabels[option]}
         </label>)}</div>
@@ -119,8 +125,10 @@ export function ProfileForm({ id, initial, revision: savedRevision, save, submit
         <EducationCombobox appearance="field" key={`program-${kind}`} id={fieldId("studyProgram")} label={labels.program} options={kind === "school" ? schoolProgramOptions : studyProgramOptions} inputRef={studyProgram} value={values.studyProgram} onChange={(value) => update("studyProgram", value)} error={errors.studyProgram} disabled={busy} enterKeyHint="next" />
       </div>}
       <div className="app-field"><label htmlFor={fieldId("instagram")}>Username Instagram {required}</label>
-        <div className="dash-at-field"><span aria-hidden="true">@</span><input id={fieldId("instagram")} ref={instagram} name="instagram" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" maxLength={80} required value={values.instagram} onChange={(event) => update("instagram", event.target.value)} aria-invalid={Boolean(errors.instagram)} aria-describedby={described("instagram", true)} placeholder="usernamekamu" /></div>
-        <p className="field-hint" id={fieldId("instagram", "-hint")}>Akun untuk follow @gdgoc.ipb dan memasang twibbon. Pengurus bisa melihat kapan username ini terakhir diubah.</p>
+        <div className="dash-at-field"><span aria-hidden="true">@</span><input id={fieldId("instagram")} ref={instagram} name="instagram" autoComplete="off" autoCapitalize="none" autoCorrect="off" spellCheck={false} enterKeyHint="done" maxLength={80} required value={values.instagram} onChange={(event) => update("instagram", event.target.value)} aria-invalid={Boolean(errors.instagram)} aria-describedby={described("instagram", true)} placeholder={who === "self" ? "usernamekamu" : "username"} /></div>
+        <p className="field-hint" id={fieldId("instagram", "-hint")}>{who === "self"
+          ? "Akun untuk follow @gdgoc.ipb dan memasang twibbon. Pengurus bisa melihat kapan username ini terakhir diubah."
+          : "Akun yang dicek core team untuk follow @gdgoc.ipb dan twibbon. Menggantinya juga mencatat waktu penggantian Instagram."}</p>
         {fieldError("instagram")}</div>
     </fieldset>
     {error && <p className="field-error" role="alert">{error}</p>}

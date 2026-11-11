@@ -9,6 +9,8 @@ import { getView } from "./view";
 
 export type Snapshot = {
   phase: Phase; score: number; best: number; message: string; autoplay: boolean;
+  /** The personal run's tick, the stopwatch's game time: it holds while paused and comes back with a kept run (0 when idle). */
+  tick: number;
   /** The milestone the HUD is flashing (0 when none); never set under reduced motion. */
   flash: number;
   sound: boolean;
@@ -149,7 +151,7 @@ export async function mountRunner(canvas: HTMLCanvasElement, changed: (value: Sn
 
   function publish() {
     changed({
-      phase: run.phase, score: scoreOf(run), best, message: run.finished ? FINISH_MESSAGE : run.hit ? OBSTACLES[run.hit].label : "",
+      phase: run.phase, score: scoreOf(run), tick: run.tick, best, message: run.finished ? FINISH_MESSAGE : run.hit ? OBSTACLES[run.hit].label : "",
       autoplay: autoplay(), flash: run.phase === "running" && run.tick < flashUntil ? flash : 0, sound: sound.enabled, finished: run.finished,
     });
   }

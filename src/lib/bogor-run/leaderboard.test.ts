@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { isWeekKey, packInputs, shortName, unpackInputs, weekKey, weekLabel, weekStart } from "./leaderboard";
+import { TICK_RATE, LIMITS } from "./engine";
+import { formatRunTime, isoRunTime, isWeekKey, packInputs, shortName, spokenRunTime, unpackInputs, weekKey, weekLabel, weekStart } from "./leaderboard";
 
 const wib = (y: number, m: number, d: number, h = 0, min = 0) => Date.UTC(y, m - 1, d, h - 7, min);
 
@@ -65,5 +66,30 @@ describe("packed input logs", () => {
     for (const packed of ["x", "11,", ",11", "-11", "14", "1.51", "0A1", "123451", "1 1"]) expect(unpackInputs(packed, 20_000)).toBeNull();
     expect(unpackInputs(Array(11).fill("01").join(","), 20)).toBeNull();
     expect(unpackInputs(Array(10).fill("01").join(","), 20)).toHaveLength(20);
+  });
+});
+
+describe("run times", () => {
+  const seconds = (value: number) => value * TICK_RATE;
+
+  it("shows game time as mm:ss in whole seconds, up to the 1-hour finish", () => {
+    expect(formatRunTime(0)).toBe("00:00");
+    expect(formatRunTime(TICK_RATE - 1)).toBe("00:00");
+    expect(formatRunTime(TICK_RATE)).toBe("00:01");
+    expect(formatRunTime(seconds(65) + 119)).toBe("01:05");
+    expect(formatRunTime(seconds(10 * 60 - 1))).toBe("09:59");
+    expect(formatRunTime(seconds(59 * 60 + 59))).toBe("59:59");
+    expect(formatRunTime(LIMITS.maxTicks)).toBe("60:00");
+    for (const odd of [-5, Number.NaN, Number.POSITIVE_INFINITY]) expect(formatRunTime(odd)).toBe("00:00");
+  });
+
+  it("reads the time aloud in Indonesian and as an ISO duration", () => {
+    expect(spokenRunTime(0)).toBe("0 detik");
+    expect(spokenRunTime(seconds(45))).toBe("45 detik");
+    expect(spokenRunTime(seconds(60))).toBe("1 menit");
+    expect(spokenRunTime(seconds(65))).toBe("1 menit 5 detik");
+    expect(spokenRunTime(LIMITS.maxTicks)).toBe("60 menit");
+    expect(isoRunTime(seconds(65))).toBe("PT1M5S");
+    expect(isoRunTime(LIMITS.maxTicks)).toBe("PT60M0S");
   });
 });

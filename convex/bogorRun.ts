@@ -117,7 +117,7 @@ async function standings(ctx: QueryCtx, key: string, size: number, viewer: strin
   const listed = mine && ranked.find(({ row }) => row._id === mine._id);
   return {
     ranked,
-    you: mine ? { rank: mine.hidden ? null : listed ? listed.rank : await rankOf(ctx, key, mine.score), score: mine.score, hidden: mine.hidden } : null,
+    you: mine ? { rank: mine.hidden ? null : listed ? listed.rank : await rankOf(ctx, key, mine.score), score: mine.score, endTick: mine.endTick ?? null, hidden: mine.hidden } : null,
   };
 }
 
@@ -173,7 +173,8 @@ export const submitRun = mutation({
     if (now > claim.issuedAt + simMs + SUBMIT_WINDOW) return fail("EXPIRED");
     const inputs = typeof args.inputs === "string" ? unpackInputs(args.inputs, LIMITS.maxInputNumbers) : args.inputs;
     const replay = inputs && replayRun(claim.seed, inputs, endTick);
-    // A saved run ended on its last tick: a crash, or reaching LIMITS.maxTicks (the finish line).
+    // A saved run ended on its last tick: a crash, or reaching LIMITS.maxTicks (the finish line). Its length is the
+    // replay's, so the time kept with a best is never a number the client chose.
     if (!replay || !replay.ok || !(replay.crashed || replay.finished) || replay.score !== score) return fail("INVALID");
 
     const run = { ownerId: user._id, nonce: claim.nonce, seed: claim.seed, issuedAt: claim.issuedAt, endTick, score, week: weekKey(claim.issuedAt), submittedAt: now };
@@ -181,8 +182,8 @@ export const submitRun = mutation({
     const name = shortName(profile?.fullName || user.name), hidden = Boolean((await playerOf(ctx, user._id))?.hiddenAt); // Deactivated accounts never get here.
     for (const key of [run.week, "all"]) {
       const best = await bestOf(ctx, user._id, key);
-      if (!best) await ctx.db.insert("gameBests", { ownerId: user._id, period: key, score, name, achievedAt: now, hidden });
-      else if (score > best.score) await ctx.db.patch(best._id, { score, name, achievedAt: now, hidden });
+      if (!best) await ctx.db.insert("gameBests", { ownerId: user._id, period: key, score, name, achievedAt: now, hidden, endTick: replay.tick });
+      else if (score > best.score) await ctx.db.patch(best._id, { score, name, achievedAt: now, hidden, endTick: replay.tick });
       const stats = await statsOf(ctx, key);
       if (stats) await ctx.db.patch(stats._id, { players: stats.players + (best ? 0 : 1), runs: stats.runs + 1 });
       else await ctx.db.insert("gameStats", { period: key, players: 1, runs: 1 });
@@ -200,7 +201,7 @@ export const leaderboard = query({
     const viewer = user?.emailVerified ? user._id : null;
     const { ranked, you } = await standings(ctx, key, LEADERBOARD_SIZE, viewer);
     return {
-      key, entries: ranked.map(({ row, rank }) => ({ id: row._id, rank, name: row.name, score: row.score, you: row.ownerId === viewer })),
+      key, entries: ranked.map(({ row, rank }) => ({ id: row._id, rank, name: row.name, score: row.score, endTick: row.endTick ?? null, you: row.ownerId === viewer })),
       you, signedIn: Boolean(viewer),
     };
   },

@@ -211,11 +211,11 @@ describe("ranked runs", () => {
     drive(first, mirror, (run) => scoreOf(run) >= 300);
     window.dispatchEvent(new Event("pagehide")); // the reload
     if (mirror.ducking) applyInput(mirror, 3); // a pause stands the dino up, and logs it
-    expect(snapshot.phase).toBe("paused");
+    expect(snapshot).toMatchObject({ phase: "paused", tick: mirror.tick });
     first.dispose();
 
     const game = await mount(true, { ticket: () => null, finish }); // the reloaded page has no ticket ready yet
-    expect(snapshot).toMatchObject({ phase: "paused", score: scoreOf(mirror), best: 0 });
+    expect(snapshot).toMatchObject({ phase: "paused", score: scoreOf(mirror), tick: mirror.tick, best: 0 }); // the stopwatch picks up where it stood
     expect(game.action()).toBe("resume");
     expect(sessionStorage.getItem(PAUSED_KEY)).toBeNull();
     frame(); // the first frame after a resume only sets the clock
@@ -225,7 +225,26 @@ describe("ranked runs", () => {
     const run = finish.mock.calls[0][0];
     expect(run).toMatchObject({ seed: 9, token: "signed", score: scoreOf(mirror), endTick: mirror.tick });
     expect(replayRun(9, run.inputs, run.endTick)).toMatchObject({ ok: true, crashed: true, score: run.score });
-    expect(snapshot.best).toBe(run.score);
+    expect(snapshot).toMatchObject({ best: run.score, tick: run.endTick });
+  });
+
+  it("publishes the run's tick as the stopwatch: game time that stops while paused and resets with a new run", async () => {
+    const game = await mount(true, { ticket: () => ({ seed: 5, token: "signed" }) });
+    expect(snapshot.tick).toBe(0);
+    game.action(); frame(); // the first frame only sets the clock
+    advance(2);
+    expect(snapshot.tick).toBeGreaterThanOrEqual(2 * 120 - 30); // published at least every 120 ms while running
+    game.pause();
+    const paused = snapshot.tick;
+    expect(paused).toBe(2 * 120);
+    advance(3); window.dispatchEvent(new Event("blur"));
+    expect(snapshot).toMatchObject({ phase: "paused", tick: paused }); // wall-clock time while paused does not count
+    game.togglePause(); frame(); advance(1);
+    expect(snapshot.phase).toBe("running");
+    expect(snapshot.tick - paused).toBeGreaterThan(120 - 30); // counting again from where it stopped, never from zero
+    expect(snapshot.tick - paused).toBeLessThanOrEqual(120);
+    game.leave();
+    expect(snapshot).toMatchObject({ phase: "idle", tick: 0 });
   });
 
   it("drops a kept run that is too old to save or does not replay", async () => {

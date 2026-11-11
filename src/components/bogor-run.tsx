@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } fr
 import { useExperience } from "./experience-provider";
 import { Arrow } from "./icons";
 import { PixelIcon } from "./pixel-icons";
-import { weekKey, weekLabel } from "@/lib/bogor-run/leaderboard";
+import { formatRunTime, isoRunTime, spokenRunTime, weekKey, weekLabel } from "@/lib/bogor-run/leaderboard";
 import type { Board, Period, Saved } from "@/lib/bogor-run/online";
 import type { FinishedRun, Runner, Snapshot } from "@/lib/bogor-run/runtime";
 import { readSkin, type DinoSkin } from "@/lib/bogor-run/skin";
@@ -35,7 +35,7 @@ const CONSOLE_DINO = [
 ].join("\n");
 let hinted = false;
 
-const initial: Snapshot = { phase: "idle", score: 0, best: 0, message: "", autoplay: false, flash: 0, sound: true, finished: false };
+const initial: Snapshot = { phase: "idle", score: 0, tick: 0, best: 0, message: "", autoplay: false, flash: 0, sound: true, finished: false };
 const number = (value: number) => String(value).padStart(3, "0");
 const PERIODS: readonly { id: Period; label: string }[] = [{ id: "week", label: "Minggu ini" }, { id: "all", label: "Sepanjang masa" }];
 const BOARD_TTL = 30_000;
@@ -56,6 +56,13 @@ const loadOnline = () => onlineLoad ??= import("@/lib/bogor-run/online")
   .catch(() => { onlineLoad = null; return null; });
 
 const rankOf = (rank: number | null) => rank === null ? "1000+" : `#${rank}`;
+/** A best's saved run time, or a dash for bests saved before times were kept (#232). */
+function RunTime({ endTick }: { endTick: number | null }) {
+  return <span className={styles.time}>
+    {endTick == null ? <><span aria-hidden="true">–</span><span className={styles.srOnly}>waktu tidak tercatat</span></>
+      : <time dateTime={isoRunTime(endTick)}><span aria-hidden="true">{formatRunTime(endTick)}</span><span className={styles.srOnly}>waktu {spokenRunTime(endTick)}</span></time>}
+  </span>;
+}
 /** The server files a run under the week its ticket was issued in, so a run begun late on Sunday lands on last week. */
 function savedText({ week }: Saved, now = Date.now()) {
   const when = week.key < weekKey(now) ? "minggu lalu" : "minggu ini";
@@ -95,7 +102,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
   const [closedFor, setClosedFor] = useState(snapshot.phase);
   const [hint, setHint] = useState(false);
   const [notice, setNotice] = useState("");
-  const { phase, score, best, message, autoplay, flash, sound, finished } = snapshot;
+  const { phase, score, tick, best, message, autoplay, flash, sound, finished } = snapshot;
   const playing = phase !== "idle";
   // The board opens on every pause and game over; closing it only lasts until the phase changes.
   if (closedFor !== phase) { setClosedFor(phase); setClosed(false); }
@@ -290,7 +297,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
 
   const label = phase === "running" ? "Lompat" : phase === "paused" ? "Lanjut main" : phase === "over" ? "Main lagi" : "Ikut main";
   const announcement = phase === "over"
-    ? `${message} Skor ${score}. Rekor ${best}. Main lagi kalau mau.`
+    ? `${message} Skor ${score}. Waktu ${spokenRunTime(tick)}. Rekor ${best}. Main lagi kalau mau.`
     : phase === "paused" ? "Permainan dijeda. Pilih Lanjut main untuk meneruskan."
     : phase === "running" ? "Sekarang giliranmu. Spasi atau panah atas untuk lompat, tahan panah bawah untuk menunduk. P untuk jeda."
     : "";
@@ -300,7 +307,7 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
     : save.kind === "guest" ? save.error ?? "Skor belum tersimpan. Masuk dengan akun Google untuk menyimpannya."
     : save.kind === "error" ? save.message
     : save.kind === "unranked" ? UNRANKED[save.reason] : "";
-  const summary = phase !== "over" ? "Lanjut kapan pun kamu siap." : finished ? `Kamu bertahan satu jam penuh: ${score} poin.` : `Kamu dapat ${score} poin.`;
+  const summary = phase !== "over" ? "Lanjut kapan pun kamu siap." : finished ? `Kamu bertahan satu jam penuh: ${score} poin.` : `Kamu dapat ${score} poin dalam ${formatRunTime(tick)}.`;
 
   function focusGame() { action.current?.focus({ preventScroll: true }); }
 
@@ -401,8 +408,9 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
         </div>}
 
         {playing && <>
-          <div className={styles.hud} aria-label="Skor permainan">
+          <div className={styles.hud} aria-label="Skor dan waktu permainan">
             <span>SKOR <b data-flash={flash ? "" : undefined}>{number(flash || score)}</b></span><span>REKOR <b>{number(best)}</b></span>
+            <span>WAKTU <b><time dateTime={isoRunTime(tick)}>{formatRunTime(tick)}</time></b></span>
           </div>
           <button
             type="button"
@@ -551,11 +559,12 @@ export function BogorRun({ invitation, children }: { invitation?: ReactNode; chi
                 {entries.map((entry) => <li key={entry.id} data-you={entry.you || undefined}>
                   <span className={styles.rank}>{String(entry.rank).padStart(2, "0")}</span>
                   <span className={styles.name}>{entry.name}{entry.you && <em> · kamu</em>}</span>
+                  <RunTime endTick={entry.endTick} />
                   <b>{entry.score}</b>
                 </li>)}
               </ol>}
             {shown?.board?.signedIn && !youListed && <p className={styles.you}>
-              {you ? <>Kamu <span>{you.hidden ? "disembunyikan admin" : `peringkat ${rankOf(you.rank)}`}</span><b>{you.score}</b></> : <>Kamu <span>belum ada skor {period === "week" ? "minggu ini" : "tersimpan"}</span></>}
+              {you ? <>Kamu <span>{you.hidden ? "disembunyikan admin" : `peringkat ${rankOf(you.rank)}`}</span><RunTime endTick={you.endTick} /><b>{you.score}</b></> : <>Kamu <span>belum ada skor {period === "week" ? "minggu ini" : "tersimpan"}</span></>}
             </p>}
           </div>
           <Link href="/dashboard/papan-skor" className={styles.more}>Lihat 100 besar <Arrow /></Link>

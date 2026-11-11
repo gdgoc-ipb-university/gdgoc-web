@@ -26,8 +26,8 @@ const weekBoard = board([
   entry("b", 2, "Bima S.", 812, { you: true }),
   entry("c", 2, "Rania P.", 812),
   entry("d", 4, "Dimas R.", 57),
-], { you: { rank: 2, score: 812, hidden: false }, stats: { players: 187, runs: 2210 } });
-const allBoard = board([entry("e", 1, "Nadia K.", 4820), entry("f", 2, "Fajar M.", 3900)], { key: "all", you: { rank: 154, score: 90, hidden: false }, stats: { players: 1432, runs: 18604 } });
+], { you: { rank: 2, score: 812, endTick: null, hidden: false }, stats: { players: 187, runs: 2210 } });
+const allBoard = board([entry("e", 1, "Nadia K.", 4820), entry("f", 2, "Fajar M.", 3900)], { key: "all", you: { rank: 154, score: 90, endTick: null, hidden: false }, stats: { players: 1432, runs: 18604 } });
 // The owner's view: every row but their own can be hidden; one hidden player is kept off only by a deactivated account.
 const joko = hiddenEntry("x", "Joko C.", 999999);
 const wati = hiddenEntry("w", "Wati S.", 640, { hiddenAt: null, hiddenBy: null, hiddenByRole: null, inactive: true, canRestore: false });
@@ -36,7 +36,7 @@ const ownerBoard = board([
   entry("a", 1, "Cici L.", 1204, { canHide: true }),
   entry("b", 2, "Bima S.", 812, { you: true }),
   entry("c", 3, "Rania P.", 700, { canHide: true }),
-], { canModerate: true, hiddenEntries: [joko, wati, eko], you: { rank: 2, score: 812, hidden: false } });
+], { canModerate: true, hiddenEntries: [joko, wati, eko], you: { rank: 2, score: 812, endTick: null, hidden: false } });
 // An admin's view of the same board: owner and admin rows, and players an owner hid, are out of reach.
 const adminBoard = board([
   entry("a", 1, "Cici L.", 1204, { canHide: true }),
@@ -115,10 +115,10 @@ describe("Bogor Run leaderboard page", () => {
   });
 
   it("says 1.000+ past the counted ranks and explains a hidden score", () => {
-    const { unmount } = show({ boards: { week: { ...weekBoard, you: { rank: null, score: 3, hidden: false } }, all: allBoard } });
+    const { unmount } = show({ boards: { week: { ...weekBoard, you: { rank: null, score: 3, endTick: null, hidden: false } }, all: allBoard } });
     expect(screen.getByText("Peringkatmu minggu ini").nextElementSibling?.textContent).toBe("1.000+");
     unmount();
-    show({ boards: { week: board([entry("a", 1, "Cici L.", 1204)], { you: { rank: null, score: 812, hidden: true } }), all: allBoard } });
+    show({ boards: { week: board([entry("a", 1, "Cici L.", 1204)], { you: { rank: null, score: 812, endTick: null, hidden: true } }), all: allBoard } });
     expect(screen.getByText("Peringkatmu minggu ini").nextElementSibling?.textContent).toBe("—");
     expect(screen.getByText(/Skormu sedang disembunyikan admin/)).toBeTruthy();
     expect(screen.getByText("Skor terbaik 812 · disembunyikan")).toBeTruthy();

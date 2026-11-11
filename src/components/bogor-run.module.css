@@ -103,14 +103,15 @@
 .list { flex: 1 1 auto; min-height: 66px; overflow-y: auto; overscroll-behavior: contain; padding: 2px 14px 8px; background: var(--shadows); }
 .list:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
 .list ol { list-style: none; margin: 0; padding: 0; }
-.list li, .you { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto; align-items: baseline; gap: 8px; padding: 0 6px; font-size: 12px; line-height: 20px; }
+.list li, .you { display: grid; grid-template-columns: 24px minmax(0, 1fr) auto auto; align-items: baseline; gap: 8px; padding: 0 6px; font-size: 12px; line-height: 20px; }
 .list li + li { border-top: 1px dotted #d5dcc4; }
 .list li[data-you] { background: #fff3ce; box-shadow: inset 3px 0 #518b43; }
 .rank { color: #68735f; font: 500 10px/20px var(--font-mono), monospace; }
 .name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .name em { font-style: normal; color: #4b6246; font-size: 11px; }
 .list b, .you b { font: 500 12px/20px var(--font-mono), monospace; color: #274934; font-variant-numeric: tabular-nums; }
-.you { grid-template-columns: auto minmax(0, 1fr) auto; margin-top: 6px; padding-block: 4px; border-top: 1px solid #b9c79b; font-weight: 500; }
+.time { color: #68735f; font: 400 11px/20px var(--font-mono), monospace; font-variant-numeric: tabular-nums; text-align: right; }
+.you { grid-template-columns: auto minmax(0, 1fr) auto auto; margin-top: 6px; padding-block: 4px; border-top: 1px solid #b9c79b; font-weight: 500; }
 .you span { color: #58684d; font-weight: 400; }
 .empty { padding: 10px 6px; font-size: 12px; line-height: 1.6; color: #58684d; }
 .more { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; min-height: 40px; padding: 8px 14px; border-top: 1px solid #d5dcc4; color: #23452f; font-size: 12px; }
@@ -159,7 +160,8 @@
   .world[data-playing="true"] .instructions { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   /* The ground is 2px above the buttons (view.ts), so their focus ring stays inside them, off the dino's feet. */
   .world[data-playing="true"] .actions button:focus-visible { outline-offset: -4px; }
-  .hud { top: 220px; left: var(--gutter); right: auto; gap: 22px; }.hud b { font-size: 20px; }
+  /* Three readouts: the gaps shrink on narrow phones, and a 5-digit score on the narrowest wraps WAKTU rather than overflow. */
+  .hud { top: 220px; left: var(--gutter); right: var(--gutter); flex-wrap: wrap; gap: 2px clamp(12px, 4vw, 22px); }.hud b { font-size: 20px; margin-left: clamp(5px, 2vw, 9px); }
   .tapArea, .zones { top: 280px; bottom: 50px; }
   .result { inset: 280px var(--gutter) auto; }.result span { font-size: 11px; }
   /* The open board takes the arena: the title and score step aside (the sheet repeats the score) and the back link moves up. */

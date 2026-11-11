@@ -125,8 +125,8 @@ describe("Bogor Run score submission", () => {
     });
     const board = await rania.query(api.bogorRun.leaderboard, { period: "week" });
     expect(board).toEqual({
-      key: "2026-09-28", signedIn: true, you: { rank: 1, score: played.score, hidden: false },
-      entries: [{ id: expect.any(String), rank: 1, name: "Rania P.", score: played.score, you: true }],
+      key: "2026-09-28", signedIn: true, you: { rank: 1, score: played.score, endTick: played.endTick, hidden: false },
+      entries: [{ id: expect.any(String), rank: 1, name: "Rania P.", score: played.score, endTick: played.endTick, you: true }],
     });
     expect(await t.query(api.bogorRun.leaderboard, { period: "all" })).toMatchObject({ key: "all", signedIn: false, you: null, entries: [{ name: "Rania P.", you: false }] });
     expect(await t.run((ctx) => ctx.db.query("gameRuns").collect())).toMatchObject([{ ownerId: rania.id, seed: issued.seed, issuedAt: T0, score: played.score, week: "2026-09-28" }]);
@@ -267,13 +267,43 @@ describe("Bogor Run standings", () => {
     expect(await submit(rania, better, betterRun)).toMatchObject({ week: { best: betterRun.score, improved: true }, all: { best: betterRun.score, improved: true } });
 
     const lastWeek = await rania.query(api.bogorRun.leaderboard, { period: "week", week: "2026-09-28" });
-    expect(lastWeek.entries).toEqual([{ id: expect.any(String), rank: 1, name: "Rania P.", score: highRun.score, you: true }]);
+    expect(lastWeek.entries).toEqual([{ id: expect.any(String), rank: 1, name: "Rania P.", score: highRun.score, endTick: highRun.endTick, you: true }]);
     const thisWeek = await rania.query(api.bogorRun.leaderboard, { period: "week" });
     expect(thisWeek).toMatchObject({ key: "2026-10-05", entries: [{ name: "Rania K.", score: betterRun.score }] });
     expect((await rania.query(api.bogorRun.board, { period: "week" })).stats).toEqual({ players: 1, runs: 3 });
     expect((await rania.query(api.bogorRun.board, { period: "all" })).stats).toEqual({ players: 1, runs: 4 });
     await expect(rania.query(api.bogorRun.leaderboard, { period: "week", week: "2026-10-06" })).rejects.toThrow("tidak valid");
     expect((await rania.query(api.bogorRun.leaderboard, { period: "all", week: "bukan" })).key).toBe("all");
+  });
+
+  it("keeps each best's server-replayed run time, changing it only with the best, and a dash's null for older bests", async () => {
+    const t = setup(); const rania = await account(t, "rania@example.com", { name: "Rania Putri" });
+    const bima = await account(t, "bima@example.com", { name: "Bima Sakti" });
+    const times = async (user: Pick<Test, "query">, period: "week" | "all") => {
+      const board = await user.query(api.bogorRun.leaderboard, { period });
+      return { entries: board.entries.map(({ name, score, endTick }) => [name, score, endTick]), you: board.you && [board.you.score, board.you.endTick] };
+    };
+    const first = play(31, 20);
+    await submit(rania, await tokenFor(31, Date.now()), first);
+    expect(await times(rania, "week")).toEqual({ entries: [["Rania P.", first.score, first.endTick]], you: [first.score, first.endTick] });
+
+    // A lower run keeps the best and its time; a client-reported endTick never reaches the board, only the replay's.
+    const lower = play(32);
+    expect(lower.score).toBeLessThan(first.score);
+    await submit(rania, await tokenFor(32, Date.now()), lower);
+    expect(await times(rania, "all")).toEqual({ entries: [["Rania P.", first.score, first.endTick]], you: [first.score, first.endTick] });
+    const forged = await tokenFor(33, Date.now()), better = play(33, 40);
+    expect(better.score).toBeGreaterThan(first.score);
+    expect(await submit(rania, forged, better, { endTick: better.endTick + 120 })).toMatchObject({ ok: false, code: "INVALID" });
+    await submit(rania, forged, better);
+    const best = (await t.run((ctx) => ctx.db.query("gameBests").collect())).map(({ period, score, endTick }) => [period, score, endTick]);
+    expect(best).toEqual([[weekKey(T0), better.score, better.endTick], ["all", better.score, better.endTick]]);
+
+    // Bests saved before times were kept have none, until the player's next best.
+    await t.run(async (ctx) => {
+      await ctx.db.insert("gameBests", { ownerId: bima.id, period: weekKey(T0), score: 5, name: "Bima S.", achievedAt: T0, hidden: false });
+    });
+    expect(await times(bima, "week")).toEqual({ entries: [["Rania P.", better.score, better.endTick], ["Bima S.", 5, null]], you: [5, null] });
   });
 
   it("ranks ties together, earliest first, and hides moderated players from the public", async () => {
@@ -296,7 +326,7 @@ describe("Bogor Run standings", () => {
 
     expect(ranks(await t.query(api.bogorRun.leaderboard, { period: "week" }))).toEqual([["Bima S.", 1], ["Rania P.", 1]]);
     expect(ranks(await t.query(api.bogorRun.leaderboard, { period: "all" }))).toEqual([["Bima S.", 1], ["Rania P.", 1]]);
-    expect((await cici.query(api.bogorRun.leaderboard, { period: "week" })).you).toEqual({ rank: null, score: topRun.score, hidden: true });
+    expect((await cici.query(api.bogorRun.leaderboard, { period: "week" })).you).toEqual({ rank: null, score: topRun.score, endTick: topRun.endTick, hidden: true });
     const staffView = await owner.query(api.bogorRun.board, { period: "week" });
     expect(staffView).toMatchObject({ canModerate: true, stats: { players: 3, runs: 3 }, you: null });
     expect(staffView.entries.map(({ name, rank, hidden, canHide }) => [name, rank, hidden, canHide])).toEqual([["Bima S.", 1, false, true], ["Rania P.", 1, false, true]]);
@@ -340,7 +370,7 @@ describe("Bogor Run standings", () => {
     const run = play(31);
     expect(run.score).toBeLessThan(400);
     expect(await submit(rania, await tokenFor(31, Date.now()), run)).toMatchObject({ all: { rank: null } });
-    expect((await rania.query(api.bogorRun.leaderboard, { period: "all" })).you).toEqual({ rank: null, score: run.score, hidden: false });
+    expect((await rania.query(api.bogorRun.leaderboard, { period: "all" })).you).toEqual({ rank: null, score: run.score, endTick: run.endTick, hidden: false });
   });
 
   it("never exposes owner ids or emails", async () => {
@@ -396,7 +426,7 @@ describe("Bogor Run moderation", () => {
     expect((await cici.query(api.bogorRun.board, { period: "all" })).hiddenEntries).toEqual([]);
     await owner.mutation(api.bogorRun.setHidden, { entryId: staff.hiddenEntries[0].id, hidden: false });
     expect((await owner.query(api.bogorRun.board, { period: "all" })).hiddenEntries).toEqual([]);
-    expect((await cici.query(api.bogorRun.leaderboard, { period: "all" })).you).toEqual({ rank: BOARD_SIZE + 6, score: run.score, hidden: false });
+    expect((await cici.query(api.bogorRun.leaderboard, { period: "all" })).you).toEqual({ rank: BOARD_SIZE + 6, score: run.score, endTick: run.endTick, hidden: false });
   });
 
   it("follows the dashboard hierarchy: admins moderate members only, never themselves, and cannot undo an owner", async () => {

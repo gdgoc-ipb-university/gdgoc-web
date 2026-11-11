@@ -23,21 +23,21 @@ vi.mock("./experience-provider", () => ({ useExperience: () => ({ animated: true
 let publish: (snapshot: Snapshot) => void;
 let hooks: RunnerOptions;
 let visibility: IntersectionObserverCallback;
-const running: Snapshot = { phase: "running", score: 12, best: 20, message: "", autoplay: false, flash: 0, sound: true, finished: false };
-const over: Snapshot = { ...running, phase: "over", score: 42, best: 42, message: "Angkot duluan!" };
+const running: Snapshot = { phase: "running", score: 12, tick: 65 * 120 + 30, best: 20, message: "", autoplay: false, flash: 0, sound: true, finished: false };
+const over: Snapshot = { ...running, phase: "over", score: 42, tick: 4 * 120, best: 42, message: "Angkot duluan!" };
 const finished: FinishedRun = { seed: 7, token: "signed", inputs: [120, 1], endTick: 480, score: 42 };
 // The current WIB week, so "minggu ini" stays true on any date; the "minggu lalu" test uses a 2020 key.
 const thisWeek = weekKey(Date.now());
 const week = (signedIn = false): Board => ({
   key: thisWeek, signedIn,
   entries: [
-    { id: "a" as Board["entries"][number]["id"], rank: 1, name: "Cici L.", score: 677, you: false },
-    { id: "b" as Board["entries"][number]["id"], rank: 2, name: "Bima S.", score: 57, you: signedIn },
-    { id: "c" as Board["entries"][number]["id"], rank: 2, name: "Rania P.", score: 57, you: false },
+    { id: "a" as Board["entries"][number]["id"], rank: 1, name: "Cici L.", score: 677, endTick: 125 * 120, you: false },
+    { id: "b" as Board["entries"][number]["id"], rank: 2, name: "Bima S.", score: 57, endTick: 14 * 120, you: signedIn },
+    { id: "c" as Board["entries"][number]["id"], rank: 2, name: "Rania P.", score: 57, endTick: null, you: false },
   ],
-  you: signedIn ? { rank: 2, score: 57, hidden: false } : null,
+  you: signedIn ? { rank: 2, score: 57, endTick: 14 * 120, hidden: false } : null,
 });
-const allTime: Board = { key: "all", signedIn: true, entries: [{ id: "d" as Board["entries"][number]["id"], rank: 1, name: "Dimas W.", score: 4210, you: false }], you: { rank: 23, score: 1210, hidden: false } };
+const allTime: Board = { key: "all", signedIn: true, entries: [{ id: "d" as Board["entries"][number]["id"], rank: 1, name: "Dimas W.", score: 4210, endTick: 3600 * 120, you: false }], you: { rank: 23, score: 1210, endTick: 95 * 120, hidden: false } };
 const saved: Saved = { ok: true, score: 42, week: { key: thisWeek, best: 42, rank: 3, improved: true }, all: { best: 1204, rank: 17, improved: false } };
 
 beforeEach(() => {
@@ -138,9 +138,29 @@ describe("footer game controls", () => {
     expect(game.togglePause).toHaveBeenCalledOnce();
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Lanjut main: Bogor Run" }));
     act(() => publish(over));
-    expect(announcements()).toContain("Skor 42. Rekor 42.");
+    expect(announcements()).toContain("Skor 42. Waktu 4 detik. Rekor 42.");
     await userEvent.click(screen.getByRole("button", { name: "Main lagi: Bogor Run" }));
     expect(game.action).toHaveBeenCalledOnce();
+  });
+
+  it("runs a game-time stopwatch beside SKOR and REKOR that holds while paused and ends on the game-over panel", async () => {
+    render(<BogorRun/>); await ready();
+    const hud = () => screen.getByLabelText("Skor dan waktu permainan");
+    act(() => publish({ ...running, tick: 0 }));
+    expect(hud().textContent).toBe("SKOR 012REKOR 020WAKTU 00:00");
+    act(() => publish(running)); // 65.25 s of ticks
+    const clock = within(hud()).getByText("01:05");
+    expect(clock.getAttribute("datetime")).toBe("PT1M5S");
+    act(() => publish({ ...running, phase: "paused" })); // a pause (or a kept run after a reload) carries its tick
+    expect(within(hud()).getByText("01:05")).toBeTruthy();
+    expect(announcements()).not.toContain("01:05"); // the ticking clock is never announced
+    act(() => publish({ ...running, tick: 3599 * 120 + 119 }));
+    expect(within(hud()).getByText("59:59")).toBeTruthy();
+    act(() => publish({ ...over, tick: 432_000, finished: true, message: "Selesai! 1 jam penuh" }));
+    expect(within(hud()).getByText("60:00")).toBeTruthy();
+    expect(announcements()).toContain("Waktu 60 menit.");
+    act(() => publish(over));
+    expect(screen.getAllByText("Kamu dapat 42 poin dalam 00:04.").length).toBeGreaterThan(0); // on the stage and in the panel
   });
 
   it("toggles sound with a pressed-state button while playing", async () => {
@@ -211,7 +231,7 @@ describe("footer game controls", () => {
     expect(fireEvent.mouseDown(screen.getByText("Gabung member"))).toBe(true); // idle copy stays selectable
     act(() => publish(running));
     const arena = screen.getByRole("region", { name: /^Bogor Run/ });
-    expect(fireEvent.mouseDown(screen.getByLabelText("Skor permainan"))).toBe(false);
+    expect(fireEvent.mouseDown(screen.getByLabelText("Skor dan waktu permainan"))).toBe(false);
     expect(fireEvent.mouseDown(arena)).toBe(false);
     expect(fireEvent.mouseDown(screen.getByRole("button", { name: "Kembali ke komunitas" }))).toBe(true);
   });
@@ -283,6 +303,12 @@ describe("leaderboard panel", () => {
     const list = await within(panel).findByRole("tabpanel");
     await within(list).findByText("Cici L.");
     expect(within(list).getAllByText("02")).toHaveLength(2); // ties share a rank
+    // Each best shows its saved run time, and older bests saved without one show a dash.
+    const rows = within(list).getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "01Cici L.02:05waktu 2 menit 5 detik677", "02Bima S.00:14waktu 14 detik57", "02Rania P.–waktu tidak tercatat57",
+    ]);
+    expect(within(rows[0]).getByText("02:05").closest("time")?.getAttribute("datetime")).toBe("PT2M5S");
     expect(online.leaderboard).toHaveBeenCalledWith("week");
     expect(within(panel).getByText(weekLabel(thisWeek))).toBeTruthy();
     expect(within(panel).getByRole("link", { name: /Lihat 100 besar/ }).getAttribute("href")).toBe("/dashboard/papan-skor");
@@ -296,6 +322,8 @@ describe("leaderboard panel", () => {
     expect(online.leaderboard).toHaveBeenLastCalledWith("all");
     await within(panel).findByText("Dimas W.");
     expect(within(panel).getByText("peringkat #23")).toBeTruthy(); // your rank outside the top 10
+    expect(within(panel).getByText("60:00")).toBeTruthy(); // a best that lasted the full hour
+    expect(within(panel).getByText("peringkat #23").parentElement?.textContent).toBe("Kamu peringkat #2301:35waktu 1 menit 35 detik1210");
 
     await user.click(toggle);
     expect(panel.hidden).toBe(true);

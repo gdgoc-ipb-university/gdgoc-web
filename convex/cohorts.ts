@@ -9,6 +9,7 @@ import { cohortRole, cohortStatus } from "./schema";
 import { catalystCohort, inCohortRoles, normalizeCohort, normalizeEmail, normalizeTeamName, teamNameProblem, validateCohort, type CohortValues } from "../src/lib/cohort";
 import { importBatch, importLimits, isEmail } from "../src/lib/enrolment-import";
 import { isLate } from "../src/lib/assignment";
+import { solveOf } from "./flags";
 
 const cohortInput = v.object({ slug: v.string(), name: v.string(), roles: v.array(cohortRole), attendanceTarget: v.optional(v.number()) });
 
@@ -474,9 +475,10 @@ export const mine = query({
         .sort((a, b) => a.dueAt - b.dueAt);
       const tasks = await Promise.all(open.map(async (assignment) => {
         const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
+        const solve = assignment.kind === "flag" ? await solveOf(ctx, assignment._id, user._id) : null;
         return {
-          _id: assignment._id, slug: assignment.slug, title: assignment.title, dueAt: assignment.dueAt,
-          submittedAt: mine?.submittedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false, revisionRequestedAt: mine?.revisionRequestedAt ?? null,
+          _id: assignment._id, slug: assignment.slug, title: assignment.title, dueAt: assignment.dueAt, kind: assignment.kind ?? null, points: solve?.points ?? null,
+          submittedAt: mine?.submittedAt ?? solve?.solvedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false, revisionRequestedAt: mine?.revisionRequestedAt ?? null,
         };
       }));
       return {

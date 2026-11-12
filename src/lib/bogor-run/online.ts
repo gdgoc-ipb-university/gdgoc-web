@@ -37,8 +37,9 @@ const convex = () => client ??= connect();
 let anonymous: ConvexHttpClient | null = null;
 /**
  * Tickets need no sign-in, so they come from a client that never carries the player's token (#226). That token expires
- * after 15 minutes and Convex refuses any call that sends it expired, so renewals would fail and the next run start
- * unranked. The HTTP client also runs mutations one at a time, so a ticket never waits behind a save either.
+ * after an hour (TOKEN_SECONDS in convex/auth.ts) and Convex refuses any call that sends it expired, so renewals would
+ * fail and the next run start unranked. The HTTP client also runs mutations one at a time, so a ticket never waits
+ * behind a save either.
  */
 const tickets = () => anonymous ??= connect();
 

@@ -108,7 +108,7 @@ describe("tickets", () => {
     await online.signedIn(true); // a save signs the client in
     const stop = online.keepTicketFresh();
     await vi.advanceTimersByTimeAsync(0);
-    convex.expired.add("jwt"); // no save or board load for 15 minutes: a break, a long pause or a long run
+    convex.expired.add("jwt"); // no save or board load for an hour: a break, a long pause or a long run
     await vi.advanceTimersByTimeAsync(20 * MINUTE);
     expect(online.takeTicket()).toEqual({ seed: 3, token: "t3" }); // renewed at 9.5 and 19 minutes
     stop();

@@ -60,6 +60,7 @@ Before you change anything, read `docs/CONTRIBUTING.md`: how work starts on an i
 | `NEXT_PUBLIC_LEAGUE_URL` | `.env.local`; Vercel | Tech League's own origin. Its host is served from `src/app/league` and `/program/tech-league` redirects there; unset, the league is previewed at `/league` | Optional |
 | `DEV_ALLOWED_ORIGINS` | `.env.local` | Comma-separated hostnames (for example a Cloudflare tunnel) allowed to reach `next dev` | Optional |
 | `BETTER_AUTH_SECRET` | Convex deployment | Signs sessions and Bogor Run tokens; unique per deployment | Yes for sign-in; without it the game plays unranked |
+| `JWKS` | Convex deployment, from `pnpm exec convex run auth:getLatestJwks \| pnpm exec convex env set JWKS` (add `--prod` to both for production) | The key that signs Convex tokens, so Convex checks tokens without fetching it and minting reads no table; applies without a deploy (#269) | Optional; saves Convex function calls. Unset, the key is read from the database |
 | `SITE_URL` | Convex deployment | The origin Better Auth runs on; Google returns there | Yes for sign-in |
 | `LEAGUE_URL` | Convex deployment | Tech League's origin, trusted as an origin and as a sign-in `callbackURL` | With `NEXT_PUBLIC_LEAGUE_URL` |
 | `AUTH_COOKIE_DOMAIN` | Convex deployment | Parent domain of both hosts (`gdgocipb.com`); auth cookies go there so one session covers both | With `NEXT_PUBLIC_LEAGUE_URL` |

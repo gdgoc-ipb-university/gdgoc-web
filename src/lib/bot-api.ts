@@ -104,10 +104,31 @@ export function programEvents(catalystOnHold = catalyst.scheduleOnHold) {
 }
 export type ProgramEvent = ReturnType<typeof programEvents>[number];
 
-/** An event as the bot gets it, with its program's page. */
-export function eventView(event: ProgramEvent, links: SiteLinks) {
+/** What makes an event new to the bot when it changes: its dates and its text. */
+export function eventContent(event: ProgramEvent) {
+  return JSON.stringify([event.title, event.phase, event.note, event.start, event.end]);
+}
+
+/**
+ * An event as the bot gets it, with its program's page and when the site first served it as it is now (null for the
+ * events already there when the API first ran).
+ */
+export function eventView(event: ProgramEvent, links: SiteLinks, updatedAt: number | null) {
   return {
     id: event.id, program: event.program, title: event.title, phase: event.phase, note: event.note,
-    start: event.start, end: event.end, startsAt: event.startsAt, endsAt: event.endsAt, url: links.program(event.program),
+    start: event.start, end: event.end, startsAt: event.startsAt, endsAt: event.endsAt, url: links.program(event.program), updatedAt,
   };
+}
+
+/**
+ * How far `next` in /changes stays behind the server's clock, so a write that started before a request and committed
+ * after it is still in the next one. The bot may see an item twice and keys its posts on `id` and `updatedAt`.
+ */
+export const changesOverlapMs = 10_000;
+
+/** `?since=` as epoch milliseconds, or null when it is missing or not a whole number. */
+export function parseSince(value: string | null) {
+  if (!value || !/^\d{1,16}$/.test(value)) return null;
+  const since = Number(value);
+  return Number.isSafeInteger(since) ? since : null;
 }

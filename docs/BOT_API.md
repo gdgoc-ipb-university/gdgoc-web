@@ -28,11 +28,12 @@ They are checked in this order, so nothing about a path is revealed without the 
 | 401 | `{"error":"unauthorized"}` | The key is missing, wrong, or not a `Bearer` token. The answer is the same for each. |
 | 429 | `{"error":"rate_limited"}` | The key's bucket is empty. `Retry-After` gives the seconds to wait. |
 | 404 | `{"error":"not_found"}` | No such endpoint. |
+| 400 | `{"error":"bad_request","message":"since must be epoch milliseconds"}` | `/changes` without a whole, non-negative `since`. |
 
 ## Limits and caching
 
 - **Rate limit.** One token bucket for the key: a burst of 60 requests, refilling one a second. A wrong key takes nothing from it.
-- **Caching.** Lists are sent with `Cache-Control: private, max-age=60`, and errors with `no-store`. Programs and events change only with a release of the site, so the bot can cache them for longer.
+- **Caching.** Lists are sent with `Cache-Control: private, max-age=60`; `/changes` and errors with `no-store`. Programs and events change only with a release of the site, so the bot can cache them for longer.
 
 ## Endpoints
 
@@ -80,6 +81,7 @@ The dated items the public program pages show: Tech League's full timeline, and 
 | `startsAt` | number | 00:00 WIB on `start` |
 | `endsAt` | number | 00:00 WIB on the day after `end` |
 | `url` | string | The program's page |
+| `updatedAt` | number or null | When the site first served the event as it is now: after a release that added it or changed its dates or text. Null for the events already there when the API first ran. |
 
 ```json
 {
@@ -94,7 +96,8 @@ The dated items the public program pages show: Tech League's full timeline, and 
       "end": "2027-01-17",
       "startsAt": 1800118800000,
       "endsAt": 1800205200000,
-      "url": "https://league.gdgocipb.com/"
+      "url": "https://league.gdgocipb.com/",
+      "updatedAt": null
     }
   ],
   "serverTime": 1794474000000
@@ -114,6 +117,60 @@ Every cohort, newest first, whatever its status.
 | `roles` | array of `{ key, name }` | Its roles; a key never changes once used |
 | `discordChannelId` | null | The cohort's Discord channel, once the site creates one (#244) |
 
+### `GET /bot/v1/tasks`
+
+The open tasks members can see on the site, soonest deadline first. A task is open while it is published: work after the deadline is accepted and marked late until staff close it, so the bot compares `dueAt` with the time itself. Included are:
+
+- tasks for community tags that include **Member**;
+- **cohort** tasks, which the cohort's active participants with one of the task's roles see.
+
+Left out are drafts, closed tasks, tasks only for Core Team or BoD, tasks from before audiences existed (they were for Core Team), and tasks whose cohort was deleted.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | The task's Convex id |
+| `title` | string | Its title; the description is not sent |
+| `kind` | string | `regular` (graded by a reviewer) or `flag` (answered with a flag the site checks) |
+| `cohort` | object or null | `{ id, name, roles }` for a cohort task, where `roles` are the role keys it is for and empty means every role; null for a community task |
+| `dueAt` | number | The deadline |
+| `dueAtIso` | string | The same moment in ISO 8601, UTC |
+| `url` | string | `SITE_URL/dashboard/tugas/<slug>`; members sign in to open it |
+| `publishedAt` | number or null | When it was first published; null on tasks from before this was kept |
+| `updatedAt` | number | Its last change: creation, publishing, an edit or a reviewer change |
+
+```json
+{
+  "tasks": [
+    {
+      "id": "jd7f3k2m9x1q8w4e6r5t0y2u3i",
+      "title": "Wireframe halaman utama",
+      "kind": "regular",
+      "cohort": { "id": "jh8a2b3c4d5e6f7g8h9i0j1k2l", "name": "GDGoC Catalyst 2026/27", "roles": ["hipster"] },
+      "dueAt": 1796144340000,
+      "dueAtIso": "2026-12-01T16:59:00.000Z",
+      "url": "https://www.gdgocipb.com/dashboard/tugas/wireframe-halaman-utama",
+      "publishedAt": 1794470400000,
+      "updatedAt": 1794470400000
+    }
+  ],
+  "serverTime": 1794474000000
+}
+```
+
+### `GET /bot/v1/changes?since=<epoch ms>`
+
+What to announce since the last call: the open tasks above with `updatedAt > since`, and the events with `updatedAt > since`. A task whose `publishedAt > since` is new; otherwise it changed. Only tasks that are open now come, so a task closed or narrowed since then is simply absent; `/tasks` is the whole list.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `since` | number | As sent |
+| `next` | number | The `since` for the next call: the server's clock less 10 seconds, so a change still being saved during this call comes in the next one. An item can therefore come twice; key posts on `id` and `updatedAt`. |
+| `tasks` | array | Tasks, as in `/tasks` |
+| `events` | array | Events, as in `/events` |
+| `serverTime` | number | The server's clock |
+
+To start, take `serverTime` from any response and pass it as the first `since`.
+
 ## Never returned
 
-Responses are built field by field from an allowlist, never by spreading a stored row, and the tests assert the exact keys of every endpoint. No endpoint returns members' names, emails, phone numbers, account IDs or Discord IDs, enrolments, submissions, scores, flag values, Tech League teams and their codes, or the access log.
+Responses are built field by field from an allowlist, never by spreading a stored row, and the tests assert the exact keys of every endpoint. No endpoint returns members' names, emails, phone numbers, account IDs or Discord IDs, enrolments, submissions, scores, solves, flag values, task descriptions, reviewers, Tech League teams and their codes, or the access log. The tests also check that a flag value, a submission and the people in the test data never appear in any response.

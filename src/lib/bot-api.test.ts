@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bearerKey, botRateLimit, keyMatches, programEvents, programViews, requestsAvailable, siteLinks } from "./bot-api";
+import { bearerKey, botRateLimit, eventContent, keyMatches, parseSince, programEvents, programViews, requestsAvailable, siteLinks } from "./bot-api";
 import { catalyst } from "./catalyst";
 import { programs } from "./programs";
 import { techLeague } from "./tech-league";
@@ -72,5 +72,20 @@ describe("events", () => {
       "catalyst/pendaftaran-oprec", "catalyst/pengumuman-peserta", "catalyst/sembilan-sesi-daring-setiap-hari-minggu", "catalyst/showcase-dan-awarding-capstone",
     ]);
     expect(new Set(events.map((event) => event.id)).size).toBe(events.length);
+  });
+});
+
+describe("changes", () => {
+  it("read since as whole epoch milliseconds", () => {
+    expect(parseSince("1794474000000")).toBe(1_794_474_000_000);
+    expect(parseSince("0")).toBe(0);
+    for (const value of [null, "", "-1", "1.5", "1e12", " 1", "99999999999999999"]) expect(parseSince(value)).toBeNull();
+  });
+
+  it("count an event as changed when its dates or text change, not its id alone", () => {
+    const [event] = programEvents(true);
+    expect(eventContent({ ...event, end: "2026-12-10" })).not.toBe(eventContent(event));
+    expect(eventContent({ ...event, note: "Diperpanjang." })).not.toBe(eventContent(event));
+    expect(eventContent({ ...event, id: "tech-league/lain" })).toBe(eventContent(event));
   });
 });

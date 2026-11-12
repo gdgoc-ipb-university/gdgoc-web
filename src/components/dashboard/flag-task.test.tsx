@@ -13,7 +13,8 @@ const task = {
   _id: "a1", _creationTime: 1, title: "Join Discord", slug: "join-discord", description: "Flag-nya ada di #pengumuman.", dueAt: Date.parse("2026-11-20T23:59:00+07:00"),
   status: "published", revision: 3, createdBy: "me", createdAt: 1, updatedAt: 1, audience: ["member"], kind: "flag", maxPoints: 100, minPoints: 20, decrement: 10,
 };
-const detail = { assignment: task, canManage: true, canReview: true, cohort: null, reviewers: [], flag: "GDGOC{join-discord}", submission: null, files: [] };
+const staffDetail = { assignment: task, canManage: true, canReview: true, cohort: null, reviewers: [], flag: "GDGOC{join-discord}", submission: null, files: [] };
+let detail: object = staffDetail;
 const solves = { solves: [
   { order: 1, name: "Rania Putri", inactive: false, solvedAt: Date.parse("2026-11-11T10:42:00+07:00"), points: 100, wrong: 2 },
   { order: 2, name: "Bima Sakti", inactive: true, solvedAt: Date.parse("2026-11-11T11:05:00+07:00"), points: 90, wrong: 0 },
@@ -32,7 +33,7 @@ const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya
 const show = (page: React.ReactNode) => render(<ViewerContext.Provider value={viewer}>{page}</ViewerContext.Provider>);
 const field = (name: RegExp | string) => screen.getByRole("spinbutton", { name }) as HTMLInputElement;
 
-afterEach(() => { cleanup(); create.mockClear(); update.mockClear(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); create.mockClear(); update.mockClear(); vi.useRealTimers(); detail = staffDetail; });
 const accessible = async (container: HTMLElement) => {
   const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] }, rules: { "color-contrast": { enabled: false } } });
   expect(result.violations.map(({ id }) => id)).toEqual([]);
@@ -98,6 +99,24 @@ describe("flag tasks in Kelola tugas", () => {
       "1Rania PutriFirst blood · 2 flag salah sebelumnya11 Nov 2026, 10.42 WIB10011 Nov 2026, 10.42 WIB",
       "2Bima SaktiNonaktifTanpa flag salah11 Nov 2026, 11.05 WIB9011 Nov 2026, 11.05 WIB",
     ]);
+  });
+});
+
+describe("a flag task without a deadline (#276)", () => {
+  const undated = { ...task, dueAt: undefined };
+  const challenge: Challenge = { maxPoints: 100, minPoints: 20, decrement: 10, pointsNow: 100, solves: 0, firstBlood: null, mine: null, nextTryAt: null };
+
+  it("tells staff it takes flags until it is closed, and still takes a member's flag long after", () => {
+    vi.useFakeTimers({ now: Date.parse("2027-03-01T10:00:00+07:00") });
+    detail = { ...staffDetail, assignment: undated };
+    show(<AssignmentDetail id="join-discord" />);
+    expect(screen.getByText("Member dari sasaran bisa mengirim flag sampai tugas ini ditutup.")).toBeTruthy();
+    expect(screen.getByText("Tanpa tenggat")).toBeTruthy();
+    cleanup();
+    detail = { ...staffDetail, assignment: undated, canManage: false, canReview: false, flag: null, challenge };
+    show(<AssignmentDetail id="join-discord" />);
+    expect(screen.getByRole("button", { name: "Kirim flag" })).toBeTruthy();
+    expect(screen.queryByText("Tenggatnya sudah lewat.")).toBeNull();
   });
 });
 

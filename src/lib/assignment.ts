@@ -34,7 +34,8 @@ export type RubricInput = { name: string; max: string };
 // `maxScore` and the rubric maxes are the form's text; they become numbers on the server. With a rubric, maxScore is the sum of its maxes.
 // A cohort task (`cohortId`) goes to the participants of `cohortRoles` instead of `audience`; null targets community tags again.
 // `flag` makes a flag task (#240, src/lib/flag-task.ts); hand-graded tasks have none.
-export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[]; cohortId?: string | null; cohortRoles?: string[]; flag?: FlagInput };
+// `noDue` saves the task without a deadline (#276); `dueAt` keeps the typed date meanwhile, so turning it back on restores it.
+export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; noDue?: boolean; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[]; cohortId?: string | null; cohortRoles?: string[]; flag?: FlagInput };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
 
 /** The community tags an assignment can be given to, in display order. Ticking all three gives it to everyone. Staff are never in an audience. */
@@ -128,7 +129,7 @@ export function normalizeAssignment(values: AssignmentValues): AssignmentValues 
   const rubric = (values.rubric ?? []).map((criterion) => ({ name: criterion.name.trim().replace(/\s+/g, " "), max: criterion.max.trim() })).filter((criterion) => criterion.name || criterion.max);
   const total = rubric.length ? rubricTotal(rubric) : null;
   return {
-    title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(),
+    title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(), ...(values.noDue ? { noDue: true } : {}),
     maxScore: total !== null ? String(total) : (values.maxScore ?? "").trim() || String(defaultMaxScore), rubric,
     audience: audienceGroups.filter((group) => (values.audience ?? defaultAudience).includes(group)),
     ...(values.cohortId === undefined ? {} : { cohortId: values.cohortId, cohortRoles: values.cohortId ? [...new Set(values.cohortRoles ?? [])] : [] }),
@@ -142,7 +143,7 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   else if (v.title.length > assignmentLimits.title) errors.title = `Maksimal ${assignmentLimits.title} karakter.`;
   if (!v.description) errors.description = "Jelaskan apa yang perlu dikerjakan.";
   else if (v.description.length > assignmentLimits.description) errors.description = `Maksimal ${assignmentLimits.description} karakter.`;
-  if (Number.isNaN(fromJakartaInput(v.dueAt))) errors.dueAt = "Pilih tanggal dan jam tenggat.";
+  if (!v.noDue && Number.isNaN(fromJakartaInput(v.dueAt))) errors.dueAt = "Pilih tanggal dan jam tenggat.";
   if (!wholeNumber(v.maxScore) || Number(v.maxScore) < 1 || Number(v.maxScore) > assignmentLimits.maxScore) errors.maxScore = `Isi nilai maksimal berupa bilangan bulat 1 sampai ${assignmentLimits.maxScore}.`;
   const rubric = v.rubric ?? [];
   if (rubric.length > assignmentLimits.rubricCriteria) errors.rubric = `Maksimal ${assignmentLimits.rubricCriteria} kriteria.`;
@@ -156,7 +157,17 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   return errors;
 }
 
-export function isLate(submittedAt: number, dueAt: number) { return submittedAt > dueAt; }
+/** What a task without a deadline shows where a date would be (#276). */
+export const noDeadlineLabel = "Tanpa tenggat";
+
+/** Work is late only after a deadline; a task without one (#276) never marks it late. */
+export function isLate(submittedAt: number, dueAt: number | null | undefined) { return dueAt != null && submittedAt > dueAt; }
+
+/** Soonest deadline first, then tasks without one (#276). For `Array.prototype.sort`. */
+export function byDeadline(a: { dueAt?: number | null }, b: { dueAt?: number | null }) {
+  if (a.dueAt == null || b.dueAt == null) return Number(a.dueAt == null) - Number(b.dueAt == null);
+  return a.dueAt - b.dueAt;
+}
 
 /** A submission edited after it was reviewed: the score still shows, but the reviewer should look again. */
 export function isStaleReview(submission: { submittedAt: number; reviewedAt?: number | null }) {

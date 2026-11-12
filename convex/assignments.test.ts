@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
-import { toJakartaInput } from "../src/lib/assignment";
+import { fromJakartaInput, toJakartaInput } from "../src/lib/assignment";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 20, cursor: null };
@@ -73,6 +73,57 @@ describe("assignment management", () => {
     const pending = await attach(member, t, empty);
     await owner.mutation(api.assignments.remove, { id: empty, revision: 0 });
     expect(await t.run((ctx) => ctx.db.get(pending))).toBeNull();
+  });
+});
+
+describe("tasks without a deadline (#276)", () => {
+  it("saves either kind without one, and an edit turns it off and back on", async () => {
+    const { t, owner } = await world();
+    const row = (id: Id<"assignments">) => t.run((ctx) => ctx.db.get(id));
+    const graded = await owner.mutation(api.assignments.create, { values: { ...values(), dueAt: "", noDue: true }, publish: true });
+    expect(await row(graded)).not.toHaveProperty("dueAt");
+    const flag = { flag: "GDGOC{kapan-saja}", maxPoints: "100", minPoints: "20", decrement: "10" };
+    const flagTask = await owner.mutation(api.assignments.create, { values: { ...values(), noDue: true, flag }, publish: true });
+    expect(await row(flagTask)).toMatchObject({ kind: "flag" });
+    expect(await row(flagTask)).not.toHaveProperty("dueAt");
+
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    const off = { ...values(), noDue: true };
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: off });
+    expect(await row(id)).not.toHaveProperty("dueAt");
+    // A retry of that save is not a conflict.
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: off });
+    const due = toJakartaInput(Date.now() + 72 * hour);
+    await owner.mutation(api.assignments.update, { id, revision: 1, values: { ...values(), dueAt: due } });
+    expect((await row(id))?.dueAt).toBe(fromJakartaInput(due));
+    // A tab from before the option sends no `noDue`, so it still needs a date.
+    await expect(owner.mutation(api.assignments.update, { id, revision: 2, values: { ...values(), dueAt: "" } })).rejects.toThrow("Lengkapi");
+  });
+
+  it("lists them after the dated ones, open and closed, and never marks their work late", async () => {
+    const { t, owner, member } = await world();
+    const create = async (title: string, dueAt: number | undefined, status: "published" | "closed" = "published") => {
+      const id = await owner.mutation(api.assignments.create, { values: { ...values(dueAt ?? Date.now() + hour), title }, publish: true });
+      await t.run((ctx) => ctx.db.patch(id, { status, ...(dueAt === undefined ? { dueAt: undefined } : {}) }));
+      return id;
+    };
+    const anytime = await create("Kapan saja", undefined);
+    await create("Lusa", Date.now() + 48 * hour);
+    await create("Besok", Date.now() + 24 * hour);
+    await create("Ditutup tanpa tenggat", undefined, "closed");
+    await create("Ditutup lama", Date.now() + hour, "closed");
+    await create("Ditutup baru", Date.now() + 2 * hour, "closed");
+    const list = await member.query(api.assignments.list);
+    expect(list.map((item) => item.title)).toEqual(["Besok", "Lusa", "Kapan saja", "Ditutup baru", "Ditutup lama", "Ditutup tanpa tenggat"]);
+    expect(list[2]).toMatchObject({ _id: anytime, dueAt: null });
+
+    // Days after every dated task here was due (sessions in this test last a week).
+    vi.useFakeTimers({ now: Date.now() + 5 * 24 * hour });
+    await member.mutation(api.assignments.submit, { assignmentId: anytime, revision: 0, answer: "Lima hari kemudian.", fileIds: [] });
+    expect((await member.query(api.assignments.get, { id: anytime }))?.submission).toMatchObject({ late: false });
+    expect((await member.query(api.assignments.list)).find((item) => item._id === anytime)).toMatchObject({ late: false, submittedAt: expect.any(Number) });
+    expect((await owner.query(api.assignments.submissions, { id: anytime, paginationOpts: page })).page[0]).toMatchObject({ late: false });
+    expect((await owner.query(api.assignments.adminList, { paginationOpts: page })).page.find((item) => item._id === anytime)).toMatchObject({ submissionCount: 1, lateCount: 0 });
   });
 });
 

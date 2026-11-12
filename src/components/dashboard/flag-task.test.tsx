@@ -8,12 +8,13 @@ import { AssignmentDetail } from "./assignment-detail";
 import { ViewerContext, type DashboardViewer } from "./viewer";
 import { MemberFlag, type Challenge, type SubmitFlag } from "./flag-task";
 
-// Flag tasks (#240) in Kelola tugas against a fake Convex.
+// Flag tasks (#240), and turning the deadline off for either kind (#276), in Kelola tugas against a fake Convex.
 const task = {
   _id: "a1", _creationTime: 1, title: "Join Discord", slug: "join-discord", description: "Flag-nya ada di #pengumuman.", dueAt: Date.parse("2026-11-20T23:59:00+07:00"),
   status: "published", revision: 3, createdBy: "me", createdAt: 1, updatedAt: 1, audience: ["member"], kind: "flag", maxPoints: 100, minPoints: 20, decrement: 10,
 };
-const detail = { assignment: task, canManage: true, canReview: true, cohort: null, reviewers: [], flag: "GDGOC{join-discord}", submission: null, files: [] };
+const staffDetail = { assignment: task, canManage: true, canReview: true, cohort: null, reviewers: [], flag: "GDGOC{join-discord}", submission: null, files: [] };
+let detail: object = staffDetail;
 const solves = { solves: [
   { order: 1, name: "Rania Putri", inactive: false, solvedAt: Date.parse("2026-11-11T10:42:00+07:00"), points: 100, wrong: 2 },
   { order: 2, name: "Bima Sakti", inactive: true, solvedAt: Date.parse("2026-11-11T11:05:00+07:00"), points: 90, wrong: 0 },
@@ -32,7 +33,7 @@ const viewer: DashboardViewer = { id: "me" as DashboardViewer["id"], name: "Saya
 const show = (page: React.ReactNode) => render(<ViewerContext.Provider value={viewer}>{page}</ViewerContext.Provider>);
 const field = (name: RegExp | string) => screen.getByRole("spinbutton", { name }) as HTMLInputElement;
 
-afterEach(() => { cleanup(); create.mockClear(); update.mockClear(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); create.mockClear(); update.mockClear(); vi.useRealTimers(); detail = staffDetail; });
 const accessible = async (container: HTMLElement) => {
   const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa"] }, rules: { "color-contrast": { enabled: false } } });
   expect(result.violations.map(({ id }) => id)).toEqual([]);
@@ -98,6 +99,86 @@ describe("flag tasks in Kelola tugas", () => {
       "1Rania PutriFirst blood · 2 flag salah sebelumnya11 Nov 2026, 10.42 WIB10011 Nov 2026, 10.42 WIB",
       "2Bima SaktiNonaktifTanpa flag salah11 Nov 2026, 11.05 WIB9011 Nov 2026, 11.05 WIB",
     ]);
+  });
+});
+
+describe("a task without a deadline (#276)", () => {
+  const undated = { ...task, dueAt: undefined };
+  const due = () => screen.getByLabelText(/Tenggat \(WIB\)/) as HTMLInputElement;
+  const noDue = () => screen.getByRole("checkbox", { name: "Tanpa tenggat" }) as HTMLInputElement;
+  const sent = (mock: typeof create | typeof update) => (mock.mock.calls[0] as unknown as [{ values: Record<string, unknown> }])[0].values;
+
+  it("keeps the deadline on by default, and turning it off keeps the date for turning it back on", async () => {
+    const { container } = show(<NewAssignmentPage />);
+    expect(noDue().checked).toBe(false);
+    const date = due().value;
+    expect(date).toMatch(/T23:59$/);
+    await userEvent.type(screen.getByRole("textbox", { name: /Judul tugas/ }), "Refleksi bebas");
+    await userEvent.type(screen.getByRole("textbox", { name: /Instruksi/ }), "Tulis kapan saja.");
+    await userEvent.click(noDue());
+    expect(due().disabled).toBe(true);
+    expect(screen.getByText("Kiriman diterima sampai pengumpulan ditutup, dan tidak ada yang ditandai terlambat.")).toBeTruthy();
+    await accessible(container);
+    await userEvent.click(noDue());
+    expect(due().disabled).toBe(false);
+    expect(due().value).toBe(date);
+    // With the deadline on, a date is required again; turning it off clears that error.
+    await userEvent.clear(due());
+    await userEvent.click(screen.getByRole("button", { name: "Buka untuk sasaran" }));
+    expect(create).not.toHaveBeenCalled();
+    expect(screen.getByText("Pilih tanggal dan jam tenggat.")).toBeTruthy();
+    await userEvent.click(noDue());
+    expect(screen.queryByText("Pilih tanggal dan jam tenggat.")).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Buka untuk sasaran" }));
+    expect(sent(create)).toMatchObject({ title: "Refleksi bebas", noDue: true });
+  });
+
+  it("saves a flag task without a deadline", async () => {
+    show(<NewAssignmentPage />);
+    await userEvent.click(screen.getByRole("radio", { name: "Flag, dinilai otomatis" }));
+    await userEvent.type(screen.getByRole("textbox", { name: /Judul tugas/ }), "Join Discord");
+    await userEvent.type(screen.getByRole("textbox", { name: /Instruksi/ }), "Cari flag-nya di Discord.");
+    await userEvent.type(screen.getByRole("textbox", { name: "Flag" }), "GDGOC{{join-discord}");
+    await userEvent.click(noDue());
+    expect(screen.getByText("Flag diterima sampai tugas ini ditutup.")).toBeTruthy();
+    await userEvent.click(screen.getByRole("button", { name: "Buka untuk sasaran" }));
+    expect(sent(create)).toMatchObject({ noDue: true, flag: { flag: "GDGOC{join-discord}", maxPoints: "100", minPoints: "20", decrement: "10" } });
+  });
+
+  it("opens an undated task with the box ticked, and unticking it saves a deadline", async () => {
+    detail = { ...staffDetail, assignment: undated };
+    show(<EditAssignmentPage id="join-discord" />);
+    expect(noDue().checked).toBe(true);
+    expect(due().disabled).toBe(true);
+    expect(due().value).toMatch(/T23:59$/);
+    await userEvent.click(noDue());
+    await userEvent.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    expect(sent(update)).toMatchObject({ dueAt: due().value });
+    expect(sent(update)).not.toHaveProperty("noDue");
+  });
+
+  it("turns a dated task's deadline off on edit", async () => {
+    show(<EditAssignmentPage id="join-discord" />);
+    expect(noDue().checked).toBe(false);
+    expect(due().value).toBe("2026-11-20T23:59");
+    await userEvent.click(noDue());
+    await userEvent.click(screen.getByRole("button", { name: "Simpan perubahan" }));
+    expect(sent(update)).toMatchObject({ noDue: true });
+  });
+
+  const challenge: Challenge = { maxPoints: 100, minPoints: 20, decrement: 10, pointsNow: 100, solves: 0, firstBlood: null, mine: null, nextTryAt: null };
+
+  it("tells staff it takes flags until it is closed, and still takes a member's flag long after", () => {
+    vi.useFakeTimers({ now: Date.parse("2027-03-01T10:00:00+07:00") });
+    detail = { ...staffDetail, assignment: undated };
+    show(<AssignmentDetail id="join-discord" />);
+    expect(screen.getByText("Member dari sasaran bisa mengirim flag sampai tugas ini ditutup.")).toBeTruthy();
+    expect(screen.getByText("Tanpa tenggat")).toBeTruthy();
+    cleanup();
+    detail = { ...staffDetail, assignment: undated, canManage: false, canReview: false, flag: null, challenge };
+    show(<AssignmentDetail id="join-discord" />);
+    expect(screen.getByRole("button", { name: "Kirim flag" })).toBeTruthy();
+    expect(screen.queryByText("Tenggatnya sudah lewat.")).toBeNull();
   });
 });
 

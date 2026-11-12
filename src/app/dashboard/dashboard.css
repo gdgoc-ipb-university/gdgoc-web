@@ -469,6 +469,10 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-audience-option { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; cursor: pointer; }
 .dash-audience-option input { appearance: auto; width: 18px; height: 18px; accent-color: var(--blue); margin: 0; }
 .dash-audience-option input:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+/* "Tanpa tenggat" (#276) under the deadline: `.app-field input` would size its checkbox like a text field. */
+.dash-due-field .dash-audience-option { display: flex; width: fit-content; margin-top: 6px; }
+.dash-due-field .dash-audience-option input { display: block; flex: none; min-height: 0; padding: 0; border: 0; background: none; }
+.dash-due-field input[type="datetime-local"]:disabled { background: #f3f2ea; color: var(--muted); border-color: #d9ddd3; cursor: not-allowed; }
 .dash-rubric-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .dash-rubric-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 10px; align-items: end; }
 .dash-rubric-remove { padding-bottom: 10px; }

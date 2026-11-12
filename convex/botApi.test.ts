@@ -202,6 +202,28 @@ describe("open tasks", () => {
     expect(tasks[4]).toMatchObject({ id: ids.flag, kind: "flag" });
   });
 
+  it("send null for a task without a deadline, after the dated ones (#276)", async () => {
+    const t = setup();
+    const { ids } = await seed(t);
+    // In the index a missing deadline sorts before every date, so read as one range these two would come first.
+    const undated = await t.run(async (ctx) => {
+      const id = await ctx.db.insert("assignments", {
+        title: "Kapan saja", slug: "kapan-saja", description: "", status: "published", audience: ["member"], revision: 1, createdBy: "staff-account-id", createdAt: 1, updatedAt: 6_000, publishedAt: 6_000,
+      });
+      await ctx.db.patch(ids.member, { dueAt: undefined, updatedAt: 7_000 });
+      return id;
+    });
+    const { tasks } = await (await get(t, "/bot/v1/tasks")).json();
+    expect(tasks.map((task: { id: string }) => task.id)).toEqual([ids.everyone, ids.hacker, ids.cohort, ids.flag, ids.member, undated]);
+    expect(tasks[5]).toEqual({
+      id: undated, title: "Kapan saja", kind: "regular", cohort: null, dueAt: null, dueAtIso: null,
+      url: `${site}/dashboard/tugas/kapan-saja`, publishedAt: 6_000, updatedAt: 6_000,
+    });
+    // A deadline removed is a change, as any edit is.
+    const changes = await (await get(t, "/bot/v1/changes?since=6500")).json();
+    expect(changes.tasks).toEqual([expect.objectContaining({ id: ids.member, dueAt: null, dueAtIso: null, updatedAt: 7_000 })]);
+  });
+
   it("link a task without a slug by its id", async () => {
     const t = setup();
     const id = await t.run((ctx) => ctx.db.insert("assignments", {

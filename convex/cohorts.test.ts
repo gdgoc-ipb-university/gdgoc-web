@@ -492,6 +492,13 @@ describe("participant overview (#106)", () => {
     expect(JSON.stringify(await hacker.query(api.cohorts.mine, {}))).not.toContain(hipsterTask);
   });
 
+  it("lists a task without a deadline after the dated ones (#276)", async () => {
+    const { t, hacker, hackerTask } = await world();
+    await t.run((ctx) => ctx.db.patch(hackerTask, { dueAt: undefined }));
+    const [mine] = await hacker.query(api.cohorts.mine, {});
+    expect(mine.tasks.map((task) => [task.title, task.dueAt])).toEqual([["Tugas semua peran", expect.any(Number)], ["Tugas Hacker", null]]);
+  });
+
   it("adds the team and teammates' names once assigned, with no emails or other participants' rows", async () => {
     const { t, owner, hacker, cohort } = await world();
     const team = await owner.mutation(api.cohorts.createTeam, { cohortId: cohort, name: "Tim Kopi" });

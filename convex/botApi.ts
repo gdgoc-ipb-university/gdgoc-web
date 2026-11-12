@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import { httpAction, internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "./_generated/server";
 import { internal } from "./_generated/api";
+import { byStatusDue } from "./assignments";
 import type { Doc, Id } from "./_generated/dataModel";
 import { assignmentPath, inAudience } from "../src/lib/assignment";
 import {
@@ -90,14 +91,18 @@ function taskView(task: Doc<"assignments">, cohort: Doc<"cohorts"> | null, site:
     id: task._id, title: task.title, kind: task.kind === "flag" ? "flag" as const : "regular" as const,
     // `roles` are the cohort role keys the task is for; empty means every role.
     cohort: cohort && { id: cohort._id, name: cohort.name, roles: [...(task.cohortRoles ?? [])] },
-    dueAt: task.dueAt, dueAtIso: new Date(task.dueAt).toISOString(), url: site.page(assignmentPath(task)),
+    // Both null for a task without a deadline (#276).
+    dueAt: task.dueAt ?? null, dueAtIso: task.dueAt === undefined ? null : new Date(task.dueAt).toISOString(), url: site.page(assignmentPath(task)),
     publishedAt: task.publishedAt ?? null, updatedAt: task.updatedAt,
   };
 }
 
-/** Open tasks members can see, soonest deadline first. A task whose cohort is gone reaches no one and is left out. */
+/**
+ * Open tasks members can see, soonest deadline first, then those without one (#276). A task whose cohort is gone reaches
+ * no one and is left out.
+ */
 async function openTasks(ctx: QueryCtx, site: SiteLinks) {
-  const rows = await ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "published")).order("asc").take(200);
+  const rows = await byStatusDue(ctx, "published", "asc", 200);
   const cohorts = new Map<Id<"cohorts">, Doc<"cohorts"> | null>();
   const views: TaskView[] = [];
   for (const task of rows.filter(shownToMembers)) {

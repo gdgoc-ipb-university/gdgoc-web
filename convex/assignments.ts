@@ -17,8 +17,9 @@ import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solve
 // `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
 // An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
 // `flag` makes a flag task on create (#240); an update of a flag task without it keeps the flag and points, and the kind never changes.
+// `noDue` saves no deadline (#276) and an update with it removes the deadline; `dueAt` is then ignored. A tab without it needs a date.
 const assignmentInput = v.object({
-  title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()),
+  title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), noDue: v.optional(v.boolean()), maxScore: v.optional(v.string()),
   rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))), audience: v.optional(v.array(memberType)),
   cohortId: v.optional(v.union(v.id("cohorts"), v.null())), cohortRoles: v.optional(v.array(v.string())),
   flag: v.optional(v.object({ flag: v.string(), maxPoints: v.string(), minPoints: v.string(), decrement: v.string() })),
@@ -30,14 +31,15 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
+function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; noDue?: boolean; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
   const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "", rubric: values.rubric ?? [] };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
   const clean = normalizeAssignment(input);
   const rubric = clean.rubric!.length ? parseRubric(clean.rubric!) : undefined;
   return {
-    values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
+    // Without a deadline `dueAt` is undefined: insert leaves the field out, and patch removes it.
+    values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: clean.noDue ? undefined : fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
     cohortRoles: clean.cohortRoles ?? [],
   };
 }
@@ -163,6 +165,18 @@ async function findAssignment(ctx: QueryCtx, slugOrId: string) {
   const bySlug = await slugOwner(ctx, slugOrId);
   const id = bySlug?.assignmentId ?? ctx.db.normalizeId("assignments", slugOrId);
   return id ? ctx.db.get(id) : null;
+}
+
+/**
+ * Up to `limit` tasks of one status by deadline in `order`, then up to `limit` without a deadline (#276), oldest first
+ * for "asc". The index puts a missing deadline before every date, so the two are read as separate ranges.
+ */
+export async function byStatusDue(ctx: QueryCtx, status: Doc<"assignments">["status"], order: "asc" | "desc", limit: number) {
+  const [dated, undated] = await Promise.all([
+    ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", status).gt("dueAt", undefined)).order(order).take(limit),
+    ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", status).eq("dueAt", undefined)).order(order).take(limit),
+  ]);
+  return [...dated, ...undated];
 }
 
 async function submissionsOf(ctx: QueryCtx | MutationCtx, id: Id<"assignments">) {
@@ -486,7 +500,7 @@ export const reviewing = query({
     return Promise.all(mine.map(async (assignment) => {
       const submissions = await submissionsOf(ctx, assignment._id);
       const waiting = submissions.filter((item) => item.reviewedAt === undefined || isStaleReview(item)).length;
-      return { _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status, dueAt: assignment.dueAt, cohort: await cohortOf(ctx, assignment), cohortRoles: assignment.cohortRoles, submissionCount: submissions.length, waiting };
+      return { _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status, dueAt: assignment.dueAt ?? null, cohort: await cohortOf(ctx, assignment), cohortRoles: assignment.cohortRoles, submissionCount: submissions.length, waiting };
     }));
   },
 });
@@ -498,16 +512,14 @@ export const list = query({
   handler: async (ctx) => {
     const access = await reachOf(ctx, await requireMember(ctx));
     const { user } = access;
-    const [open, ended] = await Promise.all([
-      ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "published")).order("asc").take(100),
-      ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "closed")).order("desc").take(50),
-    ]);
+    // Open tasks soonest deadline first, closed ones latest first; those without a deadline after each.
+    const [open, ended] = await Promise.all([byStatusDue(ctx, "published", "asc", 100), byStatusDue(ctx, "closed", "desc", 50)]);
     return Promise.all([...open, ...ended].filter((assignment) => reaches(assignment, access)).map(async (assignment) => {
       const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
       // A solved flag task counts as handed in, at its solve time, with its locked points.
       const solve = assignment.kind === "flag" ? await solveOf(ctx, assignment._id, user._id) : null;
       return {
-        _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
+        _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt ?? null, status: assignment.status,
         kind: assignment.kind ?? null, points: solve?.points ?? null,
         submittedAt: mine?.submittedAt ?? solve?.solvedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
         maxScore: assignmentMaxScore(assignment), score: mine?.score ?? null, reviewedAt: mine?.reviewedAt ?? null, stale: mine ? isStaleReview(mine) : false,
@@ -574,8 +586,8 @@ export const submitFlag = mutation({
     if (!assignment || assignment.kind !== "flag" || assignment.status === "draft" || !reaches(assignment, await reachOf(ctx, access))) notFound();
     if (await solveOf(ctx, assignment._id, access.user._id)) throw new ConvexError({ code: "SOLVED", message: "Kamu sudah memecahkan tugas ini." });
     if (assignment.status !== "published") closed();
-    // Unlike a submission, a solve has no late mark, so the due date ends the task.
-    if (Date.now() > assignment.dueAt) throw new ConvexError({ code: "CLOSED", message: "Tenggat tugas ini sudah lewat, jadi flag tidak diterima lagi." });
+    // Unlike a submission, a solve has no late mark, so the due date ends the task. Without one (#276), closing it does.
+    if (assignment.dueAt !== undefined && Date.now() > assignment.dueAt) throw new ConvexError({ code: "CLOSED", message: "Tenggat tugas ini sudah lewat, jadi flag tidak diterima lagi." });
     return checkFlag(ctx, assignment, access.user._id, args.flag);
   },
 });

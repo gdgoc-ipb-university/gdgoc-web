@@ -158,6 +158,16 @@ describe("solving a flag task", () => {
     expect(await t.run((ctx) => ctx.db.query("flagAttempts").collect())).toEqual([]);
   });
 
+  it("takes flags without a deadline until the task is closed (#276)", async () => {
+    const { t, owner, a, b, id } = await world();
+    await t.run((ctx) => ctx.db.patch(id, { dueAt: undefined }));
+    // Three days after the 48-hour deadline the task was created with.
+    vi.useFakeTimers({ now: Date.now() + 5 * 24 * hour });
+    expect(await solve(a, id)).toMatchObject({ ok: true, points: 100, place: 1 });
+    await owner.mutation(api.assignments.setStatus, { id, revision: 0, status: "closed" });
+    await expect(solve(b, id)).rejects.toThrow("sudah ditutup");
+  });
+
   it("shows members the next solver's points, the solves, first blood and their own solve", async () => {
     const { t, a, b, c, id } = await world();
     const view = async (member: typeof a) => (await member.query(api.assignments.get, { id }))!.challenge;

@@ -76,6 +76,34 @@ describe("assignment management", () => {
   });
 });
 
+describe("tasks without a deadline (#276)", () => {
+  it("lists them after the dated ones, open and closed, and never marks their work late", async () => {
+    const { t, owner, member } = await world();
+    const create = async (title: string, dueAt: number | undefined, status: "published" | "closed" = "published") => {
+      const id = await owner.mutation(api.assignments.create, { values: { ...values(dueAt ?? Date.now() + hour), title }, publish: true });
+      await t.run((ctx) => ctx.db.patch(id, { status, ...(dueAt === undefined ? { dueAt: undefined } : {}) }));
+      return id;
+    };
+    const anytime = await create("Kapan saja", undefined);
+    await create("Lusa", Date.now() + 48 * hour);
+    await create("Besok", Date.now() + 24 * hour);
+    await create("Ditutup tanpa tenggat", undefined, "closed");
+    await create("Ditutup lama", Date.now() + hour, "closed");
+    await create("Ditutup baru", Date.now() + 2 * hour, "closed");
+    const list = await member.query(api.assignments.list);
+    expect(list.map((item) => item.title)).toEqual(["Besok", "Lusa", "Kapan saja", "Ditutup baru", "Ditutup lama", "Ditutup tanpa tenggat"]);
+    expect(list[2]).toMatchObject({ _id: anytime, dueAt: null });
+
+    // Days after every dated task here was due (sessions in this test last a week).
+    vi.useFakeTimers({ now: Date.now() + 5 * 24 * hour });
+    await member.mutation(api.assignments.submit, { assignmentId: anytime, revision: 0, answer: "Lima hari kemudian.", fileIds: [] });
+    expect((await member.query(api.assignments.get, { id: anytime }))?.submission).toMatchObject({ late: false });
+    expect((await member.query(api.assignments.list)).find((item) => item._id === anytime)).toMatchObject({ late: false, submittedAt: expect.any(Number) });
+    expect((await owner.query(api.assignments.submissions, { id: anytime, paginationOpts: page })).page[0]).toMatchObject({ late: false });
+    expect((await owner.query(api.assignments.adminList, { paginationOpts: page })).page.find((item) => item._id === anytime)).toMatchObject({ submissionCount: 1, lateCount: 0 });
+  });
+});
+
 describe("assignment audience", () => {
   async function tag(t: ReturnType<typeof setup>, account: { id: string }, memberType: "member" | "core" | "bod") {
     await t.run(async (ctx) => {

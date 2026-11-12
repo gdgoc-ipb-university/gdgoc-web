@@ -85,6 +85,12 @@ export const rateLimit = {
 } satisfies BetterAuthOptions["rateLimit"];
 
 /**
+ * The session and its user ride in a signed cookie for five minutes (#269), so the session and token checks an open
+ * member page makes read no tables in that time. The cost: a session revoked elsewhere keeps working here until then.
+ */
+export const sessionCache = { cookieCache: { enabled: true, maxAge: 5 * 60 } } satisfies BetterAuthOptions["session"];
+
+/**
  * Google is the only sign-in. Discord, once its four settings are on the deployment, can only be linked to a signed-in
  * account (discordAuth.ts), and its callback stays on SITE_URL like Google's.
  */
@@ -108,6 +114,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     },
     account: { encryptOAuthTokens: true, accountLinking: discord.accountLinking },
     hooks: { before: discord.before },
+    session: sessionCache,
     rateLimit,
     plugins: [convex({ authConfig, jwks: process.env.JWKS })],
   });

@@ -7,6 +7,7 @@ flowchart LR
   browser["Browser<br/>www.gdgocipb.com and league.gdgocipb.com"]
   google["Google OAuth"]
   discord["Discord OAuth and API"]
+  bot["Chapter Discord bot<br/>its own repository and host"]
 
   subgraph vercel["Vercel: production, from release"]
     next["Next.js App Router<br/>pages, src/app/league by host,<br/>and /api/auth/[...all]"]
@@ -15,6 +16,7 @@ flowchart LR
   subgraph convex["Convex: production deployment"]
     fns["Functions in convex/<br/>queries, mutations, crons"]
     auth["Better Auth component<br/>HTTP routes on .convex.site"]
+    botapi["Bot API<br/>GET /bot/v1/* on .convex.site"]
     db[("Database and file storage")]
   end
 
@@ -32,6 +34,8 @@ flowchart LR
   browser -- "Bogor Run: issueRun, submitRun" --> fns
   fns --> db
   fns -- "Add Guild Member, with the bot token" --> discord
+  bot -- "read-only, BOT_READ_KEY" --> botapi
+  botapi --> db
   auth --> db
   browser -. "preview" .-> tunnel --> dev
   dev -.-> convexdev
@@ -43,7 +47,7 @@ Server-rendered pages arrive from Vercel; the landing is prerendered and needs n
 
 ## Next.js on Vercel
 
-Pages, layouts and the 3D scene live in `src/app/` and `src/components/`. Vercel deploys production from the `release` branch, which takes only release pull requests from `main` ([ADR 0006](decisions/0006-production-deploys-from-release.md)); pushes to `main` do not build. The build runs `pnpm exec convex deploy --cmd 'pnpm build'`, so the backend ships before the frontend that depends on it. The only HTTP API in this repository is the Better Auth route handler at `src/app/api/auth/[...all]/route.ts`, which forwards to the Convex site URL. There is no other REST or GraphQL endpoint to specify.
+Pages, layouts and the 3D scene live in `src/app/` and `src/components/`. Vercel deploys production from the `release` branch, which takes only release pull requests from `main` ([ADR 0006](decisions/0006-production-deploys-from-release.md)); pushes to `main` do not build. The build runs `pnpm exec convex deploy --cmd 'pnpm build'`, so the backend ships before the frontend that depends on it. The only HTTP route in the Next.js app is the Better Auth route handler at `src/app/api/auth/[...all]/route.ts`, which forwards to the Convex site URL. The one other HTTP API is the bot's, on Convex (see [Bot API](#bot-api)).
 
 Both hosts reach the same deployment ([ADR 0008](decisions/0008-league-subdomain-one-app-shared-login.md)). When `NEXT_PUBLIC_LEAGUE_URL` is set, a `beforeFiles` rewrite in `next.config.ts` serves the league host's pages from `src/app/league/`, matched on the `Host` header; `/api`, `/_next` and static files are shared. `src/proxy.ts` runs first: on the league host it redirects `/dashboard`, `/onboarding` and `/k/*` to the main host, and on either host it redirects `/league/*` and `/program/tech-league` (301) to the league host. Unset, neither does anything and `/league` is a `noindex` preview on the main host.
 
@@ -54,6 +58,10 @@ The queries, mutations and crons in `convex/` are the application API: the front
 ## Better Auth with Google OAuth
 
 `convex/auth.ts` configures Better Auth as a Convex component, and `convex/http.ts` registers its routes on the deployment's `.convex.site` URL. Google is the only sign-in method. A signed-in member can link a Discord account, which never signs anyone in; its callback also stays on `SITE_URL`, and the four `DISCORD_*` values live on the Convex deployment ([ADR 0009](decisions/0009-discord-linked-never-sign-in.md), [Discord](DISCORD.md)). The secrets (`BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and the trusted origins (`SITE_URL`, and `LEAGUE_URL` for Tech League) are set on each Convex deployment, never on Vercel. `gdgocipb.com` redirects to `www.gdgocipb.com` so Google's callback always runs on that origin.
+
+## Bot API
+
+The chapter's Discord bot runs from its own repository and host and reads the site through a read-only HTTP API: Convex HTTP actions under `/bot/v1/` on the deployment's `.convex.site` URL, registered in `convex/http.ts` and served by `convex/botApi.ts`. It sends `BOT_READ_KEY`, set on each Convex deployment and on the bot's host, as a bearer token; without that value every route answers 503. Responses are mapped field by field from an allowlist and never carry members' data. Paths, fields and limits are in [Bot API](BOT_API.md).
 
 One login covers both hosts. With `AUTH_COOKIE_DOMAIN` set, Better Auth writes its cookies, the OAuth state cookie included, on that parent domain, so a session started on either host is sent to both and signing out of one clears both. Sign-in started on the league asks Google to return to `SITE_URL` as usual, with an absolute league `callbackURL` that Better Auth accepts because `LEAGUE_URL` is trusted, and the callback then redirects there. The auth route also expires the host-only twin of each cookie it sets on the parent domain, left from before the change. Testing this locally needs two hosts under one parent domain, such as `www.lvh.me` and `league.lvh.me`; `localhost` subdomains cannot share a cookie.
 

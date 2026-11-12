@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
-import { toJakartaInput } from "../src/lib/assignment";
+import { fromJakartaInput, toJakartaInput } from "../src/lib/assignment";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 20, cursor: null };
@@ -77,6 +77,29 @@ describe("assignment management", () => {
 });
 
 describe("tasks without a deadline (#276)", () => {
+  it("saves either kind without one, and an edit turns it off and back on", async () => {
+    const { t, owner } = await world();
+    const row = (id: Id<"assignments">) => t.run((ctx) => ctx.db.get(id));
+    const graded = await owner.mutation(api.assignments.create, { values: { ...values(), dueAt: "", noDue: true }, publish: true });
+    expect(await row(graded)).not.toHaveProperty("dueAt");
+    const flag = { flag: "GDGOC{kapan-saja}", maxPoints: "100", minPoints: "20", decrement: "10" };
+    const flagTask = await owner.mutation(api.assignments.create, { values: { ...values(), noDue: true, flag }, publish: true });
+    expect(await row(flagTask)).toMatchObject({ kind: "flag" });
+    expect(await row(flagTask)).not.toHaveProperty("dueAt");
+
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    const off = { ...values(), noDue: true };
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: off });
+    expect(await row(id)).not.toHaveProperty("dueAt");
+    // A retry of that save is not a conflict.
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: off });
+    const due = toJakartaInput(Date.now() + 72 * hour);
+    await owner.mutation(api.assignments.update, { id, revision: 1, values: { ...values(), dueAt: due } });
+    expect((await row(id))?.dueAt).toBe(fromJakartaInput(due));
+    // A tab from before the option sends no `noDue`, so it still needs a date.
+    await expect(owner.mutation(api.assignments.update, { id, revision: 2, values: { ...values(), dueAt: "" } })).rejects.toThrow("Lengkapi");
+  });
+
   it("lists them after the dated ones, open and closed, and never marks their work late", async () => {
     const { t, owner, member } = await world();
     const create = async (title: string, dueAt: number | undefined, status: "published" | "closed" = "published") => {

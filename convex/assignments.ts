@@ -17,8 +17,9 @@ import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solve
 // `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
 // An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
 // `flag` makes a flag task on create (#240); an update of a flag task without it keeps the flag and points, and the kind never changes.
+// `noDue` saves no deadline (#276) and an update with it removes the deadline; `dueAt` is then ignored. A tab without it needs a date.
 const assignmentInput = v.object({
-  title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()),
+  title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), noDue: v.optional(v.boolean()), maxScore: v.optional(v.string()),
   rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))), audience: v.optional(v.array(memberType)),
   cohortId: v.optional(v.union(v.id("cohorts"), v.null())), cohortRoles: v.optional(v.array(v.string())),
   flag: v.optional(v.object({ flag: v.string(), maxPoints: v.string(), minPoints: v.string(), decrement: v.string() })),
@@ -30,14 +31,15 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
+function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; noDue?: boolean; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
   const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "", rubric: values.rubric ?? [] };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
   const clean = normalizeAssignment(input);
   const rubric = clean.rubric!.length ? parseRubric(clean.rubric!) : undefined;
   return {
-    values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
+    // Without a deadline `dueAt` is undefined: insert leaves the field out, and patch removes it.
+    values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: clean.noDue ? undefined : fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
     cohortRoles: clean.cohortRoles ?? [],
   };
 }

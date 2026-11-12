@@ -70,6 +70,7 @@ Before you change anything, read `docs/CONTRIBUTING.md`: how work starts on an i
 | `DISCORD_CLIENT_SECRET` | Convex deployment | Its OAuth2 client secret | With the other Discord values |
 | `DISCORD_BOT_TOKEN` | Convex deployment | The application's bot, which adds linked members to the server | With the other Discord values |
 | `DISCORD_GUILD_ID` | Convex deployment | The chapter server's ID | With the other Discord values |
+| `BOT_READ_KEY` | Convex deployment, and the bot's host | Bearer key of the chapter bot's read-only API (`docs/BOT_API.md`) | Optional; until set, every `/bot/v1/` route answers 503 |
 
 Production also needs `CONVEX_DEPLOY_KEY` on Vercel (see Deployment).
 
@@ -168,14 +169,14 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `campus/`: the Three.js campus model and runtime.
 - `bogor-run/`: the game engine, shared with the server replay.
-- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `cohort.ts`, `enrolment-import.ts`, `bevy-export.ts`, `league-team.ts` and `league-import.ts` (Tech League teams and the registration import), `member-card.ts`, `card-print.ts` and `card-sheet.ts` (bulk card printing), `gathering.ts`, `tech-support-request.ts`, `member-table.ts`, `rich-text.ts`), the public pages' content and structured data (`tech-league.ts`, `catalyst.ts`, `member-intake.ts`, `about.ts`, `faq.ts`, `breadcrumb.ts`, with program dates in `schedule.ts`), and shared helpers (`chapter.ts` for the chapter year, `site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`, `qr.ts`, which draws QR codes on the page, `png.ts`, which marks a PNG as 300 dpi, and `pdf.ts`, a small PDF writer for the card print file).
+- Domain modules (`assignment.ts`, `appreciation.ts`, `access-log.ts`, `onboarding.ts`, `cohort.ts`, `enrolment-import.ts`, `bevy-export.ts`, `league-team.ts` and `league-import.ts` (Tech League teams and the registration import), `member-card.ts`, `card-print.ts` and `card-sheet.ts` (bulk card printing), `gathering.ts`, `tech-support-request.ts`, `member-table.ts`, `rich-text.ts`), the public pages' content and structured data (`programs.ts`, the `/program` list, `tech-league.ts`, `catalyst.ts`, `member-intake.ts`, `about.ts`, `faq.ts`, `breadcrumb.ts`, with program dates in `schedule.ts`), `bot-api.ts` (the bot API's key check, rate limit and program events), and shared helpers (`chapter.ts` for the chapter year, `site.ts`, `community.ts`, `auth-client.ts`, `auth-server.ts`, `qr.ts`, which draws QR codes on the page, `png.ts`, which marks a PNG as 300 dpi, and `pdf.ts`, a small PDF writer for the card print file).
 - Tests sit beside the module as `*.test.ts` and run in the edge runtime.
 
 ### `convex/`: backend
 
-- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments, teams and mentors, member cards and their per-year counters, gatherings and check-ins, Tech Support requests, the access log, and account deletions.
-- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `techSupport`, `bogorRun` and `bogorRunToken`, and `discord` with `discordAuth`, `discordLinks` and `discordApi`, the one module that calls Discord (see `docs/DISCORD.md`).
-- `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
+- `schema.ts` defines every table: member profiles, appreciations and reviews, assignments with slugs, submissions, reviews and files, Bogor Run runs, bests, players and stats, cohorts with their enrolments, teams and mentors, member cards and their per-year counters, gatherings and check-ins, Tech Support requests, the bot API's request bucket, the access log, and account deletions.
+- One file per domain: `members`, `access` and `accessLog`, `assignments`, `appreciations`, `dashboard`, `cohorts`, `cards`, `gatherings`, `techSupport`, `bogorRun` and `bogorRunToken`, `discord` with `discordAuth`, `discordLinks` and `discordApi`, the one module that calls Discord (see `docs/DISCORD.md`), and `botApi`, the chapter bot's read-only HTTP API (see `docs/BOT_API.md`).
+- `auth.ts`, `auth.config.ts`, `http.ts` and `convex.config.ts` wire up Better Auth; `http.ts` also routes `/bot/v1/` to `botApi`. `crons.ts` schedules upload cleanup (hourly) and run-record pruning (daily).
 - `_generated/` is produced by Convex; do not edit it.
 - Tests (`*.test.ts`) run against `convex-test`, with no deployment.
 
@@ -183,7 +184,7 @@ Each of `dashboard/` and `onboarding/` keeps its own `layout.tsx`, `error.tsx` a
 
 - `public/`: `brand/` (logo SVG, Open Graph image), `environments/` (fallback still of the 3D scene) and `games/bogor-run/` (SVG sprites and scenery, with their own README).
 - `design/`: generated direction images (`environments/`, `footer-directions/`), reference material, prompts, and the `.mjs` scripts that capture the scene still and the Open Graph image. `.vercelignore` keeps this out of CLI uploads.
-- `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DISCORD.md` (linking Discord and its setup), `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow), `CONTRIBUTING.md` (issues, commits and pull requests), `ARCHITECTURE.md` (how the services connect), and `decisions/` (one record per settled decision).
+- `docs/`: `DASHBOARD.md` (roles and assignments), `APRESIASI.md` (backend, auth, release), `ONBOARDING.md`, `DISCORD.md` (linking Discord and its setup), `BOT_API.md` (the chapter bot's read-only API), `DESIGN.md` (art direction), `VERIFICATION.md` (checks and evidence), `PROJECT_BOARD.md` (roadmap workflow), `CONTRIBUTING.md` (issues, commits and pull requests), `ARCHITECTURE.md` (how the services connect), and `decisions/` (one record per settled decision).
 - `.github/`: `ci.yml` (lint, typecheck and test), `project-board.yml`, issue forms (bug, feature, task) and the pull request template.
 - Root config: `next.config.ts`, `tsconfig.json`, `eslint.config.mjs`, `vitest.config.mts` (two projects: `backend` and `interface`), `vercel.json`, `pnpm-workspace.yaml`, `.env.example`.
 

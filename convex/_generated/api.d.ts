@@ -15,6 +15,7 @@ import type * as assignments from "../assignments.js";
 import type * as auth from "../auth.js";
 import type * as bogorRun from "../bogorRun.js";
 import type * as bogorRunToken from "../bogorRunToken.js";
+import type * as botApi from "../botApi.js";
 import type * as cards from "../cards.js";
 import type * as cohorts from "../cohorts.js";
 import type * as crons from "../crons.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   bogorRun: typeof bogorRun;
   bogorRunToken: typeof bogorRunToken;
+  botApi: typeof botApi;
   cards: typeof cards;
   cohorts: typeof cohorts;
   crons: typeof crons;

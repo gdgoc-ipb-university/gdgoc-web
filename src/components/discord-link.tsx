@@ -8,7 +8,7 @@ import { authClient } from "@/lib/auth-client";
 import { readableError } from "@/lib/draft-session";
 import { discordLinkError, discordReturnUrls } from "@/lib/discord";
 import { Arrow } from "./icons";
-import { PixelIcon } from "./pixel-icons";
+import { PixelIcon, type PixelIconName } from "./pixel-icons";
 
 export type DiscordLink = NonNullable<NonNullable<FunctionReturnType<typeof api.discord.mine>>["link"]>;
 /** A notice to show. `live` marks one built from the join status, which Profil shows in place of the "Server" row's line. */
@@ -100,6 +100,9 @@ export function Feedback({ notice, error }: { notice: Notice | null; error: stri
 
 export const serverLink = (url: string, className: string) => <a className={className} href={url} target="_blank" rel="noopener noreferrer">Buka server <Arrow external size={18} /><span className="sr-only"> (buka tab baru)</span></a>;
 
+/** The "Terhubung sebagai" line's mark: in the server, on the way, or linked but not in. */
+const linkIcon = { joined: "check", pending: "clock", failed: "link" } as const satisfies Record<DiscordLink["joinStatus"], PixelIconName>;
+
 /**
  * The Discord card on onboarding's community screen, as weighty as WhatsApp's beside it. Skipping it is fine. Its
  * "Terhubung sebagai" line follows the join status the way Profil's notice does, with the same "Coba lagi" (#261).
@@ -110,10 +113,10 @@ export function DiscordOnboardingCard() {
   return <div className="onboard-invitation onboard-discord">
     <div className="onboard-invite-icon discord-icon" aria-hidden="true"><PixelIcon name="discord" size={24} /></div>
     <div><strong>Server Discord GDGoC IPB</strong><p>Ngobrol, kanal belajar, dan kanal khusus member.{!link && " Hubungkan akunmu supaya kamu langsung masuk ke server."}</p></div>
-    {link ? <p className="onboard-discord-linked" data-status={link.joinStatus} role="status"><PixelIcon name="check" size={18} /><span>Terhubung sebagai <b>{link.username ?? "akun Discord-mu"}</b>. {joinLine(link)}</span></p>
+    {link ? <p className="onboard-discord-linked" data-status={link.joinStatus} role="status"><PixelIcon name={linkIcon[link.joinStatus]} size={18} /><span>Terhubung sebagai <b>{link.username ?? "akun Discord-mu"}</b>. {joinLine(link)}</span></p>
       : state && !state.configured ? <p className="onboard-external-note">Server Discord sedang disiapkan. Kamu bisa menghubungkannya nanti dari Profil.</p>
       : <button type="button" className="button onboard-external" disabled={state === undefined || busy !== null} onClick={() => void connect()}>{busy === "connect" ? "Membuka Discord…" : "Hubungkan Discord"} <Arrow /></button>}
-    {link?.joinStatus === "failed" && <button type="button" className="button onboard-external" disabled={busy !== null} onClick={() => void retry()}>{busy === "retry" ? "Mencoba…" : "Coba lagi"} <Arrow /></button>}
+    {link?.joinStatus === "failed" && <button type="button" className="button onboard-external" disabled={busy !== null} onClick={() => void retry()}>{busy === "retry" ? "Mencoba…" : "Coba lagi"}</button>}
     {link?.joinStatus === "joined" && state?.serverUrl && serverLink(state.serverUrl, "text-link onboard-discord-server")}
     {/* The line above already says how the join stands, so only an error of its own needs saying here. */}
     <Feedback notice={notice?.tone === "error" && !notice.live ? notice : null} error={error} />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { assignmentStatusLabels, audienceLabel, fileSizeLabel, scoreLabel, type AudienceGroup } from "@/lib/assignment";
+import { assignmentStatusLabels, audienceLabel, fileSizeLabel, noDeadlineLabel, scoreLabel, type AudienceGroup } from "@/lib/assignment";
 import { cohortRolesLabel, type CohortRole } from "@/lib/cohort";
 import { dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
@@ -26,7 +26,9 @@ export function relativeLabel(target: number, now: number) {
   return relative.format(Math.round(hours / 24), "day");
 }
 
-export function DueLabel({ dueAt, now, open }: { dueAt: number; now: number; open: boolean }) {
+/** A task's deadline and, while it is open, how far off it is; "Tanpa tenggat" for a task without one (#276). */
+export function DueLabel({ dueAt, now, open }: { dueAt: number | null | undefined; now: number; open: boolean }) {
+  if (dueAt == null) return <p className="dash-due"><span>{noDeadlineLabel}</span></p>;
   const passed = dueAt < now;
   return <p className="dash-due" data-passed={passed && open}>
     <span>Tenggat {dateLabel(dueAt)}</span>

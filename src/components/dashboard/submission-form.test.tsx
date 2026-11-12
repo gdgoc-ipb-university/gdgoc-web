@@ -22,7 +22,7 @@ const fileId = (value: string) => value as Id<"submissionFiles">;
 type Submission = { answer: string; answerDoc: string | null; revision: number; submittedAt: number; late: boolean };
 
 function Harness({ initial = [], submission = null, dueAt = now + 86400000, actions, optimize }: {
-  initial?: SubmissionFile[]; submission?: Submission | null; dueAt?: number; actions: SubmissionActions; optimize?: (file: File) => Promise<File>;
+  initial?: SubmissionFile[]; submission?: Submission | null; dueAt?: number | null; actions: SubmissionActions; optimize?: (file: File) => Promise<File>;
 }) {
   const [files, setFiles] = useState(initial);
   const wrapped: SubmissionActions = {
@@ -157,6 +157,14 @@ describe("assignment submission form", () => {
     const answerDoc = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Versi kaya", marks: [{ type: "bold" }] }] }] });
     render(<Harness actions={gateway()} submission={{ answer: "Versi kaya", answerDoc, revision: 1, submittedAt: now - 1000, late: false }} />);
     expect((screen.getByRole("textbox", { name: /Jawaban/ }) as HTMLTextAreaElement).value).toBe("Versi kaya");
+  });
+
+  it("never warns about lateness on a task without a deadline", async () => {
+    const actions = gateway();
+    render(<Harness actions={actions} dueAt={null} submission={{ answer: "Kapan saja", answerDoc: null, revision: 1, submittedAt: now - 120000, late: false }} />);
+    expect(screen.queryByText(/Tenggat sudah lewat/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Kirim ulang" }));
+    expect((await screen.findByText(/Tugas terkirim/)).textContent).toContain("masih bisa memperbaruinya");
   });
 
   it("warns that work after the deadline is marked late", () => {

@@ -265,7 +265,7 @@ function EditAssignment({ assignment, cohortRoles, flag }: { assignment: Doc<"as
   const router = useRouter();
   const update = useMutation(api.assignments.update);
   const [initial] = useState<AssignmentValues>(() => ({
-    title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt),
+    title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt ?? defaultDue()),
     maxScore: String(assignmentMaxScore(assignment)), rubric: (assignment.rubric ?? []).map((criterion) => ({ name: criterion.name, max: String(criterion.max) })),
     audience: assignmentAudience(assignment),
     // Stored without roles means every role, which the form shows ticked.

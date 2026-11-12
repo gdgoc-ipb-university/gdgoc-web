@@ -8,7 +8,7 @@ import { logAccess } from "./accessLog";
 import { cohortRole, cohortStatus } from "./schema";
 import { catalystCohort, inCohortRoles, normalizeCohort, normalizeEmail, normalizeTeamName, teamNameProblem, validateCohort, type CohortValues } from "../src/lib/cohort";
 import { importBatch, importLimits, isEmail } from "../src/lib/enrolment-import";
-import { isLate } from "../src/lib/assignment";
+import { byDeadline, isLate } from "../src/lib/assignment";
 import { solveOf } from "./flags";
 
 const cohortInput = v.object({ slug: v.string(), name: v.string(), roles: v.array(cohortRole), attendanceTarget: v.optional(v.number()) });
@@ -472,12 +472,12 @@ export const mine = query({
       const team = row.teamId ? await ctx.db.get(row.teamId) : null;
       const open = (await ctx.db.query("assignments").withIndex("by_cohort", (q) => q.eq("cohortId", cohort._id)).collect())
         .filter((assignment) => assignment.status === "published" && inCohortRoles(assignment, row.role))
-        .sort((a, b) => a.dueAt - b.dueAt);
+        .sort(byDeadline);
       const tasks = await Promise.all(open.map(async (assignment) => {
         const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
         const solve = assignment.kind === "flag" ? await solveOf(ctx, assignment._id, user._id) : null;
         return {
-          _id: assignment._id, slug: assignment.slug, title: assignment.title, dueAt: assignment.dueAt, kind: assignment.kind ?? null, points: solve?.points ?? null,
+          _id: assignment._id, slug: assignment.slug, title: assignment.title, dueAt: assignment.dueAt ?? null, kind: assignment.kind ?? null, points: solve?.points ?? null,
           submittedAt: mine?.submittedAt ?? solve?.solvedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false, revisionRequestedAt: mine?.revisionRequestedAt ?? null,
         };
       }));

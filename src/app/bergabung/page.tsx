@@ -19,7 +19,7 @@ const path = "/bergabung";
 export const metadata: Metadata = {
   title: "Cara bergabung",
   description:
-    "Cara bergabung dengan GDGoC IPB: daftar jadi member dengan akun Google dan gabung grup WhatsApp, ikut bootcamp GDGoC Catalyst, atau berkompetisi di Tech League.",
+    "Cara bergabung dengan GDGoC IPB: daftar jadi member dengan akun Google, gabung grup WhatsApp dan server Discord, ikut bootcamp GDGoC Catalyst, atau berkompetisi di Tech League.",
   ...canonical(path),
 };
 
@@ -28,7 +28,7 @@ export const revalidate = 3600;
 
 const faq: FaqItem[] = [
   { question: "Apakah harus mahasiswa IPB?", answer: ["Tidak. Member GDGoC IPB terbuka untuk umum: mahasiswa dari kampus mana pun dan siswa SMA/SMK, dari jurusan apa pun."] },
-  { question: "Apakah ada biaya untuk bergabung?", answer: ["Tidak. Daftar jadi member dan bergabung di grup WhatsApp tidak dipungut biaya. GDGoC Catalyst juga gratis."] },
+  { question: "Apakah ada biaya untuk bergabung?", answer: ["Tidak. Daftar jadi member serta bergabung di grup WhatsApp dan server Discord tidak dipungut biaya. GDGoC Catalyst juga gratis."] },
   { question: "Apa bedanya member dan peserta Catalyst?", answer: ["Member mengikuti kabar dan kegiatan komunitas. Peserta Catalyst mendaftar lewat oprec, lalu mengikuti sembilan sesi bootcamp dan mengerjakan capstone dalam tim."] },
   { question: "Bagaimana kalau saya terlewat pendaftaran Catalyst?", answer: ["Kamu tetap bisa bergabung sebagai member dan ikut Study Jam serta kegiatan komunitas lainnya. Program berikutnya diumumkan di ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
   { question: "Saya punya pertanyaan lain.", answer: ["Kirim pesan ke ", { text: "Instagram @gdgoc.ipb", href: communityLinks.instagram }, "."] },
@@ -66,7 +66,7 @@ export default function JoinPage() {
 
       <section aria-labelledby="join-now">
         <h2 id="join-now">Gabung sekarang</h2>
-        <ul className="program-grid join-ways">
+        <ul className="program-grid join-ways join-now">
           <li><div>
             <PixelIcon name="users" size={32} />
             <h3>Member GDGoC IPB</h3>
@@ -78,6 +78,12 @@ export default function JoinPage() {
             <h3>Grup WhatsApp komunitas</h3>
             <p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p>
             <a className="button button-quiet" href={communityLinks.whatsapp} target="_blank" rel="noreferrer">Gabung grup WhatsApp <Arrow external /></a>
+          </div></li>
+          <li><div>
+            <PixelIcon name="discord" size={32} />
+            <h3>Server Discord</h3>
+            <p>Ngobrol, berbagi info lomba, cari tim, dan diskusi teknologi bersama komunitas.</p>
+            <a className="button button-quiet" href={communityLinks.discord} target="_blank" rel="noreferrer">Gabung server Discord <Arrow external /></a>
           </div></li>
         </ul>
       </section>

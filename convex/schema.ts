@@ -278,6 +278,12 @@ export default defineSchema({
   })
     .index("by_owner", ["ownerId"])
     .index("by_discord", ["discordId"]),
+  // The chapter bot's read API (#259, botApi.ts): one token bucket for its one key, so a loop in the bot is slowed down.
+  botRequests: defineTable({ tokens: v.number(), tokensAt: v.number() }),
+  // When the bot API first served each program event as it is now. Events live in code (src/lib/bot-api.ts), so this
+  // is how /bot/v1/changes tells a new or moved one from an old one. `content` is its dates and text; `updatedAt` is 0
+  // for the events already there when the API first ran.
+  botEventVersions: defineTable({ eventId: v.string(), content: v.string(), updatedAt: v.number() }).index("by_event", ["eventId"]),
   // One row per access change made in the dashboard (accessLog.ts). Account IDs only: names are looked up when owners read it.
   accessLog: defineTable({
     at: v.number(), actorId: v.string(), targetId: v.string(), change: accessChange,

@@ -51,6 +51,9 @@ export function JoinFooter() {
               <a href={communityLinks.instagram} target="_blank" rel="noreferrer">
                 Instagram <Arrow external />
               </a>
+              <a href={communityLinks.discord} target="_blank" rel="noreferrer">
+                Discord <Arrow external />
+              </a>
               <Link href="/privasi">Privasi</Link>
               <p className="footer-contact">Punya ide kolaborasi?<br />Hubungi @gdgoc.ipb</p>
             </nav>

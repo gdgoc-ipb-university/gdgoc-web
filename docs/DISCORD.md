@@ -35,9 +35,9 @@ Until all four values are set, Profil and onboarding say Discord isn't set up ye
 ## Where members see it
 
 - **Profil** (`/dashboard/profil`), beside the photo: "Hubungkan Discord"; once linked, the Discord username, the link date (WIB), the join status with Discord's last error, "Coba lagi" after a failure, "Buka server" (`https://discord.com/channels/<server ID>`) once in, and "Putuskan" after a confirmation.
-- **Onboarding**, screen 4 (Komunitas): a Discord card beside the WhatsApp group's, with the same weight. It can be skipped and done later from Profil.
+- **Onboarding**, screen 4 (Komunitas): a Discord card beside the WhatsApp group's, with the same weight. Once linked, its "Terhubung sebagai" line follows the join status, with "Coba lagi" after a failure as on Profil. It can be skipped and done later from Profil.
 - **Staff** (owners and admins) see the linked Discord username under the member's email on `/dashboard/anggota`, and a Discord fact on the member's page with the link date, the join status and the last error. The Discord ID stays on the server.
-- After Discord's consent page, the member returns to the page they left with `discord=terhubung`, or `discord=gagal` and Better Auth's `error`, which the page turns into an Indonesian message and then removes from the address.
+- After Discord's consent page, the member returns to the page they left with `discord=terhubung`, or `discord=gagal` and Better Auth's `error`, which the page turns into an Indonesian message and then removes from the address. The message after linking, and the one after "Coba lagi", are built from the join status as it changes, never fixed when the member returns (#261): being added, already in the server (also for someone who was there before linking), or not yet, with the reason. While that message shows, Profil's "Server" row keeps only its badge, so the reason appears once.
 
 ## Linking
 
@@ -66,7 +66,7 @@ Recording a link schedules `discord.join`, a Convex action:
 3. A 429 waits as long as Discord's `retry_after` asks. A 5xx or a network failure retries after 5 s, 30 s, 2 min, 10 min and 30 min, then the join is marked failed. Meanwhile Profil says Discord is busy and the site keeps trying.
 4. Any other refusal is recorded at once in Indonesian, for example a ban (40007), the 100-server limit (30001), a bot without permission (403) or an unknown server (404). A deactivated account, or a token that no longer works, is not added.
 
-"Coba lagi" on Profil (`discord.retryJoin`) starts a new round after a failure. A join scheduled for a link that has since gone finds nothing and stops.
+"Coba lagi" on Profil and on onboarding's card (`discord.retryJoin`) starts a new round after a failure. A join scheduled for a link that has since gone finds nothing and stops.
 
 Every Discord REST call goes through `convex/discordApi.ts`, which returns the status, Discord's error code and the wait for a 429 instead of throwing. Tests stub `fetch` there (`convex/discordApi.test.ts`, `convex/discord.test.ts`). The role sync (#243) adds its calls to that module.
 

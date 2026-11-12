@@ -43,7 +43,7 @@ flowchart LR
 
 ## Browser
 
-Server-rendered pages arrive from Vercel; the landing is prerendered and needs no backend. Signed-in pages (the dashboard, onboarding) and the Bogor Run leaderboard talk to Convex directly over its client, with a Convex token obtained from the auth session. The header reads the session from the same-origin `/api/auth/get-session`.
+Server-rendered pages arrive from Vercel; the landing is prerendered and needs no backend. Signed-in pages (the dashboard, onboarding) and the Bogor Run leaderboard talk to Convex directly over its client, with a Convex token obtained from the auth session. They read the session when they load and when another tab signs out, not every time the tab comes back into view, because each read is a Convex function call (#269). The header reads the session from the same-origin `/api/auth/get-session`.
 
 ## Next.js on Vercel
 

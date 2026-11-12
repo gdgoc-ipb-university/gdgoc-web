@@ -91,6 +91,14 @@ export const rateLimit = {
 export const sessionCache = { cookieCache: { enabled: true, maxAge: 5 * 60 } } satisfies BetterAuthOptions["session"];
 
 /**
+ * How long a Convex token lasts (#269). Every open member tab fetches a new one before the old one expires, hidden or
+ * not, and Convex then runs every query the tab watches again for the new token. An hour, against Better Auth's default
+ * of 15 minutes, makes that a quarter as often. Signing out clears the token, but a copy taken earlier stays valid
+ * until it expires.
+ */
+export const TOKEN_SECONDS = 60 * 60;
+
+/**
  * Google is the only sign-in. Discord, once its four settings are on the deployment, can only be linked to a signed-in
  * account (discordAuth.ts), and its callback stays on SITE_URL like Google's.
  */
@@ -116,7 +124,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     hooks: { before: discord.before },
     session: sessionCache,
     rateLimit,
-    plugins: [convex({ authConfig, jwks: process.env.JWKS })],
+    plugins: [convex({ authConfig, jwks: process.env.JWKS, jwt: { expirationSeconds: TOKEN_SECONDS } })],
   });
 };
 

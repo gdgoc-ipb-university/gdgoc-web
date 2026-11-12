@@ -4,6 +4,7 @@ import betterAuthTest from "@convex-dev/better-auth/test";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { components, internal } from "./_generated/api";
 import schema from "./schema";
+import { TOKEN_SECONDS } from "./auth";
 
 const modules = import.meta.glob("./**/*.ts");
 const site = "https://example-123.convex.site";
@@ -23,7 +24,8 @@ async function sessionToken(t: T) {
   return token;
 }
 
-const keyId = (jwt: string) => JSON.parse(atob(jwt.split(".")[0].replace(/-/g, "+").replace(/_/g, "/"))).kid as string;
+const part = (jwt: string, index: number) => JSON.parse(atob(jwt.split(".")[index].replace(/-/g, "+").replace(/_/g, "/")));
+const keyId = (jwt: string) => part(jwt, 0).kid as string;
 
 async function convexToken(t: T, token: string) {
   const response = await t.fetch("/api/auth/convex/token", { headers: { Authorization: `Bearer ${token}` } });
@@ -92,5 +94,14 @@ describe("auth config", () => {
     });
     try { expect((await load()).jwks).toBe(`${site}/api/auth/convex/jwks`); }
     finally { process.env = env; }
+  });
+});
+
+describe("Convex token lifetime", () => {
+  it("lasts an hour, so an open tab renews it and reruns its queries a quarter as often as Better Auth's 15 minutes", async () => {
+    const t = setup();
+    const { iat, exp } = part(await convexToken(t, await sessionToken(t)), 1) as { iat: number; exp: number };
+    expect(TOKEN_SECONDS).toBe(3600);
+    expect(exp - iat).toBe(TOKEN_SECONDS);
   });
 });

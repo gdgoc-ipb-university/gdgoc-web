@@ -30,14 +30,17 @@ export type RoleErrors = Partial<Record<keyof RoleValues, string>>;
 
 /**
  * Onboarding screens by id, in order: name, school or campus, Instagram (the intake's follow and twibbon requirement,
- * #212), the WhatsApp invitation, the GDG Community invitation, and the Tech Support offer (#198). Ids are compared as
- * numbers, so they ascend: 3 was the role screen until #156 and is the Instagram screen now.
+ * #212), the community screen (the WhatsApp group, and the Discord server since #242), the GDG Community invitation,
+ * and the Tech Support offer (#198). Ids are compared as numbers, so they ascend: 3 was the role screen until #156 and
+ * is the Instagram screen now. Discord joined screen 4 rather than adding a seventh, so saved `nextStep` values keep
+ * their meaning.
  */
 export const onboardingSteps = [1, 2, 3, 4, 5, 6] as const;
 export type OnboardingStep = (typeof onboardingSteps)[number];
 export type SavedStep = OnboardingStep;
 export const finalStep = 6 satisfies OnboardingStep;
 export const instagramStep = 3 satisfies OnboardingStep;
+export const communityStep = 4 satisfies OnboardingStep;
 
 export const onboardingLimits = { fullName: 120, campus: 150, studyProgram: 150 } as const;
 

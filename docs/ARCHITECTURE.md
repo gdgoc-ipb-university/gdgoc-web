@@ -6,6 +6,7 @@ One Next.js app on Vercel, one Convex backend, and Google sign-in through Better
 flowchart LR
   browser["Browser<br/>www.gdgocipb.com and league.gdgocipb.com"]
   google["Google OAuth"]
+  discord["Discord OAuth and API"]
 
   subgraph vercel["Vercel: production, from release"]
     next["Next.js App Router<br/>pages, src/app/league by host,<br/>and /api/auth/[...all]"]
@@ -26,9 +27,11 @@ flowchart LR
   browser -- "pages, /api/auth" --> next
   next -- "forwards auth requests" --> auth
   auth -- "OAuth sign-in" --> google
+  auth -- "OAuth link, never sign-in" --> discord
   browser -- "queries and mutations" --> fns
   browser -- "Bogor Run: issueRun, submitRun" --> fns
   fns --> db
+  fns -- "Add Guild Member, with the bot token" --> discord
   auth --> db
   browser -. "preview" .-> tunnel --> dev
   dev -.-> convexdev
@@ -46,11 +49,11 @@ Both hosts reach the same deployment ([ADR 0008](decisions/0008-league-subdomain
 
 ## Convex functions and database
 
-The queries, mutations and crons in `convex/` are the application API: the frontend calls them by name through the generated `api` object, and each checks access itself (`convex/access.ts`). `convex/schema.ts` defines every table, and file uploads use Convex storage. Tests run them against `convex-test` with no deployment.
+The queries, mutations and crons in `convex/` are the application API: the frontend calls them by name through the generated `api` object, and each checks access itself (`convex/access.ts`). Actions call outside services: Discord's REST API, only through `convex/discordApi.ts`, to add a linked member to the chapter server. `convex/schema.ts` defines every table, and file uploads use Convex storage. Tests run them against `convex-test` with no deployment.
 
 ## Better Auth with Google OAuth
 
-`convex/auth.ts` configures Better Auth as a Convex component, and `convex/http.ts` registers its routes on the deployment's `.convex.site` URL. Google is the only sign-in method. The secrets (`BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and the trusted origins (`SITE_URL`, and `LEAGUE_URL` for Tech League) are set on each Convex deployment, never on Vercel. `gdgocipb.com` redirects to `www.gdgocipb.com` so Google's callback always runs on that origin.
+`convex/auth.ts` configures Better Auth as a Convex component, and `convex/http.ts` registers its routes on the deployment's `.convex.site` URL. Google is the only sign-in method. A signed-in member can link a Discord account, which never signs anyone in; its callback also stays on `SITE_URL`, and the four `DISCORD_*` values live on the Convex deployment ([ADR 0009](decisions/0009-discord-linked-never-sign-in.md), [Discord](DISCORD.md)). The secrets (`BETTER_AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`) and the trusted origins (`SITE_URL`, and `LEAGUE_URL` for Tech League) are set on each Convex deployment, never on Vercel. `gdgocipb.com` redirects to `www.gdgocipb.com` so Google's callback always runs on that origin.
 
 One login covers both hosts. With `AUTH_COOKIE_DOMAIN` set, Better Auth writes its cookies, the OAuth state cookie included, on that parent domain, so a session started on either host is sent to both and signing out of one clears both. Sign-in started on the league asks Google to return to `SITE_URL` as usual, with an absolute league `callbackURL` that Better Auth accepts because `LEAGUE_URL` is trusted, and the callback then redirects there. The auth route also expires the host-only twin of each cookie it sets on the parent domain, left from before the change. Testing this locally needs two hosts under one parent domain, such as `www.lvh.me` and `league.lvh.me`; `localhost` subdomains cannot share a cookie.
 

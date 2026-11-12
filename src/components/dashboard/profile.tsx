@@ -33,11 +33,11 @@ export function MemberTagNotice() {
 }
 
 /**
- * The member's own profile: their onboarding answers to edit (#235), the photo, and what they cannot change here (email
- * from Google, dashboard access, and the community tag staff set). `photo` is the "Foto profil" panel, passed in by the
- * route so the shell, which imports `RolePrompt`, does not load the card.
+ * The member's own profile: their onboarding answers to edit (#235), the photo, Discord (#242), and what they cannot
+ * change here (email from Google, dashboard access, and the community tag staff set). `photo` is the "Foto profil" panel
+ * and `discord` the Discord panel, passed in by the route so the shell, which imports `RolePrompt`, does not load them.
  */
-export function ProfilePage({ photo }: { photo?: ReactNode }) {
+export function ProfilePage({ photo, discord }: { photo?: ReactNode; discord?: ReactNode }) {
   const viewer = useDashboardViewer();
   const stats = useQuery(api.assignments.list);
   const profile = useQuery(api.members.profile);
@@ -45,7 +45,7 @@ export function ProfilePage({ photo }: { photo?: ReactNode }) {
   const facts = [["Email", viewer.email], ["Akses dashboard", roleLabels[viewer.role]]];
   return <>
     <div className="dash-intro"><p className="eyebrow">AKUN</p><h1>Profil.</h1><p>Nama, sekolah atau kampus, jurusan, dan Instagram berasal dari perkenalanmu. Kamu bisa mengubahnya di sini kapan saja.</p></div>
-    {photo}
+    <div className="dash-profile-top">{photo}{discord}</div>
     <div className="dash-profile-grid dash-profile-layout">
       <section className="app-panel" aria-labelledby="profile-edit"><h2 id="profile-edit">Ubah profil</h2>
         {profile ? <ProfileForm id="profile" initial={profileDraft(profile)} revision={profile.revision} submitLabel="Simpan profil" savedLabel="Profil tersimpan."

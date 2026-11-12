@@ -11,6 +11,7 @@ import { syncBoardVisibility } from "./bogorRun";
 import { clearPhoto, photoUrl } from "./photos";
 import { removeRow } from "./league";
 import { deleteFlagRows } from "./flags";
+import { linkOf, removeLink } from "./discordLinks";
 import { editProfile, profileValues } from "./members";
 import { divisions, validateStaffRole } from "../src/lib/onboarding";
 import { normalizeEmail } from "../src/lib/cohort";
@@ -42,6 +43,7 @@ export const viewer = query({
 async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfiles">) {
   const user = await authComponent.getAnyUserById(ctx, profile.ownerId);
   const card = await ctx.db.query("memberCards").withIndex("by_owner", (q) => q.eq("ownerId", profile.ownerId)).unique();
+  const discord = await linkOf(ctx, profile.ownerId);
   const role = roleOf(user?.email ?? "", Boolean(user?.emailVerified), profile);
   return {
     ownerId: profile.ownerId, fullName: profile.fullName, campus: profile.campus, studyProgram: profile.studyProgram,
@@ -61,6 +63,8 @@ async function memberRow(ctx: QueryCtx | MutationCtx, profile: Doc<"memberProfil
     card: card ? { number: card.number, revoked: Boolean(card.revokedAt) } : null,
     // Their photo, and whether they uploaded it, which staff can remove (photos.removeFor).
     photo: await photoUrl(ctx, profile, user?.image), photoUploaded: Boolean(profile.photoStorageId),
+    // Their linked Discord account (#242), so staff know who is behind a Discord name; null until they link one.
+    discord: discord ? { username: discord.username ?? null, linkedAt: discord.linkedAt, joinStatus: discord.joinStatus, lastError: discord.lastError ?? null } : null,
   };
 }
 
@@ -245,8 +249,9 @@ async function deleteAuthRows(ctx: MutationCtx, model: "session" | "account", us
 /**
  * Owners delete a member's account on request (`/privasi`): profile, Apresiasi, assignment submissions with their files
  * and review rows, pending uploads, Bogor Run rows, reviewer grants, the member card, check-ins and door helper grants,
- * Tech Support requests, the uploaded photo and its file, flag task solves and wrong-try counts, and the sign-in account and sessions. Other people's
- * records keep the bare account ID they referenced (who reviewed, who changed access), which then resolves to no name.
+ * Tech Support requests, the uploaded photo and its file, flag task solves and wrong-try counts, the Discord link (#242),
+ * and the sign-in accounts (Google's and Discord's) and sessions. Other people's records keep the bare account ID they
+ * referenced (who reviewed, who changed access), which then resolves to no name.
  * `confirmName` must match the profile name, so a stray call cannot delete anyone. One accountDeletions row records the counts.
  */
 export const deleteAccount = mutation({
@@ -259,7 +264,7 @@ export const deleteAccount = mutation({
     if (row.role === "owner") throw new ConvexError("Akun pemilik diatur lewat konfigurasi server dan tidak bisa dihapus dari sini.");
     if (confirmName.trim() !== profile.fullName.trim()) throw new ConvexError({ code: "VALIDATION", message: "Ketik nama anggota persis seperti tertulis untuk konfirmasi." });
 
-    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0, flagSolves: 0, flagAttempts: 0 };
+    const counts = { appreciations: 0, appreciationReviews: 0, submissions: 0, submissionReviews: 0, files: 0, gameRuns: 0, gameBests: 0, reviewerGrants: 0, sessions: 0, accounts: 0, enrolments: 0, mentorGrants: 0, cards: 0, checkIns: 0, helperGrants: 0, techSupportRequests: 0, photos: 0, leagueTeams: 0, flagSolves: 0, flagAttempts: 0, discordLinks: 0 };
     for (const doc of await ctx.db.query("appreciations").withIndex("by_owner_updated", (q) => q.eq("ownerId", ownerId)).collect()) {
       for (const review of await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", doc._id)).collect()) { await ctx.db.delete(review._id); counts.appreciationReviews++; }
       await ctx.db.delete(doc._id); counts.appreciations++;
@@ -302,6 +307,8 @@ export const deleteAccount = mutation({
     }
     if (await clearPhoto(ctx, profile)) counts.photos++;
     Object.assign(counts, await deleteFlagRows(ctx, ownerId));
+    // The member stays in the Discord server; the site's link goes, and the Discord account row with the others below.
+    counts.discordLinks = await removeLink(ctx, ownerId);
     await ctx.db.delete(profile._id);
     counts.sessions = await deleteAuthRows(ctx, "session", ownerId);
     counts.accounts = await deleteAuthRows(ctx, "account", ownerId);

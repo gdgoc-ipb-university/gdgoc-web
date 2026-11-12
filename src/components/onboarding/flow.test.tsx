@@ -94,7 +94,7 @@ describe("accessible member onboarding", () => {
   it("completes six screens, requires Instagram, and makes the invitations and Tech Support optional", async () => {
     const save = gateway(); const complete = vi.fn(); const user = userEvent.setup();
     render(<OnboardingFlow viewer={viewer} profile={null} save={save} onComplete={complete} />);
-    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["01 Kenalan", "02 Sekolah/kampus", "03 Instagram", "04 WhatsApp", "05 Jadi member", "06 Tech Support"]);
+    expect(screen.getAllByRole("listitem").map((item) => item.textContent)).toEqual(["01 Kenalan", "02 Sekolah/kampus", "03 Instagram", "04 Komunitas", "05 Jadi member", "06 Tech Support"]);
     expect(screen.getByText(/LANGKAH 01 DARI 06/)).toBeTruthy();
     expect(screen.getByText("6 langkah singkat.")).toBeTruthy();
     await user.click(screen.getByRole("button", { name: "Lanjut" }));
@@ -137,6 +137,30 @@ describe("accessible member onboarding", () => {
     expect(save.mock.calls.map(([args]) => args.step)).toEqual([1, 2, 3, 3, 4, 5, 6]);
     expect(save.mock.calls[2][0].values).toMatchObject({ instagram: "teman.uji" });
     for (const [args] of save.mock.calls.slice(1)) expect(args.values).toMatchObject({ institutionKind: "campus" });
+  });
+
+  it("shows WhatsApp and Discord side by side on the community screen, both skippable (#242)", async () => {
+    const save = gateway(); const user = userEvent.setup();
+    const discord = <div className="onboard-invitation"><strong>Server Discord GDGoC IPB</strong><button type="button">Hubungkan Discord</button></div>;
+    render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 4, revision: 3 }} save={save} onComplete={vi.fn()} discord={discord} />);
+    expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("Gabung ke\nkomunitas.");
+    expect(screen.getByText(/WhatsApp dan server Discord GDGoC IPB dipakai bersama/)).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Gabung grup WhatsApp/ })).toBeTruthy();
+    // Connecting Discord leaves for Discord; it never submits the screen.
+    await user.click(screen.getByRole("button", { name: "Hubungkan Discord" }));
+    expect(save).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Lanjut" }));
+    expect(await screen.findByText(/LANGKAH 05 DARI 06/)).toBeTruthy();
+    expect(save.mock.calls[0][0]).toMatchObject({ step: 4 });
+  });
+
+  it("opens the community screen again when Discord sends a member back, even past it", () => {
+    const { unmount } = render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 6, revision: 5 }} save={gateway()} onComplete={vi.fn()} startOnCommunity />);
+    expect(screen.getByText(/LANGKAH 04 DARI 06/)).toBeTruthy();
+    unmount();
+    // A member who hasn't reached it yet stays where they were.
+    render(<OnboardingFlow viewer={viewer} profile={{ ...base, nextStep: 2, revision: 1 }} save={gateway()} onComplete={vi.fn()} startOnCommunity />);
+    expect(screen.getByText(/LANGKAH 02 DARI 06/)).toBeTruthy();
   });
 
   it("sends a member who asks for Tech Support straight to the request form", async () => {

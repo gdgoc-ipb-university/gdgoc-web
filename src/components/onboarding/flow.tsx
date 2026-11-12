@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { I18nProvider } from "react-aria-components/I18nProvider";
 import { api } from "../../../convex/_generated/api";
@@ -13,22 +13,23 @@ import { communityLinks } from "@/lib/community";
 import { campusOptions, loadCampusOptions, loadSchoolOptions, schoolProgramOptions, studyProgramOptions, type EducationOption } from "@/lib/education-options";
 import { techSupportHelpKinds, techSupportResponseDays } from "@/lib/tech-support-request";
 import { readableError } from "@/lib/draft-session";
-import { educationLabels, finalStep, instagramStep, institutionKindLabels, institutionKinds, normalizeOnboarding, onboardingDestination, onboardingSteps, resumeStep, stepAfter, stepBefore, techSupportRequestPath, validateOnboarding, type InstitutionKind, type OnboardingErrors, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
+import { communityStep, educationLabels, finalStep, instagramStep, institutionKindLabels, institutionKinds, normalizeOnboarding, onboardingDestination, onboardingSteps, resumeStep, stepAfter, stepBefore, techSupportRequestPath, validateOnboarding, type InstitutionKind, type OnboardingErrors, type OnboardingStep, type OnboardingValues } from "@/lib/onboarding";
 import { Arrow } from "../icons";
 import { BrandLogo } from "../brand-logo";
 import { EducationCombobox } from "./education-combobox";
 import { OnboardingArtwork } from "./artwork";
 import { PixelIcon } from "../pixel-icons";
+import { DiscordOnboardingCard } from "../discord-link";
 
 type SaveStep = (args: { step: OnboardingStep; revision: number; values: OnboardingValues }) => Promise<Doc<"memberProfiles">>;
 // Per screen, in the order of `onboardingSteps`. Membership is open to SMA and SMK students too, so screen 2 asks for either.
-const stepLabels = ["Kenalan", "Sekolah/kampus", "Instagram", "WhatsApp", "Jadi member", "Tech Support"];
-const headings = ["Kenalan dulu, yuk.", "Dari sekolah atau\nkampus mana?", "Follow & pasang\ntwibbon.", "Gabung grup\nWhatsApp.", "Jadi member\nGDGoC IPB.", "Punya target\nlomba?"];
+const stepLabels = ["Kenalan", "Sekolah/kampus", "Instagram", "Komunitas", "Jadi member", "Tech Support"];
+const headings = ["Kenalan dulu, yuk.", "Dari sekolah atau\nkampus mana?", "Follow & pasang\ntwibbon.", "Gabung ke\nkomunitas.", "Jadi member\nGDGoC IPB.", "Punya target\nlomba?"];
 const descriptions = [
   "Selamat datang di GDGoC IPB. Mulai dari nama yang ingin kamu pakai di komunitas.",
   "Mahasiswa dari kampus mana pun dan siswa SMA/SMK bisa bergabung. Apa pun jurusanmu, kamu bisa belajar teknologi di sini.",
   "Syarat jadi member: follow Instagram @gdgoc.ipb dan pasang twibbon di feed. Tulis username Instagram-mu supaya core team bisa mengeceknya.",
-  "Gabung grup WhatsApp untuk kabar kegiatan, teman diskusi, dan ajakan belajar bareng.",
+  "Grup WhatsApp dan server Discord GDGoC IPB dipakai bersama untuk kabar kegiatan, teman diskusi, dan ajakan belajar bareng. Gabung ke keduanya, atau salah satu dulu.",
   "Gabung sebagai member di halaman resmi GDGoC IPB. Temukan kegiatan dan daftar acara lewat Google Developer Groups.",
   `Member bisa minta Tech Support: GDGoC IPB mencarikan mentor dan mendampingimu untuk lomba teknologi, AI, dan web dev di luar komunitas. Dibalas paling lama ${techSupportResponseDays} hari kerja.`,
 ];
@@ -50,18 +51,26 @@ export function OnboardingPage() {
   if (isLoading || !isAuthenticated || !viewer || profile === undefined || profile?.completedAt) {
     return <main id="main" className="onboard-loading" role="status">Menyiapkan ruang untukmu…</main>;
   }
-  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} invitation={invitation ?? null} onComplete={(target) => router.replace(target ?? destination)} finishLabel={params.get("next") === "league" ? "Selesai, ke Tech League" : undefined} />;
+  return <OnboardingFlow key={viewer.id} viewer={viewer} profile={profile} save={save} invitation={invitation ?? null} onComplete={(target) => router.replace(target ?? destination)} finishLabel={params.get("next") === "league" ? "Selesai, ke Tech League" : undefined}
+    discord={<DiscordOnboardingCard />} startOnCommunity={params.has("discord")} />;
 }
 
-export function OnboardingFlow({ viewer, profile, save, onComplete, invitation = null, finishLabel = "Selesai, ke Dashboard" }: {
+export function OnboardingFlow({ viewer, profile, save, onComplete, invitation = null, finishLabel = "Selesai, ke Dashboard", discord = null, startOnCommunity = false }: {
   /** The last step's button, which names where onboarding returns to. */
   finishLabel?: string;
+  /** The Discord card for the community screen, beside WhatsApp's (#242); the page passes it so tests need no backend. */
+  discord?: ReactNode;
+  /** Back from Discord's consent page: open the community screen again, even for a member who had moved past it. */
+  startOnCommunity?: boolean;
   /** Set for an accepted program participant (cohorts.myInvitation): their program and role, shown on the first screen. */
   invitation?: { cohort: string; role: string } | null;
   /** Called once the last screen is saved; `target` is set when the member chose to request Tech Support. */
   viewer: { name: string; email: string }; profile: Doc<"memberProfiles"> | null; save: SaveStep; onComplete: (target?: string) => void;
 }) {
-  const [step, setStep] = useState<OnboardingStep>(resumeStep(profile?.nextStep, profile?.instagram));
+  const [step, setStep] = useState<OnboardingStep>(() => {
+    const saved = resumeStep(profile?.nextStep, profile?.instagram);
+    return startOnCommunity && saved > communityStep ? communityStep : saved;
+  });
   // A profile saved before the kind was asked had a campus; a new one chooses.
   const [values, setValues] = useState<OnboardingValues>({ fullName: profile?.fullName || viewer.name, campus: profile?.campus ?? "", studyProgram: profile?.studyProgram ?? "", institutionKind: profile?.institutionKind ?? (profile?.campus ? "campus" : undefined), instagram: profile?.instagram ?? "" });
   const [wantsSupport, setWantsSupport] = useState(false);
@@ -187,7 +196,10 @@ export function OnboardingFlow({ viewer, profile, save, onComplete, invitation =
                 <div className="onboard-requirement-links"><a className="button onboard-external" href={communityLinks.instagram} target="_blank" rel="noopener noreferrer">Follow @gdgoc.ipb <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><a className="text-link onboard-twibbon-link" href="/twibbon" target="_blank" rel="noopener">Buat twibbon <Arrow external /><span className="sr-only"> (buka tab baru)</span></a></div>
                 <p className="onboard-warning">Core team akan mengecek akun ini. Kalau belum follow @gdgoc.ipb atau twibbon tidak terpasang sampai 30 November, pendaftaranmu bisa dibatalkan.</p></div>
             </div>}
-            {step === 4 && <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>}
+            {step === communityStep && <div className="onboard-community">
+              <div className="onboard-invitation"><div className="onboard-invite-icon whatsapp-icon" aria-hidden="true"><PixelIcon name="whatsapp" size={24} /></div><div><strong>Grup WhatsApp GDGoC IPB</strong><p>Kabar kegiatan dan obrolan komunitas dalam satu tempat.</p></div><a className="button onboard-external" href={communityLinks.whatsapp} target="_blank" rel="noopener noreferrer">Gabung grup WhatsApp <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Setelah bergabung, kembali ke halaman ini untuk melanjutkan.</p></div>
+              {discord}
+            </div>}
             {step === 5 && <div className="onboard-invitation"><div className="onboard-invite-icon gdg-icon" aria-hidden="true"><PixelIcon name="code" size={24} /></div><div><strong>GDG on Campus IPB University</strong><p>Buka halaman chapter, lalu pilih <b>Join us</b> untuk menjadi member.</p></div><a className="button onboard-external" href={communityLinks.membership} target="_blank" rel="noopener noreferrer">Gabung di GDG Community <Arrow external /><span className="sr-only"> (buka tab baru)</span></a><p className="onboard-external-note">Sudah jadi member? Pilih Lanjut ke langkah terakhir.</p></div>}
             {step === finalStep && <div className="onboard-invitation onboard-support"><div className="onboard-invite-icon support-icon" aria-hidden="true"><PixelIcon name="message-text" size={24} /></div><div><strong>Tech Support GDGoC IPB</strong><p>Bantuan yang bisa kamu minta:</p><ul className="onboard-support-kinds">{techSupportHelpKinds.map((kind) => <li key={kind}>{kind}</li>)}</ul></div>
               <fieldset className="onboard-kind onboard-support-choice"><legend>Mau ajukan sekarang?</legend><div className="onboard-kind-options">

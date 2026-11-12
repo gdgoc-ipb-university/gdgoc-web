@@ -1,12 +1,30 @@
-import { createClient, type GenericCtx } from "@convex-dev/better-auth";
+import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth } from "better-auth/minimal";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 import authConfig from "./auth.config";
+import { discordAuthOptions } from "./discordAuth";
+import { recordLink, removeLink } from "./discordLinks";
+import { discordSettings } from "../src/lib/discord";
 
-export const authComponent = createClient<DataModel>(components.betterAuth);
+const authFunctions: AuthFunctions = internal.auth;
+
+/**
+ * Better Auth's tables live in its component. A Discord account row (#242) carries the site's `discordLinks` row with
+ * it: these triggers run in the same transaction as Better Auth's insert or delete.
+ */
+export const authComponent = createClient<DataModel>(components.betterAuth, {
+  authFunctions,
+  triggers: {
+    account: {
+      onCreate: async (ctx, doc) => { if (doc.providerId === "discord") await recordLink(ctx, doc); },
+      onDelete: async (ctx, doc) => { if (doc.providerId === "discord") await removeLink(ctx, doc.userId); },
+    },
+  },
+});
+export const { onCreate, onDelete } = authComponent.triggersApi();
 
 /** Owners are the verified emails in APPRECIATION_ADMIN_EMAILS; they are never stored in the database. */
 export function isOwner(email: string, verified: boolean) {
@@ -51,23 +69,34 @@ export function hostOptions(env: HostEnv) {
   return { trustedOrigins, ...(domain ? { advanced: { crossSubDomainCookies: { enabled: true, domain } } } : {}) };
 }
 
-export const createAuth = (ctx: GenericCtx<DataModel>) => betterAuth({
-  appName: "GDGoC IPB",
-  baseURL: process.env.SITE_URL,
-  secret: process.env.BETTER_AUTH_SECRET,
-  ...hostOptions({ SITE_URL: process.env.SITE_URL, LEAGUE_URL: process.env.LEAGUE_URL, AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN }),
-  database: authComponent.adapter(ctx),
-  socialProviders: process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? {
-    google: {
-      clientId: process.env.GOOGLE_CLIENT_ID,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      prompt: "select_account",
+/**
+ * Google is the only sign-in. Discord, once its four settings are on the deployment, can only be linked to a signed-in
+ * account (discordAuth.ts), and its callback stays on SITE_URL like Google's.
+ */
+export const createAuth = (ctx: GenericCtx<DataModel>) => {
+  const discord = discordAuthOptions(discordSettings(process.env), (userId) => ctx.runQuery(internal.discord.linkProblem, { userId }));
+  return betterAuth({
+    appName: "GDGoC IPB",
+    baseURL: process.env.SITE_URL,
+    secret: process.env.BETTER_AUTH_SECRET,
+    ...hostOptions({ SITE_URL: process.env.SITE_URL, LEAGUE_URL: process.env.LEAGUE_URL, AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN }),
+    database: authComponent.adapter(ctx),
+    socialProviders: {
+      ...process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? {
+        google: {
+          clientId: process.env.GOOGLE_CLIENT_ID,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          prompt: "select_account" as const,
+        },
+      } : {},
+      ...discord.socialProviders,
     },
-  } : {},
-  account: { encryptOAuthTokens: true },
-  rateLimit: { enabled: true, storage: "database", window: 60, max: 60 },
-  plugins: [convex({ authConfig })],
-});
+    account: { encryptOAuthTokens: true, accountLinking: discord.accountLinking },
+    hooks: { before: discord.before },
+    rateLimit: { enabled: true, storage: "database", window: 60, max: 60 },
+    plugins: [convex({ authConfig })],
+  });
+};
 
 export const configuration = query({
   args: {},

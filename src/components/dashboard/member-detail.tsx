@@ -9,6 +9,7 @@ import { api } from "../../../convex/_generated/api";
 import { assignmentPath } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
 import { profileDraft } from "@/lib/profile-edit";
+import { discordJoinLabels, discordLinkedDate } from "@/lib/discord";
 import { LoadingPanel, StatusBadge, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { PixelIcon } from "../pixel-icons";
@@ -46,6 +47,11 @@ export function MemberDetail({ ownerId }: { ownerId: string }) {
       <div><dt>Jurusan/program studi</dt><dd>{member.studyProgram || "—"}</dd></div>
       <div><dt>Instagram</dt><dd>{member.instagram ? <a href={`https://www.instagram.com/${member.instagram}/`} target="_blank" rel="noreferrer">@{member.instagram}</a> : "—"}<InstagramChanged at={member.instagramChangedAt} /></dd></div>
       <div><dt>Bergabung</dt><dd>{dateLabel(member.joinedAt)}</dd></div>
+      <div><dt>Discord</dt><dd>{member.discord ? <span className="dash-discord-fact">
+        <span className="dash-fact-row">{member.discord.username ?? "Menunggu nama dari Discord"}<span className="dash-discord-status" data-status={member.discord.joinStatus}>{discordJoinLabels[member.discord.joinStatus]}</span></span>
+        <span className="app-small">Terhubung {discordLinkedDate(member.discord.linkedAt)}</span>
+        {member.discord.joinStatus !== "joined" && member.discord.lastError && <small>{member.discord.lastError}</small>}
+      </span> : "Belum terhubung"}</dd></div>
       <div><dt>Kartu anggota</dt><dd>{member.card ? `${member.card.number}${member.card.revoked ? " · Diblokir" : ""}` : "Belum dibuka"}</dd></div>
       <div><dt>Perubahan akses terakhir</dt><dd>{member.accessUpdatedBy ?? "Belum pernah diubah"}</dd></div>
     </dl>

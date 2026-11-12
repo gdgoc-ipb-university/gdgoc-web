@@ -156,7 +156,17 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   return errors;
 }
 
-export function isLate(submittedAt: number, dueAt: number) { return submittedAt > dueAt; }
+/** What a task without a deadline shows where a date would be (#276). */
+export const noDeadlineLabel = "Tanpa tenggat";
+
+/** Work is late only after a deadline; a task without one (#276) never marks it late. */
+export function isLate(submittedAt: number, dueAt: number | null | undefined) { return dueAt != null && submittedAt > dueAt; }
+
+/** Soonest deadline first, then tasks without one (#276). For `Array.prototype.sort`. */
+export function byDeadline(a: { dueAt?: number | null }, b: { dueAt?: number | null }) {
+  if (a.dueAt == null || b.dueAt == null) return Number(a.dueAt == null) - Number(b.dueAt == null);
+  return a.dueAt - b.dueAt;
+}
 
 /** A submission edited after it was reviewed: the score still shows, but the reviewer should look again. */
 export function isStaleReview(submission: { submittedAt: number; reviewedAt?: number | null }) {

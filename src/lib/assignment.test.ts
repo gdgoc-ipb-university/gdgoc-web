@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignmentAudience, audienceLabel, cleanFileName, fileProblem, inAudience, fromJakartaInput, matchesRubric, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
+import { assignmentAudience, audienceLabel, byDeadline, cleanFileName, fileProblem, inAudience, isLate, fromJakartaInput, matchesRubric, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
 
 describe("assignment rules", () => {
   it("reads and writes deadlines in WIB regardless of the runtime time zone", () => {
@@ -8,6 +8,18 @@ describe("assignment rules", () => {
     expect(fromJakartaInput("2026-10-01T23:59")).toBe(timestamp);
     expect(fromJakartaInput("2026-02-30T10:00")).toBeNaN();
     expect(fromJakartaInput("besok")).toBeNaN();
+  });
+
+  it("marks work late only after a deadline, never without one", () => {
+    expect(isLate(2, 1)).toBe(true);
+    expect(isLate(1, 1)).toBe(false);
+    expect(isLate(Date.now(), undefined)).toBe(false);
+    expect(isLate(Date.now(), null)).toBe(false);
+  });
+
+  it("orders tasks by deadline, those without one last in the order they came", () => {
+    const tasks = [{ id: "a" }, { id: "b", dueAt: 30 }, { id: "c", dueAt: null }, { id: "d", dueAt: 10 }];
+    expect(tasks.sort(byDeadline).map((task) => task.id)).toEqual(["d", "b", "a", "c"]);
   });
 
   it("accepts known file types only when the reported type matches the extension", () => {

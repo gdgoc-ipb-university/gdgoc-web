@@ -11,16 +11,19 @@ export function DiscordPanel() {
   const { state, notice, error, busy, connect, unlink, retry } = useDiscord();
   const [confirm, setConfirm] = useState(false);
   const link = state?.link ?? null;
+  const shown = confirm ? null : notice;
+  // A notice that follows the join status already says what the "Server" row's line would, reason included (#261).
+  const told = !error && shown?.live;
   return <section className="app-panel dash-discord-panel" aria-labelledby="profile-discord" aria-busy={state === undefined}>
     <h2 id="profile-discord"><span className="dash-discord-mark" aria-hidden="true"><PixelIcon name="discord" size={22} /></span>Discord</h2>
     <p>Server Discord GDGoC IPB dipakai bersama grup WhatsApp: ngobrol, kabar kegiatan, dan kanal khusus member. Hubungkan akunmu supaya kamu langsung masuk ke server.</p>
-    <Feedback notice={confirm ? null : notice} error={confirm ? "" : error} />
+    <Feedback notice={shown} error={confirm ? "" : error} />
     {state === undefined ? <p className="app-small" role="status">Memuat Discord…</p>
       : link ? <>
         <dl className="dash-facts dash-discord-facts">
           <div><dt>Akun Discord</dt><dd>{link.username ?? "Menunggu nama dari Discord…"}</dd></div>
           <div><dt>Terhubung</dt><dd>{discordLinkedDate(link.linkedAt)}</dd></div>
-          <div><dt>Server</dt><dd><span className="dash-discord-status" data-status={link.joinStatus}>{discordJoinLabels[link.joinStatus]}</span>{link.joinStatus !== "joined" && <span>{joinLine(link)}</span>}</dd></div>
+          <div><dt>Server</dt><dd><span className="dash-discord-status" data-status={link.joinStatus}>{discordJoinLabels[link.joinStatus]}</span>{link.joinStatus !== "joined" && !told && <span>{joinLine(link)}</span>}</dd></div>
         </dl>
         <div className="dash-photo-buttons">
           {link.joinStatus === "joined" && state?.serverUrl && serverLink(state.serverUrl, "button button-blue")}

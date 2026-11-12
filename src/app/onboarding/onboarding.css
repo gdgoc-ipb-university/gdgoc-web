@@ -73,6 +73,7 @@
 .onboard-invitation button.onboard-external:disabled { cursor: progress; opacity: .7; }
 .onboard-invitation .onboard-discord-linked { grid-column: 1 / -1; display: flex; gap: 10px; align-items: flex-start; margin: 0; padding: 12px 14px; color: #2b5e2a; background: #e3efdd; border: 1px solid #b9d3ae; }
 .onboard-discord-linked svg { flex: none; margin-top: 2px; }
+.onboard-invitation .onboard-discord-linked[data-status="failed"] { color: #673c0f; background: #fff4d9; border-color: #d7b17a; }
 .onboard-invitation .onboard-discord-server { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 8px; font-size: 13px; }
 .onboard-invitation .discord-notice { grid-column: 1 / -1; margin: 0; padding: 12px 14px; border: 1px solid #d7b17a; background: #fff4d9; color: #673c0f; }
 .onboard-actions { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 32px; }

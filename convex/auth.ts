@@ -3,7 +3,7 @@ import { convex } from "@convex-dev/better-auth/plugins";
 import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import { query } from "./_generated/server";
+import { internalAction, query } from "./_generated/server";
 import authConfig from "./auth.config";
 import { discordAuthOptions } from "./discordAuth";
 import { recordLink, removeLink } from "./discordLinks";
@@ -109,9 +109,17 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     account: { encryptOAuthTokens: true, accountLinking: discord.accountLinking },
     hooks: { before: discord.before },
     rateLimit,
-    plugins: [convex({ authConfig })],
+    plugins: [convex({ authConfig, jwks: process.env.JWKS })],
   });
 };
+
+/**
+ * The token signing key in use, as JSON for the deployment's JWKS variable (#269). With JWKS set, minting a Convex token
+ * reads no table, and Convex checks tokens against the key in auth.config.ts instead of fetching /convex/jwks for each
+ * new token. This returns the key already in the table, never a new one, so tokens issued before the switch stay valid:
+ * `npx convex run auth:getLatestJwks | npx convex env set JWKS`.
+ */
+export const getLatestJwks = internalAction({ args: {}, handler: async (ctx) => await createAuth(ctx).api.getLatestJwks() });
 
 export const configuration = query({
   args: {},

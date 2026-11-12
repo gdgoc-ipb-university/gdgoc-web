@@ -26,3 +26,18 @@ Headless Chromium at 390 × 844, signed in with a made-up account, opening `/onb
 | Convex calls while loading | 21, plus about 10 for Convex's two JWKS fetches | 3 |
 | Convex calls over the three returns | 21 | 0 |
 | Page | signed in, step 1 prefilled | signed in, step 1 prefilled |
+
+## On the dev deployment
+
+Repeated on 12 November 2026 on the shared dev deployment, which backs staging. Each branch was pushed in turn with `convex dev --once`, then `main`'s backend was pushed back. The test member was a made-up user and session, created through the Better Auth component and deleted afterwards; requests went straight to the deployment's `.convex.site`. `JWKS` was set on dev from `auth:getLatestJwks` before measuring #271, and left set.
+
+| Request | main | #270 | #271 | #272 | #273 |
+|---|---:|---:|---:|---:|---:|
+| A guest's `get-session` | 4 | 1 | 1 | 1 | 1 |
+| A member's `get-session` | 7 | 4 | 3 | 1 | 1 |
+| A member's `convex/token` | 6.7 | 4 | 3 | 1 | 1 |
+| A `/convex/jwks` fetch | 4.7 | 2 | 1 | 1 | 1 |
+| An open tab, first token and two renewals: auth requests / Convex calls | 12 / 77 | 12 / 42 | 6 / 24 | 6 / 12 | 6 / 10 |
+| Token lifetime | 900 s | 900 s | 900 s | 900 s | 3600 s |
+
+In the open-tab row, the auth requests on `main` and #270 are 6 token requests plus 6 JWKS fetches by Convex. From #271 on, with `JWKS` set, Convex fetches nothing. The rest of that row is `auth:viewer` rerunning for each new token. The tab stayed signed in as the test member at every step. #274 changes only the browser, so the browser check above covers it.

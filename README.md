@@ -71,4 +71,4 @@ Never force-push this branch, and never open a pull request from it.
 | `issue-264/discord-invite` | #264 the Discord server's permanent invite: the Server Discord card on /bergabung at 1440, 900 and 390, and Discord beside Instagram in the site footer and the Tech League footer at 1440 and 390 | #265 |
 | `issue-269/auth-calls` | #269 Convex function calls per auth request, before and after each change (local backend, made-up account), and onboarding still signed in at 390 | #270, #271, #272, #273, #274 |
 | `issue-276/no-deadline` | #276 tasks without a deadline: the "Tanpa tenggat" box for a graded and a flag task on create and edit at 1440 and 390, the member list, overview, task and flag task, and the staff list and flag task (made-up accounts, local backend) | #277 |
-| `issue-260/privasi-gogo` | #260 the Bot Discord Gogo section on /privasi, after the Discord section, at 1440 and 390 | #285 |
+| `issue-260/privasi-gogo` | #260 the Bot Discord Gogo section on /privasi, after the Discord section, at 1440 and 390: first draft, and aligned with gdgoc-bot ADR 0007 (`-adr0007`) | #285 |

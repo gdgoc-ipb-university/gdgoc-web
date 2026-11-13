@@ -8,6 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, assignmentPath, audienceGroups, audienceLabels, defaultAudience, defaultMaxScore, maxSlugLength, normalizeAssignment, rubricTotal, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues, type AudienceGroup, type RubricInput } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
+import { editorDoc, richText, type RichDoc } from "@/lib/rich-text";
 import { defaultFlagInput, normalizeFlag, validateFlag, type FlagErrors, type FlagInput } from "@/lib/flag-task";
 import type { CohortRole } from "@/lib/cohort";
 import { LoadingPanel } from "../appreciation/shared";
@@ -17,6 +18,7 @@ import { isStaff, useDashboardViewer } from "./viewer";
 import { FlagBadge, FlagFields, KindSwitch, SolveBadge, flagFields } from "./flag-task";
 import { PixelIcon } from "../pixel-icons";
 import { Select } from "../select";
+import { RichTextEditor } from "./rich-text-editor";
 
 export function AssignmentsPage() {
   const viewer = useDashboardViewer();
@@ -124,16 +126,30 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const titleField = useRef<HTMLInputElement>(null);
-  const descriptionField = useRef<HTMLTextAreaElement>(null);
+  // The instructions editor (#288) opens with the stored document, or an older task's plain text as paragraphs.
+  const [descriptionSeed] = useState(() => editorDoc(initial.descriptionDoc, initial.description));
+  const focusDescription = useRef<(() => void) | null>(null);
   const dueField = useRef<HTMLInputElement>(null);
   const maxScoreField = useRef<HTMLInputElement>(null);
   const audienceField = useRef<HTMLInputElement>(null);
   const rolesField = useRef<HTMLInputElement>(null);
   const cohorts = useQuery(api.cohorts.list);
-  function update(field: Exclude<keyof AssignmentValues, "rubric" | "audience" | "cohortId" | "cohortRoles">, value: string) {
+  function update(field: Exclude<keyof AssignmentValues, "rubric" | "audience" | "cohortId" | "cohortRoles" | "noDue">, value: string) {
     setValues((current) => ({ ...current, [field]: value, ...(field === "title" && !slugEdited ? { slug: slugify(value) } : {}) }));
     setErrors((current) => ({ ...current, [field]: undefined }));
   }
+  function updateDescription(doc: RichDoc) {
+    setValues((current) => ({ ...current, description: richText(doc), descriptionDoc: JSON.stringify(doc) }));
+    setErrors((current) => ({ ...current, description: undefined }));
+  }
+  // "Tanpa tenggat" (#276) keeps the typed date, so unticking brings it back.
+  function setNoDue(noDue: boolean) {
+    setValues((current) => ({ ...current, noDue }));
+    setErrors((current) => ({ ...current, dueAt: undefined }));
+  }
+  const dueHint = values.noDue
+    ? isFlag ? "Flag diterima sampai tugas ini ditutup." : "Kiriman diterima sampai pengumpulan ditutup, dan tidak ada yang ditandai terlambat."
+    : isFlag ? "Flag tidak diterima lagi setelah tenggat." : "Kiriman setelah tenggat tetap diterima dan ditandai terlambat, sampai pengumpulan ditutup.";
   const rubric = values.rubric ?? [];
   const rubricSum = rubric.length ? rubricTotal(rubric) : null;
   function setRubric(next: RubricInput[]) {
@@ -168,7 +184,8 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
     const foundFlag = isFlag ? validateFlag(flag) : {};
     setErrors(found); setFlagErrors(foundFlag); setError("");
     const first = (["title", "description", "audience", "cohortRoles", "dueAt", "maxScore"] as const).find((field) => found[field]);
-    if (first) { ({ title: titleField, description: descriptionField, dueAt: dueField, maxScore: maxScoreField, audience: audienceField, cohortRoles: rolesField })[first].current?.focus(); return; }
+    if (first === "description") { focusDescription.current?.(); return; }
+    if (first) { ({ title: titleField, dueAt: dueField, maxScore: maxScoreField, audience: audienceField, cohortRoles: rolesField })[first].current?.focus(); return; }
     const firstFlag = flagFields.find((field) => foundFlag[field]);
     if (firstFlag) { document.getElementById(firstFlag)?.focus(); return; }
     setBusy(true);
@@ -189,7 +206,11 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
         <div className="dash-slug-input"><span aria-hidden="true">/dashboard/tugas/</span><input id="slug" value={values.slug} maxLength={maxSlugLength + 20} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(event) => { setSlugEdited(true); update("slug", event.target.value); }} onBlur={() => setValues((current) => ({ ...current, slug: slugify(current.slug) }))} aria-describedby="slug-hint" placeholder={slugify(values.title) || "judul-tugas"} /></div>
         <p className="field-hint" id="slug-hint" aria-live="polite">{previewSlug && previewSlug !== requestedSlug ? <>Slug ini sudah dipakai tugas lain, jadi akan disimpan sebagai <b>{previewSlug}</b>. </> : null}Terisi otomatis dari judul, huruf kecil dan tanda hubung. Link lama tetap diarahkan jika slug diubah.{slugEdited && <> <button type="button" className="text-button dash-inline-button" onClick={() => { setSlugEdited(false); setValues((current) => ({ ...current, slug: slugify(current.title) })); }}>Samakan dengan judul</button></>}</p>
       </div>
-      <div className="app-field"><label htmlFor="description">Instruksi <span className="field-required" aria-hidden="true">*</span></label><textarea data-lenis-prevent id="description" ref={descriptionField} required rows={10} maxLength={assignmentLimits.description} value={values.description} onChange={(event) => update("description", event.target.value)} aria-invalid={Boolean(errors.description)} aria-describedby={described("description", "description-hint")} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." /><p className="field-hint" id="description-hint">Ditampilkan apa adanya, termasuk baris baru. {values.description.length}/{assignmentLimits.description} karakter.</p>{errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
+      <div className="app-field"><span className="dash-label" id="description-label">Instruksi <span className="field-required" aria-hidden="true">*</span></span>
+        <p className="field-hint dash-hint-above" id="description-hint">Gunakan toolbar untuk judul, daftar, kode, atau tautan. Tautan bisa diklik member.</p>
+        <RichTextEditor id="description" labelledBy="description-label" describedBy={described("description", "description-hint")} initialDoc={descriptionSeed} onChange={updateDescription}
+          disabled={busy} required invalid={Boolean(errors.description)} maxLength={assignmentLimits.description} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." focusRef={focusDescription} toolbarLabel="Format instruksi" />
+        {errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
       <fieldset className="dash-audience-editor" aria-describedby={described(values.cohortId ? "cohortRoles" : "audience", "audience-hint")}>
         <legend>Untuk siapa <span className="field-required" aria-hidden="true">*</span></legend>
         {cohorts && cohorts.length > 0 && <div className="dash-target-options" role="radiogroup" aria-label="Jenis sasaran">
@@ -209,7 +230,9 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
         </>}
       </fieldset>
       <div className="app-field-grid">
-      <div className="app-field dash-due-field"><label htmlFor="dueAt">Tenggat (WIB) <span className="field-required" aria-hidden="true">*</span></label><input id="dueAt" ref={dueField} type="datetime-local" required value={values.dueAt} onChange={(event) => update("dueAt", event.target.value)} aria-invalid={Boolean(errors.dueAt)} aria-describedby={described("dueAt", "due-hint")} /><p className="field-hint" id="due-hint">{isFlag ? "Flag tidak diterima lagi setelah tenggat." : "Kiriman setelah tenggat tetap diterima dan ditandai terlambat, sampai pengumpulan ditutup."}</p>{errors.dueAt && <p className="field-error" id="dueAt-error">{errors.dueAt}</p>}</div>
+      <div className="app-field dash-due-field"><label htmlFor="dueAt">Tenggat (WIB){!values.noDue && <> <span className="field-required" aria-hidden="true">*</span></>}</label><input id="dueAt" ref={dueField} type="datetime-local" required={!values.noDue} disabled={values.noDue} value={values.dueAt} onChange={(event) => update("dueAt", event.target.value)} aria-invalid={Boolean(errors.dueAt)} aria-describedby={described("dueAt", "due-hint")} />
+        <label className="dash-audience-option"><input type="checkbox" checked={Boolean(values.noDue)} onChange={(event) => setNoDue(event.target.checked)} aria-describedby="due-hint" />Tanpa tenggat</label>
+        <p className="field-hint" id="due-hint" aria-live="polite">{dueHint}</p>{errors.dueAt && <p className="field-error" id="dueAt-error">{errors.dueAt}</p>}</div>
       {!isFlag && <div className="app-field dash-score-field"><label htmlFor="maxScore">Nilai maksimal</label><input id="maxScore" ref={maxScoreField} type="number" inputMode="numeric" min={1} max={assignmentLimits.maxScore} step={1} value={rubric.length ? (rubricSum === null ? "" : String(rubricSum)) : values.maxScore} readOnly={rubric.length > 0} onChange={(event) => update("maxScore", event.target.value)} aria-invalid={Boolean(errors.maxScore)} aria-describedby={described("maxScore", "max-score-hint")} /><p className="field-hint" id="max-score-hint">{rubric.length ? "Mengikuti jumlah poin rubrik di bawah." : `Nilai kiriman diberikan dari 0 sampai angka ini. Biarkan ${defaultMaxScore} jika tidak yakin.`}</p>{errors.maxScore && <p className="field-error" id="maxScore-error">{errors.maxScore}</p>}</div>}
       </div>
       {isFlag ? <FlagFields value={flag} errors={flagErrors} editing={!creating} onChange={updateFlag} /> : <fieldset className="dash-rubric-editor" aria-describedby={described("rubric", "rubric-hint")}>
@@ -236,7 +259,7 @@ export function NewAssignmentPage() {
   const viewer = useDashboardViewer();
   const router = useRouter();
   const create = useMutation(api.assignments.create);
-  const [initial] = useState<AssignmentValues>(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()), maxScore: String(defaultMaxScore), rubric: [], audience: defaultAudience, cohortId: null, cohortRoles: [] }));
+  const [initial] = useState<AssignmentValues>(() => ({ title: "", slug: "", description: "", dueAt: toJakartaInput(defaultDue()), noDue: false, maxScore: String(defaultMaxScore), rubric: [], audience: defaultAudience, cohortId: null, cohortRoles: [] }));
   if (!isStaff(viewer)) return <StaffOnly />;
   return <>
     <Link className="text-button app-back" href="/dashboard/tugas"><PixelIcon name="arrow-left" size={24} />Kelola tugas</Link>
@@ -265,7 +288,9 @@ function EditAssignment({ assignment, cohortRoles, flag }: { assignment: Doc<"as
   const router = useRouter();
   const update = useMutation(api.assignments.update);
   const [initial] = useState<AssignmentValues>(() => ({
-    title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, dueAt: toJakartaInput(assignment.dueAt),
+    title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, descriptionDoc: assignment.descriptionDoc,
+    // A task without a deadline (#276) opens with "Tanpa tenggat" ticked and next week in the date, ready if it is unticked.
+    dueAt: toJakartaInput(assignment.dueAt ?? defaultDue()), noDue: assignment.dueAt === undefined,
     maxScore: String(assignmentMaxScore(assignment)), rubric: (assignment.rubric ?? []).map((criterion) => ({ name: criterion.name, max: String(criterion.max) })),
     audience: assignmentAudience(assignment),
     // Stored without roles means every role, which the form shows ticked.

@@ -63,6 +63,26 @@ describe("Tech Support requests", () => {
     expect((await other.query(api.techSupport.mine, {}))[0]).toMatchObject({ participation: "solo", teamName: null });
   });
 
+  it("stores rich progress sanitized beside its plain text, counted as the editor counts it (#288)", async () => {
+    const { t, member, handler } = await world();
+    const paragraph = (text: string, marks?: unknown[]) => ({ type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }] });
+    const doc = (...content: unknown[]) => JSON.stringify({ type: "doc", content });
+    const link = paragraph("Demo", [{ type: "link", attrs: { href: "https://example.com/demo", target: "_blank" } }]);
+    await member.mutation(api.techSupport.submit, { values: values({ progress: "diabaikan", progressDoc: doc(paragraph("Prototipe jalan."), link, { type: "paragraph" }) }) });
+    const [request] = (await handler.query(api.techSupport.queue, {})).requests;
+    expect(request.progress).toBe("Prototipe jalan.\nDemo");
+    expect(JSON.parse(request.progressDoc!)).toEqual({ type: "doc", content: [paragraph("Prototipe jalan."), paragraph("Demo", [{ type: "link", attrs: { href: "https://example.com/demo" } }])] });
+    // 500 lines of four characters is 2,000 for the editor; one more is refused, as is a document outside the allowlist.
+    const lines = (count: number) => Array.from({ length: count }, () => paragraph("abcd"));
+    await member.mutation(api.techSupport.submit, { values: values({ progressDoc: doc(...lines(500)) }) });
+    await expect(member.mutation(api.techSupport.submit, { values: values({ progressDoc: doc(...lines(500), paragraph("x")) }) })).rejects.toMatchObject({ data: { fields: { progress: "Maksimal 2000 karakter." } } });
+    await expect(member.mutation(api.techSupport.submit, { values: values({ progressDoc: doc({ type: "image" }) }) })).rejects.toMatchObject({ data: { fields: { progress: "Format progres tidak dikenali. Muat ulang halaman, lalu coba lagi." } } });
+    // A tab from before the editor sends plain text only.
+    await member.mutation(api.techSupport.submit, { values: values() });
+    const rows = await t.run((ctx) => ctx.db.query("techSupportRequests").collect());
+    expect(rows.map((row) => Boolean(row.progressDoc))).toEqual([true, true, false]);
+  });
+
   it("needs a WhatsApp number, keeps an optional Discord username, and stores both normalised (#251)", async () => {
     const { t, handler, member, other } = await world();
     // A page loaded before the fields existed sends neither and is asked to reload.

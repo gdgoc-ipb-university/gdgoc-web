@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api, components, internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import schema from "./schema";
-import { toJakartaInput } from "../src/lib/assignment";
+import { fromJakartaInput, toJakartaInput } from "../src/lib/assignment";
 
 const modules = import.meta.glob("./**/*.ts");
 const page = { numItems: 20, cursor: null };
@@ -73,6 +73,145 @@ describe("assignment management", () => {
     const pending = await attach(member, t, empty);
     await owner.mutation(api.assignments.remove, { id: empty, revision: 0 });
     expect(await t.run((ctx) => ctx.db.get(pending))).toBeNull();
+  });
+});
+
+describe("tasks without a deadline (#276)", () => {
+  it("saves either kind without one, and an edit turns it off and back on", async () => {
+    const { t, owner } = await world();
+    const row = (id: Id<"assignments">) => t.run((ctx) => ctx.db.get(id));
+    const graded = await owner.mutation(api.assignments.create, { values: { ...values(), dueAt: "", noDue: true }, publish: true });
+    expect(await row(graded)).not.toHaveProperty("dueAt");
+    const flag = { flag: "GDGOC{kapan-saja}", maxPoints: "100", minPoints: "20", decrement: "10" };
+    const flagTask = await owner.mutation(api.assignments.create, { values: { ...values(), noDue: true, flag }, publish: true });
+    expect(await row(flagTask)).toMatchObject({ kind: "flag" });
+    expect(await row(flagTask)).not.toHaveProperty("dueAt");
+
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    const off = { ...values(), noDue: true };
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: off });
+    expect(await row(id)).not.toHaveProperty("dueAt");
+    // A retry of that save is not a conflict.
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: off });
+    const due = toJakartaInput(Date.now() + 72 * hour);
+    await owner.mutation(api.assignments.update, { id, revision: 1, values: { ...values(), dueAt: due } });
+    expect((await row(id))?.dueAt).toBe(fromJakartaInput(due));
+    // A tab from before the option sends no `noDue`, so it still needs a date.
+    await expect(owner.mutation(api.assignments.update, { id, revision: 2, values: { ...values(), dueAt: "" } })).rejects.toThrow("Lengkapi");
+  });
+
+  it("lists them after the dated ones, open and closed, and never marks their work late", async () => {
+    const { t, owner, member } = await world();
+    const create = async (title: string, dueAt: number | undefined, status: "published" | "closed" = "published") => {
+      const id = await owner.mutation(api.assignments.create, { values: { ...values(dueAt ?? Date.now() + hour), title }, publish: true });
+      await t.run((ctx) => ctx.db.patch(id, { status, ...(dueAt === undefined ? { dueAt: undefined } : {}) }));
+      return id;
+    };
+    const anytime = await create("Kapan saja", undefined);
+    await create("Lusa", Date.now() + 48 * hour);
+    await create("Besok", Date.now() + 24 * hour);
+    await create("Ditutup tanpa tenggat", undefined, "closed");
+    await create("Ditutup lama", Date.now() + hour, "closed");
+    await create("Ditutup baru", Date.now() + 2 * hour, "closed");
+    const list = await member.query(api.assignments.list);
+    expect(list.map((item) => item.title)).toEqual(["Besok", "Lusa", "Kapan saja", "Ditutup baru", "Ditutup lama", "Ditutup tanpa tenggat"]);
+    expect(list[2]).toMatchObject({ _id: anytime, dueAt: null });
+
+    // Days after every dated task here was due (sessions in this test last a week).
+    vi.useFakeTimers({ now: Date.now() + 5 * 24 * hour });
+    await member.mutation(api.assignments.submit, { assignmentId: anytime, revision: 0, answer: "Lima hari kemudian.", fileIds: [] });
+    expect((await member.query(api.assignments.get, { id: anytime }))?.submission).toMatchObject({ late: false });
+    expect((await member.query(api.assignments.list)).find((item) => item._id === anytime)).toMatchObject({ late: false, submittedAt: expect.any(Number) });
+    expect((await owner.query(api.assignments.submissions, { id: anytime, paginationOpts: page })).page[0]).toMatchObject({ late: false });
+    expect((await owner.query(api.assignments.adminList, { paginationOpts: page })).page.find((item) => item._id === anytime)).toMatchObject({ submissionCount: 1, lateCount: 0 });
+  });
+});
+
+describe("rich instructions (#288)", () => {
+  const text = (value: string, marks?: unknown[]) => ({ type: "text", text: value, ...(marks ? { marks } : {}) });
+  const doc = (...content: unknown[]) => JSON.stringify({ type: "doc", content });
+  const fieldError = (message: string) => ({ data: { fields: { description: message } } });
+
+  it("stores the sanitized document with its plain text, and a tab from before the editor clears it", async () => {
+    const { t, owner, member } = await world();
+    const row = (id: Id<"assignments">) => t.run((ctx) => ctx.db.get(id));
+    const sent = doc(
+      { type: "heading", attrs: { level: 2, id: "langkah" }, content: [text("Langkah")] },
+      { type: "paragraph", content: [text("Gabung Discord", [{ type: "link", attrs: { href: "https://discord.gg/contoh", target: "_blank" } }])] },
+    );
+    const id = await owner.mutation(api.assignments.create, { values: { ...values(), description: "diabaikan", descriptionDoc: sent }, publish: true });
+    const saved = await row(id);
+    expect(saved?.description).toBe("Langkah\nGabung Discord");
+    expect(JSON.parse(saved!.descriptionDoc!)).toEqual({ type: "doc", content: [
+      { type: "heading", attrs: { level: 2 }, content: [text("Langkah")] },
+      { type: "paragraph", content: [text("Gabung Discord", [{ type: "link", attrs: { href: "https://discord.gg/contoh" } }])] },
+    ] });
+    // Members get the document with the task; the list's summary stays plain text.
+    expect((await member.query(api.assignments.get, { id }))?.assignment.descriptionDoc).toBe(saved?.descriptionDoc);
+    expect((await member.query(api.assignments.list, {})).find((item) => item._id === id)?.summary).toBe("Langkah\nGabung Discord");
+
+    const edit = { ...values(), descriptionDoc: doc({ type: "paragraph", content: [text("Versi baru")] }) };
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: edit });
+    // A retry of an acknowledged save is not a conflict.
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: edit });
+    expect(await row(id)).toMatchObject({ description: "Versi baru", revision: 1 });
+    await owner.mutation(api.assignments.update, { id, revision: 1, values: values() });
+    expect(await row(id)).not.toHaveProperty("descriptionDoc");
+    expect((await row(id))?.description).toBe(values().description);
+  });
+
+  it("counts the limit as the editor does, and refuses empty or unknown documents", async () => {
+    const { t, owner } = await world();
+    // 1,500 paragraphs of four characters: 6,000 for the editor, though the plain-text copy adds 1,499 line breaks.
+    const paragraphs = (count: number) => Array.from({ length: count }, () => ({ type: "paragraph", content: [text("abcd")] }));
+    const full = await owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: doc(...paragraphs(1500)) }, publish: false });
+    expect((await t.run((ctx) => ctx.db.get(full)))?.description).toHaveLength(7499);
+    const over = doc(...paragraphs(1500), { type: "paragraph", content: [text("x")] });
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: over }, publish: false })).rejects.toMatchObject(fieldError("Maksimal 6000 karakter."));
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: doc({ type: "paragraph" }, { type: "horizontalRule" }) }, publish: false }))
+      .rejects.toMatchObject(fieldError("Jelaskan apa yang perlu dikerjakan."));
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: doc({ type: "image", attrs: { src: "https://x" } }) }, publish: false }))
+      .rejects.toMatchObject(fieldError("Format instruksi tidak dikenali. Muat ulang halaman, lalu coba lagi."));
+  });
+});
+
+describe("rich feedback and revision notes (#288)", () => {
+  const paragraph = (text: string, marks?: unknown[]) => ({ type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }] });
+  const doc = (...content: unknown[]) => JSON.stringify({ type: "doc", content });
+
+  it("stores the document with its plain text, in the history too, and an older tab's plain text clears it", async () => {
+    const { t, owner, member } = await world();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Versi 1", fileIds: [] });
+    const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    const link = paragraph("Lihat contoh", [{ type: "link", attrs: { href: "https://example.com/contoh" } }]);
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 90, feedback: "diabaikan", feedbackDoc: doc(paragraph("Rapi.", [{ type: "bold" }]), link, { type: "paragraph" }) });
+    const reviewed = (await member.query(api.assignments.get, { id }))?.submission;
+    expect(reviewed?.feedback).toBe("Rapi.\nLihat contoh");
+    expect(JSON.parse(reviewed!.feedbackDoc!)).toEqual({ type: "doc", content: [paragraph("Rapi.", [{ type: "bold" }]), link] });
+    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page[0].feedbackDoc).toBe(reviewed?.feedbackDoc);
+
+    await owner.mutation(api.assignments.requestRevision, { submissionId: row._id, submissionRevision: 1, note: "", noteDoc: doc(link) });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 90, feedback: "Lihat contoh", feedbackDoc: doc(link), revisionRequestedAt: expect.any(Number) });
+    const history = await t.run((ctx) => ctx.db.query("submissionReviews").withIndex("by_submission", (q) => q.eq("submissionId", row._id)).collect());
+    expect(history.map((entry) => [entry.feedback, entry.feedbackDoc])).toEqual([["Rapi.\nLihat contoh", reviewed?.feedbackDoc], ["Lihat contoh", doc(link)]]);
+
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 80, feedback: " Teks biasa " });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ feedback: "Teks biasa", feedbackDoc: null });
+  });
+
+  it("counts the limit as the editor does, and refuses unknown documents and empty notes", async () => {
+    const { owner, member } = await world();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Versi 1", fileIds: [] });
+    const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    const lines = (count: number) => Array.from({ length: count }, () => paragraph("abcd"));
+    const review = (feedbackDoc: string) => owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, feedback: "", feedbackDoc });
+    // 500 lines of four characters is 2,000 for the editor, though the plain text adds 499 line breaks.
+    await review(doc(...lines(500)));
+    await expect(review(doc(...lines(500), paragraph("x")))).rejects.toThrow("Umpan balik maksimal 2000 karakter.");
+    await expect(review(doc({ type: "image", attrs: { src: "https://x" } }))).rejects.toThrow("Format umpan balik tidak dikenali");
+    await expect(owner.mutation(api.assignments.requestRevision, { submissionId: row._id, submissionRevision: 1, note: "isi lama", noteDoc: doc({ type: "paragraph" }) })).rejects.toThrow("perlu direvisi");
   });
 });
 

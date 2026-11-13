@@ -35,4 +35,13 @@ describe("rendered rich answers", () => {
     expect(container.firstElementChild?.className).toContain("rich-text-plain");
     expect(container.textContent).toBe("Baris satu\nBaris dua");
   });
+
+  it("keeps a field's older markup for rows saved before rich text (#288)", () => {
+    const old = <div className="dash-instructions">{"Langkah 1\nLangkah 2"}</div>;
+    const { container } = render(<RichTextView className="dash-instructions" text={"Langkah 1\nLangkah 2"} json={undefined} plain={old} />);
+    expect(container.innerHTML).toBe('<div class="dash-instructions">Langkah 1\nLangkah 2</div>');
+    cleanup();
+    const rich = render(<RichTextView className="dash-instructions" text="Langkah 1" json={doc(paragraph({ type: "text", text: "Langkah 1" }))} plain={old} />);
+    expect(rich.container.innerHTML).toBe('<div class="rich-text dash-instructions"><p><span>Langkah 1</span></p></div>');
+  });
 });

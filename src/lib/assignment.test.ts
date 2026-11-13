@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignmentAudience, audienceLabel, cleanFileName, fileProblem, inAudience, fromJakartaInput, matchesRubric, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
+import { assignmentAudience, audienceLabel, byDeadline, cleanFileName, fileProblem, inAudience, isLate, fromJakartaInput, matchesRubric, maxFileBytes, normalizeAssignment, slugify, toJakartaInput, validateAssignment } from "./assignment";
 
 describe("assignment rules", () => {
   it("reads and writes deadlines in WIB regardless of the runtime time zone", () => {
@@ -8,6 +8,28 @@ describe("assignment rules", () => {
     expect(fromJakartaInput("2026-10-01T23:59")).toBe(timestamp);
     expect(fromJakartaInput("2026-02-30T10:00")).toBeNaN();
     expect(fromJakartaInput("besok")).toBeNaN();
+  });
+
+  it("needs no date when the deadline is turned off, and keeps the typed one", () => {
+    const base = { title: "Tugas", slug: "", description: "Kerjakan.", dueAt: "", maxScore: "100" };
+    expect(validateAssignment(base)).toEqual({ dueAt: "Pilih tanggal dan jam tenggat." });
+    expect(validateAssignment({ ...base, noDue: false })).toEqual({ dueAt: "Pilih tanggal dan jam tenggat." });
+    expect(validateAssignment({ ...base, noDue: true })).toEqual({});
+    expect(validateAssignment({ ...base, dueAt: "besok", noDue: true })).toEqual({});
+    expect(normalizeAssignment({ ...base, dueAt: " 2026-10-01T23:59 ", noDue: true })).toMatchObject({ dueAt: "2026-10-01T23:59", noDue: true });
+    expect(normalizeAssignment({ ...base, noDue: false })).not.toHaveProperty("noDue");
+  });
+
+  it("marks work late only after a deadline, never without one", () => {
+    expect(isLate(2, 1)).toBe(true);
+    expect(isLate(1, 1)).toBe(false);
+    expect(isLate(Date.now(), undefined)).toBe(false);
+    expect(isLate(Date.now(), null)).toBe(false);
+  });
+
+  it("orders tasks by deadline, those without one last in the order they came", () => {
+    const tasks = [{ id: "a" }, { id: "b", dueAt: 30 }, { id: "c", dueAt: null }, { id: "d", dueAt: 10 }];
+    expect(tasks.sort(byDeadline).map((task) => task.id)).toEqual(["d", "b", "a", "c"]);
   });
 
   it("accepts known file types only when the reported type matches the extension", () => {
@@ -40,6 +62,19 @@ describe("assignment rules", () => {
     expect(validateAssignment({ ...cohortTask, cohortRoles: ["hacker"] })).toEqual({});
     expect(normalizeAssignment({ ...cohortTask, cohortRoles: ["hacker", "hacker"] })).toMatchObject({ cohortId: "c1", cohortRoles: ["hacker"] });
     expect(validateAssignment({ ...cohortTask, cohortId: null, cohortRoles: ["hacker"] })).toEqual({ audience: "Pilih setidaknya satu kelompok." });
+  });
+
+  it("reads rich instructions from their document (#288)", () => {
+    const base = { title: "Tugas", slug: "", description: "teks lama", dueAt: "2026-10-01T23:59", maxScore: "100" };
+    const doc = (...lines: string[]) => JSON.stringify({ type: "doc", content: lines.map((line) => ({ type: "paragraph", ...(line ? { content: [{ type: "text", text: line }] } : {}) })) });
+    expect(normalizeAssignment({ ...base, descriptionDoc: doc("Satu", "Dua") })).toMatchObject({ description: "Satu\nDua", descriptionDoc: doc("Satu", "Dua") });
+    expect(normalizeAssignment(base)).not.toHaveProperty("descriptionDoc");
+    // The limit counts what the editor counts: 6,000 characters in 1,500 lines is within it.
+    expect(validateAssignment({ ...base, descriptionDoc: doc(...Array.from({ length: 1500 }, () => "abcd")) })).toEqual({});
+    expect(validateAssignment({ ...base, descriptionDoc: doc("x".repeat(6001)) })).toEqual({ description: "Maksimal 6000 karakter." });
+    expect(validateAssignment({ ...base, descriptionDoc: doc("") })).toEqual({ description: "Jelaskan apa yang perlu dikerjakan." });
+    expect(normalizeAssignment({ ...base, descriptionDoc: doc("") }).descriptionDoc).toBeUndefined();
+    expect(validateAssignment({ ...base, descriptionDoc: "{bukan json" })).toEqual({ description: "Format instruksi tidak dikenali. Muat ulang halaman, lalu coba lagi." });
   });
 
   it("derives the maximum from a rubric and rejects incomplete criteria", () => {

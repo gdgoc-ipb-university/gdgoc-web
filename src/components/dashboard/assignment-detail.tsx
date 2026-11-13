@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useConvex, useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
@@ -10,12 +10,14 @@ import type { Doc } from "../../../convex/_generated/dataModel";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, assignmentPath, matchesRubric, scoreLabel, type RubricCriterion, type RubricScore } from "@/lib/assignment";
 import { exportFileName, submissionsCsv, type ExportRow } from "@/lib/assignment-export";
 import { readableError } from "@/lib/draft-session";
+import { editorDoc, richText, type RichDoc } from "@/lib/rich-text";
 import { sendFile } from "@/lib/upload";
 import { LoadingPanel, dateLabel } from "../appreciation/shared";
 import { Arrow } from "../icons";
 import { MissingAssignment } from "./assignments";
 import { AssignmentStatusBadge, AudienceBadge, CopyLinkButton, DueLabel, FileLink, ScoreBadge, SubmissionBadge, useNow } from "./shared";
 import { RichTextView } from "../rich-text-view";
+import { RichTextEditor } from "./rich-text-editor";
 import { SubmissionForm, type SubmissionActions } from "./submission-form";
 import { PixelIcon } from "../pixel-icons";
 import { FlagBadge, FlagSolves, FlagStats, FlagSummary, MemberFlag, SolveBadge, type Challenge } from "./flag-task";
@@ -38,7 +40,7 @@ export function AssignmentDetail({ id }: { id: string }) {
       <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{assignment.kind === "flag" && <FlagBadge />}{data.canReview && <AudienceBadge audience={assignmentAudience(assignment)} cohort={data.cohort} cohortRoles={assignment.cohortRoles} />}{!data.canReview && data.challenge && <SolveBadge points={data.challenge.mine?.points ?? null} />}{!data.canReview && !data.challenge && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
-      <div className="dash-instructions">{assignment.description}</div>
+      <RichTextView className="dash-instructions" json={assignment.descriptionDoc} text={assignment.description} plain={<div className="dash-instructions">{assignment.description}</div>} />
       {assignment.rubric && assignment.rubric.length > 0 && <div className="dash-rubric" aria-labelledby="rubric-title"><p className="eyebrow" id="rubric-title">RUBRIK PENILAIAN · {assignmentMaxScore(assignment)} POIN</p>
         <ol className="dash-rubric-list">{assignment.rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{criterion.max} poin</b></li>)}</ol></div>}
     </article>
@@ -50,10 +52,10 @@ export function AssignmentDetail({ id }: { id: string }) {
   </>;
 }
 
-/** A flag task (#240) takes flags while it is open and before its due date. */
+/** A flag task (#240) takes flags while it is open and before its due date; without one (#276), until it is closed. */
 function MemberFlagTask({ assignment, challenge, now }: { assignment: Doc<"assignments">; challenge: Challenge; now: number }) {
   const submitFlag = useMutation(api.assignments.submitFlag);
-  const open = assignment.status === "published" && now <= assignment.dueAt;
+  const open = assignment.status === "published" && (assignment.dueAt === undefined || now <= assignment.dueAt);
   return <MemberFlag challenge={challenge} open={open} closedText={assignment.status === "closed" ? "Tugas ini sudah ditutup." : "Tenggatnya sudah lewat."} onSubmit={(flag) => submitFlag({ assignmentId: assignment._id, flag })} />;
 }
 
@@ -83,7 +85,7 @@ function MemberSubmission({ data, now }: { data: Detail; now: number }) {
   return <>{result}{revising && <p className="app-notice">{assignment.status === "closed" ? "Pengumpulan sudah ditutup, tetapi formulir ini dibuka kembali untukmu." : "Perbaiki kirimanmu sesuai umpan balik di atas."} Setelah kamu mengirim ulang, peninjau akan menilainya lagi.</p>}<SubmissionForm key={assignment._id} submission={submission} files={files} dueAt={assignment.dueAt} now={now} actions={actions} /></>;
 }
 
-type Reviewed = { score: number | null; breakdown: RubricScore[] | null; feedback: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean; revisionRequestedAt: number | null };
+type Reviewed = { score: number | null; breakdown: RubricScore[] | null; feedback: string | null; feedbackDoc: string | null; reviewedAt: number | null; reviewerName: string | null; stale: boolean; revisionRequestedAt: number | null };
 
 /** What the member sees once a reviewer has scored or commented. A rubric score shows the criteria as they were when scored. */
 function ReviewResult({ submission, maxScore }: { submission: Reviewed; maxScore: number }) {
@@ -93,7 +95,7 @@ function ReviewResult({ submission, maxScore }: { submission: Reviewed; maxScore
     <h2 id="result-title">{submission.revisionRequestedAt !== null ? "Peninjau meminta revisi." : submission.score === null ? "Ada umpan balik untukmu." : "Kirimanmu sudah dinilai."}</h2>
     {submission.score !== null && <p className="dash-score">{submission.score}<small>dari {breakdown ? breakdown.reduce((sum, entry) => sum + entry.max, 0) : maxScore}</small></p>}
     {breakdown && <ol className="dash-rubric-list dash-rubric-result">{breakdown.map((entry, index) => <li key={index}><span>{entry.name}</span><b>{scoreLabel(entry.points, entry.max)}</b></li>)}</ol>}
-    {submission.feedback && <p className="dash-feedback">{submission.feedback}</p>}
+    {submission.feedback && <RichTextView className="dash-feedback" json={submission.feedbackDoc} text={submission.feedback} plain={<p className="dash-feedback">{submission.feedback}</p>} />}
     <p className="app-small">{submission.revisionRequestedAt !== null ? "Revisi diminta" : "Dinilai"} {submission.reviewedAt ? dateLabel(submission.reviewedAt) : ""}{submission.reviewerName ? ` oleh ${submission.reviewerName}` : ""}.</p>
     {submission.stale && <p className="app-notice">Kamu memperbarui kiriman setelah penilaian ini. Nilai di atas berlaku untuk versi sebelumnya sampai ditinjau lagi.</p>}
   </section>;
@@ -137,7 +139,7 @@ function StaffControls({ assignment }: { assignment: Doc<"assignments"> }) {
     try { await action(); } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
   const change = (status: Doc<"assignments">["status"]) => run(() => setStatus({ id: assignment._id, revision: assignment.revision, status }));
-  const hint = assignment.kind === "flag" && assignment.status !== "draft" ? (assignment.status === "published" ? "Member dari sasaran bisa mengirim flag sampai tenggat." : "Member bisa melihat tugas ini, tetapi tidak bisa mengirim flag lagi.")
+  const hint = assignment.kind === "flag" && assignment.status !== "draft" ? (assignment.status === "published" ? `Member dari sasaran bisa mengirim flag sampai ${assignment.dueAt === undefined ? "tugas ini ditutup" : "tenggat"}.` : "Member bisa melihat tugas ini, tetapi tidak bisa mengirim flag lagi.")
     : { draft: "Draft hanya terlihat oleh admin.", published: assignment.cohortId ? "Peserta aktif dari peran sasaran bisa melihat dan mengumpulkan tugas ini." : "Member aktif dari kelompok sasaran bisa melihat dan mengumpulkan tugas ini.", closed: "Member bisa melihat tugas dan kirimannya, tetapi tidak bisa mengirim lagi." }[assignment.status];
   return <section className="dash-controls" aria-label="Kelola tugas">
     <p className="app-small">{hint}</p>
@@ -162,7 +164,7 @@ function SubmissionList({ assignment, now }: { assignment: Doc<"assignments">; n
   const reviewed = list.results.filter((item) => item.reviewedAt !== null && !item.stale && item.revisionRequestedAt === null).length;
   const revising = list.results.filter((item) => item.revisionRequestedAt !== null).length;
   return <section className="dash-submissions-section" aria-labelledby="submissions-title"><div className="app-section-heading"><div><p className="eyebrow">KIRIMAN MEMBER</p><h2 id="submissions-title">Kiriman</h2></div>{list.status !== "LoadingFirstPage" && <div className="dash-submissions-summary"><span className="app-small">{list.results.length}{list.status === "CanLoadMore" ? "+" : ""} kiriman · {list.results.filter((item) => item.late).length} terlambat · {reviewed} dinilai{revising ? ` · ${revising} revisi diminta` : ""}</span>{list.results.length > 0 && <ExportButton assignment={assignment} />}</div>}</div>
-    {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat kiriman…" /> : !list.results.length ? <div className="app-empty"><h3>Belum ada kiriman.</h3><p>{assignment.status === "draft" ? "Buka tugas ini agar member bisa mulai mengumpulkan." : assignment.dueAt > now ? "Kiriman member akan muncul di sini secara otomatis." : "Tenggat sudah lewat dan belum ada member yang mengirim."}</p></div>
+    {list.status === "LoadingFirstPage" ? <LoadingPanel label="Memuat kiriman…" /> : !list.results.length ? <div className="app-empty"><h3>Belum ada kiriman.</h3><p>{assignment.status === "draft" ? "Buka tugas ini agar member bisa mulai mengumpulkan." : assignment.dueAt === undefined || assignment.dueAt > now ? "Kiriman member akan muncul di sini secara otomatis." : "Tenggat sudah lewat dan belum ada member yang mengirim."}</p></div>
       : <ul className="dash-submissions">{list.results.map((item) => <li key={item._id} className="app-panel">
         <div className="app-record-top"><div><strong>{item.name}</strong><span className="app-small">{[item.email, item.campus].filter(Boolean).join(" · ")}</span></div><span className="app-inline-badges"><SubmissionBadge submittedAt={item.submittedAt} late={item.late} /><ScoreBadge score={item.score} maxScore={maxScore} reviewedAt={item.reviewedAt} stale={item.stale} revisionRequestedAt={item.revisionRequestedAt} /></span></div>
         <p className="app-small">Dikirim {dateLabel(item.submittedAt)}</p>
@@ -244,7 +246,12 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
   const [entered, setEntered] = useState<string[]>(() => criteria && item.breakdown && matchesRubric(item.breakdown, criteria) ? item.breakdown.map((entry) => String(entry.points)) : []);
   // One value per current criterion, so an edit to the rubric while this form is open keeps the inputs aligned.
   const points = criteria ? criteria.map((_, index) => entered[index] ?? "") : [];
-  const [feedback, setFeedback] = useState(item.feedback ?? "");
+  // The feedback editor (#288) opens with the stored document, or older plain feedback as paragraphs. Until the reviewer
+  // edits it, the form sends back what is stored, so rescoring keeps older feedback as plain text.
+  const [seed] = useState(() => editorDoc(item.feedbackDoc, item.feedback ?? ""));
+  const [edited, setEdited] = useState<RichDoc | null>(null);
+  const feedback = edited ? { feedback: richText(edited), feedbackDoc: JSON.stringify(edited) } : { feedback: item.feedback ?? "", feedbackDoc: item.feedbackDoc ?? undefined };
+  const focusFeedback = useRef<(() => void) | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState<false | "review" | "revision" | "cancelled">(false);
@@ -264,7 +271,7 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
       if (trimmed) args = { score: Number(trimmed) };
     }
     setBusy(true); setError(""); setSaved(false);
-    try { await review({ submissionId: item._id, submissionRevision: item.revision, ...args, feedback }); setSaved("review"); }
+    try { await review({ submissionId: item._id, submissionRevision: item.revision, ...args, ...feedback }); setSaved("review"); }
     catch (cause) { setError(readableError(cause)); }
     finally { setBusy(false); }
   }
@@ -275,8 +282,8 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
     finally { setBusy(false); }
   }
   function askRevision() {
-    if (!feedback.trim()) { setError("Tulis apa yang perlu direvisi di kolom umpan balik."); return; }
-    void run(() => requestRevision({ submissionId: item._id, submissionRevision: item.revision, note: feedback }), "revision");
+    if (!feedback.feedback.trim()) { setError("Tulis apa yang perlu direvisi di kolom umpan balik."); focusFeedback.current?.(); return; }
+    void run(() => requestRevision({ submissionId: item._id, submissionRevision: item.revision, note: feedback.feedback, noteDoc: feedback.feedbackDoc }), "revision");
   }
   return <form className="dash-review-form" onSubmit={save} aria-label={`Penilaian untuk ${item.name}`}>
     <fieldset disabled={busy}><legend className="sr-only">Penilaian</legend>
@@ -288,7 +295,9 @@ function ReviewForm({ item, maxScore, rubric }: { item: SubmissionRow; maxScore:
       </div>}
       <div className="dash-review-fields" data-rubric={Boolean(criteria)}>
         {!criteria && <div className="app-field"><label htmlFor={`${id}-score`}>Nilai (0–{maxScore})</label><input id={`${id}-score`} type="number" inputMode="numeric" min={0} max={maxScore} step={1} value={score} onChange={(event) => setScore(event.target.value)} placeholder="—" /></div>}
-        <div className="app-field"><label htmlFor={`${id}-feedback`}>Umpan balik untuk member</label><textarea data-lenis-prevent id={`${id}-feedback`} rows={3} maxLength={assignmentLimits.feedback} value={feedback} onChange={(event) => setFeedback(event.target.value)} placeholder="Apa yang sudah baik, apa yang perlu diperbaiki." /></div>
+        <div className="app-field"><span className="dash-label" id={`${id}-feedback-label`}>Umpan balik untuk member</span>
+          <RichTextEditor id={`${id}-feedback`} labelledBy={`${id}-feedback-label`} initialDoc={seed} onChange={setEdited} disabled={busy}
+            maxLength={assignmentLimits.feedback} placeholder="Apa yang sudah baik, apa yang perlu diperbaiki." focusRef={focusFeedback} toolbarLabel="Format umpan balik" /></div>
       </div>
       <div className="app-inline-actions"><button className="button button-blue" type="submit">{busy ? "Menyimpan…" : item.reviewedAt === null ? "Simpan penilaian" : "Perbarui penilaian"}</button>
         {item.revisionRequestedAt === null && <button type="button" className="text-button" onClick={askRevision}>Minta revisi</button>}

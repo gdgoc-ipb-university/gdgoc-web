@@ -61,9 +61,11 @@ function MemberOverview() {
   if (!assignments) return <LoadingPanel label="Memuat tugasmu…" />;
   const open = assignments.filter((item) => item.status === "published");
   const pending = open.filter((item) => !item.submittedAt);
-  const next = pending.filter((item) => item.dueAt >= now).slice(0, 3);
+  // A task without a deadline (#276) has no nearest deadline and is never overdue.
+  const next = pending.filter((item) => item.dueAt !== null && item.dueAt >= now).slice(0, 3);
   // Late work is still taken for hand-graded tasks only; a flag task stops at its due date.
-  const overdue = pending.filter((item) => item.dueAt < now && item.kind !== "flag");
+  const overdue = pending.filter((item) => item.dueAt !== null && item.dueAt < now && item.kind !== "flag");
+  const undated = pending.filter((item) => item.dueAt === null).length;
   const revisions = assignments.filter((item) => item.revisionRequestedAt !== null);
   return <>
     <dl className="dash-stats">
@@ -75,7 +77,7 @@ function MemberOverview() {
     {overdue.length > 0 && <p className="app-notice">{overdue.length} tugas sudah lewat tenggat tetapi masih dibuka. Kiriman tetap diterima dan akan ditandai terlambat.</p>}
     <section aria-labelledby="next-title"><div className="app-section-heading"><div><p className="eyebrow">BERIKUTNYA</p><h2 id="next-title">Tenggat terdekat</h2></div><Link className="text-button" href="/dashboard/tugas">Semua tugas <Arrow /></Link></div>
       {next.length ? <div className="dash-card-grid">{next.map((item) => <article className="app-record" key={item._id}><div className="app-record-top">{item.kind === "flag" ? <SolveBadge points={item.points} /> : <SubmissionBadge submittedAt={item.submittedAt} late={item.late} />}</div><h3><Link href={assignmentPath(item)}>{item.title}</Link></h3><DueLabel dueAt={item.dueAt} now={now} open /></article>)}</div>
-        : <div className="app-empty"><PixelSpark /><h3>Tidak ada tenggat yang menunggu.</h3><p>{open.length ? "Semua tugas yang dibuka sudah kamu kumpulkan. Mantap!" : "Belum ada tugas yang dibuka. Tugas baru akan muncul di sini."}</p></div>}
+        : <div className="app-empty"><PixelSpark /><h3>Tidak ada tenggat yang menunggu.</h3><p>{!open.length ? "Belum ada tugas yang dibuka. Tugas baru akan muncul di sini." : undated ? `${undated} tugas yang belum kamu kumpulkan tidak punya tenggat. Kerjakan kapan saja selama tugasnya masih dibuka.` : "Semua tugas yang dibuka sudah kamu kumpulkan. Mantap!"}</p></div>}
     </section>
   </>;
 }

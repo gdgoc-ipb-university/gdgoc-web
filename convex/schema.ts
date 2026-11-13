@@ -6,6 +6,8 @@ export const appreciationValues = v.object({
   instagram: v.string(), achievement: v.string(), eventName: v.string(), organizer: v.string(),
   level: v.string(), participation: v.string(), teamName: v.string(), teamMembers: v.string(),
   eventDate: v.string(), story: v.string(), documentationLinks: v.string(), publicationConsent: v.boolean(),
+  // The story's sanitized rich-text JSON (#288); `story` is then its plain-text copy. Drafts from before it have none.
+  storyDoc: v.optional(v.string()),
 });
 export const memberType = v.union(v.literal("member"), v.literal("core"), v.literal("bod"));
 export const assignmentStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("closed"));
@@ -74,7 +76,8 @@ export default defineSchema({
     ownerId: v.string(), ownerName: v.string(), ownerEmail: v.string(), clientId: v.string(),
     values: appreciationValues, status: appreciationStatus, revision: v.number(),
     updatedAt: v.number(), submittedAt: v.optional(v.number()),
-    reviewNote: v.optional(v.string()), postUrl: v.optional(v.string()),
+    // `reviewNoteDoc` is the note's sanitized rich-text JSON (#288), beside its plain text.
+    reviewNote: v.optional(v.string()), reviewNoteDoc: v.optional(v.string()), postUrl: v.optional(v.string()),
     reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
   })
     .index("by_owner_updated", ["ownerId", "updatedAt"])
@@ -82,10 +85,13 @@ export default defineSchema({
     .index("by_status_updated", ["status", "updatedAt"]),
   appreciationReviews: defineTable({
     appreciationId: v.id("appreciations"), reviewerId: v.string(),
-    status: appreciationStatus, note: v.string(), postUrl: v.string(), createdAt: v.number(),
+    status: appreciationStatus, note: v.string(), noteDoc: v.optional(v.string()), postUrl: v.string(), createdAt: v.number(),
   }).index("by_appreciation", ["appreciationId"]),
   assignments: defineTable({
-    title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.number(), status: assignmentStatus,
+    // Without `dueAt` a task has no deadline (#276): nothing is late, and a flag task takes flags until it is closed. In
+    // `by_status_due` those rows sort before every date, so readers fetch them as their own range and list them last.
+    // `description` is plain text (older tasks, summaries); `descriptionDoc` is the instructions' sanitized rich-text JSON (#288).
+    title: v.string(), slug: v.optional(v.string()), description: v.string(), descriptionDoc: v.optional(v.string()), dueAt: v.optional(v.number()), status: assignmentStatus,
     revision: v.number(), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(), publishedAt: v.optional(v.number()),
     // Scores run from 0 to this; older assignments without it are graded out of 100 (assignmentMaxScore).
     // With a rubric, maxScore is the sum of the criteria maxes and reviews carry one point value per criterion.
@@ -113,8 +119,9 @@ export default defineSchema({
     // `answer` is plain text (older submissions, previews); `answerDoc` is the sanitized rich-text JSON.
     assignmentId: v.id("assignments"), ownerId: v.string(), answer: v.string(), answerDoc: v.optional(v.string()),
     revision: v.number(), submittedAt: v.number(),
-    // The latest review; `submittedAt > reviewedAt` means the member resubmitted since (isStaleReview).
-    score: v.optional(v.number()), feedback: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
+    // The latest review; `submittedAt > reviewedAt` means the member resubmitted since (isStaleReview). `feedback` is plain text,
+    // `feedbackDoc` its sanitized rich-text JSON when the reviewer wrote it in the editor (#288).
+    score: v.optional(v.number()), feedback: v.optional(v.string()), feedbackDoc: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
     // With a rubric: the criteria as they were when scored, each with its points, so later rubric edits do not relabel a past review.
     breakdown: v.optional(rubricBreakdown),
     // Set while a reviewer has asked for a revision (the note is `feedback`); the member can resubmit even after closing. Resubmitting clears it.
@@ -126,7 +133,7 @@ export default defineSchema({
   // One row per review action, so a score's history survives re-reviews (like appreciationReviews).
   submissionReviews: defineTable({
     submissionId: v.id("assignmentSubmissions"), assignmentId: v.id("assignments"), reviewerId: v.string(),
-    score: v.optional(v.number()), breakdown: v.optional(rubricBreakdown), feedback: v.string(), createdAt: v.number(),
+    score: v.optional(v.number()), breakdown: v.optional(rubricBreakdown), feedback: v.string(), feedbackDoc: v.optional(v.string()), createdAt: v.number(),
     revisionRequested: v.optional(v.boolean()), // a revision request rather than a score; `feedback` is its note
   }).index("by_submission", ["submissionId", "createdAt"]),
   // Uploads start pending and are attached by a submission; unclaimed ones are removed by a cron.
@@ -241,7 +248,8 @@ export default defineSchema({
   techSupportRequests: defineTable({
     ownerId: v.string(), competition: v.string(), competitionUrl: v.string(), deadline: v.string(),
     participation: v.union(v.literal("team"), v.literal("solo")), teamName: v.optional(v.string()),
-    helpKinds: v.array(v.string()), progress: v.string(), status: techSupportStatus,
+    // `progressDoc` is the progress's sanitized rich-text JSON (#288), beside its plain text.
+    helpKinds: v.array(v.string()), progress: v.string(), progressDoc: v.optional(v.string()), status: techSupportStatus,
     // How handlers reach the member (#251): a WhatsApp number stored as +628… and a Discord username, if given. Optional
     // for requests sent before they were asked; `techSupport.submit` requires the number.
     whatsapp: v.optional(v.string()), discord: v.optional(v.string()),

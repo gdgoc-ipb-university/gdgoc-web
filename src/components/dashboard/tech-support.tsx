@@ -7,6 +7,7 @@ import { api } from "../../../convex/_generated/api";
 import { toJakartaInput } from "@/lib/assignment";
 import { whatsappLabel } from "@/lib/contact";
 import { readableError } from "@/lib/draft-session";
+import { docFromPlainText, richText, type RichDoc } from "@/lib/rich-text";
 import {
   maxOpenRequests, normalizeRequest, participationLabels, techSupportHelpKinds, techSupportLimits, techSupportResponseDays, techSupportStatusLabels,
   validateRequest, type Participation, type TechSupportErrors, type TechSupportStatus, type TechSupportValues,
@@ -14,10 +15,12 @@ import {
 import { dateLabel, LoadingPanel } from "../appreciation/shared";
 import { PixelIcon } from "../pixel-icons";
 import { useNow } from "./shared";
+import { RichTextEditor } from "./rich-text-editor";
 
 export const techSupportPath = "/dashboard/tech-support";
 export const techSupportQueuePath = "/dashboard/tech-support/antrean";
 
+const emptyProgress = docFromPlainText("");
 const blank: TechSupportValues = { competition: "", competitionUrl: "", deadline: "", participation: "", teamName: "", helpKinds: [], progress: "", whatsapp: "", discord: "" };
 
 /** "20 Nov 2026" for a YYYY-MM-DD deadline. */
@@ -41,6 +44,8 @@ function RequestForm({ disabled, contact }: { disabled: boolean; contact: Pick<T
     first.current?.focus({ preventScroll: true });
   }, [disabled]);
   const [values, setValues] = useState<TechSupportValues>(() => ({ ...blank, ...contact }));
+  // The progress editor (#288) keeps its own content; a new round starts it empty after a request is sent.
+  const [round, setRound] = useState(0);
   const [errors, setErrors] = useState<TechSupportErrors>({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -59,6 +64,7 @@ function RequestForm({ disabled, contact }: { disabled: boolean; contact: Pick<T
     try {
       await submit({ values: clean });
       setValues({ ...blank, whatsapp: whatsappLabel(clean.whatsapp), discord: clean.discord });
+      setRound((current) => current + 1);
       setNotice(`Permintaanmu terkirim. Tim Tech Support membalas paling lama ${techSupportResponseDays} hari kerja.`);
     } catch (cause) { setError(readableError(cause)); } finally { setBusy(false); }
   }
@@ -91,9 +97,11 @@ function RequestForm({ disabled, contact }: { disabled: boolean; contact: Pick<T
         </label>)}</div>
         {fieldError("helpKinds")}
       </fieldset>
-      <div className="app-field"><label htmlFor="support-progress">Progres saat ini {required}</label>
-        <textarea data-lenis-prevent id="support-progress" required rows={5} maxLength={techSupportLimits.progress} value={values.progress} onChange={(event) => update("progress", event.target.value)} placeholder="Kondisi ide atau proyekmu sekarang, dan bagian yang ingin dibahas dengan mentor." aria-invalid={Boolean(errors.progress)} aria-describedby={described("progress", "support-progress-hint")} />
-        <p className="field-hint" id="support-progress-hint">{values.progress.length}/{techSupportLimits.progress} karakter.</p>{fieldError("progress")}</div>
+      <div className="app-field"><span className="dash-label" id="support-progress-label">Progres saat ini {required}</span>
+        <RichTextEditor key={round} id="support-progress" labelledBy="support-progress-label" describedBy={described("progress")} initialDoc={emptyProgress}
+          onChange={(doc: RichDoc) => { setValues((current) => ({ ...current, progress: richText(doc), progressDoc: JSON.stringify(doc) })); setErrors((current) => ({ ...current, progress: undefined })); }}
+          disabled={busy || disabled} required invalid={Boolean(errors.progress)} maxLength={techSupportLimits.progress} placeholder="Kondisi ide atau proyekmu sekarang, dan bagian yang ingin dibahas dengan mentor." toolbarLabel="Format progres" />
+        {fieldError("progress")}</div>
       <div className="app-field-grid">
         <div className="app-field"><label htmlFor="support-whatsapp">Nomor WhatsApp {required}</label>
           <input id="support-whatsapp" type="tel" inputMode="tel" autoComplete="tel" required maxLength={24} value={values.whatsapp} onChange={(event) => update("whatsapp", event.target.value)} placeholder="0812 3456 7890" aria-invalid={Boolean(errors.whatsapp)} aria-describedby={described("whatsapp", "support-whatsapp-hint")} />

@@ -9,7 +9,7 @@ import { logAccess } from "./accessLog";
 import { enrolledRoles, mentoredRoles, mentors } from "./cohorts";
 import { storedFileInUse } from "./photos";
 import { inCohortRoles } from "../src/lib/cohort";
-import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
+import { parseRichDoc, richField, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 import { flagPointsOf, normalizeFlag, parseFlagPoints, validateFlag, type FlagInput } from "../src/lib/flag-task";
 import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solvesOf, type FlagResult } from "./flags";
@@ -17,8 +17,11 @@ import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solve
 // `slug`, `maxScore`, `rubric` and `audience` are optional so a tab loaded before they existed can still save; they are then derived (title), defaulted (100, Member) or empty.
 // An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
 // `flag` makes a flag task on create (#240); an update of a flag task without it keeps the flag and points, and the kind never changes.
+// `noDue` saves no deadline (#276) and an update with it removes the deadline; `dueAt` is then ignored. A tab without it needs a date.
+// `descriptionDoc` is the instructions' rich-text JSON (#288), which the stored plain `description` is rebuilt from. A tab from
+// before it sends plain text only, which clears the stored document, as with a submission's `answerDoc`.
 const assignmentInput = v.object({
-  title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), maxScore: v.optional(v.string()),
+  title: v.string(), slug: v.optional(v.string()), description: v.string(), descriptionDoc: v.optional(v.string()), dueAt: v.string(), noDue: v.optional(v.boolean()), maxScore: v.optional(v.string()),
   rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))), audience: v.optional(v.array(memberType)),
   cohortId: v.optional(v.union(v.id("cohorts"), v.null())), cohortRoles: v.optional(v.array(v.string())),
   flag: v.optional(v.object({ flag: v.string(), maxPoints: v.string(), minPoints: v.string(), decrement: v.string() })),
@@ -30,14 +33,16 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
+function cleanAssignment(values: { title: string; slug?: string; description: string; descriptionDoc?: string; dueAt: string; noDue?: boolean; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
   const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "", rubric: values.rubric ?? [] };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
   const clean = normalizeAssignment(input);
   const rubric = clean.rubric!.length ? parseRubric(clean.rubric!) : undefined;
   return {
-    values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
+    // Without a deadline `dueAt` is undefined: insert leaves the field out, and patch removes it.
+    // Without a document (an older tab, or instructions with no text) `descriptionDoc` is undefined, so patch removes it.
+    values: { title: clean.title, slug: clean.slug, description: clean.description, descriptionDoc: clean.descriptionDoc, dueAt: clean.noDue ? undefined : fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
     cohortRoles: clean.cohortRoles ?? [],
   };
 }
@@ -109,7 +114,7 @@ async function nameOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
 /** The review fields a member or reviewer sees on a submission. */
 async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignmentSubmissions">) {
   return {
-    score: submission.score ?? null, breakdown: submission.breakdown ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
+    score: submission.score ?? null, breakdown: submission.breakdown ?? null, feedback: submission.feedback ?? null, feedbackDoc: submission.feedbackDoc ?? null, reviewedAt: submission.reviewedAt ?? null,
     reviewerName: submission.reviewedBy ? (await nameOf(ctx, submission.reviewedBy)).name : null,
     stale: isStaleReview(submission), revisionRequestedAt: submission.revisionRequestedAt ?? null,
   };
@@ -163,6 +168,18 @@ async function findAssignment(ctx: QueryCtx, slugOrId: string) {
   const bySlug = await slugOwner(ctx, slugOrId);
   const id = bySlug?.assignmentId ?? ctx.db.normalizeId("assignments", slugOrId);
   return id ? ctx.db.get(id) : null;
+}
+
+/**
+ * Up to `limit` tasks of one status by deadline in `order`, then up to `limit` without a deadline (#276), oldest first
+ * for "asc". The index puts a missing deadline before every date, so the two are read as separate ranges.
+ */
+export async function byStatusDue(ctx: QueryCtx, status: Doc<"assignments">["status"], order: "asc" | "desc", limit: number) {
+  const [dated, undated] = await Promise.all([
+    ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", status).gt("dueAt", undefined)).order(order).take(limit),
+    ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", status).eq("dueAt", undefined)).order(order).take(limit),
+  ]);
+  return [...dated, ...undated];
 }
 
 async function submissionsOf(ctx: QueryCtx | MutationCtx, id: Id<"assignments">) {
@@ -251,7 +268,7 @@ export const update = mutation({
     const values = { ...clean, ...flag?.fields, slug, audience: args.values.audience === undefined ? assignmentAudience(doc) : clean.audience, ...target };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && (flag || assignmentMaxScore(doc) === values.maxScore) && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.descriptionDoc === values.descriptionDoc && doc.dueAt === values.dueAt && (flag || assignmentMaxScore(doc) === values.maxScore) && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)
         && doc.cohortId === values.cohortId && JSON.stringify(doc.cohortRoles ?? null) === JSON.stringify(values.cohortRoles ?? null)
         && (!flag || (JSON.stringify(flagPointsOf(doc)) === JSON.stringify(flagPointsOf({ ...doc, ...flag.fields })) && stored?.flag === flag.flag))) return doc.slug;
       conflict();
@@ -380,18 +397,29 @@ export const missing = query({
   },
 });
 
+/**
+ * Feedback or a revision note as the review form sends it: the editor's document (#288), whose plain text is rebuilt from
+ * it, or plain text alone from a tab loaded before the editor, which clears a stored document.
+ */
+function feedbackOf(text: string, json: string | undefined) {
+  const rich = json === undefined ? undefined : richField(json);
+  if (rich === null) throw new ConvexError("Format umpan balik tidak dikenali. Muat ulang halaman, lalu coba lagi.");
+  const feedback = rich ? rich.text : text.trim();
+  if ((rich?.length ?? feedback.length) > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
+  return { feedback, feedbackDoc: rich?.json };
+}
+
 /** Score and/or feedback for one submission. The latest review is kept on the submission; every review is kept in submissionReviews. */
 export const review = mutation({
   // With a rubric, `points` (one per criterion, in order) is the way to score: they are stored with their criteria as `breakdown` and `score` becomes their sum. Without one, `score` is given directly.
-  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string() },
+  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string(), feedbackDoc: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const submission = await submissionFor(ctx, args.submissionId);
     const { user, assignment } = await requireReviewer(ctx, submission.assignmentId);
     // The reviewer graded what they saw; a resubmission since then needs a fresh look, not a silent overwrite.
     if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk menilai versi terbaru." });
-    const feedback = args.feedback.trim();
+    const { feedback, feedbackDoc } = feedbackOf(args.feedback, args.feedbackDoc);
     const maxScore = assignmentMaxScore(assignment);
-    if (feedback.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
     let score = args.score;
     let breakdown: RubricScore[] | undefined;
     const rubric = assignment.rubric ?? [];
@@ -414,25 +442,25 @@ export const review = mutation({
     if (score !== undefined && (!Number.isInteger(score) || score < 0 || score > maxScore)) throw new ConvexError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`);
     if (score === undefined && !feedback) throw new ConvexError({ code: "VALIDATION", message: "Isi nilai, umpan balik, atau keduanya." });
     const now = Date.now();
-    await ctx.db.patch(submission._id, { score, breakdown, feedback: feedback || undefined, reviewedAt: now, reviewedBy: user._id });
-    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score, breakdown, feedback, createdAt: now });
+    await ctx.db.patch(submission._id, { score, breakdown, feedback: feedback || undefined, feedbackDoc, reviewedAt: now, reviewedBy: user._id });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score, breakdown, feedback, feedbackDoc, createdAt: now });
   },
 });
 
 /** Asks one member to revise their submission, with a note. Their form reopens, even after the assignment is closed, until they resubmit. */
 export const requestRevision = mutation({
-  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), note: v.string() },
+  // `noteDoc` is the note's rich-text JSON (#288), as `feedbackDoc` on review.
+  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), note: v.string(), noteDoc: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const submission = await submissionFor(ctx, args.submissionId);
     const { user } = await requireReviewer(ctx, submission.assignmentId);
     if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk melihat versi terbaru." });
-    const note = args.note.trim();
+    const { feedback: note, feedbackDoc } = feedbackOf(args.note, args.noteDoc);
     if (!note) throw new ConvexError({ code: "VALIDATION", message: "Tulis apa yang perlu direvisi di kolom umpan balik." });
-    if (note.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
     const now = Date.now();
     // The score, if any, stays until the revision is reviewed.
-    await ctx.db.patch(submission._id, { feedback: note, reviewedAt: now, reviewedBy: user._id, revisionRequestedAt: now });
-    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: submission.assignmentId, reviewerId: user._id, score: submission.score, breakdown: submission.breakdown, feedback: note, revisionRequested: true, createdAt: now });
+    await ctx.db.patch(submission._id, { feedback: note, feedbackDoc, reviewedAt: now, reviewedBy: user._id, revisionRequestedAt: now });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: submission.assignmentId, reviewerId: user._id, score: submission.score, breakdown: submission.breakdown, feedback: note, feedbackDoc, revisionRequested: true, createdAt: now });
   },
 });
 
@@ -486,7 +514,7 @@ export const reviewing = query({
     return Promise.all(mine.map(async (assignment) => {
       const submissions = await submissionsOf(ctx, assignment._id);
       const waiting = submissions.filter((item) => item.reviewedAt === undefined || isStaleReview(item)).length;
-      return { _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status, dueAt: assignment.dueAt, cohort: await cohortOf(ctx, assignment), cohortRoles: assignment.cohortRoles, submissionCount: submissions.length, waiting };
+      return { _id: assignment._id, slug: assignment.slug, title: assignment.title, status: assignment.status, dueAt: assignment.dueAt ?? null, cohort: await cohortOf(ctx, assignment), cohortRoles: assignment.cohortRoles, submissionCount: submissions.length, waiting };
     }));
   },
 });
@@ -498,16 +526,14 @@ export const list = query({
   handler: async (ctx) => {
     const access = await reachOf(ctx, await requireMember(ctx));
     const { user } = access;
-    const [open, ended] = await Promise.all([
-      ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "published")).order("asc").take(100),
-      ctx.db.query("assignments").withIndex("by_status_due", (q) => q.eq("status", "closed")).order("desc").take(50),
-    ]);
+    // Open tasks soonest deadline first, closed ones latest first; those without a deadline after each.
+    const [open, ended] = await Promise.all([byStatusDue(ctx, "published", "asc", 100), byStatusDue(ctx, "closed", "desc", 50)]);
     return Promise.all([...open, ...ended].filter((assignment) => reaches(assignment, access)).map(async (assignment) => {
       const mine = await ctx.db.query("assignmentSubmissions").withIndex("by_assignment_owner", (q) => q.eq("assignmentId", assignment._id).eq("ownerId", user._id)).unique();
       // A solved flag task counts as handed in, at its solve time, with its locked points.
       const solve = assignment.kind === "flag" ? await solveOf(ctx, assignment._id, user._id) : null;
       return {
-        _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt, status: assignment.status,
+        _id: assignment._id, slug: assignment.slug, title: assignment.title, summary: assignment.description.slice(0, 220), dueAt: assignment.dueAt ?? null, status: assignment.status,
         kind: assignment.kind ?? null, points: solve?.points ?? null,
         submittedAt: mine?.submittedAt ?? solve?.solvedAt ?? null, late: mine ? isLate(mine.submittedAt, assignment.dueAt) : false,
         maxScore: assignmentMaxScore(assignment), score: mine?.score ?? null, reviewedAt: mine?.reviewedAt ?? null, stale: mine ? isStaleReview(mine) : false,
@@ -574,8 +600,8 @@ export const submitFlag = mutation({
     if (!assignment || assignment.kind !== "flag" || assignment.status === "draft" || !reaches(assignment, await reachOf(ctx, access))) notFound();
     if (await solveOf(ctx, assignment._id, access.user._id)) throw new ConvexError({ code: "SOLVED", message: "Kamu sudah memecahkan tugas ini." });
     if (assignment.status !== "published") closed();
-    // Unlike a submission, a solve has no late mark, so the due date ends the task.
-    if (Date.now() > assignment.dueAt) throw new ConvexError({ code: "CLOSED", message: "Tenggat tugas ini sudah lewat, jadi flag tidak diterima lagi." });
+    // Unlike a submission, a solve has no late mark, so the due date ends the task. Without one (#276), closing it does.
+    if (assignment.dueAt !== undefined && Date.now() > assignment.dueAt) throw new ConvexError({ code: "CLOSED", message: "Tenggat tugas ini sudah lewat, jadi flag tidak diterima lagi." });
     return checkFlag(ctx, assignment, access.user._id, args.flag);
   },
 });

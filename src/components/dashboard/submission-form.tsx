@@ -32,7 +32,7 @@ export function fileIcon(name: string): PixelIconName {
 }
 
 export function SubmissionForm({ submission, files, dueAt, now, actions, optimize = optimizeImage }: {
-  submission: Submission | null; files: SubmissionFile[]; dueAt: number; now: number; actions: SubmissionActions;
+  submission: Submission | null; files: SubmissionFile[]; dueAt: number | null | undefined; now: number; actions: SubmissionActions;
   optimize?: (file: File) => Promise<File>;
 }) {
   // `seed` feeds the editor when it mounts; bumping its version reloads the editor content.
@@ -51,6 +51,7 @@ export function SubmissionForm({ submission, files, dueAt, now, actions, optimiz
   const shown = selected.map((id) => files.find((file) => file._id === id)).filter((file): file is SubmissionFile => Boolean(file));
   const room = maxSubmissionFiles - selected.length - uploads.filter((upload) => !upload.error).length;
   const changedElsewhere = (submission?.revision ?? 0) !== base;
+  const passed = dueAt != null && now > dueAt;
   const setUpload = (key: string, change: Partial<Upload> | null) => setUploads((current) => change ? current.map((upload) => upload.key === key ? { ...upload, ...change } : upload) : current.filter((upload) => upload.key !== key));
 
   async function addFiles(list: File[]) {
@@ -105,7 +106,7 @@ export function SubmissionForm({ submission, files, dueAt, now, actions, optimiz
       await actions.submit({ revision: base, answer, answerDoc: JSON.stringify(doc), fileIds: selected });
       setBase(base + 1);
       // Same clock as the deadline notice below (`now` from useNow), so the message and the tests agree on what "late" means.
-      setDone(now > dueAt ? "Tugas terkirim dan ditandai terlambat." : "Tugas terkirim. Kamu masih bisa memperbaruinya selama pengumpulan dibuka.");
+      setDone(passed ? "Tugas terkirim dan ditandai terlambat." : "Tugas terkirim. Kamu masih bisa memperbaruinya selama pengumpulan dibuka.");
     } catch (cause) { setError(readableError(cause)); }
     finally { setBusy(false); }
   }
@@ -122,7 +123,7 @@ export function SubmissionForm({ submission, files, dueAt, now, actions, optimiz
   return <form className="app-form dash-submit" onSubmit={send} noValidate aria-labelledby="submit-title"><fieldset disabled={busy}>
     <div className="app-form-section">
       <div className="form-section-title"><span aria-hidden="true">✎</span><div><h2 id="submit-title">{submission ? "Perbarui kirimanmu" : "Kumpulkan tugas"}</h2><p>{submission ? `Terakhir dikirim ${dateLabel(submission.submittedAt)}${submission.late ? " · terlambat" : ""}.` : "Tulis jawaban, lampirkan file, atau keduanya."}</p></div></div>
-      {now > dueAt && <p className="app-notice">Tenggat sudah lewat. Kiriman tetap diterima dan akan ditandai terlambat{submission && !submission.late ? ", termasuk jika kamu memperbarui kiriman yang sudah tepat waktu" : ""}.</p>}
+      {passed && <p className="app-notice">Tenggat sudah lewat. Kiriman tetap diterima dan akan ditandai terlambat{submission && !submission.late ? ", termasuk jika kamu memperbarui kiriman yang sudah tepat waktu" : ""}.</p>}
       {changedElsewhere && <div className="app-notice" role="status"><p>Kiriman ini baru diperbarui dari tab atau perangkat lain.</p><button type="button" className="text-button" onClick={reload}>Pakai versi terbaru</button></div>}
       <div className="app-field">
         <span className="dash-label" id="answer-label">Jawaban <span className="field-optional">(opsional jika melampirkan file)</span></span>

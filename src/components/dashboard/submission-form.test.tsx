@@ -4,25 +4,17 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { docFromPlainText, parseRichDoc, richText } from "@/lib/rich-text";
+import { parseRichDoc, richText } from "@/lib/rich-text";
 import { SubmissionForm, type SubmissionActions, type SubmissionFile, type UploadOptions } from "./submission-form";
 
-// JSDOM cannot type into ProseMirror; the real editor is covered in rich-text-editor.test.tsx.
-vi.mock("./rich-text-editor", () => ({
-  RichTextEditor: ({ id, labelledBy, describedBy, initialDoc, onChange, focusRef }: {
-    id: string; labelledBy: string; describedBy?: string; initialDoc: Parameters<typeof richText>[0];
-    onChange: (doc: ReturnType<typeof docFromPlainText>) => void; focusRef?: { current: (() => void) | null };
-  }) => <textarea id={id} aria-labelledby={labelledBy} aria-describedby={describedBy} defaultValue={richText(initialDoc)}
-    ref={(element) => { if (focusRef) focusRef.current = () => element?.focus(); }}
-    onChange={(event) => onChange(docFromPlainText(event.target.value))} />,
-}));
+vi.mock("./rich-text-editor", async () => ({ RichTextEditor: (await import("./rich-text-editor.stub")).RichTextEditorStub }));
 
 const now = Date.UTC(2026, 9, 1, 3, 0);
 const fileId = (value: string) => value as Id<"submissionFiles">;
 type Submission = { answer: string; answerDoc: string | null; revision: number; submittedAt: number; late: boolean };
 
 function Harness({ initial = [], submission = null, dueAt = now + 86400000, actions, optimize }: {
-  initial?: SubmissionFile[]; submission?: Submission | null; dueAt?: number; actions: SubmissionActions; optimize?: (file: File) => Promise<File>;
+  initial?: SubmissionFile[]; submission?: Submission | null; dueAt?: number | null; actions: SubmissionActions; optimize?: (file: File) => Promise<File>;
 }) {
   const [files, setFiles] = useState(initial);
   const wrapped: SubmissionActions = {
@@ -157,6 +149,14 @@ describe("assignment submission form", () => {
     const answerDoc = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Versi kaya", marks: [{ type: "bold" }] }] }] });
     render(<Harness actions={gateway()} submission={{ answer: "Versi kaya", answerDoc, revision: 1, submittedAt: now - 1000, late: false }} />);
     expect((screen.getByRole("textbox", { name: /Jawaban/ }) as HTMLTextAreaElement).value).toBe("Versi kaya");
+  });
+
+  it("never warns about lateness on a task without a deadline", async () => {
+    const actions = gateway();
+    render(<Harness actions={actions} dueAt={null} submission={{ answer: "Kapan saja", answerDoc: null, revision: 1, submittedAt: now - 120000, late: false }} />);
+    expect(screen.queryByText(/Tenggat sudah lewat/)).toBeNull();
+    await userEvent.click(screen.getByRole("button", { name: "Kirim ulang" }));
+    expect((await screen.findByText(/Tugas terkirim/)).textContent).toContain("masih bisa memperbaruinya");
   });
 
   it("warns that work after the deadline is marked late", () => {

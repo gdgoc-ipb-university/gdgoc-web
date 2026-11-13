@@ -119,7 +119,7 @@ Every cohort, newest first, whatever its status.
 
 ### `GET /bot/v1/tasks`
 
-The open tasks members can see on the site, soonest deadline first. A task is open while it is published: work after the deadline is accepted and marked late until staff close it, so the bot compares `dueAt` with the time itself. Included are:
+The open tasks members can see on the site, soonest deadline first, then the tasks without a deadline. A task is open while it is published: work after the deadline is accepted and marked late until staff close it, so the bot compares `dueAt` with the time itself. A task without a deadline (#276) is never late; it takes work, or flags, until staff close it. Included are:
 
 - tasks for community tags that include **Member**;
 - **cohort** tasks, which the cohort's active participants with one of the task's roles see.
@@ -132,8 +132,8 @@ Left out are drafts, closed tasks, tasks only for Core Team or BoD, tasks from b
 | `title` | string | Its title; the description is not sent |
 | `kind` | string | `regular` (graded by a reviewer) or `flag` (answered with a flag the site checks) |
 | `cohort` | object or null | `{ id, name, roles }` for a cohort task, where `roles` are the role keys it is for and empty means every role; null for a community task |
-| `dueAt` | number | The deadline |
-| `dueAtIso` | string | The same moment in ISO 8601, UTC |
+| `dueAt` | number or null | The deadline; null for a task without one (#276) |
+| `dueAtIso` | string or null | The same moment in ISO 8601, UTC; null when `dueAt` is |
 | `url` | string | `SITE_URL/dashboard/tugas/<slug>`; members sign in to open it |
 | `publishedAt` | number or null | When it was first published; null on tasks from before this was kept |
 | `updatedAt` | number | Its last change: creation, publishing, an edit or a reviewer change |
@@ -151,6 +151,17 @@ Left out are drafts, closed tasks, tasks only for Core Team or BoD, tasks from b
       "url": "https://www.gdgocipb.com/dashboard/tugas/wireframe-halaman-utama",
       "publishedAt": 1794470400000,
       "updatedAt": 1794470400000
+    },
+    {
+      "id": "jd8k4m2n7p1q3r5s6t9u0v2w3x",
+      "title": "Join Discord",
+      "kind": "flag",
+      "cohort": null,
+      "dueAt": null,
+      "dueAtIso": null,
+      "url": "https://www.gdgocipb.com/dashboard/tugas/join-discord",
+      "publishedAt": 1794470400000,
+      "updatedAt": 1794470400000
     }
   ],
   "serverTime": 1794474000000
@@ -159,7 +170,7 @@ Left out are drafts, closed tasks, tasks only for Core Team or BoD, tasks from b
 
 ### `GET /bot/v1/changes?since=<epoch ms>`
 
-What to announce since the last call: the open tasks above with `updatedAt > since`, and the events with `updatedAt > since`. A task whose `publishedAt > since` is new; otherwise it changed. Only tasks that are open now come, so a task closed or narrowed since then is simply absent; `/tasks` is the whole list.
+What to announce since the last call: the open tasks above with `updatedAt > since`, and the events with `updatedAt > since`. A task whose `publishedAt > since` is new; otherwise it changed, such as a deadline that moved or was removed. Only tasks that are open now come, so a task closed or narrowed since then is simply absent; `/tasks` is the whole list.
 
 | Field | Type | Meaning |
 | --- | --- | --- |

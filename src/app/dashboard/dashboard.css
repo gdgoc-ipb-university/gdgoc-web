@@ -113,7 +113,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-submissions { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
 .dash-submissions > li { padding: 26px 28px; }
 .dash-submissions .app-record-top > div { min-width: 0; }
-.dash-submissions strong { display: block; font-weight: 500; font-size: 16px; }
+.dash-submissions .app-record-top strong { display: block; font-weight: 500; font-size: 16px; }
 .dash-submissions .app-small { display: block; overflow-wrap: anywhere; }
 
 
@@ -447,7 +447,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-review-form fieldset { display: grid; gap: 12px; border: 0; padding: 0; margin: 0; min-width: 0; }
 .dash-review-fields { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; align-items: start; }
 .dash-review-fields input[type="number"] { width: 100%; }
-@media (max-width: 640px) { .dash-review-fields { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .dash-review-fields { grid-template-columns: minmax(0, 1fr); } }
 
 /* Who has not submitted */
 .dash-missing { margin-top: 34px; }
@@ -469,12 +469,16 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-audience-option { display: inline-flex; align-items: center; gap: 10px; min-height: 40px; font-size: 14px; cursor: pointer; }
 .dash-audience-option input { appearance: auto; width: 18px; height: 18px; accent-color: var(--blue); margin: 0; }
 .dash-audience-option input:focus-visible { outline: 2px solid var(--blue); outline-offset: 4px; }
+/* "Tanpa tenggat" (#276) under the deadline: `.app-field input` would size its checkbox like a text field. */
+.dash-due-field .dash-audience-option { display: flex; width: fit-content; margin-top: 6px; }
+.dash-due-field .dash-audience-option input { display: block; flex: none; min-height: 0; padding: 0; border: 0; background: none; }
+.dash-due-field input[type="datetime-local"]:disabled { background: #f3f2ea; color: var(--muted); border-color: #d9ddd3; cursor: not-allowed; }
 .dash-rubric-rows { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
 .dash-rubric-row { display: grid; grid-template-columns: minmax(0, 1fr) 120px auto; gap: 10px; align-items: end; }
 .dash-rubric-remove { padding-bottom: 10px; }
 .dash-rubric-points { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 14px; margin-bottom: 4px; }
 .dash-rubric-total { grid-column: 1 / -1; margin: 0; }
-.dash-review-fields[data-rubric="true"] { grid-template-columns: 1fr; }
+.dash-review-fields[data-rubric="true"] { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 640px) { .dash-rubric-row { grid-template-columns: 1fr 100px; } .dash-rubric-remove { grid-column: 1 / -1; justify-self: start; padding-bottom: 0; } }
 
 /* Flag tasks (#240) */

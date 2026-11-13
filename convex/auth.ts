@@ -8,6 +8,7 @@ import authConfig from "./auth.config";
 import { discordAuthOptions } from "./discordAuth";
 import { recordLink, removeLink } from "./discordLinks";
 import { discordSettings } from "../src/lib/discord";
+import { CLIENT_IP_HEADER } from "../src/lib/client-ip";
 
 const authFunctions: AuthFunctions = internal.auth;
 
@@ -70,6 +71,19 @@ export function hostOptions(env: HostEnv) {
 }
 
 /**
+ * Where Better Auth finds the visitor's IP, which keys its rate limiter (#294). The auth route sets CLIENT_IP_HEADER from
+ * the request it received; `x-forwarded-for` stays as the fallback. Without a header Better Auth trusts, every request
+ * shares one `no-trusted-ip` bucket, and a handful of sign-ins anywhere locks everyone out.
+ */
+export const ipAddressOptions = { ipAddressHeaders: [CLIENT_IP_HEADER, "x-forwarded-for"] };
+
+/** hostOptions with ipAddressOptions added under the same `advanced`, so the shared cookie domain is kept. */
+export function networkOptions(env: HostEnv) {
+  const { advanced, ...hosts } = hostOptions(env);
+  return { ...hosts, advanced: { ...advanced, ipAddress: ipAddressOptions } };
+}
+
+/**
  * Google is the only sign-in. Discord, once its four settings are on the deployment, can only be linked to a signed-in
  * account (discordAuth.ts), and its callback stays on SITE_URL like Google's.
  */
@@ -79,7 +93,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     appName: "GDGoC IPB",
     baseURL: process.env.SITE_URL,
     secret: process.env.BETTER_AUTH_SECRET,
-    ...hostOptions({ SITE_URL: process.env.SITE_URL, LEAGUE_URL: process.env.LEAGUE_URL, AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN }),
+    ...networkOptions({ SITE_URL: process.env.SITE_URL, LEAGUE_URL: process.env.LEAGUE_URL, AUTH_COOKIE_DOMAIN: process.env.AUTH_COOKIE_DOMAIN }),
     database: authComponent.adapter(ctx),
     socialProviders: {
       ...process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET ? {

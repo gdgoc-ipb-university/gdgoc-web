@@ -172,12 +172,12 @@
 .record-details dl > div { display: grid; grid-template-columns: 180px minmax(0,1fr); padding-block: 12px; border-bottom: 1px solid #e8ece4; gap: 20px; }
 .record-details dt { font-size: 11px; color: var(--muted); }
 .record-details dd { margin: 0; font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.record-details h3 { font-size: 21px; }
-.record-details ul { margin-block: 15px 26px; list-style: none; padding: 0; }
-.record-details li { margin-top: 12px; }
-.record-details li a { color: var(--blue); font-size: 12px; }
-.record-details li svg { width: 18px; height: 18px; vertical-align: middle; }
-.record-details li span { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
+.record-details > h3 { font-size: 21px; }
+.record-details > ul { margin-block: 15px 26px; list-style: none; padding: 0; }
+.record-details > ul > li { margin-top: 12px; }
+.record-details > ul > li a { color: var(--blue); font-size: 12px; }
+.record-details > ul > li svg { width: 18px; height: 18px; vertical-align: middle; }
+.record-details > ul > li span { display: block; font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .appreciation-page details { margin-top: 24px; border-top: 1px solid var(--line); }
 .appreciation-page summary { padding-block: 18px; font-weight: 500; font-size: 13px; cursor: pointer; }
 .app-footer { border-top: 1px solid var(--line); padding-block: 25px 34px; display: flex; justify-content: space-between; align-items: center; gap: 20px; font-size: 11px; color: var(--muted); }
@@ -229,7 +229,7 @@
   .account-identity strong { font-size: 12px; }
   .app-section-heading { align-items: stretch; flex-direction: column; margin-block: 30px 22px; gap: 22px; }
   .app-section-heading .button { align-self: flex-start; }
-  .app-record-grid, .review-queue { grid-template-columns: 1fr; }
+  .app-record-grid, .review-queue { grid-template-columns: minmax(0, 1fr); }
   .app-record { padding: 24px; }
   .app-record h3 { font-size: 25px; }
   .app-record-bottom { flex-wrap: wrap; }
@@ -237,7 +237,7 @@
   .app-empty h3 { font-size: 25px; }
   .app-empty > p { font-size: 13px; }
   .editor-toolbar { align-items: start; flex-direction: column; gap: 15px; margin-block: 23px; }
-  .app-editor-grid { grid-template-columns: 1fr; gap: 20px; }
+  .app-editor-grid { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .app-form-section { padding: 24px 20px; }
   .app-field-grid { grid-template-columns: 1fr; gap: 0; }
   .form-section-title { gap: 12px; }

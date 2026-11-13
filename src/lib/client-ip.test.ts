@@ -19,11 +19,38 @@ describe("client IP for the auth route", () => {
     expect(clientIp(new Headers())).toBeNull();
   });
 
-  it("always replaces a client-sent header, and removes it when no IP is known", () => {
-    const spoofed = withClientIp(new Request(SITE, { headers: { [CLIENT_IP_HEADER]: "1.1.1.1", "cf-connecting-ip": "203.0.113.7" } }));
+  it("always replaces a client-sent header, and removes it when no IP is known", async () => {
+    const spoofed = await withClientIp(new Request(SITE, { headers: { [CLIENT_IP_HEADER]: "1.1.1.1", "cf-connecting-ip": "203.0.113.7" } }));
     expect(spoofed.headers.get(CLIENT_IP_HEADER)).toBe("203.0.113.7");
-    const unknown = withClientIp(new Request(SITE, { headers: { [CLIENT_IP_HEADER]: "1.1.1.1" } }));
+    const unknown = await withClientIp(new Request(SITE, { headers: { [CLIENT_IP_HEADER]: "1.1.1.1" } }));
     expect(unknown.headers.has(CLIENT_IP_HEADER)).toBe(false);
+  });
+
+  /**
+   * A request like the one Next's production server hands the route: it passes `instanceof Request`, but this realm's
+   * Request constructor didn't build it, so `new Request(it, …)` throws (#297). Only its public members work.
+   */
+  function foreignRequest(url: string, init: { method: string; headers: Record<string, string>; body?: string }) {
+    const inner = new Request(url, init);
+    return Object.create(Request.prototype, {
+      url: { value: inner.url }, method: { value: inner.method }, headers: { value: inner.headers },
+      arrayBuffer: { value: () => inner.arrayBuffer() },
+    }) as Request;
+  }
+
+  it("forwards a request that this realm's Request constructor can't copy", async () => {
+    const headers = { "content-type": "application/json", "cf-connecting-ip": "203.0.113.7", [CLIENT_IP_HEADER]: "1.1.1.1" };
+    const post = foreignRequest(`${SITE}/api/auth/sign-in/social`, { method: "POST", headers, body: '{"provider":"google"}' });
+    expect(() => new Request(post, {})).toThrow();
+    const forwarded = await withClientIp(post);
+    expect(forwarded.method).toBe("POST");
+    expect(forwarded.url).toBe(`${SITE}/api/auth/sign-in/social`);
+    expect(forwarded.headers.get(CLIENT_IP_HEADER)).toBe("203.0.113.7");
+    expect(await forwarded.text()).toBe('{"provider":"google"}');
+    const get = await withClientIp(foreignRequest(`${SITE}/api/auth/get-session`, { method: "GET", headers: { "x-real-ip": "198.51.100.4" } }));
+    expect(get.method).toBe("GET");
+    expect(get.headers.get(CLIENT_IP_HEADER)).toBe("198.51.100.4");
+    expect(get.body).toBeNull();
   });
 
   it("keeps the method, URL, other headers and a streamed body", async () => {
@@ -35,7 +62,7 @@ describe("client IP for the auth route", () => {
     const original = new Request(`${SITE}/api/auth/sign-in/social?x=1`, {
       method: "POST", body, duplex: "half", headers: { "content-type": "application/json", cookie: "a=1", "cf-connecting-ip": "203.0.113.7" },
     } as RequestInit);
-    const forwarded = withClientIp(original);
+    const forwarded = await withClientIp(original);
     expect(forwarded.method).toBe("POST");
     expect(forwarded.url).toBe(`${SITE}/api/auth/sign-in/social?x=1`);
     expect(forwarded.headers.get("cookie")).toBe("a=1");

@@ -1,4 +1,5 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "buildCommand": "NEXT_PUBLIC_CONVEX_URL=https://convex.gdgocipb.com NEXT_PUBLIC_CONVEX_SITE_URL=https://convex-site.gdgocipb.com pnpm build"
 }

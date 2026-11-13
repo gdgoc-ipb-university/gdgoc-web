@@ -48,8 +48,13 @@ describe("/privasi: Bot Discord Gogo", () => {
     expect(text).toMatch(/peninjau manusia dapat membacanya/);
   });
 
-  it("points questions and requests to the page's Instagram contact", () => {
-    const link = within(gogoSection()).getByRole("link", { name: "@gdgoc.ipb" });
+  it("points questions and deletion requests to the page's Instagram contact, without offering an opt-out", () => {
+    const section = gogoSection();
+    const text = section.textContent!;
+    expect(text).toMatch(/Punya pertanyaan soal Gogo, atau ingin obrolan yang disimpannya dihapus sebelum 24 jam\? Hubungi @gdgoc\.ipb/);
+    expect(text).toMatch(/Kalau tidak ingin pesanmu dibaca Gogo, ngobrol saja di channel lain, yang tidak dibaca Gogo/);
+    expect(text).not.toMatch(/tidak ingin pesanmu ikut dibaca/);
+    const link = within(section).getByRole("link", { name: "@gdgoc.ipb" });
     expect(link.getAttribute("href")).toBe(communityLinks.instagram);
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noreferrer");

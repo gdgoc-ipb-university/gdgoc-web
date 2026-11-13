@@ -1,6 +1,6 @@
 import { createClient, type AuthFunctions, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
-import { betterAuth } from "better-auth/minimal";
+import { betterAuth, type BetterAuthOptions } from "better-auth/minimal";
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
@@ -70,6 +70,21 @@ export function hostOptions(env: HostEnv) {
 }
 
 /**
+ * The endpoints every open member page calls: its session, its Convex token, and the keys Convex fetches to check that
+ * token. They only read, so they skip the rate limit (#269). Counting each one cost three more Convex calls (read the
+ * counter, read it again, write it), which was most of the deployment's monthly function calls. The limit also could not
+ * tell members apart: their requests reach Convex through the site's /api/auth route, so they all shared the web
+ * server's 60 a minute and got 429s at busy times.
+ */
+export const SESSION_READS = ["/get-session", "/convex/token", "/convex/jwks", "/convex/.well-known/openid-configuration"] as const;
+
+/** Sign-in, the OAuth callbacks and linking Discord keep the database rate limit. */
+export const rateLimit = {
+  enabled: true, storage: "database", window: 60, max: 60,
+  customRules: Object.fromEntries(SESSION_READS.map((path) => [path, false])),
+} satisfies BetterAuthOptions["rateLimit"];
+
+/**
  * Google is the only sign-in. Discord, once its four settings are on the deployment, can only be linked to a signed-in
  * account (discordAuth.ts), and its callback stays on SITE_URL like Google's.
  */
@@ -93,7 +108,7 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
     },
     account: { encryptOAuthTokens: true, accountLinking: discord.accountLinking },
     hooks: { before: discord.before },
-    rateLimit: { enabled: true, storage: "database", window: 60, max: 60 },
+    rateLimit,
     plugins: [convex({ authConfig })],
   });
 };

@@ -75,8 +75,10 @@ describe("rich answers", () => {
     expect(field.text).toBe("Halo\nA\nB");
     expect(field.length).toBe(6);
     expect(JSON.parse(field.json!)).toEqual({ type: "doc", content: [paragraph(text("Halo", [{ type: "bold" }])), list] });
+    // Empty paragraphs at either end are dropped, as the editor leaves one after a closing list.
+    expect(JSON.parse(richField(JSON.stringify({ type: "doc", content: [paragraph(), paragraph(text("Isi")), list, paragraph(), paragraph()] }))!.json!).content).toEqual([paragraph(text("Isi")), list]);
     // A document without text stores no JSON; one outside the allowlist is refused.
-    expect(richField(JSON.stringify({ type: "doc", content: [paragraph(), { type: "horizontalRule" }] }))).toEqual({ text: "", json: undefined, length: 1 });
+    expect(richField(JSON.stringify({ type: "doc", content: [paragraph(), { type: "horizontalRule" }, paragraph()] }))).toEqual({ text: "", json: undefined, length: 1 });
     expect(richField(JSON.stringify({ type: "doc", content: [{ type: "image", attrs: { src: "https://x" } }] }))).toBeNull();
     expect(richField("{not json")).toBeNull();
   });

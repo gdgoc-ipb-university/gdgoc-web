@@ -132,10 +132,17 @@ export function editorDoc(json: string | null | undefined, text: string): RichDo
 /**
  * A rich field as an editor sends it (#288): the plain-text copy to store beside it, the sanitized JSON (none when the
  * document holds no text), and its length as the editor's counter sees it. Null when the JSON fails the allowlist.
+ * Empty paragraphs at either end are dropped, like the plain text's trim: the editor keeps one after a closing list or
+ * quote so the cursor can leave it, which would otherwise render as a blank line.
  */
 export function richField(json: string): { text: string; json: string | undefined; length: number } | null {
-  const doc = parseRichDoc(json);
-  if (!doc) return null;
+  const parsed = parseRichDoc(json);
+  if (!parsed) return null;
+  const blank = (node?: RichNode) => node?.type === "paragraph" && !node.content;
+  const content = [...parsed.content];
+  while (blank(content[0])) content.shift();
+  while (blank(content[content.length - 1])) content.pop();
+  const doc: RichDoc = { type: "doc", content };
   const text = richText(doc);
   return { text, json: text ? JSON.stringify(doc) : undefined, length: richLength(doc) };
 }

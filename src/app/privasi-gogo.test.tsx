@@ -14,20 +14,36 @@ function gogoSection() {
 
 /** The chapter's Discord bot on /privasi (#260): what it reads and keeps, who processes it, and whom to ask. */
 describe("/privasi: Bot Discord Gogo", () => {
-  it("says where Gogo reads, what it keeps and for how long, and what it never keeps", () => {
+  it("says where Gogo reads, and when it answers without a mention (gdgoc-bot ADR 0007)", () => {
     const text = gogoSection().textContent!;
-    expect(text).toMatch(/channel yang dipilih GDGoC IPB/);
+    expect(text).toMatch(/channel yang dipilih GDGoC IPB untuknya beserta thread di dalamnya/);
     expect(text).toMatch(/DM jika fitur itu dinyalakan/);
-    expect(text).toMatch(/membaca semua pesan, termasuk yang tidak menyebut atau membalasnya/);
-    expect(text).toMatch(/nama tampilan Discord pengirimnya, waktu kirim, dan pesan yang dibalas, paling lama 24 jam/);
-    expect(text).toMatch(/tidak pernah menyimpan atau mengirim ID pengguna, username, peran, atau profil Discord/);
-    expect(text).toMatch(/Email, nomor telepon, kode undangan Tech League, dan teks yang mirip flag disamarkan/);
+    expect(text).toMatch(/membaca semua pesan, termasuk yang tidak me-mention atau membalasnya/);
+    expect(text).toMatch(/dalam 10 menit setelah terakhir bicara di channel itu atau saat ada yang menulis namanya/);
+    expect(text).toMatch(/bisa mematikan fitur membaca channel ini/);
   });
 
-  it("names Gemini's free tier, and that Google may use and review what it's sent", () => {
+  it("says what it keeps, where and for how long", () => {
+    const text = gogoSection().textContent!;
+    expect(text).toMatch(/30 pesan terakhir dari 24 jam terakhir di setiap channel atau thread/);
+    expect(text).toMatch(/hanya ada di memori Gogo/);
+    expect(text).toMatch(/Tanya jawab dengan Gogo di channel, thread, dan DM disimpan di server Gogo paling lama 24 jam/);
+  });
+
+  it("keeps the Discord user ID on Gogo's server only, never sends it, and never keeps usernames, roles or profiles", () => {
+    const text = gogoSection().textContent!;
+    expect(text).toMatch(/ID pengguna Discord hanya disimpan di server Gogo sendiri, paling lama 24 jam, supaya Gogo tahu siapa mengatakan apa, dan tidak pernah dikirim ke Google/);
+    expect(text).not.toMatch(/tidak pernah menyimpan[^.]*ID pengguna/);
+    expect(text).toMatch(/Nama tampilan diambil dari Discord setiap kali Gogo menjawab dan tidak disimpan/);
+    expect(text).toMatch(/tidak pernah menyimpan atau mengirim username, peran, atau profil Discord/);
+    expect(text).toMatch(/Email, nomor telepon, kode undangan Tech League, dan teks yang mirip flag disamarkan, termasuk di nama tampilan/);
+  });
+
+  it("names Gemini's free tier, what reaches Google and when, and that Google may use and review it", () => {
     const text = gogoSection().textContent!;
     expect(text).toMatch(/Gemini API dari Google, pada paket gratis/);
-    expect(text).toMatch(/termasuk nama tampilan dan isi pesan, dikirim ke Google/);
+    expect(text).toMatch(/atau menimbang perlu menjawab atau tidak, obrolan yang diingatnya di situ dikirim ke Google beserta nama tampilan penulisnya/);
+    expect(text).toMatch(/Pesan dari orang yang belum pernah mengobrol dengan Gogo ikut terkirim/);
     expect(text).toMatch(/meningkatkan, dan mengembangkan produknya/);
     expect(text).toMatch(/peninjau manusia dapat membacanya/);
   });

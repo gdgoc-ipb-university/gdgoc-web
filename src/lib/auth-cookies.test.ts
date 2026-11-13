@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { hostOnlyExpiries, withHostOnlyExpiries } from "./auth-cookies";
-import { hostOptions } from "../../convex/auth";
+import { hostOptions, networkOptions } from "../../convex/auth";
 
 describe("shared login across hosts", () => {
   it("trusts the league and shares cookies on the parent domain only when configured", () => {
@@ -10,6 +10,15 @@ describe("shared login across hosts", () => {
       trustedOrigins: ["https://www.gdgocipb.com", "https://league.gdgocipb.com"],
       advanced: { crossSubDomainCookies: { enabled: true, domain: "gdgocipb.com" } },
     });
+  });
+
+  it("keeps the shared cookie domain when the client IP headers are added (#294)", () => {
+    const ipAddress = { ipAddressHeaders: ["x-gdgoc-client-ip", "x-forwarded-for"] };
+    expect(networkOptions({ SITE_URL: "https://www.gdgocipb.com", AUTH_COOKIE_DOMAIN: "gdgocipb.com" })).toEqual({
+      trustedOrigins: ["https://www.gdgocipb.com"],
+      advanced: { crossSubDomainCookies: { enabled: true, domain: "gdgocipb.com" }, ipAddress },
+    });
+    expect(networkOptions({ SITE_URL: "https://www.gdgocipb.com" })).toEqual({ trustedOrigins: ["https://www.gdgocipb.com"], advanced: { ipAddress } });
   });
 
   it("expires the old host-only twin of every cookie set on the parent domain", () => {

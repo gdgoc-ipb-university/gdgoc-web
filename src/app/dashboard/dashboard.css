@@ -113,7 +113,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-submissions { list-style: none; padding: 0; margin: 0; display: grid; gap: 18px; }
 .dash-submissions > li { padding: 26px 28px; }
 .dash-submissions .app-record-top > div { min-width: 0; }
-.dash-submissions strong { display: block; font-weight: 500; font-size: 16px; }
+.dash-submissions .app-record-top strong { display: block; font-weight: 500; font-size: 16px; }
 .dash-submissions .app-small { display: block; overflow-wrap: anywhere; }
 
 
@@ -447,7 +447,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-review-form fieldset { display: grid; gap: 12px; border: 0; padding: 0; margin: 0; min-width: 0; }
 .dash-review-fields { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; align-items: start; }
 .dash-review-fields input[type="number"] { width: 100%; }
-@media (max-width: 640px) { .dash-review-fields { grid-template-columns: 1fr; } }
+@media (max-width: 640px) { .dash-review-fields { grid-template-columns: minmax(0, 1fr); } }
 
 /* Who has not submitted */
 .dash-missing { margin-top: 34px; }
@@ -478,7 +478,7 @@ a.dash-file:hover { text-decoration: underline; text-underline-offset: 3px; }
 .dash-rubric-remove { padding-bottom: 10px; }
 .dash-rubric-points { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px 14px; margin-bottom: 4px; }
 .dash-rubric-total { grid-column: 1 / -1; margin: 0; }
-.dash-review-fields[data-rubric="true"] { grid-template-columns: 1fr; }
+.dash-review-fields[data-rubric="true"] { grid-template-columns: minmax(0, 1fr); }
 @media (max-width: 640px) { .dash-rubric-row { grid-template-columns: 1fr 100px; } .dash-rubric-remove { grid-column: 1 / -1; justify-self: start; padding-bottom: 0; } }
 
 /* Flag tasks (#240) */

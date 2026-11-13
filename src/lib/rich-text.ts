@@ -123,3 +123,19 @@ export function docFromPlainText(text: string): RichDoc {
   const lines = text.split(/\r?\n/);
   return { type: "doc", content: lines.map((line) => (line ? { type: "paragraph", content: [{ type: "text", text: line }] } : { type: "paragraph" })) };
 }
+
+/** What an editor opens with: the stored document, or else the plain-text copy, one paragraph per line. */
+export function editorDoc(json: string | null | undefined, text: string): RichDoc {
+  return parseRichDoc(json) ?? docFromPlainText(text);
+}
+
+/**
+ * A rich field as an editor sends it (#288): the plain-text copy to store beside it, the sanitized JSON (none when the
+ * document holds no text), and its length as the editor's counter sees it. Null when the JSON fails the allowlist.
+ */
+export function richField(json: string): { text: string; json: string | undefined; length: number } | null {
+  const doc = parseRichDoc(json);
+  if (!doc) return null;
+  const text = richText(doc);
+  return { text, json: text ? JSON.stringify(doc) : undefined, length: richLength(doc) };
+}

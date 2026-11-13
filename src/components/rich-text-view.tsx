@@ -34,9 +34,12 @@ function render(nodes: RichNode[] = []): ReactNode[] {
   });
 }
 
-/** Renders a stored rich answer through the allowlist; falls back to the plain-text copy. */
-export function RichTextView({ json, text, className = "" }: { json?: string | null; text: string; className?: string }) {
+/**
+ * Renders a stored rich-text field through the allowlist. Without a valid document it shows the plain-text copy: as
+ * `plain` when given, the markup the field had before rich text (#288), so older rows look exactly as they did.
+ */
+export function RichTextView({ json, text, className = "", plain }: { json?: string | null; text: string; className?: string; plain?: ReactNode }) {
   const doc = parseRichDoc(json);
-  if (!doc) return <div className={`rich-text rich-text-plain ${className}`}>{text}</div>;
+  if (!doc) return plain ?? <div className={`rich-text rich-text-plain ${className}`}>{text}</div>;
   return <div className={`rich-text ${className}`}>{render(doc.content)}</div>;
 }

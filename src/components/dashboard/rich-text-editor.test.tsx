@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { docFromPlainText, type RichDoc } from "@/lib/rich-text";
@@ -67,5 +67,28 @@ describe("rich text editor", () => {
     expect(screen.getByRole("alert").textContent).toContain("https://");
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("group", { name: "Tautan" })).toBeNull();
+  });
+
+  it("names its toolbar for the field, marks a required or invalid field, and keeps link ids apart (#288)", async () => {
+    const Pair = ({ invalid }: { invalid: boolean }) => <>
+      <span id="description-label">Instruksi</span>
+      <RichTextEditor id="description" labelledBy="description-label" initialDoc={docFromPlainText("Demo")} onChange={vi.fn()} maxLength={6000} placeholder="" toolbarLabel="Format instruksi" required invalid={invalid} />
+      <span id="feedback-label">Umpan balik</span>
+      <RichTextEditor id="feedback" labelledBy="feedback-label" initialDoc={docFromPlainText("")} onChange={vi.fn()} maxLength={2000} placeholder="" toolbarLabel="Format umpan balik" />
+    </>;
+    const { container, rerender } = render(<Pair invalid />);
+    const instructions = await screen.findByRole("toolbar", { name: "Format instruksi" });
+    const feedback = screen.getByRole("toolbar", { name: "Format umpan balik" });
+    const box = screen.getByRole("textbox", { name: "Instruksi" });
+    expect(box.getAttribute("aria-required")).toBe("true");
+    expect(box.getAttribute("aria-invalid")).toBe("true");
+    expect(screen.getByRole("textbox", { name: "Umpan balik" }).hasAttribute("aria-required")).toBe(false);
+    rerender(<Pair invalid={false} />);
+    await waitFor(() => expect(box.hasAttribute("aria-invalid")).toBe(false));
+    await userEvent.click(within(instructions).getByRole("button", { name: "Tautan" }));
+    await userEvent.click(within(feedback).getByRole("button", { name: "Tautan" }));
+    expect(screen.getAllByRole("textbox", { name: "Alamat tautan" }).map((input) => input.id)).toEqual(["description-link-url", "feedback-link-url"]);
+    const audit = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] }, rules: { "color-contrast": { enabled: false } } });
+    expect(audit.violations.map(({ id, nodes }) => ({ id, elements: nodes.map((node) => node.html) }))).toEqual([]);
   });
 });

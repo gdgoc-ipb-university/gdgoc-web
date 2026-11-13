@@ -11,10 +11,13 @@ type Tool = { key: string; label: string; icon: PixelIconName; keys?: string; ac
 
 const shortcut = (keys?: string) => keys ? keys.split(" ").map((key) => `Control+${key} Meta+${key}`).join(" ") : undefined;
 
-/** Tiptap editor with a pixel-icon toolbar (WAI-ARIA toolbar pattern) and an inline link bar. */
-export function RichTextEditor({ id, labelledBy, describedBy, initialDoc, onChange, disabled = false, maxLength, placeholder, focusRef }: {
+/**
+ * Tiptap editor with a pixel-icon toolbar (WAI-ARIA toolbar pattern) and an inline link bar. `toolbarLabel` names the
+ * toolbar for the field it formats; the link bar's ids derive from `id`, so a page can hold several editors.
+ */
+export function RichTextEditor({ id, labelledBy, describedBy, initialDoc, onChange, disabled = false, required = false, invalid = false, maxLength, placeholder, focusRef, toolbarLabel = "Format jawaban" }: {
   id: string; labelledBy: string; describedBy?: string; initialDoc: RichDoc; onChange: (doc: RichDoc) => void;
-  disabled?: boolean; maxLength: number; placeholder: string; focusRef?: RefObject<(() => void) | null>;
+  disabled?: boolean; required?: boolean; invalid?: boolean; maxLength: number; placeholder: string; focusRef?: RefObject<(() => void) | null>; toolbarLabel?: string;
 }) {
   const change = useRef(onChange);
   const [linkOpen, setLinkOpen] = useState(false);
@@ -36,7 +39,8 @@ export function RichTextEditor({ id, labelledBy, describedBy, initialDoc, onChan
     content: initialDoc,
     editable: !disabled,
     editorProps: {
-      attributes: { id, role: "textbox", "aria-multiline": "true", "aria-labelledby": labelledBy, ...(describedBy ? { "aria-describedby": describedBy } : {}), class: "rich-text rich-editor-content" },
+      // useEditor passes new editorProps to the view on every render, so aria-invalid follows its prop.
+      attributes: { id, role: "textbox", "aria-multiline": "true", "aria-labelledby": labelledBy, ...(describedBy ? { "aria-describedby": describedBy } : {}), ...(required ? { "aria-required": "true" } : {}), ...(invalid ? { "aria-invalid": "true" } : {}), class: "rich-text rich-editor-content" },
       handleKeyDown: (_view, event) => {
         if ((event.metaKey || event.ctrlKey) && !event.shiftKey && event.key.toLowerCase() === "k") { event.preventDefault(); setLinkOpen(true); return true; }
         return false;
@@ -92,14 +96,14 @@ export function RichTextEditor({ id, labelledBy, describedBy, initialDoc, onChan
   ];
   const near = state.count >= maxLength * 0.9;
   return <div className="rich-editor" data-disabled={disabled}>
-    <Toolbar editor={editor} groups={groups} controls={id} disabled={disabled} />
-    {linkOpen && <LinkBar editor={editor} onClose={() => { setLinkOpen(false); editor.commands.focus(); }} />}
+    <Toolbar editor={editor} groups={groups} controls={id} disabled={disabled} label={toolbarLabel} />
+    {linkOpen && <LinkBar id={id} editor={editor} onClose={() => { setLinkOpen(false); editor.commands.focus(); }} />}
     <EditorContent editor={editor} className="rich-editor-body" data-lenis-prevent />
     <p className="rich-count" data-near={near}>{state.count.toLocaleString("id-ID")}/{maxLength.toLocaleString("id-ID")} karakter</p>
   </div>;
 }
 
-function Toolbar({ editor, groups, controls, disabled }: { editor: Editor; groups: Tool[][]; controls: string; disabled: boolean }) {
+function Toolbar({ editor, groups, controls, disabled, label }: { editor: Editor; groups: Tool[][]; controls: string; disabled: boolean; label: string }) {
   const tools = groups.flat();
   const [focused, setFocused] = useState(0);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
@@ -112,7 +116,7 @@ function Toolbar({ editor, groups, controls, disabled }: { editor: Editor; group
     buttons.current[index]?.focus();
   }
   const offsets = groups.map((_, groupIndex) => groups.slice(0, groupIndex).reduce((total, group) => total + group.length, 0));
-  return <div className="rich-toolbar" role="toolbar" aria-label="Format jawaban" aria-controls={controls} onKeyDown={move}>
+  return <div className="rich-toolbar" role="toolbar" aria-label={label} aria-controls={controls} onKeyDown={move}>
     {groups.map((group, groupIndex) => <div key={groupIndex} className="rich-tool-group">{group.map((tool, toolIndex) => {
       const position = offsets[groupIndex] + toolIndex;
       const inactive = disabled || tool.disabled;
@@ -126,7 +130,7 @@ function Toolbar({ editor, groups, controls, disabled }: { editor: Editor; group
   </div>;
 }
 
-function LinkBar({ editor, onClose }: { editor: Editor; onClose: () => void }) {
+function LinkBar({ id, editor, onClose }: { id: string; editor: Editor; onClose: () => void }) {
   const current = (editor.getAttributes("link").href as string | undefined) ?? "";
   const [value, setValue] = useState(current);
   const [error, setError] = useState("");
@@ -143,14 +147,14 @@ function LinkBar({ editor, onClose }: { editor: Editor; onClose: () => void }) {
   }
   function remove() { editor.chain().focus().extendMarkRange("link").unsetLink().run(); onClose(); }
   return <div className="rich-linkbar" role="group" aria-label="Tautan">
-    <label htmlFor="rich-link-url" className="sr-only">Alamat tautan</label>
+    <label htmlFor={`${id}-link-url`} className="sr-only">Alamat tautan</label>
     <PixelIcon name="link" size={18} />
-    <input ref={input} id="rich-link-url" type="url" inputMode="url" autoComplete="url" placeholder="https://contoh.com/demo" value={value} aria-invalid={Boolean(error)} aria-describedby={error ? "rich-link-error" : undefined}
+    <input ref={input} id={`${id}-link-url`} type="url" inputMode="url" autoComplete="url" placeholder="https://contoh.com/demo" value={value} aria-invalid={Boolean(error)} aria-describedby={error ? `${id}-link-error` : undefined}
       onChange={(event) => { setValue(event.target.value); setError(""); }}
       onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); apply(); } if (event.key === "Escape") { event.preventDefault(); onClose(); } }} />
     <button type="button" className="text-button" onClick={apply}>Pasang</button>
     {current && <button type="button" className="text-button text-danger" onClick={remove}><PixelIcon name="unlink" size={16} />Lepas</button>}
     <button type="button" className="text-button" onClick={onClose}>Batal</button>
-    {error && <p className="field-error" id="rich-link-error" role="alert">{error}</p>}
+    {error && <p className="field-error" id={`${id}-link-error`} role="alert">{error}</p>}
   </div>;
 }

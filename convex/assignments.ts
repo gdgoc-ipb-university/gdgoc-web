@@ -18,8 +18,10 @@ import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solve
 // An update without `audience` keeps the current one, and one without `cohortId` keeps the current target; null targets community tags.
 // `flag` makes a flag task on create (#240); an update of a flag task without it keeps the flag and points, and the kind never changes.
 // `noDue` saves no deadline (#276) and an update with it removes the deadline; `dueAt` is then ignored. A tab without it needs a date.
+// `descriptionDoc` is the instructions' rich-text JSON (#288), which the stored plain `description` is rebuilt from. A tab from
+// before it sends plain text only, which clears the stored document, as with a submission's `answerDoc`.
 const assignmentInput = v.object({
-  title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.string(), noDue: v.optional(v.boolean()), maxScore: v.optional(v.string()),
+  title: v.string(), slug: v.optional(v.string()), description: v.string(), descriptionDoc: v.optional(v.string()), dueAt: v.string(), noDue: v.optional(v.boolean()), maxScore: v.optional(v.string()),
   rubric: v.optional(v.array(v.object({ name: v.string(), max: v.string() }))), audience: v.optional(v.array(memberType)),
   cohortId: v.optional(v.union(v.id("cohorts"), v.null())), cohortRoles: v.optional(v.array(v.string())),
   flag: v.optional(v.object({ flag: v.string(), maxPoints: v.string(), minPoints: v.string(), decrement: v.string() })),
@@ -31,7 +33,7 @@ function conflict(): never {
   throw new ConvexError({ code: "CONFLICT", message: "Data ini berubah di tab atau perangkat lain. Muat ulang untuk memakai versi terbaru." });
 }
 
-function cleanAssignment(values: { title: string; slug?: string; description: string; dueAt: string; noDue?: boolean; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
+function cleanAssignment(values: { title: string; slug?: string; description: string; descriptionDoc?: string; dueAt: string; noDue?: boolean; maxScore?: string; rubric?: { name: string; max: string }[]; audience?: Doc<"assignments">["audience"]; cohortId?: Id<"cohorts"> | null; cohortRoles?: string[] }) {
   const input = { ...values, slug: values.slug ?? "", maxScore: values.maxScore ?? "", rubric: values.rubric ?? [] };
   const errors = validateAssignment(input);
   if (Object.keys(errors).length) throw new ConvexError({ code: "VALIDATION", message: "Lengkapi isian yang ditandai.", fields: errors });
@@ -39,7 +41,8 @@ function cleanAssignment(values: { title: string; slug?: string; description: st
   const rubric = clean.rubric!.length ? parseRubric(clean.rubric!) : undefined;
   return {
     // Without a deadline `dueAt` is undefined: insert leaves the field out, and patch removes it.
-    values: { title: clean.title, slug: clean.slug, description: clean.description, dueAt: clean.noDue ? undefined : fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
+    // Without a document (an older tab, or instructions with no text) `descriptionDoc` is undefined, so patch removes it.
+    values: { title: clean.title, slug: clean.slug, description: clean.description, descriptionDoc: clean.descriptionDoc, dueAt: clean.noDue ? undefined : fromJakartaInput(clean.dueAt), maxScore: Number(clean.maxScore), rubric, audience: clean.audience! },
     cohortRoles: clean.cohortRoles ?? [],
   };
 }
@@ -265,7 +268,7 @@ export const update = mutation({
     const values = { ...clean, ...flag?.fields, slug, audience: args.values.audience === undefined ? assignmentAudience(doc) : clean.audience, ...target };
     if (doc.revision !== args.revision) {
       // A retried request after an acknowledged write is not a conflict.
-      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.dueAt === values.dueAt && (flag || assignmentMaxScore(doc) === values.maxScore) && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)
+      if (doc.title === values.title && doc.slug === values.slug && doc.description === values.description && doc.descriptionDoc === values.descriptionDoc && doc.dueAt === values.dueAt && (flag || assignmentMaxScore(doc) === values.maxScore) && JSON.stringify(doc.rubric ?? null) === JSON.stringify(values.rubric ?? null) && JSON.stringify(assignmentAudience(doc)) === JSON.stringify(values.audience)
         && doc.cohortId === values.cohortId && JSON.stringify(doc.cohortRoles ?? null) === JSON.stringify(values.cohortRoles ?? null)
         && (!flag || (JSON.stringify(flagPointsOf(doc)) === JSON.stringify(flagPointsOf({ ...doc, ...flag.fields })) && stored?.flag === flag.flag))) return doc.slug;
       conflict();

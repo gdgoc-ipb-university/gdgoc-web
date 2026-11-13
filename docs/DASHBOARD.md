@@ -80,7 +80,7 @@ Owners come from the `APPRECIATION_ADMIN_EMAILS` environment variable on the Con
 
 ## Assignments
 
-An assignment has a title, a slug, plain-text instructions (line breaks preserved), an audience, a deadline unless staff turn it off, a maximum score (default 100), and a status:
+An assignment has a title, a slug, rich-text instructions (see [Rich text](#rich-text-answers); up to 6,000 characters), an audience, a deadline unless staff turn it off, a maximum score (default 100), and a status:
 
 - `draft`: visible only to owners and admins. It can be deleted while it has no submissions.
 - `published`: visible to active members in its audience, who can submit and resubmit.
@@ -110,14 +110,16 @@ A submission is a rich-text answer (up to 5,000 characters) and/or up to five fi
 
 The answer uses a [Tiptap](https://tiptap.dev) editor (`src/components/dashboard/rich-text-editor.tsx`). Its toolbar follows the WAI-ARIA toolbar pattern: one tab stop, with arrow keys, Home, and End to move between tools. It offers bold, italic, underline, strikethrough, inline code, two heading levels, bulleted and numbered lists, quotes, code blocks, links (Ctrl/⌘ + K opens an inline link bar), undo, and redo. Standard shortcuts apply, and a counter shows the 5,000-character limit. Toolbar icons come from `src/components/pixel-icons.tsx`. Pixelarticons has no text-formatting icons, so bold, italic, underline, strikethrough, and numbered list were drawn in the same 24×24 pixel grid.
 
-Answers are stored twice: `answerDoc`, the editor's JSON, and `answer`, a plain-text copy used for previews and older clients. `src/lib/rich-text.ts` rebuilds every document through an allowlist, on the server in `assignments.submit` and again before rendering:
+The same editor writes a task's instructions in Kelola tugas (#288), with a 6,000-character counter; its `toolbarLabel` names the toolbar for the field ("Format instruksi"), and its link bar's ids come from the editor's `id`, so a page can hold several editors.
+
+Answers are stored twice: `answerDoc`, the editor's JSON, and `answer`, a plain-text copy used for previews and older clients. Instructions follow the same pattern with `descriptionDoc` and `description`; the task lists' summaries read the plain text. `src/lib/rich-text.ts` rebuilds every document through an allowlist, on the server in `assignments.submit`, `create` and `update` (`richField`) and again before rendering:
 
 - Only known nodes and marks are accepted. Any other node or mark rejects the whole document.
 - Links must be absolute `http:`, `https:`, or `mailto:` URLs; any other link is removed and its text kept.
 - Depth, node count, and JSON size are bounded.
 - The character limit is counted the way the editor counts: text plus one per line break or divider.
 
-`RichTextView` renders the stored JSON with React elements rather than `innerHTML`. Anything that fails the allowlist falls back to the plain text. Earlier plain-text answers open in the editor as paragraphs, and clients from before this change can still send plain text, which clears the stored document.
+`RichTextView` renders the stored JSON with React elements rather than `innerHTML`. Anything that fails the allowlist falls back to the plain text; for instructions, the fallback is the markup they had before (`plain`), so older tasks look exactly as they did. Earlier plain-text answers and instructions open in the editor as paragraphs (`editorDoc`), and clients from before this change can still send plain text, which clears the stored document. An older task saved without touching the editor stays plain text.
 
 **Late** is computed as `submittedAt > dueAt` whenever it is read, so moving a deadline also updates the flags. Work after the deadline is accepted and marked late until an admin closes the assignment. Resubmitting after the deadline marks previously on-time work late; the form warns about this.
 
@@ -380,7 +382,7 @@ The server accepts a run until its simulated time plus 12 hours after the ticket
 ## Data model
 
 - `memberProfiles`: adds optional `role`, `deactivatedAt`, `accessUpdatedBy`, `memberType` (`member`/`core`/`bod`), `division`, `techSupportHandler`, `photoStorageId` with `photoUploadedAt` for an uploaded photo, and `instagramChangedAt` (#235), a `by_completed` index, a `by_photo` index, and a `search_name` full-text index on `fullName`.
-- `assignments`: optional `dueAt` (none means no deadline, #276), `slug`, `maxScore`, `rubric` (name and max per criterion), `reviewers` (account IDs), `audience` (community tags; missing means Core Team), `cohortId` with `cohortRoles` for cohort assignments, and `kind: "flag"` with `maxPoints`, `minPoints` and `decrement` for flag tasks, plus `by_status_due`, `by_updated` and `by_cohort` indexes.
+- `assignments`: optional `descriptionDoc` (the instructions' rich-text JSON, #288), optional `dueAt` (none means no deadline, #276), `slug`, `maxScore`, `rubric` (name and max per criterion), `reviewers` (account IDs), `audience` (community tags; missing means Core Team), `cohortId` with `cohortRoles` for cohort assignments, and `kind: "flag"` with `maxPoints`, `minPoints` and `decrement` for flag tasks, plus `by_status_due`, `by_updated` and `by_cohort` indexes.
 - `assignmentFlags`: a flag task's flag, one per task, with who changed it last (`by_assignment`).
 - `flagSolves`: one per member and flag task: `points` locked at solve time, `place` (the n of the points formula) and `solvedAt` (`by_assignment`, `by_assignment_owner`, `by_owner`).
 - `flagAttempts`: wrong flags per member and task: the count, the last one's time, and the rate limit's bucket (`by_assignment_owner`, `by_owner`).
@@ -432,9 +434,10 @@ All schema changes are additive, so the previous frontend keeps working during a
 - `src/lib/assignment.test.ts`: WIB conversion, file-type checks, file-name cleaning, slugify, audience order, labels and the Core Team fallback, and for tasks without a deadline (#276) validation without a date, late marks and the order. convex-test does not record upload content types, so type mismatches are tested here.
 - `src/lib/assignment-export.test.ts`: CSV quoting, formula defusing, the byte order mark, column order with and without emails or a rubric, rubric columns that fill only for the current criteria, WIB times, and the file name.
 - `src/components/dashboard/submission-form.test.tsx`: axe semantics, validation, local file rejection, uploads, dropzone drops and free slots, WebP compression before upload and oversized images, upload progress and cancellation, pending and attached file removal, saved rich answers, and the late warning.
-- `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, and link validation.
+- `src/components/dashboard/rich-text-editor.test.tsx`: the real Tiptap editor in JSDOM, covering axe semantics, the roving-tabindex toolbar, formatting commands, link validation, the toolbar's label, required and invalid fields, and link ids kept apart between two editors. Other component tests swap it for `rich-text-editor.stub.tsx`, a textarea, since JSDOM cannot type into ProseMirror.
+- `src/components/dashboard/assignments.test.tsx`: rich instructions (#288) in Kelola tugas (the document and its plain text sent, an empty one focused with its error, an older task opened as paragraphs and kept plain until edited, a rich task sent back unchanged) and on the task page (headings and clickable links, older tasks in their old markup). `convex/assignments.test.ts` covers storing the sanitized document, the plain-text summary, retries, older tabs clearing it, and the limit counted as the editor does.
 - `src/lib/image-optimize.test.ts`: downscaling, WebP output, and keeping the original when WebP is larger, unsupported, or undecodable.
-- `src/lib/rich-text.test.ts` and `src/components/rich-text-view.test.tsx`: the allowlist, unsafe links, limits, text extraction, and escaped rendering.
+- `src/lib/rich-text.test.ts` and `src/components/rich-text-view.test.tsx`: the allowlist, unsafe links, limits, text extraction, `editorDoc` and `richField`, escaped rendering, and the older markup for rows without a document.
 - `convex/bogorRun.test.ts`: token signatures checked against Node's HMAC, engine versions on tickets and tokens (`v: 1` tokens as engine 1, other engines `OUTDATED`), accepted replayed runs (including packed logs), forged and tampered tokens, edited inputs, scores, and end ticks, `TOO_EARLY` and `EXPIRED`, single use and `USED`, guests and deactivated accounts, improving bests with the week taken from the token, shared tie ranks and tie order at the cut, the rank cap, hidden players, and no owner ids or emails in public results. It also covers the one-hour finish line, the staff hidden list beyond the top 100, the moderation hierarchy and its audit fields, hiding on deactivation and restoring on reactivation, and pruning run records after 30 days, in batches.
 - `src/lib/bogor-run/leaderboard.test.ts`: WIB weeks in any runtime time zone, Monday keys, Indonesian week labels, short names, and packed input logs.
 - `src/lib/bogor-run/engine.test.ts`: determinism, replay validation, a one-hour replay's cost, a whole-hour fingerprint pinned to `ENGINE_VERSION`, a fingerprint that pins the first five minutes, late-game pressure and clusters, the finish line, brute-forced late-game jump windows, and a search solver that clears 25 obstacles in a row for 150 seeds at the start, near top speed (28 minutes in), and in the last 100 seconds before the finish line.

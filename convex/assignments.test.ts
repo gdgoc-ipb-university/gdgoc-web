@@ -127,6 +127,54 @@ describe("tasks without a deadline (#276)", () => {
   });
 });
 
+describe("rich instructions (#288)", () => {
+  const text = (value: string, marks?: unknown[]) => ({ type: "text", text: value, ...(marks ? { marks } : {}) });
+  const doc = (...content: unknown[]) => JSON.stringify({ type: "doc", content });
+  const fieldError = (message: string) => ({ data: { fields: { description: message } } });
+
+  it("stores the sanitized document with its plain text, and a tab from before the editor clears it", async () => {
+    const { t, owner, member } = await world();
+    const row = (id: Id<"assignments">) => t.run((ctx) => ctx.db.get(id));
+    const sent = doc(
+      { type: "heading", attrs: { level: 2, id: "langkah" }, content: [text("Langkah")] },
+      { type: "paragraph", content: [text("Gabung Discord", [{ type: "link", attrs: { href: "https://discord.gg/contoh", target: "_blank" } }])] },
+    );
+    const id = await owner.mutation(api.assignments.create, { values: { ...values(), description: "diabaikan", descriptionDoc: sent }, publish: true });
+    const saved = await row(id);
+    expect(saved?.description).toBe("Langkah\nGabung Discord");
+    expect(JSON.parse(saved!.descriptionDoc!)).toEqual({ type: "doc", content: [
+      { type: "heading", attrs: { level: 2 }, content: [text("Langkah")] },
+      { type: "paragraph", content: [text("Gabung Discord", [{ type: "link", attrs: { href: "https://discord.gg/contoh" } }])] },
+    ] });
+    // Members get the document with the task; the list's summary stays plain text.
+    expect((await member.query(api.assignments.get, { id }))?.assignment.descriptionDoc).toBe(saved?.descriptionDoc);
+    expect((await member.query(api.assignments.list, {})).find((item) => item._id === id)?.summary).toBe("Langkah\nGabung Discord");
+
+    const edit = { ...values(), descriptionDoc: doc({ type: "paragraph", content: [text("Versi baru")] }) };
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: edit });
+    // A retry of an acknowledged save is not a conflict.
+    await owner.mutation(api.assignments.update, { id, revision: 0, values: edit });
+    expect(await row(id)).toMatchObject({ description: "Versi baru", revision: 1 });
+    await owner.mutation(api.assignments.update, { id, revision: 1, values: values() });
+    expect(await row(id)).not.toHaveProperty("descriptionDoc");
+    expect((await row(id))?.description).toBe(values().description);
+  });
+
+  it("counts the limit as the editor does, and refuses empty or unknown documents", async () => {
+    const { t, owner } = await world();
+    // 1,500 paragraphs of four characters: 6,000 for the editor, though the plain-text copy adds 1,499 line breaks.
+    const paragraphs = (count: number) => Array.from({ length: count }, () => ({ type: "paragraph", content: [text("abcd")] }));
+    const full = await owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: doc(...paragraphs(1500)) }, publish: false });
+    expect((await t.run((ctx) => ctx.db.get(full)))?.description).toHaveLength(7499);
+    const over = doc(...paragraphs(1500), { type: "paragraph", content: [text("x")] });
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: over }, publish: false })).rejects.toMatchObject(fieldError("Maksimal 6000 karakter."));
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: doc({ type: "paragraph" }, { type: "horizontalRule" }) }, publish: false }))
+      .rejects.toMatchObject(fieldError("Jelaskan apa yang perlu dikerjakan."));
+    await expect(owner.mutation(api.assignments.create, { values: { ...values(), descriptionDoc: doc({ type: "image", attrs: { src: "https://x" } }) }, publish: false }))
+      .rejects.toMatchObject(fieldError("Format instruksi tidak dikenali. Muat ulang halaman, lalu coba lagi."));
+  });
+});
+
 describe("assignment audience", () => {
   async function tag(t: ReturnType<typeof setup>, account: { id: string }, memberType: "member" | "core" | "bod") {
     await t.run(async (ctx) => {

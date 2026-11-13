@@ -1,4 +1,5 @@
 import type { FlagInput } from "./flag-task";
+import { richField } from "./rich-text";
 
 export const assignmentLimits = { title: 160, description: 6000, answer: 5000, fileName: 120, feedback: 2000, maxScore: 1000, rubricCriteria: 8, rubricName: 80 } as const;
 /** Assignments created before scores existed have no `maxScore`; they are graded out of this. */
@@ -35,7 +36,9 @@ export type RubricInput = { name: string; max: string };
 // A cohort task (`cohortId`) goes to the participants of `cohortRoles` instead of `audience`; null targets community tags again.
 // `flag` makes a flag task (#240, src/lib/flag-task.ts); hand-graded tasks have none.
 // `noDue` saves the task without a deadline (#276); `dueAt` keeps the typed date meanwhile, so turning it back on restores it.
-export type AssignmentValues = { title: string; slug: string; description: string; dueAt: string; noDue?: boolean; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[]; cohortId?: string | null; cohortRoles?: string[]; flag?: FlagInput };
+// `descriptionDoc` is the instructions' rich-text JSON (#288); `description` is then its plain-text copy. Without it the
+// instructions are plain text, as from a tab loaded before the editor.
+export type AssignmentValues = { title: string; slug: string; description: string; descriptionDoc?: string; dueAt: string; noDue?: boolean; maxScore: string; rubric?: RubricInput[]; audience?: AudienceGroup[]; cohortId?: string | null; cohortRoles?: string[]; flag?: FlagInput };
 export type AssignmentErrors = Partial<Record<keyof AssignmentValues, string>>;
 
 /** The community tags an assignment can be given to, in display order. Ticking all three gives it to everyone. Staff are never in an audience. */
@@ -128,8 +131,12 @@ export function normalizeAssignment(values: AssignmentValues): AssignmentValues 
   // Blank rows are dropped so an abandoned "Tambah kriteria" does not block saving.
   const rubric = (values.rubric ?? []).map((criterion) => ({ name: criterion.name.trim().replace(/\s+/g, " "), max: criterion.max.trim() })).filter((criterion) => criterion.name || criterion.max);
   const total = rubric.length ? rubricTotal(rubric) : null;
+  // The document wins over the plain text sent with it; one outside the allowlist is kept for validateAssignment to refuse.
+  const rich = values.descriptionDoc === undefined ? undefined : richField(values.descriptionDoc);
   return {
-    title, slug: slugify(values.slug) || slugify(title) || "tugas", description: values.description.trim(), dueAt: values.dueAt.trim(), ...(values.noDue ? { noDue: true } : {}),
+    title, slug: slugify(values.slug) || slugify(title) || "tugas", description: rich ? rich.text : values.description.trim(),
+    ...(rich === undefined ? {} : { descriptionDoc: rich ? rich.json : values.descriptionDoc }),
+    dueAt: values.dueAt.trim(), ...(values.noDue ? { noDue: true } : {}),
     maxScore: total !== null ? String(total) : (values.maxScore ?? "").trim() || String(defaultMaxScore), rubric,
     audience: audienceGroups.filter((group) => (values.audience ?? defaultAudience).includes(group)),
     ...(values.cohortId === undefined ? {} : { cohortId: values.cohortId, cohortRoles: values.cohortId ? [...new Set(values.cohortRoles ?? [])] : [] }),
@@ -141,8 +148,11 @@ export function validateAssignment(values: AssignmentValues): AssignmentErrors {
   const errors: AssignmentErrors = {};
   if (!v.title) errors.title = "Isi judul tugas.";
   else if (v.title.length > assignmentLimits.title) errors.title = `Maksimal ${assignmentLimits.title} karakter.`;
-  if (!v.description) errors.description = "Jelaskan apa yang perlu dikerjakan.";
-  else if (v.description.length > assignmentLimits.description) errors.description = `Maksimal ${assignmentLimits.description} karakter.`;
+  // Rich instructions count characters as the editor does, without the line breaks their plain-text copy adds between blocks.
+  const rich = values.descriptionDoc === undefined ? undefined : richField(values.descriptionDoc);
+  if (rich === null) errors.description = "Format instruksi tidak dikenali. Muat ulang halaman, lalu coba lagi.";
+  else if (!v.description) errors.description = "Jelaskan apa yang perlu dikerjakan.";
+  else if ((rich?.length ?? v.description.length) > assignmentLimits.description) errors.description = `Maksimal ${assignmentLimits.description} karakter.`;
   if (!v.noDue && Number.isNaN(fromJakartaInput(v.dueAt))) errors.dueAt = "Pilih tanggal dan jam tenggat.";
   if (!wholeNumber(v.maxScore) || Number(v.maxScore) < 1 || Number(v.maxScore) > assignmentLimits.maxScore) errors.maxScore = `Isi nilai maksimal berupa bilangan bulat 1 sampai ${assignmentLimits.maxScore}.`;
   const rubric = v.rubric ?? [];

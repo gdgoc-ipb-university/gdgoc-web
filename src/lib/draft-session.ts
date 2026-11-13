@@ -1,8 +1,10 @@
-import { emptyAppreciation, fieldLimits, type AppreciationValues } from "./appreciation";
+import { emptyAppreciation, fieldLimits, storyLength, type AppreciationValues } from "./appreciation";
 
 export type SavePhase = "saved" | "dirty" | "saving" | "error" | "conflict";
 type Version = { values: AppreciationValues; revision: number; updatedAt: number };
-export type DraftSnapshot = Version & { phase: SavePhase; message: string; localBackup: boolean };
+// `loaded` counts how often the values were replaced from outside the form (a local backup, the account's version), so an
+// uncontrolled field such as the story editor (#288) knows to start again from them.
+export type DraftSnapshot = Version & { phase: SavePhase; message: string; localBackup: boolean; loaded: number };
 type Save = (values: AppreciationValues, revision: number) => Promise<{ revision: number; updatedAt: number }>;
 type Cache = Pick<Storage, "getItem" | "setItem" | "removeItem">;
 
@@ -21,9 +23,13 @@ function isConflict(error: unknown) {
 
 function validValues(value: unknown): value is AppreciationValues {
   if (!value || typeof value !== "object") return false;
+  const values = value as Record<string, unknown>;
+  if (values.storyDoc !== undefined && typeof values.storyDoc !== "string") return false;
   return Object.entries(emptyAppreciation).every(([key, example]) => {
-    const entry = (value as Record<string, unknown>)[key];
-    return typeof entry === typeof example && (typeof entry !== "string" || entry.length <= fieldLimits[key as keyof typeof fieldLimits]);
+    const entry = values[key];
+    if (typeof entry !== typeof example) return false;
+    // The story counts as its editor does (#288); its plain copy has a line break between blocks.
+    return typeof entry !== "string" || (key === "story" ? storyLength(values as AppreciationValues) : entry.length) <= fieldLimits[key as keyof typeof fieldLimits];
   });
 }
 
@@ -38,7 +44,7 @@ export class DraftSession {
   private active = false;
 
   constructor(initial: Version, private persist: Save, private cache?: Cache, private cacheKey = "") {
-    this.snapshot = { ...initial, phase: "saved", message: "", localBackup: Boolean(cache) };
+    this.snapshot = { ...initial, phase: "saved", message: "", localBackup: Boolean(cache), loaded: 0 };
     this.saved = JSON.stringify(initial.values);
   }
   getSnapshot = () => this.snapshot;
@@ -61,7 +67,7 @@ export class DraftSession {
       if (raw) {
         const cached = JSON.parse(raw);
         if (validValues(cached.values) && Number.isInteger(cached.revision) && JSON.stringify(cached.values) !== this.saved) {
-          this.emit({ values: cached.values, phase: cached.revision === this.snapshot.revision ? "dirty" : "conflict", message: "Ada perubahan di perangkat ini yang belum tersimpan ke akun." });
+          this.emit({ values: cached.values, phase: cached.revision === this.snapshot.revision ? "dirty" : "conflict", message: "Ada perubahan di perangkat ini yang belum tersimpan ke akun.", loaded: this.snapshot.loaded + 1 });
         }
       }
     } catch { this.emit({ localBackup: false }); }
@@ -88,7 +94,7 @@ export class DraftSession {
   useRemote(remote: Version) {
     clearTimeout(this.timer);
     this.saved = JSON.stringify(remote.values);
-    this.emit({ ...remote, phase: "saved", message: "" });
+    this.emit({ ...remote, phase: "saved", message: "", loaded: this.snapshot.loaded + 1 });
     this.backup();
   }
   async flush(): Promise<boolean> {

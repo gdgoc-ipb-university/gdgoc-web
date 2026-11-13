@@ -4,7 +4,8 @@ import { query, mutation, type QueryCtx, type MutationCtx } from "./_generated/s
 import type { Doc, Id } from "./_generated/dataModel";
 import { authComponent, isReviewer } from "./auth";
 import { appreciationValues } from "./schema";
-import { emptyAppreciation, fieldLimits, isInstagramPostUrl, matchesQueueFilter, normalizeAppreciation, queueSearchLimits, validateAppreciation } from "../src/lib/appreciation";
+import { emptyAppreciation, fieldLimits, isInstagramPostUrl, matchesQueueFilter, normalizeAppreciation, queueSearchLimits, storyFormatError, storyLength, validateAppreciation, withRichStory } from "../src/lib/appreciation";
+import { richField } from "../src/lib/rich-text";
 import { memberTypeLabels } from "../src/lib/onboarding";
 
 async function requireUser(ctx: QueryCtx | MutationCtx) {
@@ -85,17 +86,23 @@ export const save = mutation({
   handler: async (ctx, args) => {
     const doc = await owned(ctx, args.id, (await requireUser(ctx))._id);
     if (!["draft", "revision"].includes(doc.status)) throw new ConvexError({ code: "LOCKED", message: "Kiriman ini sudah terkirim dan sedang diproses." });
+    // The story's document is stored sanitized, with the plain text rebuilt from it (#288).
+    const values = withRichStory(args.values);
     if (doc.revision !== args.revision) {
       // A transport retry after an acknowledged write must not create a false conflict.
-      if ((Object.keys(emptyAppreciation) as (keyof typeof emptyAppreciation)[]).every((key) => doc.values[key] === args.values[key])) return { revision: doc.revision, updatedAt: doc.updatedAt };
+      if ((Object.keys(emptyAppreciation) as (keyof typeof emptyAppreciation)[]).every((key) => doc.values[key] === values[key])
+        && doc.values.storyDoc === values.storyDoc) return { revision: doc.revision, updatedAt: doc.updatedAt };
       return conflict();
     }
+    // The story counts as its editor does.
+    const story = storyLength(args.values);
+    if (story === Infinity) throw new ConvexError(storyFormatError);
     for (const [field, limit] of Object.entries(fieldLimits)) {
-      if (args.values[field as keyof typeof fieldLimits].length > limit) throw new ConvexError(`Isian ${field} terlalu panjang.`);
+      if ((field === "story" ? story : args.values[field as keyof typeof fieldLimits].length) > limit) throw new ConvexError(`Isian ${field} terlalu panjang.`);
     }
     const updatedAt = Date.now();
     const revision = doc.revision + 1;
-    await ctx.db.patch(args.id, { values: args.values, updatedAt, revision });
+    await ctx.db.patch(args.id, { values, updatedAt, revision });
     return { revision, updatedAt };
   },
 });
@@ -160,7 +167,7 @@ export const history = query({
     await requireAdmin(ctx);
     const rows = await ctx.db.query("appreciationReviews").withIndex("by_appreciation", (q) => q.eq("appreciationId", id)).collect();
     rows.sort((a, b) => a.createdAt - b.createdAt);
-    return Promise.all(rows.map(async (row) => ({ _id: row._id, status: row.status, note: row.note, postUrl: row.postUrl, createdAt: row.createdAt, reviewerName: await reviewerName(ctx, row.reviewerId) })));
+    return Promise.all(rows.map(async (row) => ({ _id: row._id, status: row.status, note: row.note, noteDoc: row.noteDoc ?? null, postUrl: row.postUrl, createdAt: row.createdAt, reviewerName: await reviewerName(ctx, row.reviewerId) })));
   },
 });
 
@@ -168,7 +175,8 @@ export const review = mutation({
   args: {
     id: v.id("appreciations"), revision: v.number(),
     status: v.union(v.literal("reviewing"), v.literal("revision"), v.literal("published")),
-    note: v.string(), postUrl: v.string(),
+    // `noteDoc` is the note's rich-text JSON (#288); a tab from before it sends plain text, which clears a stored document.
+    note: v.string(), noteDoc: v.optional(v.string()), postUrl: v.string(),
   },
   handler: async (ctx, args) => {
     const user = await requireAdmin(ctx);
@@ -176,19 +184,21 @@ export const review = mutation({
     if (!doc || doc.status === "draft") throw new ConvexError("Kiriman tidak ditemukan.");
     if (doc.revision !== args.revision) return conflict();
     if (doc.status === "published" || doc.status === "revision") throw new ConvexError("Kiriman ini sudah selesai ditinjau. Tunggu pengirim mengirim ulang jika perlu revisi.");
-    const note = args.note.trim();
+    const rich = args.noteDoc === undefined ? undefined : richField(args.noteDoc);
+    if (rich === null) throw new ConvexError("Format catatan tidak dikenali. Muat ulang halaman, lalu coba lagi.");
+    const note = rich ? rich.text : args.note.trim();
     const postUrl = args.postUrl.trim();
-    if (note.length > 1500) throw new ConvexError("Catatan maksimal 1.500 karakter.");
+    if ((rich?.length ?? note.length) > 1500) throw new ConvexError("Catatan maksimal 1.500 karakter.");
     if (args.status === "revision" && !note) throw new ConvexError("Jelaskan apa yang perlu dilengkapi pengirim.");
     if (args.status === "published" && !isInstagramPostUrl(postUrl)) throw new ConvexError("Cantumkan link postingan Instagram yang sudah terbit.");
     const now = Date.now();
     await ctx.db.patch(doc._id, {
-      status: args.status, reviewNote: note, postUrl: args.status === "published" ? postUrl : undefined,
+      status: args.status, reviewNote: note, reviewNoteDoc: rich?.json, postUrl: args.status === "published" ? postUrl : undefined,
       reviewedAt: now, reviewedBy: user._id, updatedAt: now, revision: doc.revision + 1,
     });
     await ctx.db.insert("appreciationReviews", {
       appreciationId: doc._id, reviewerId: user._id, status: args.status,
-      note, postUrl: args.status === "published" ? postUrl : "", createdAt: now,
+      note, noteDoc: rich?.json, postUrl: args.status === "published" ? postUrl : "", createdAt: now,
     });
   },
 });

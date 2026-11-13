@@ -6,6 +6,7 @@ import { emptyAppreciation } from "@/lib/appreciation";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 
 vi.mock("@/lib/auth-client", () => ({ authClient: { signOut: vi.fn() } }));
+vi.mock("@/components/dashboard/rich-text-editor", async () => ({ RichTextEditor: (await import("../dashboard/rich-text-editor.stub")).RichTextEditorStub }));
 const viewer = { id: "user-ui-test", name: "Member Test", email: "member@example.com", isAdmin: false };
 const id = "test-document" as Id<"appreciations">;
 function record(): Doc<"appreciations"> {
@@ -88,5 +89,45 @@ describe("appreciation editor", () => {
     expect(screen.getByText("Offline · cadangan di perangkat ini")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Tinjau sebelum kirim" }) as HTMLButtonElement).disabled).toBe(true);
     expect(window.localStorage.getItem(`gdgoc:apresiasi:${viewer.id}:${id}`)).toContain("Offline story");
+  });
+
+  it("writes the story in the editor, focuses it when it is missing, and starts again from another tab's version (#288)", async () => {
+    const doc = record();
+    doc.values = { ...emptyAppreciation, fullName: "Member", memberType: "Member", campus: "Kampus Bogor", instagram: "member.test", achievement: "Juara 1", eventName: "Kompetisi", organizer: "Panitia", level: "Nasional", participation: "Individu", eventDate: "2026-08-10", story: "", documentationLinks: "https://example.com/dokumentasi", publicationConsent: true };
+    const gateway = actions(); const { container, rerender } = render(<DraftEditor record={doc} viewer={viewer} onBack={vi.fn()} actions={gateway} />);
+    const story = () => container.querySelector<HTMLTextAreaElement>("#story")!;
+    await userEvent.click(screen.getByRole("button", { name: "Tinjau sebelum kirim" }));
+    expect(document.activeElement).toBe(story());
+    expect(story().getAttribute("aria-invalid")).toBe("true");
+    expect(story().getAttribute("aria-describedby")).toBe("story-hint story-error");
+    fireEvent.change(story(), { target: { value: "Baris satu\nBaris dua" } });
+    await waitFor(() => expect(gateway.save).toHaveBeenCalled(), { timeout: 2000 });
+    const saved = (gateway.save.mock.calls[0] as unknown as [{ values: { story: string; storyDoc: string } }])[0].values;
+    expect(saved.story).toBe("Baris satu\nBaris dua");
+    expect(JSON.parse(saved.storyDoc).content).toHaveLength(2);
+    await waitFor(() => expect(screen.getByRole("status").textContent).toContain("Tersimpan di akun"));
+    // A newer version from another tab, with nothing unsaved here, replaces the story in the editor.
+    const remote = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Dari tab lain" }] }] });
+    rerender(<DraftEditor record={{ ...doc, revision: 5, values: { ...doc.values, story: "Dari tab lain", storyDoc: remote } }} viewer={viewer} onBack={vi.fn()} actions={gateway} />);
+    await waitFor(() => expect(story().value).toBe("Dari tab lain"));
+  });
+
+  it("shows a rich story with its links in the preview, and an older story as plain text", async () => {
+    const doc = record();
+    const storyDoc = JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Lihat prototipe", marks: [{ type: "link", attrs: { href: "https://example.com/figma" } }] }] }] });
+    doc.values = { ...emptyAppreciation, fullName: "Member", memberType: "Member", campus: "Kampus Bogor", instagram: "member.test", achievement: "Juara 1", eventName: "Kompetisi", organizer: "Panitia", level: "Nasional", participation: "Individu", eventDate: "2026-08-10", story: "Lihat prototipe", storyDoc, documentationLinks: "https://example.com/dokumentasi", publicationConsent: true };
+    const { container, unmount } = render(<DraftEditor record={doc} viewer={viewer} onBack={vi.fn()} actions={actions()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Tinjau sebelum kirim" }));
+    await screen.findByRole("heading", { name: "Sudah sesuai ceritamu?" });
+    expect(screen.getByRole("link", { name: "Lihat prototipe" }).getAttribute("href")).toBe("https://example.com/figma");
+    expect(container.querySelector(".record-details .rich-text")).toBeTruthy();
+    unmount();
+    const older = record();
+    older.values = { ...doc.values, story: "Baris satu\nhttps://example.com/figma", storyDoc: undefined };
+    const plain = render(<DraftEditor record={older} viewer={viewer} onBack={vi.fn()} actions={actions()} />);
+    await userEvent.click(screen.getByRole("button", { name: "Tinjau sebelum kirim" }));
+    await screen.findByRole("heading", { name: "Sudah sesuai ceritamu?" });
+    const row = [...plain.container.querySelectorAll(".record-details dl > div")].find((item) => item.querySelector("dt")?.textContent === "Cerita di balik prestasi")!;
+    expect(row.querySelector("dd")?.outerHTML).toBe("<dd>Baris satu\nhttps://example.com/figma</dd>");
   });
 });

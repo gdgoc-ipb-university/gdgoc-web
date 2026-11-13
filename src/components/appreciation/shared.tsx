@@ -10,6 +10,7 @@ import { chapterPeriod } from "@/lib/chapter";
 import { readableError } from "@/lib/draft-session";
 import { Arrow, PixelSpark } from "../icons";
 import { MemberAvatar } from "../member-avatar";
+import { RichTextView } from "../rich-text-view";
 import { communityLinks } from "@/lib/community";
 
 export function Trophy() {
@@ -72,7 +73,8 @@ export function RecordDetails({ record }: { record: Doc<"appreciations"> }) {
     ["Tingkat", v.level], ["Tanggal pengumuman", v.eventDate], ["Partisipasi", v.participation],
     ...(v.participation === "Tim" ? [["Nama tim", v.teamName], ["Anggota tim", v.teamMembers]] : []), ["Cerita di balik prestasi", v.story],
   ];
-  return <div className="record-details"><dl>{pairs.map(([title, value]) => <div key={title}><dt>{title}</dt><dd>{value || "—"}</dd></div>)}</dl>
+  // The story renders its document (#288); a story without one is plain text, as before.
+  return <div className="record-details"><dl>{pairs.map(([title, value]) => <div key={title}><dt>{title}</dt><dd>{title === "Cerita di balik prestasi" && value ? <RichTextView json={v.storyDoc} text={value} plain={value} /> : value || "—"}</dd></div>)}</dl>
     <h3>Link dokumentasi</h3><ul>{documentLinks(v.documentationLinks).map((link, index) => <li key={index}>{isDocumentUrl(link) ? <a href={link} target="_blank" rel="noopener noreferrer">Dokumentasi {index + 1} <Arrow external /><span>{link}</span></a> : <span>Link belum valid: {link}</span>}</li>)}</ul>
     <p className="app-small">{v.publicationConsent ? "Pengirim menyetujui penggunaan materi untuk apresiasi di Instagram GDGoC IPB." : "Persetujuan publikasi belum diberikan."}</p>
   </div>;

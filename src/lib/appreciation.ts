@@ -1,4 +1,5 @@
 import { chapterPeriod } from "./chapter";
+import { richField } from "./rich-text";
 
 /** "BoD" is offered only to members staff tagged as BoD; the server checks it on submit. */
 export const memberTypes = ["Member", "Core Team", "BoD"] as const;
@@ -16,8 +17,10 @@ export const emptyAppreciation = {
   teamName: "", teamMembers: "", eventDate: "", story: "", documentationLinks: "",
   publicationConsent: false,
 };
-export type AppreciationValues = typeof emptyAppreciation;
-export type AppreciationField = keyof AppreciationValues;
+// `storyDoc` is the story's rich-text JSON (#288), and `story` then its plain-text copy. Drafts from before the editor have
+// only `story`. The form's fields are the others.
+export type AppreciationValues = typeof emptyAppreciation & { storyDoc?: string };
+export type AppreciationField = keyof typeof emptyAppreciation;
 export type FieldErrors = Partial<Record<AppreciationField, string>>;
 
 export const fieldLimits: Record<Exclude<AppreciationField, "publicationConsent">, number> = {
@@ -26,8 +29,27 @@ export const fieldLimits: Record<Exclude<AppreciationField, "publicationConsent"
   teamName: 120, teamMembers: 1200, eventDate: 10, story: 2400, documentationLinks: 6000,
 };
 
+/** The story's document read through the allowlist; undefined without one, null when it fails. */
+const richStory = (values: AppreciationValues) => values.storyDoc === undefined ? undefined : richField(values.storyDoc);
+export const storyFormatError = "Format cerita tidak dikenali. Muat ulang halaman, lalu coba lagi.";
+
+/** The story's length as its editor counts it, or as plain text without a document; Infinity for a document that fails the allowlist. */
+export function storyLength(values: AppreciationValues) {
+  const rich = richStory(values);
+  return rich === undefined ? values.story.length : rich?.length ?? Infinity;
+}
+
+/** The story rebuilt from its sanitized document, which is dropped when it has no text. A document that fails is left for validation. */
+export function withRichStory(values: AppreciationValues): AppreciationValues {
+  const rich = richStory(values);
+  if (!rich) return values;
+  const clean: AppreciationValues = { ...values, story: rich.text, storyDoc: rich.json };
+  if (!clean.storyDoc) delete clean.storyDoc;
+  return clean;
+}
+
 export function normalizeAppreciation(values: AppreciationValues): AppreciationValues {
-  const clean = { ...values };
+  const clean = withRichStory({ ...values });
   for (const key of Object.keys(fieldLimits) as (keyof typeof fieldLimits)[]) clean[key] = clean[key].trim();
   clean.instagram = clean.instagram.replace(/^@/, "");
   if (clean.participation === "Individu") { clean.teamName = ""; clean.teamMembers = ""; }
@@ -57,7 +79,7 @@ export function validateAppreciation(values: AppreciationValues, now = new Date(
   const v = normalizeAppreciation(values);
   const errors: FieldErrors = {};
   for (const key of Object.keys(fieldLimits) as (keyof typeof fieldLimits)[]) {
-    if (v[key].length > fieldLimits[key]) errors[key] = `Maksimal ${fieldLimits[key]} karakter.`;
+    if ((key === "story" ? storyLength(values) : v[key].length) > fieldLimits[key]) errors[key] = `Maksimal ${fieldLimits[key]} karakter.`;
   }
   const required: Partial<Record<AppreciationField, string>> = {
     fullName: "Isi nama yang akan dicantumkan.", campus: "Isi nama kampusmu.",
@@ -65,6 +87,7 @@ export function validateAppreciation(values: AppreciationValues, now = new Date(
     organizer: "Isi nama penyelenggara.", story: "Ceritakan singkat proses dan hasilnya.",
   };
   for (const [key, message] of Object.entries(required)) if (!v[key as keyof typeof required]) errors[key as AppreciationField] = message;
+  if (storyLength(values) === Infinity) errors.story = storyFormatError;
   if (!memberTypes.some((option) => option === v.memberType)) errors.memberType = "Pilih peranmu di GDGoC IPB.";
   if (!achievementLevels.some((option) => option === v.level)) errors.level = "Pilih tingkat kompetisi.";
   if (!participationTypes.some((option) => option === v.participation)) errors.participation = "Pilih individu atau tim.";

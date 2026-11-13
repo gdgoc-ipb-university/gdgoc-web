@@ -87,7 +87,8 @@ export default defineSchema({
   assignments: defineTable({
     // Without `dueAt` a task has no deadline (#276): nothing is late, and a flag task takes flags until it is closed. In
     // `by_status_due` those rows sort before every date, so readers fetch them as their own range and list them last.
-    title: v.string(), slug: v.optional(v.string()), description: v.string(), dueAt: v.optional(v.number()), status: assignmentStatus,
+    // `description` is plain text (older tasks, summaries); `descriptionDoc` is the instructions' sanitized rich-text JSON (#288).
+    title: v.string(), slug: v.optional(v.string()), description: v.string(), descriptionDoc: v.optional(v.string()), dueAt: v.optional(v.number()), status: assignmentStatus,
     revision: v.number(), createdBy: v.string(), createdAt: v.number(), updatedAt: v.number(), publishedAt: v.optional(v.number()),
     // Scores run from 0 to this; older assignments without it are graded out of 100 (assignmentMaxScore).
     // With a rubric, maxScore is the sum of the criteria maxes and reviews carry one point value per criterion.

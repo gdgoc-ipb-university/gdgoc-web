@@ -64,6 +64,19 @@ describe("assignment rules", () => {
     expect(validateAssignment({ ...cohortTask, cohortId: null, cohortRoles: ["hacker"] })).toEqual({ audience: "Pilih setidaknya satu kelompok." });
   });
 
+  it("reads rich instructions from their document (#288)", () => {
+    const base = { title: "Tugas", slug: "", description: "teks lama", dueAt: "2026-10-01T23:59", maxScore: "100" };
+    const doc = (...lines: string[]) => JSON.stringify({ type: "doc", content: lines.map((line) => ({ type: "paragraph", ...(line ? { content: [{ type: "text", text: line }] } : {}) })) });
+    expect(normalizeAssignment({ ...base, descriptionDoc: doc("Satu", "Dua") })).toMatchObject({ description: "Satu\nDua", descriptionDoc: doc("Satu", "Dua") });
+    expect(normalizeAssignment(base)).not.toHaveProperty("descriptionDoc");
+    // The limit counts what the editor counts: 6,000 characters in 1,500 lines is within it.
+    expect(validateAssignment({ ...base, descriptionDoc: doc(...Array.from({ length: 1500 }, () => "abcd")) })).toEqual({});
+    expect(validateAssignment({ ...base, descriptionDoc: doc("x".repeat(6001)) })).toEqual({ description: "Maksimal 6000 karakter." });
+    expect(validateAssignment({ ...base, descriptionDoc: doc("") })).toEqual({ description: "Jelaskan apa yang perlu dikerjakan." });
+    expect(normalizeAssignment({ ...base, descriptionDoc: doc("") }).descriptionDoc).toBeUndefined();
+    expect(validateAssignment({ ...base, descriptionDoc: "{bukan json" })).toEqual({ description: "Format instruksi tidak dikenali. Muat ulang halaman, lalu coba lagi." });
+  });
+
   it("derives the maximum from a rubric and rejects incomplete criteria", () => {
     const base = { title: "Tugas", slug: "", description: "Kerjakan.", dueAt: "2026-10-01T23:59", maxScore: "7" };
     const rubric = [{ name: " Ide ", max: "40" }, { name: "Eksekusi", max: "60" }, { name: "", max: "" }];

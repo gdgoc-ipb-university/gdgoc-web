@@ -38,7 +38,7 @@ export function AssignmentDetail({ id }: { id: string }) {
       <div className="app-record-top"><AssignmentStatusBadge status={assignment.status} />{assignment.kind === "flag" && <FlagBadge />}{data.canReview && <AudienceBadge audience={assignmentAudience(assignment)} cohort={data.cohort} cohortRoles={assignment.cohortRoles} />}{!data.canReview && data.challenge && <SolveBadge points={data.challenge.mine?.points ?? null} />}{!data.canReview && !data.challenge && <SubmissionBadge submittedAt={data.submission?.submittedAt ?? null} late={data.submission?.late ?? false} />}{!data.canReview && data.submission && <ScoreBadge score={data.submission.score} maxScore={assignmentMaxScore(assignment)} reviewedAt={data.submission.reviewedAt} stale={data.submission.stale} revisionRequestedAt={data.submission.revisionRequestedAt} />}</div>
       <h1 id="assignment-title">{assignment.title}</h1>
       <div className="dash-assignment-meta"><DueLabel dueAt={assignment.dueAt} now={now} open={assignment.status === "published"} /><CopyLinkButton path={assignmentPath(assignment)} /></div>
-      <div className="dash-instructions">{assignment.description}</div>
+      <RichTextView className="dash-instructions" json={assignment.descriptionDoc} text={assignment.description} plain={<div className="dash-instructions">{assignment.description}</div>} />
       {assignment.rubric && assignment.rubric.length > 0 && <div className="dash-rubric" aria-labelledby="rubric-title"><p className="eyebrow" id="rubric-title">RUBRIK PENILAIAN · {assignmentMaxScore(assignment)} POIN</p>
         <ol className="dash-rubric-list">{assignment.rubric.map((criterion, index) => <li key={index}><span>{criterion.name}</span><b>{criterion.max} poin</b></li>)}</ol></div>}
     </article>

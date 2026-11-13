@@ -8,6 +8,7 @@ import { api } from "../../../convex/_generated/api";
 import type { Doc, Id } from "../../../convex/_generated/dataModel";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, assignmentPath, audienceGroups, audienceLabels, defaultAudience, defaultMaxScore, maxSlugLength, normalizeAssignment, rubricTotal, slugify, toJakartaInput, validateAssignment, type AssignmentErrors, type AssignmentValues, type AudienceGroup, type RubricInput } from "@/lib/assignment";
 import { readableError } from "@/lib/draft-session";
+import { editorDoc, richText, type RichDoc } from "@/lib/rich-text";
 import { defaultFlagInput, normalizeFlag, validateFlag, type FlagErrors, type FlagInput } from "@/lib/flag-task";
 import type { CohortRole } from "@/lib/cohort";
 import { LoadingPanel } from "../appreciation/shared";
@@ -17,6 +18,7 @@ import { isStaff, useDashboardViewer } from "./viewer";
 import { FlagBadge, FlagFields, KindSwitch, SolveBadge, flagFields } from "./flag-task";
 import { PixelIcon } from "../pixel-icons";
 import { Select } from "../select";
+import { RichTextEditor } from "./rich-text-editor";
 
 export function AssignmentsPage() {
   const viewer = useDashboardViewer();
@@ -124,7 +126,9 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const titleField = useRef<HTMLInputElement>(null);
-  const descriptionField = useRef<HTMLTextAreaElement>(null);
+  // The instructions editor (#288) opens with the stored document, or an older task's plain text as paragraphs.
+  const [descriptionSeed] = useState(() => editorDoc(initial.descriptionDoc, initial.description));
+  const focusDescription = useRef<(() => void) | null>(null);
   const dueField = useRef<HTMLInputElement>(null);
   const maxScoreField = useRef<HTMLInputElement>(null);
   const audienceField = useRef<HTMLInputElement>(null);
@@ -133,6 +137,10 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
   function update(field: Exclude<keyof AssignmentValues, "rubric" | "audience" | "cohortId" | "cohortRoles" | "noDue">, value: string) {
     setValues((current) => ({ ...current, [field]: value, ...(field === "title" && !slugEdited ? { slug: slugify(value) } : {}) }));
     setErrors((current) => ({ ...current, [field]: undefined }));
+  }
+  function updateDescription(doc: RichDoc) {
+    setValues((current) => ({ ...current, description: richText(doc), descriptionDoc: JSON.stringify(doc) }));
+    setErrors((current) => ({ ...current, description: undefined }));
   }
   // "Tanpa tenggat" (#276) keeps the typed date, so unticking brings it back.
   function setNoDue(noDue: boolean) {
@@ -176,7 +184,8 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
     const foundFlag = isFlag ? validateFlag(flag) : {};
     setErrors(found); setFlagErrors(foundFlag); setError("");
     const first = (["title", "description", "audience", "cohortRoles", "dueAt", "maxScore"] as const).find((field) => found[field]);
-    if (first) { ({ title: titleField, description: descriptionField, dueAt: dueField, maxScore: maxScoreField, audience: audienceField, cohortRoles: rolesField })[first].current?.focus(); return; }
+    if (first === "description") { focusDescription.current?.(); return; }
+    if (first) { ({ title: titleField, dueAt: dueField, maxScore: maxScoreField, audience: audienceField, cohortRoles: rolesField })[first].current?.focus(); return; }
     const firstFlag = flagFields.find((field) => foundFlag[field]);
     if (firstFlag) { document.getElementById(firstFlag)?.focus(); return; }
     setBusy(true);
@@ -197,7 +206,11 @@ export function AssignmentForm({ initial, onSave, onCancel, creating, assignment
         <div className="dash-slug-input"><span aria-hidden="true">/dashboard/tugas/</span><input id="slug" value={values.slug} maxLength={maxSlugLength + 20} autoCapitalize="none" autoCorrect="off" spellCheck={false} onChange={(event) => { setSlugEdited(true); update("slug", event.target.value); }} onBlur={() => setValues((current) => ({ ...current, slug: slugify(current.slug) }))} aria-describedby="slug-hint" placeholder={slugify(values.title) || "judul-tugas"} /></div>
         <p className="field-hint" id="slug-hint" aria-live="polite">{previewSlug && previewSlug !== requestedSlug ? <>Slug ini sudah dipakai tugas lain, jadi akan disimpan sebagai <b>{previewSlug}</b>. </> : null}Terisi otomatis dari judul, huruf kecil dan tanda hubung. Link lama tetap diarahkan jika slug diubah.{slugEdited && <> <button type="button" className="text-button dash-inline-button" onClick={() => { setSlugEdited(false); setValues((current) => ({ ...current, slug: slugify(current.title) })); }}>Samakan dengan judul</button></>}</p>
       </div>
-      <div className="app-field"><label htmlFor="description">Instruksi <span className="field-required" aria-hidden="true">*</span></label><textarea data-lenis-prevent id="description" ref={descriptionField} required rows={10} maxLength={assignmentLimits.description} value={values.description} onChange={(event) => update("description", event.target.value)} aria-invalid={Boolean(errors.description)} aria-describedby={described("description", "description-hint")} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." /><p className="field-hint" id="description-hint">Ditampilkan apa adanya, termasuk baris baru. {values.description.length}/{assignmentLimits.description} karakter.</p>{errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
+      <div className="app-field"><span className="dash-label" id="description-label">Instruksi <span className="field-required" aria-hidden="true">*</span></span>
+        <p className="field-hint dash-hint-above" id="description-hint">Gunakan toolbar untuk judul, daftar, kode, atau tautan. Tautan bisa diklik member.</p>
+        <RichTextEditor id="description" labelledBy="description-label" describedBy={described("description", "description-hint")} initialDoc={descriptionSeed} onChange={updateDescription}
+          disabled={busy} required invalid={Boolean(errors.description)} maxLength={assignmentLimits.description} placeholder="Tujuan, langkah pengerjaan, dan apa yang perlu dikumpulkan." focusRef={focusDescription} toolbarLabel="Format instruksi" />
+        {errors.description && <p className="field-error" id="description-error">{errors.description}</p>}</div>
       <fieldset className="dash-audience-editor" aria-describedby={described(values.cohortId ? "cohortRoles" : "audience", "audience-hint")}>
         <legend>Untuk siapa <span className="field-required" aria-hidden="true">*</span></legend>
         {cohorts && cohorts.length > 0 && <div className="dash-target-options" role="radiogroup" aria-label="Jenis sasaran">
@@ -275,7 +288,7 @@ function EditAssignment({ assignment, cohortRoles, flag }: { assignment: Doc<"as
   const router = useRouter();
   const update = useMutation(api.assignments.update);
   const [initial] = useState<AssignmentValues>(() => ({
-    title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description,
+    title: assignment.title, slug: assignment.slug ?? slugify(assignment.title), description: assignment.description, descriptionDoc: assignment.descriptionDoc,
     // A task without a deadline (#276) opens with "Tanpa tenggat" ticked and next week in the date, ready if it is unticked.
     dueAt: toJakartaInput(assignment.dueAt ?? defaultDue()), noDue: assignment.dueAt === undefined,
     maxScore: String(assignmentMaxScore(assignment)), rubric: (assignment.rubric ?? []).map((criterion) => ({ name: criterion.name, max: String(criterion.max) })),

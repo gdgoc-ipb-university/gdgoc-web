@@ -4,18 +4,10 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import type { Id } from "../../../convex/_generated/dataModel";
-import { docFromPlainText, parseRichDoc, richText } from "@/lib/rich-text";
+import { parseRichDoc, richText } from "@/lib/rich-text";
 import { SubmissionForm, type SubmissionActions, type SubmissionFile, type UploadOptions } from "./submission-form";
 
-// JSDOM cannot type into ProseMirror; the real editor is covered in rich-text-editor.test.tsx.
-vi.mock("./rich-text-editor", () => ({
-  RichTextEditor: ({ id, labelledBy, describedBy, initialDoc, onChange, focusRef }: {
-    id: string; labelledBy: string; describedBy?: string; initialDoc: Parameters<typeof richText>[0];
-    onChange: (doc: ReturnType<typeof docFromPlainText>) => void; focusRef?: { current: (() => void) | null };
-  }) => <textarea id={id} aria-labelledby={labelledBy} aria-describedby={describedBy} defaultValue={richText(initialDoc)}
-    ref={(element) => { if (focusRef) focusRef.current = () => element?.focus(); }}
-    onChange={(event) => onChange(docFromPlainText(event.target.value))} />,
-}));
+vi.mock("./rich-text-editor", async () => ({ RichTextEditor: (await import("./rich-text-editor.stub")).RichTextEditorStub }));
 
 const now = Date.UTC(2026, 9, 1, 3, 0);
 const fileId = (value: string) => value as Id<"submissionFiles">;

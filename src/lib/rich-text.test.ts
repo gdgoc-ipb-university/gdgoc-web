@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { docFromPlainText, parseRichDoc, richLength, richText, safeHref, sanitizeRichDoc } from "./rich-text";
+import { docFromPlainText, editorDoc, parseRichDoc, richField, richLength, richText, safeHref, sanitizeRichDoc } from "./rich-text";
 
 const text = (value: string, marks?: unknown[]) => ({ type: "text", text: value, ...(marks ? { marks } : {}) });
 const paragraph = (...content: unknown[]) => ({ type: "paragraph", ...(content.length ? { content } : {}) });
@@ -63,5 +63,23 @@ describe("rich answers", () => {
     expect(doc.content).toHaveLength(3);
     expect(sanitizeRichDoc(doc)).toEqual(doc);
     expect(richText(doc)).toBe("Baris satu\n\nBaris tiga");
+    expect(editorDoc(null, "Baris satu\n\nBaris tiga")).toEqual(doc);
+    expect(editorDoc("{not json", "Baris satu\n\nBaris tiga")).toEqual(doc);
+    const stored = { type: "doc", content: [paragraph(text("Tebal", [{ type: "bold" }]))] };
+    expect(editorDoc(JSON.stringify(stored), "Tebal")).toEqual(stored);
+  });
+
+  it("reads a field from the editor: plain text, clean JSON, and the counter's length (#288)", () => {
+    const list = { type: "bulletList", content: ["A", "B"].map((item) => ({ type: "listItem", content: [paragraph(text(item))] })) };
+    const field = richField(JSON.stringify({ type: "doc", content: [{ ...paragraph(text("Halo", [{ type: "bold" }])), attrs: { textAlign: "center" } }, list] }))!;
+    expect(field.text).toBe("Halo\nA\nB");
+    expect(field.length).toBe(6);
+    expect(JSON.parse(field.json!)).toEqual({ type: "doc", content: [paragraph(text("Halo", [{ type: "bold" }])), list] });
+    // Empty paragraphs at either end are dropped, as the editor leaves one after a closing list.
+    expect(JSON.parse(richField(JSON.stringify({ type: "doc", content: [paragraph(), paragraph(text("Isi")), list, paragraph(), paragraph()] }))!.json!).content).toEqual([paragraph(text("Isi")), list]);
+    // A document without text stores no JSON; one outside the allowlist is refused.
+    expect(richField(JSON.stringify({ type: "doc", content: [paragraph(), { type: "horizontalRule" }, paragraph()] }))).toEqual({ text: "", json: undefined, length: 1 });
+    expect(richField(JSON.stringify({ type: "doc", content: [{ type: "image", attrs: { src: "https://x" } }] }))).toBeNull();
+    expect(richField("{not json")).toBeNull();
   });
 });

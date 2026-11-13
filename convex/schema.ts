@@ -248,7 +248,8 @@ export default defineSchema({
   techSupportRequests: defineTable({
     ownerId: v.string(), competition: v.string(), competitionUrl: v.string(), deadline: v.string(),
     participation: v.union(v.literal("team"), v.literal("solo")), teamName: v.optional(v.string()),
-    helpKinds: v.array(v.string()), progress: v.string(), status: techSupportStatus,
+    // `progressDoc` is the progress's sanitized rich-text JSON (#288), beside its plain text.
+    helpKinds: v.array(v.string()), progress: v.string(), progressDoc: v.optional(v.string()), status: techSupportStatus,
     // How handlers reach the member (#251): a WhatsApp number stored as +628… and a Discord username, if given. Optional
     // for requests sent before they were asked; `techSupport.submit` requires the number.
     whatsapp: v.optional(v.string()), discord: v.optional(v.string()),

@@ -13,7 +13,7 @@ import {
 
 const requestInput = v.object({
   competition: v.string(), competitionUrl: v.string(), deadline: v.string(), participation: v.union(v.literal("team"), v.literal("solo"), v.literal("")),
-  teamName: v.string(), helpKinds: v.array(v.string()), progress: v.string(),
+  teamName: v.string(), helpKinds: v.array(v.string()), progress: v.string(), progressDoc: v.optional(v.string()),
   // Optional only so a page loaded before #251 reaches `submit` and is asked to reload, instead of failing validation.
   whatsapp: v.optional(v.string()), discord: v.optional(v.string()),
 });
@@ -49,7 +49,7 @@ export const submit = mutation({
     return ctx.db.insert("techSupportRequests", {
       ownerId: user._id, competition: normal.competition, competitionUrl: normal.competitionUrl, deadline: normal.deadline,
       participation: normal.participation || "solo", ...(normal.teamName ? { teamName: normal.teamName } : {}), helpKinds: normal.helpKinds,
-      progress: normal.progress, whatsapp: normal.whatsapp, ...(normal.discord ? { discord: normal.discord } : {}), status: "new", submittedAt: now, updatedAt: now,
+      progress: normal.progress, ...(normal.progressDoc ? { progressDoc: normal.progressDoc } : {}), whatsapp: normal.whatsapp, ...(normal.discord ? { discord: normal.discord } : {}), status: "new", submittedAt: now, updatedAt: now,
     });
   },
 });
@@ -72,7 +72,7 @@ export const queue = query({
       const account = await authComponent.getAnyUserById(ctx, row.ownerId);
       return {
         _id: row._id, ownerId: row.ownerId, competition: row.competition, competitionUrl: row.competitionUrl, deadline: row.deadline,
-        participation: row.participation, teamName: row.teamName ?? null, helpKinds: row.helpKinds, progress: row.progress, status: row.status,
+        participation: row.participation, teamName: row.teamName ?? null, helpKinds: row.helpKinds, progress: row.progress, progressDoc: row.progressDoc ?? null, status: row.status,
         whatsapp: row.whatsapp ?? null, discord: row.discord ?? null, mentorName: row.mentorName ?? null, note: row.note ?? null, submittedAt: row.submittedAt, updatedAt: row.updatedAt,
         matchedAt: row.matchedAt ?? null, closedAt: row.closedAt ?? null, handledBy: row.handledBy ? names.get(row.handledBy) ?? null : null,
         member: { name: profile?.fullName ?? "Anggota", email: account?.email ?? "", campus: profile?.campus ?? "", memberType: profile?.memberType ?? null, division: profile?.division ?? null },

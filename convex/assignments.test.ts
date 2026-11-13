@@ -175,6 +175,46 @@ describe("rich instructions (#288)", () => {
   });
 });
 
+describe("rich feedback and revision notes (#288)", () => {
+  const paragraph = (text: string, marks?: unknown[]) => ({ type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }] });
+  const doc = (...content: unknown[]) => JSON.stringify({ type: "doc", content });
+
+  it("stores the document with its plain text, in the history too, and an older tab's plain text clears it", async () => {
+    const { t, owner, member } = await world();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Versi 1", fileIds: [] });
+    const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    const link = paragraph("Lihat contoh", [{ type: "link", attrs: { href: "https://example.com/contoh" } }]);
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 90, feedback: "diabaikan", feedbackDoc: doc(paragraph("Rapi.", [{ type: "bold" }]), link, { type: "paragraph" }) });
+    const reviewed = (await member.query(api.assignments.get, { id }))?.submission;
+    expect(reviewed?.feedback).toBe("Rapi.\nLihat contoh");
+    expect(JSON.parse(reviewed!.feedbackDoc!)).toEqual({ type: "doc", content: [paragraph("Rapi.", [{ type: "bold" }]), link] });
+    expect((await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page[0].feedbackDoc).toBe(reviewed?.feedbackDoc);
+
+    await owner.mutation(api.assignments.requestRevision, { submissionId: row._id, submissionRevision: 1, note: "", noteDoc: doc(link) });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ score: 90, feedback: "Lihat contoh", feedbackDoc: doc(link), revisionRequestedAt: expect.any(Number) });
+    const history = await t.run((ctx) => ctx.db.query("submissionReviews").withIndex("by_submission", (q) => q.eq("submissionId", row._id)).collect());
+    expect(history.map((entry) => [entry.feedback, entry.feedbackDoc])).toEqual([["Rapi.\nLihat contoh", reviewed?.feedbackDoc], ["Lihat contoh", doc(link)]]);
+
+    await owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, score: 80, feedback: " Teks biasa " });
+    expect((await member.query(api.assignments.get, { id }))?.submission).toMatchObject({ feedback: "Teks biasa", feedbackDoc: null });
+  });
+
+  it("counts the limit as the editor does, and refuses unknown documents and empty notes", async () => {
+    const { owner, member } = await world();
+    const id = await owner.mutation(api.assignments.create, { values: values(), publish: true });
+    await member.mutation(api.assignments.submit, { assignmentId: id, revision: 0, answer: "Versi 1", fileIds: [] });
+    const [row] = (await owner.query(api.assignments.submissions, { id, paginationOpts: page })).page;
+    const lines = (count: number) => Array.from({ length: count }, () => paragraph("abcd"));
+    const review = (feedbackDoc: string) => owner.mutation(api.assignments.review, { submissionId: row._id, submissionRevision: 1, feedback: "", feedbackDoc });
+    // 500 lines of four characters is 2,000 for the editor, though the plain text adds 499 line breaks.
+    await review(doc(...lines(500)));
+    await expect(review(doc(...lines(500), paragraph("x")))).rejects.toThrow("Umpan balik maksimal 2000 karakter.");
+    await expect(review(doc({ type: "image", attrs: { src: "https://x" } }))).rejects.toThrow("Format umpan balik tidak dikenali");
+    await expect(owner.mutation(api.assignments.requestRevision, { submissionId: row._id, submissionRevision: 1, note: "isi lama", noteDoc: doc({ type: "paragraph" }) })).rejects.toThrow("perlu direvisi");
+  });
+});
+
 describe("assignment audience", () => {
   async function tag(t: ReturnType<typeof setup>, account: { id: string }, memberType: "member" | "core" | "bod") {
     await t.run(async (ctx) => {

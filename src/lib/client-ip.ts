@@ -16,12 +16,15 @@ export function clientIp(headers: Headers) {
 
 /**
  * The request to forward to Convex: the same method, URL and body, with CLIENT_IP_HEADER set from `clientIp`. A value the
- * client sent is always replaced, or removed when no IP is known. The body is passed on as the original stream.
+ * client sent is always replaced, or removed when no IP is known. It is built only from primitives: in Next's production
+ * server, `new Request(request, …)` throws on the incoming request ("Cannot read private member #state"), so the
+ * incoming object is only read, never copied (#297).
  */
-export function withClientIp(request: Request) {
+export async function withClientIp(request: Request) {
   const headers = new Headers(request.headers);
   const ip = clientIp(request.headers);
   if (ip) headers.set(CLIENT_IP_HEADER, ip);
   else headers.delete(CLIENT_IP_HEADER);
-  return new Request(request, { headers });
+  const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.arrayBuffer();
+  return new Request(request.url, { method: request.method, headers, body });
 }

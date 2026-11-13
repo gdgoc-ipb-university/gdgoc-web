@@ -19,6 +19,7 @@ import { CopyIconButton, DashboardDialog, DialogContent, DialogFooter } from "./
 import { useNow } from "./shared";
 import { deadlineLabel, TechSupportStatusBadge } from "./tech-support";
 import { useDashboardViewer } from "./viewer";
+import { RichTextView } from "../rich-text-view";
 
 type Request = FunctionReturnType<typeof api.techSupport.queue>["requests"][number];
 type Filter = "open" | "all" | TechSupportStatus;
@@ -63,7 +64,7 @@ function HandleDialog({ request, onClose }: { request: Request; onClose: () => v
         <dt>Kompetisi</dt><dd><a href={request.competitionUrl} target="_blank" rel="noreferrer">{request.competition}</a>, tenggat {deadlineLabel(request.deadline)}</dd>
         <dt>Ikut sebagai</dt><dd>{request.participation === "team" ? `Tim: ${request.teamName}` : participationLabels.solo}</dd>
         <dt>Bantuan</dt><dd>{request.helpKinds.join(", ")}</dd>
-        <dt>Progres</dt><dd>{request.progress}</dd>
+        <dt>Progres</dt><dd><RichTextView json={request.progressDoc} text={request.progress} plain={request.progress} /></dd>
       </dl>
       <fieldset disabled={busy} className="dash-support-handle">
         <Select id="support-status" label="Status" value={status} onChange={setStatus} options={options} />

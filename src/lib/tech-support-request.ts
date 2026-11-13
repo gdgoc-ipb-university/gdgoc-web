@@ -1,5 +1,6 @@
 import { toJakartaInput } from "./assignment";
 import { discordError, normalizeDiscord, normalizeWhatsapp, whatsappError } from "./contact";
+import { richField } from "./rich-text";
 
 /**
  * Tech Support requests from the dashboard (#92): what a member asks for, the statuses the queue moves a request
@@ -37,21 +38,25 @@ export const participationLabels: Record<Participation, string> = { team: "Tim",
 
 /**
  * The form's values; `deadline` is a WIB date from a date input (YYYY-MM-DD). `whatsapp` and `discord` are how handlers
- * reach the member (#251), normalised by src/lib/contact.ts; `discord` may be empty.
+ * reach the member (#251), normalised by src/lib/contact.ts; `discord` may be empty. `progressDoc` is the progress's
+ * rich-text JSON (#288), and `progress` then its plain-text copy; a tab from before the editor sends plain text only.
  */
 export type TechSupportValues = {
   competition: string; competitionUrl: string; deadline: string; participation: Participation | "";
-  teamName: string; helpKinds: string[]; progress: string; whatsapp: string; discord: string;
+  teamName: string; helpKinds: string[]; progress: string; progressDoc?: string; whatsapp: string; discord: string;
 };
 export type TechSupportErrors = Partial<Record<keyof TechSupportValues, string>>;
 
 const squash = (value: string) => value.trim().replace(/\s+/g, " ");
 
 export function normalizeRequest(values: TechSupportValues): TechSupportValues {
+  // The progress is rebuilt from its sanitized document; one that fails the allowlist is kept for validateRequest to refuse.
+  const rich = values.progressDoc === undefined ? undefined : richField(values.progressDoc);
   return {
     competition: squash(values.competition), competitionUrl: values.competitionUrl.trim(), deadline: values.deadline.trim(),
     participation: values.participation, teamName: values.participation === "team" ? squash(values.teamName) : "",
-    helpKinds: techSupportHelpKinds.filter((kind) => values.helpKinds.includes(kind)), progress: values.progress.trim(),
+    helpKinds: techSupportHelpKinds.filter((kind) => values.helpKinds.includes(kind)), progress: rich ? rich.text : values.progress.trim(),
+    ...(rich === undefined ? {} : { progressDoc: rich ? rich.json : values.progressDoc }),
     whatsapp: normalizeWhatsapp(values.whatsapp), discord: normalizeDiscord(values.discord),
   };
 }
@@ -81,8 +86,11 @@ export function validateRequest(values: TechSupportValues, now: number): TechSup
   else if (values.participation === "team" && !values.teamName) errors.teamName = "Tulis nama timnya.";
   else if (values.teamName.length > techSupportLimits.teamName) errors.teamName = `Maksimal ${techSupportLimits.teamName} karakter.`;
   if (!values.helpKinds.length) errors.helpKinds = "Pilih minimal satu bentuk bantuan.";
-  if (!values.progress) errors.progress = "Ceritakan progres ide atau proyekmu sejauh ini.";
-  else if (values.progress.length > techSupportLimits.progress) errors.progress = `Maksimal ${techSupportLimits.progress} karakter.`;
+  // A rich progress counts as its editor does, without the line breaks its plain copy adds between blocks.
+  const rich = values.progressDoc === undefined ? undefined : richField(values.progressDoc);
+  if (rich === null) errors.progress = "Format progres tidak dikenali. Muat ulang halaman, lalu coba lagi.";
+  else if (!values.progress) errors.progress = "Ceritakan progres ide atau proyekmu sejauh ini.";
+  else if ((rich?.length ?? values.progress.length) > techSupportLimits.progress) errors.progress = `Maksimal ${techSupportLimits.progress} karakter.`;
   const whatsapp = whatsappError(values.whatsapp), discord = discordError(values.discord);
   if (whatsapp) errors.whatsapp = whatsapp;
   if (discord) errors.discord = discord;

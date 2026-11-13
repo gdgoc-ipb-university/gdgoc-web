@@ -3,6 +3,7 @@ import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import axe from "axe-core";
 import { getFunctionName, type FunctionReference } from "convex/server";
+import { parseRichDoc } from "@/lib/rich-text";
 import { TechSupportPage } from "./tech-support";
 
 // The Tech Support pages against a fake Convex.
@@ -17,6 +18,7 @@ vi.mock("convex/react", () => ({
   useQuery: (ref: FunctionReference<"query">, args: unknown) => args === "skip" ? undefined : queries[getFunctionName(ref)],
   useMutation: (ref: FunctionReference<"mutation">) => mutations[getFunctionName(ref)] ?? vi.fn(async () => null),
 }));
+vi.mock("./rich-text-editor", async () => ({ RichTextEditor: (await import("./rich-text-editor.stub")).RichTextEditorStub }));
 
 const accessible = async (container: HTMLElement) => {
   const result = await axe.run(container, { runOnly: { type: "tag", values: ["wcag2a", "wcag2aa", "wcag21aa", "wcag22aa"] }, rules: { "color-contrast": { enabled: false } } });
@@ -92,7 +94,7 @@ describe("Tech Support request form", () => {
     await userEvent.type(screen.getByLabelText(/Nama tim/), "Tim Dino");
     await userEvent.click(screen.getByRole("checkbox", { name: "Review pitch deck" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Ideasi" }));
-    await userEvent.type(screen.getByLabelText(/Progres saat ini/), "Sudah ada prototipe.");
+    await userEvent.type(screen.getByLabelText(/Progres saat ini/), "Sudah ada prototipe.{Enter}Butuh review pitch deck.");
     // A landline is refused before anything is sent.
     await userEvent.type(screen.getByLabelText(/Nomor WhatsApp/), "0251 862 1234");
     await userEvent.type(screen.getByLabelText(/Username Discord/), "@Rania.Dev");
@@ -102,12 +104,16 @@ describe("Tech Support request form", () => {
     await userEvent.clear(screen.getByLabelText(/Nomor WhatsApp/));
     await userEvent.type(screen.getByLabelText(/Nomor WhatsApp/), "0812-3456-7890");
     await userEvent.click(screen.getByRole("button", { name: "Kirim permintaan" }));
-    expect(mutations["techSupport:submit"]).toHaveBeenCalledWith({ values: {
+    const sent = (mutations["techSupport:submit"].mock.calls[0] as unknown as [{ values: { progressDoc: string } }])[0].values;
+    expect(sent).toEqual({
       competition: "Gemastik 2026", competitionUrl: "https://gemastik.kemdikbud.go.id", deadline: "2099-11-20", participation: "team",
-      teamName: "Tim Dino", helpKinds: ["Ideasi", "Review pitch deck"], progress: "Sudah ada prototipe.", whatsapp: "+6281234567890", discord: "rania.dev",
-    } });
+      teamName: "Tim Dino", helpKinds: ["Ideasi", "Review pitch deck"], progress: "Sudah ada prototipe.\nButuh review pitch deck.", progressDoc: sent.progressDoc, whatsapp: "+6281234567890", discord: "rania.dev",
+    });
+    // The progress goes as the editor's document too (#288).
+    expect(parseRichDoc(sent.progressDoc)?.content).toHaveLength(2);
     expect((await screen.findByRole("status")).textContent).toContain("Permintaanmu terkirim");
     expect((screen.getByLabelText(/Nama kompetisi/) as HTMLInputElement).value).toBe("");
+    expect((screen.getByLabelText(/Progres saat ini/) as HTMLTextAreaElement).value).toBe("");
     // The contact stays for the next request.
     expect((screen.getByLabelText(/Nomor WhatsApp/) as HTMLInputElement).value).toBe("+62 812-3456-7890");
   });

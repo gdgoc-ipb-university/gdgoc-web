@@ -13,7 +13,9 @@ const member = { name: "Rania Putri", email: "rania@example.com", campus: "IPB U
 const base = { competitionUrl: "https://example.com", deadline: "2026-11-20", participation: "solo", teamName: null, helpKinds: ["Ideasi"], progress: "Prototipe.", whatsapp: "+6281234567890", discord: "rania.dev", mentorName: null, note: null, updatedAt: 0, matchedAt: null, closedAt: null, handledBy: null, ownerId: "u1", member };
 const requests = [
   // Friday 30 Oct 09.00: Fri, Mon, Tue and Wed have passed, so it is past the 3 working days.
-  { ...base, _id: "late", competition: "Gemastik", status: "new", submittedAt: at("2026-10-30T09:00:00") },
+  // Its progress was written in the editor (#288).
+  { ...base, _id: "late", competition: "Gemastik", status: "new", submittedAt: at("2026-10-30T09:00:00"), progress: "Prototipe di https://example.com/demo",
+    progressDoc: JSON.stringify({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "Prototipe di " }, { type: "text", text: "https://example.com/demo", marks: [{ type: "link", attrs: { href: "https://example.com/demo" } }] }] }] }) },
   // Tuesday 3 Nov 10.00: two working days.
   // Sent before #251, with no contact.
   { ...base, _id: "fresh", competition: "Hology", status: "new", whatsapp: null, discord: null, submittedAt: at("2026-11-03T10:00:00"), member: { ...member, name: "Bima Sakti" } },
@@ -102,5 +104,19 @@ describe("Tech Support queue", () => {
     show({ techSupportHandler: false });
     expect(screen.getByText("Khusus pengelola Tech Support.")).toBeTruthy();
     expect(screen.queryByRole("region", { name: "Antrean permintaan" })).toBeNull();
+  });
+
+  it("shows rich progress with clickable links, and older progress as plain text (#288)", async () => {
+    show({ role: "admin" });
+    const detail = async (name: string) => {
+      await userEvent.click(screen.getByRole("button", { name }));
+      const dialog = screen.getByRole("dialog", { name: "Kelola permintaan" });
+      return [...dialog.querySelectorAll(".dash-support-detail dt")].find((term) => term.textContent === "Progres")!.nextElementSibling!;
+    };
+    const rich = await detail("Kelola permintaan Rania Putri untuk Gemastik");
+    expect(within(rich as HTMLElement).getByRole("link", { name: "https://example.com/demo" }).getAttribute("href")).toBe("https://example.com/demo");
+    await userEvent.keyboard("{Escape}");
+    const plain = await detail("Kelola permintaan Bima Sakti untuk Hology");
+    expect(plain.outerHTML).toBe("<dd>Prototipe.</dd>");
   });
 });

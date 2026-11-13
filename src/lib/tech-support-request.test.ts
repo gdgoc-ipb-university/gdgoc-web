@@ -47,6 +47,15 @@ describe("Tech Support request form", () => {
     expect(validateRequest(normalizeRequest(values({ participation: "team", teamName: " " })), now)).toEqual({ teamName: "Tulis nama timnya." });
   });
 
+  it("reads rich progress from its document (#288)", () => {
+    const doc = (...lines: string[]) => JSON.stringify({ type: "doc", content: lines.map((line) => ({ type: "paragraph", ...(line ? { content: [{ type: "text", text: line }] } : {}) })) });
+    expect(normalizeRequest(values({ progress: "lama", progressDoc: doc("Satu", "Dua") }))).toMatchObject({ progress: "Satu\nDua", progressDoc: doc("Satu", "Dua") });
+    expect(normalizeRequest(values())).not.toHaveProperty("progressDoc");
+    expect(validateRequest(normalizeRequest(values({ progressDoc: doc(...Array.from({ length: 500 }, () => "abcd")) })), now)).toEqual({});
+    expect(validateRequest(normalizeRequest(values({ progressDoc: doc("") })), now)).toEqual({ progress: "Ceritakan progres ide atau proyekmu sejauh ini." });
+    expect(validateRequest(normalizeRequest(values({ progressDoc: "{bukan json" })), now)).toEqual({ progress: "Format progres tidak dikenali. Muat ulang halaman, lalu coba lagi." });
+  });
+
   it("checks the link and the deadline", () => {
     expect(validateRequest(values({ competitionUrl: "javascript:alert(1)" }), now)).toHaveProperty("competitionUrl");
     expect(validateRequest(values({ deadline: "2026-02-30" }), now)).toHaveProperty("deadline");

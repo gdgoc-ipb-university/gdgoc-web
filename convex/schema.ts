@@ -6,6 +6,8 @@ export const appreciationValues = v.object({
   instagram: v.string(), achievement: v.string(), eventName: v.string(), organizer: v.string(),
   level: v.string(), participation: v.string(), teamName: v.string(), teamMembers: v.string(),
   eventDate: v.string(), story: v.string(), documentationLinks: v.string(), publicationConsent: v.boolean(),
+  // The story's sanitized rich-text JSON (#288); `story` is then its plain-text copy. Drafts from before it have none.
+  storyDoc: v.optional(v.string()),
 });
 export const memberType = v.union(v.literal("member"), v.literal("core"), v.literal("bod"));
 export const assignmentStatus = v.union(v.literal("draft"), v.literal("published"), v.literal("closed"));
@@ -74,7 +76,8 @@ export default defineSchema({
     ownerId: v.string(), ownerName: v.string(), ownerEmail: v.string(), clientId: v.string(),
     values: appreciationValues, status: appreciationStatus, revision: v.number(),
     updatedAt: v.number(), submittedAt: v.optional(v.number()),
-    reviewNote: v.optional(v.string()), postUrl: v.optional(v.string()),
+    // `reviewNoteDoc` is the note's sanitized rich-text JSON (#288), beside its plain text.
+    reviewNote: v.optional(v.string()), reviewNoteDoc: v.optional(v.string()), postUrl: v.optional(v.string()),
     reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
   })
     .index("by_owner_updated", ["ownerId", "updatedAt"])
@@ -82,7 +85,7 @@ export default defineSchema({
     .index("by_status_updated", ["status", "updatedAt"]),
   appreciationReviews: defineTable({
     appreciationId: v.id("appreciations"), reviewerId: v.string(),
-    status: appreciationStatus, note: v.string(), postUrl: v.string(), createdAt: v.number(),
+    status: appreciationStatus, note: v.string(), noteDoc: v.optional(v.string()), postUrl: v.string(), createdAt: v.number(),
   }).index("by_appreciation", ["appreciationId"]),
   assignments: defineTable({
     // Without `dueAt` a task has no deadline (#276): nothing is late, and a flag task takes flags until it is closed. In

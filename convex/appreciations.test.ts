@@ -193,3 +193,57 @@ describe("publication validation", () => {
     expect(await member.mutation(api.appreciations.submit, { id, revision: 2 })).toBe(id);
   });
 });
+
+describe("rich story and reviewer note (#288)", () => {
+  const doc = (...content: unknown[]) => JSON.stringify({ type: "doc", content });
+  const paragraph = (text: string, marks?: unknown[]) => ({ type: "paragraph", content: [{ type: "text", text, ...(marks ? { marks } : {}) }] });
+
+  it("keeps the story's sanitized document through submission and review, with the reviewer's note beside it", async () => {
+    vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "editor@example.com");
+    const t = setup(); const member = await user(t); const admin = await user(t, "editor@example.com");
+    const id = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
+    const sent = doc({ type: "paragraph" }, paragraph("Tim merancang aplikasi."), paragraph("Lihat prototipe", [{ type: "link", attrs: { href: "https://example.com/figma", target: "_blank" } }]), { type: "paragraph" });
+    await member.mutation(api.appreciations.save, { id, revision: 0, values: { ...complete, story: "diabaikan", storyDoc: sent } });
+    const draft = await member.query(api.appreciations.get, { id });
+    expect(draft.values.story).toBe("Tim merancang aplikasi.\nLihat prototipe");
+    expect(JSON.parse(draft.values.storyDoc!)).toEqual({ type: "doc", content: [paragraph("Tim merancang aplikasi."), paragraph("Lihat prototipe", [{ type: "link", attrs: { href: "https://example.com/figma" } }])] });
+    await member.mutation(api.appreciations.submit, { id, revision: 1 });
+    expect((await admin.query(api.appreciations.queue, { status: "submitted", paginationOpts: page })).page[0].values).toMatchObject({ story: draft.values.story, storyDoc: draft.values.storyDoc });
+
+    const note = doc(paragraph("Tambahkan foto tim:"), { type: "bulletList", content: [{ type: "listItem", content: [paragraph("Foto saat presentasi")] }] });
+    await expect(admin.mutation(api.appreciations.review, { id, revision: 2, status: "revision", note: "isi lama", noteDoc: doc({ type: "paragraph" }), postUrl: "" })).rejects.toThrow("Jelaskan");
+    await admin.mutation(api.appreciations.review, { id, revision: 2, status: "revision", note: "", noteDoc: note, postUrl: "" });
+    const revising = await member.query(api.appreciations.get, { id });
+    expect(revising).toMatchObject({ reviewNote: "Tambahkan foto tim:\nFoto saat presentasi", reviewNoteDoc: note });
+    expect((await admin.query(api.appreciations.history, { id }))[0]).toMatchObject({ note: revising.reviewNote, noteDoc: note });
+
+    // A tab from before the editor sends plain text, which drops the stored document, for the story and for the note.
+    await member.mutation(api.appreciations.save, { id, revision: 3, values: complete });
+    expect((await member.query(api.appreciations.get, { id })).values).not.toHaveProperty("storyDoc");
+    await member.mutation(api.appreciations.submit, { id, revision: 4 });
+    await admin.mutation(api.appreciations.review, { id, revision: 5, status: "reviewing", note: "Sedang dicek.", postUrl: "" });
+    expect(await member.query(api.appreciations.get, { id })).not.toHaveProperty("reviewNoteDoc");
+    expect((await admin.query(api.appreciations.history, { id }))[1]).toMatchObject({ note: "Sedang dicek.", noteDoc: null });
+  });
+
+  it("counts the story as the editor does, tells a retry from a conflict by its document, and refuses unknown documents", async () => {
+    vi.stubEnv("APPRECIATION_ADMIN_EMAILS", "editor@example.com");
+    const t = setup(); const member = await user(t); const admin = await user(t, "editor@example.com");
+    const id = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
+    // 600 lines of four characters is 2,400 for the editor, though the plain text adds 599 line breaks.
+    const lines = (count: number) => Array.from({ length: count }, () => paragraph("abcd"));
+    const full = { ...complete, storyDoc: doc(...lines(600)) };
+    expect(validateAppreciation(full)).toEqual({});
+    await member.mutation(api.appreciations.save, { id, revision: 0, values: full });
+    expect(await member.mutation(api.appreciations.save, { id, revision: 0, values: full })).toMatchObject({ revision: 1 });
+    await expect(member.mutation(api.appreciations.save, { id, revision: 0, values: { ...full, storyDoc: doc(...lines(599), paragraph("abcd", [{ type: "bold" }])) } })).rejects.toThrow("berubah");
+    await member.mutation(api.appreciations.submit, { id, revision: 1 });
+    await expect(admin.mutation(api.appreciations.review, { id, revision: 2, status: "reviewing", note: "", noteDoc: doc({ type: "image" }), postUrl: "" })).rejects.toThrow("Format catatan");
+
+    const other = await member.mutation(api.appreciations.create, { clientId: crypto.randomUUID() });
+    await expect(member.mutation(api.appreciations.save, { id: other, revision: 0, values: { ...full, storyDoc: doc(...lines(600), paragraph("x")) } })).rejects.toThrow("terlalu panjang");
+    await expect(member.mutation(api.appreciations.save, { id: other, revision: 0, values: { ...complete, storyDoc: doc({ type: "image" }) } })).rejects.toThrow("Format cerita");
+    expect(validateAppreciation({ ...complete, storyDoc: "{bukan json" })).toEqual({ story: "Format cerita tidak dikenali. Muat ulang halaman, lalu coba lagi." });
+    expect(validateAppreciation({ ...complete, storyDoc: doc({ type: "paragraph" }) })).toEqual({ story: "Ceritakan singkat proses dan hasilnya." });
+  });
+});

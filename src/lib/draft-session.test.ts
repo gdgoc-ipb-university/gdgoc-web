@@ -84,6 +84,21 @@ describe("draft autosave", () => {
     expect(session.getSnapshot()).toMatchObject({ phase: "conflict", values: { story: "Local" } });
   });
 
+  it("counts each replacement from outside the form, and keeps a backup whose story counts as its editor does (#288)", () => {
+    const local = cache();
+    const doc = JSON.stringify({ type: "doc", content: Array.from({ length: 600 }, () => ({ type: "paragraph", content: [{ type: "text", text: "abcd" }] })) });
+    const long = { ...emptyAppreciation, story: Array.from({ length: 600 }, () => "abcd").join("\n"), storyDoc: doc };
+    const session = new DraftSession(initial, vi.fn(), local, "owner:one");
+    session.update(long); session.stop();
+    expect(session.getSnapshot().loaded).toBe(0);
+    const recovered = new DraftSession(initial, vi.fn(), local, "owner:one"); recovered.start();
+    expect(recovered.getSnapshot()).toMatchObject({ phase: "dirty", loaded: 1, values: { storyDoc: doc } });
+    recovered.stop();
+    const fresh = new DraftSession(initial, vi.fn());
+    fresh.receive({ values: { ...emptyAppreciation, story: "Remote" }, revision: 1, updatedAt: 20 });
+    expect(fresh.getSnapshot().loaded).toBe(1);
+  });
+
   it("applies a newer remote version that arrived during the final save acknowledgement", async () => {
     let release!: (value: { revision: number; updatedAt: number }) => void;
     const session = new DraftSession(initial, () => new Promise((resolve) => { release = resolve; }));

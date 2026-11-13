@@ -1,15 +1,18 @@
 "use client";
 
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useRef, useState } from "react";
 import { useMutation, usePaginatedQuery, useQuery } from "convex/react";
 import type { FunctionReturnType } from "convex/server";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import { achievementLevels, isQueueFilterActive, queueSearchLimits, statusLabels, type QueueFilter } from "@/lib/appreciation";
 import { readableError } from "@/lib/draft-session";
+import { editorDoc, richText, type RichDoc } from "@/lib/rich-text";
 import { LoadingPanel, RecordDetails, StatusBadge, dateLabel } from "./shared";
 import { Arrow } from "../icons";
 import { Select } from "../select";
+import { RichTextView } from "../rich-text-view";
+import { RichTextEditor } from "../dashboard/rich-text-editor";
 
 type QueueStatus = "submitted" | "reviewing" | "revision" | "published";
 type QueueRow = FunctionReturnType<typeof api.appreciations.queue>["page"][number];
@@ -66,7 +69,7 @@ function ReviewHistory({ id }: { id: Id<"appreciations"> }) {
   const rows = useQuery(api.appreciations.history, open ? { id } : "skip");
   return <details className="review-history" onToggle={(event) => setOpen(event.currentTarget.open)}><summary>Riwayat tinjauan</summary>
     {!rows ? <p className="app-small" role="status">Memuat riwayat…</p> : !rows.length ? <p className="app-small">Belum ada tindak lanjut.</p>
-      : <ol>{rows.map((row) => <li key={row._id}><p className="app-small"><StatusBadge status={row.status} /> {dateLabel(row.createdAt)} · {row.reviewerName}</p>{row.note && <p>{row.note}</p>}{row.postUrl && <a className="text-button" href={row.postUrl} target="_blank" rel="noopener noreferrer">Post Instagram <Arrow external /></a>}</li>)}</ol>}
+      : <ol>{rows.map((row) => <li key={row._id}><p className="app-small"><StatusBadge status={row.status} /> {dateLabel(row.createdAt)} · {row.reviewerName}</p>{row.note && <RichTextView json={row.noteDoc} text={row.note} plain={<p>{row.note}</p>} />}{row.postUrl && <a className="text-button" href={row.postUrl} target="_blank" rel="noopener noreferrer">Post Instagram <Arrow external /></a>}</li>)}</ol>}
   </details>;
 }
 
@@ -76,20 +79,29 @@ const reviewActions = [
 
 function ReviewCard({ record }: { record: QueueRow }) {
   const review = useMutation(api.appreciations.review);
-  const [note, setNote] = useState(record.reviewNote ?? "");
+  // The note editor (#288) opens with the stored document, or an older note as paragraphs. Until the reviewer edits it, the
+  // form sends back what is stored, so an older note stays plain.
+  const [seed] = useState(() => editorDoc(record.reviewNoteDoc, record.reviewNote ?? ""));
+  const [edited, setEdited] = useState<RichDoc | null>(null);
+  const note = edited ? { note: richText(edited), noteDoc: JSON.stringify(edited) } : { note: record.reviewNote ?? "", noteDoc: record.reviewNoteDoc };
+  const focusNote = useRef<(() => void) | null>(null);
   const [postUrl, setPostUrl] = useState(record.postUrl ?? "");
   const [action, setAction] = useState<"reviewing" | "revision" | "published">("reviewing");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const canReview = ["submitted", "reviewing"].includes(record.status);
   async function update() {
+    // The editor is not a form control, so the browser no longer checks that a revision request has a note.
+    if (action === "revision" && !note.note.trim()) { setError("Jelaskan apa yang perlu dilengkapi pengirim."); focusNote.current?.(); return; }
     setBusy(true); setError("");
-    try { await review({ id: record._id, revision: record.revision, status: action, note, postUrl }); }
+    try { await review({ id: record._id, revision: record.revision, status: action, ...note, postUrl }); }
     catch (error) { setError(readableError(error)); }
     finally { setBusy(false); }
   }
   return <article className="app-panel review-card"><div className="app-record-top"><StatusBadge status={record.status} /><span className="app-small">{dateLabel(record.submittedAt ?? record.updatedAt)}</span></div><h2>{record.values.achievement}</h2><p>{record.values.fullName} · {record.values.eventName}</p><p className="app-small">Pengirim: {record.ownerName} ({record.ownerEmail}) · {record.values.level} · {record.values.campus}</p>{record.handlerName && <p className="app-small review-handler">Ditangani oleh {record.handlerName}</p>}<details><summary>Buka detail & dokumentasi</summary><RecordDetails record={record} /></details><ReviewHistory id={record._id} />
-    {record.reviewNote && <p className="review-note">{record.reviewNote}</p>}{record.postUrl && <a className="text-button" href={record.postUrl} target="_blank" rel="noopener noreferrer">Lihat post Instagram <Arrow external /></a>}
-    {canReview && <form className="review-form" onSubmit={(event) => { event.preventDefault(); void update(); }}><fieldset disabled={busy}><legend>Tindak lanjut kiriman</legend><Select id={`action-${record._id}`} label="Ubah status" value={action} onChange={setAction} disabled={busy} options={reviewActions} /><div className="app-field"><label htmlFor={`note-${record._id}`}>Catatan untuk pengirim {action === "revision" ? "*" : "(opsional)"}</label><textarea data-lenis-prevent id={`note-${record._id}`} rows={3} maxLength={1500} required={action === "revision"} value={note} onChange={(event) => setNote(event.target.value)} placeholder="Catatan ini bisa dilihat pengirim." /></div>{action === "published" && <div className="app-field"><label htmlFor={`post-${record._id}`}>Link postingan Instagram *</label><input id={`post-${record._id}`} type="url" required value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.instagram.com/p/…" /><p className="field-hint">Isi setelah postingan terbit. Tombol ini hanya mencatat status, bukan memposting ke Instagram.</p></div>}{error && <p role="alert" className="field-error">{error}</p>}<button className="button button-blue" type="submit">{busy ? "Menyimpan…" : "Simpan tindak lanjut"}</button></fieldset></form>}
+    {record.reviewNote && <RichTextView className="review-note" json={record.reviewNoteDoc} text={record.reviewNote} plain={<p className="review-note">{record.reviewNote}</p>} />}{record.postUrl && <a className="text-button" href={record.postUrl} target="_blank" rel="noopener noreferrer">Lihat post Instagram <Arrow external /></a>}
+    {canReview && <form className="review-form" onSubmit={(event) => { event.preventDefault(); void update(); }}><fieldset disabled={busy}><legend>Tindak lanjut kiriman</legend><Select id={`action-${record._id}`} label="Ubah status" value={action} onChange={setAction} disabled={busy} options={reviewActions} /><div className="app-field"><span className="dash-label" id={`note-${record._id}-label`}>Catatan untuk pengirim {action === "revision" ? "*" : "(opsional)"}</span>
+      <RichTextEditor id={`note-${record._id}`} labelledBy={`note-${record._id}-label`} initialDoc={seed} onChange={setEdited} disabled={busy} required={action === "revision"}
+        maxLength={1500} placeholder="Catatan ini bisa dilihat pengirim." focusRef={focusNote} toolbarLabel="Format catatan" /></div>{action === "published" && <div className="app-field"><label htmlFor={`post-${record._id}`}>Link postingan Instagram *</label><input id={`post-${record._id}`} type="url" required value={postUrl} onChange={(event) => setPostUrl(event.target.value)} placeholder="https://www.instagram.com/p/…" /><p className="field-hint">Isi setelah postingan terbit. Tombol ini hanya mencatat status, bukan memposting ke Instagram.</p></div>}{error && <p role="alert" className="field-error">{error}</p>}<button className="button button-blue" type="submit">{busy ? "Menyimpan…" : "Simpan tindak lanjut"}</button></fieldset></form>}
   </article>;
 }

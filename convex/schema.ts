@@ -116,8 +116,9 @@ export default defineSchema({
     // `answer` is plain text (older submissions, previews); `answerDoc` is the sanitized rich-text JSON.
     assignmentId: v.id("assignments"), ownerId: v.string(), answer: v.string(), answerDoc: v.optional(v.string()),
     revision: v.number(), submittedAt: v.number(),
-    // The latest review; `submittedAt > reviewedAt` means the member resubmitted since (isStaleReview).
-    score: v.optional(v.number()), feedback: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
+    // The latest review; `submittedAt > reviewedAt` means the member resubmitted since (isStaleReview). `feedback` is plain text,
+    // `feedbackDoc` its sanitized rich-text JSON when the reviewer wrote it in the editor (#288).
+    score: v.optional(v.number()), feedback: v.optional(v.string()), feedbackDoc: v.optional(v.string()), reviewedAt: v.optional(v.number()), reviewedBy: v.optional(v.string()),
     // With a rubric: the criteria as they were when scored, each with its points, so later rubric edits do not relabel a past review.
     breakdown: v.optional(rubricBreakdown),
     // Set while a reviewer has asked for a revision (the note is `feedback`); the member can resubmit even after closing. Resubmitting clears it.
@@ -129,7 +130,7 @@ export default defineSchema({
   // One row per review action, so a score's history survives re-reviews (like appreciationReviews).
   submissionReviews: defineTable({
     submissionId: v.id("assignmentSubmissions"), assignmentId: v.id("assignments"), reviewerId: v.string(),
-    score: v.optional(v.number()), breakdown: v.optional(rubricBreakdown), feedback: v.string(), createdAt: v.number(),
+    score: v.optional(v.number()), breakdown: v.optional(rubricBreakdown), feedback: v.string(), feedbackDoc: v.optional(v.string()), createdAt: v.number(),
     revisionRequested: v.optional(v.boolean()), // a revision request rather than a score; `feedback` is its note
   }).index("by_submission", ["submissionId", "createdAt"]),
   // Uploads start pending and are attached by a submission; unclaimed ones are removed by a cron.

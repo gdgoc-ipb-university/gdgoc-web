@@ -9,7 +9,7 @@ import { logAccess } from "./accessLog";
 import { enrolledRoles, mentoredRoles, mentors } from "./cohorts";
 import { storedFileInUse } from "./photos";
 import { inCohortRoles } from "../src/lib/cohort";
-import { parseRichDoc, richLength, richText } from "../src/lib/rich-text";
+import { parseRichDoc, richField, richLength, richText } from "../src/lib/rich-text";
 import { assignmentAudience, assignmentLimits, assignmentMaxScore, cleanFileName, fileProblem, fromJakartaInput, inAudience, isLate, isStaleReview, maxSlugLength, maxSubmissionFiles, normalizeAssignment, parseRubric, pendingFileLifetime, reservedSlugs, slugify, validateAssignment, type RubricScore } from "../src/lib/assignment";
 import { flagPointsOf, normalizeFlag, parseFlagPoints, validateFlag, type FlagInput } from "../src/lib/flag-task";
 import { checkFlag, flagOf, flagSummary, removeFlagRows, setFlag, solveOf, solvesOf, type FlagResult } from "./flags";
@@ -114,7 +114,7 @@ async function nameOf(ctx: QueryCtx | MutationCtx, ownerId: string) {
 /** The review fields a member or reviewer sees on a submission. */
 async function reviewView(ctx: QueryCtx | MutationCtx, submission: Doc<"assignmentSubmissions">) {
   return {
-    score: submission.score ?? null, breakdown: submission.breakdown ?? null, feedback: submission.feedback ?? null, reviewedAt: submission.reviewedAt ?? null,
+    score: submission.score ?? null, breakdown: submission.breakdown ?? null, feedback: submission.feedback ?? null, feedbackDoc: submission.feedbackDoc ?? null, reviewedAt: submission.reviewedAt ?? null,
     reviewerName: submission.reviewedBy ? (await nameOf(ctx, submission.reviewedBy)).name : null,
     stale: isStaleReview(submission), revisionRequestedAt: submission.revisionRequestedAt ?? null,
   };
@@ -397,18 +397,29 @@ export const missing = query({
   },
 });
 
+/**
+ * Feedback or a revision note as the review form sends it: the editor's document (#288), whose plain text is rebuilt from
+ * it, or plain text alone from a tab loaded before the editor, which clears a stored document.
+ */
+function feedbackOf(text: string, json: string | undefined) {
+  const rich = json === undefined ? undefined : richField(json);
+  if (rich === null) throw new ConvexError("Format umpan balik tidak dikenali. Muat ulang halaman, lalu coba lagi.");
+  const feedback = rich ? rich.text : text.trim();
+  if ((rich?.length ?? feedback.length) > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
+  return { feedback, feedbackDoc: rich?.json };
+}
+
 /** Score and/or feedback for one submission. The latest review is kept on the submission; every review is kept in submissionReviews. */
 export const review = mutation({
   // With a rubric, `points` (one per criterion, in order) is the way to score: they are stored with their criteria as `breakdown` and `score` becomes their sum. Without one, `score` is given directly.
-  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string() },
+  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), score: v.optional(v.number()), points: v.optional(v.array(v.number())), feedback: v.string(), feedbackDoc: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const submission = await submissionFor(ctx, args.submissionId);
     const { user, assignment } = await requireReviewer(ctx, submission.assignmentId);
     // The reviewer graded what they saw; a resubmission since then needs a fresh look, not a silent overwrite.
     if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk menilai versi terbaru." });
-    const feedback = args.feedback.trim();
+    const { feedback, feedbackDoc } = feedbackOf(args.feedback, args.feedbackDoc);
     const maxScore = assignmentMaxScore(assignment);
-    if (feedback.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
     let score = args.score;
     let breakdown: RubricScore[] | undefined;
     const rubric = assignment.rubric ?? [];
@@ -431,25 +442,25 @@ export const review = mutation({
     if (score !== undefined && (!Number.isInteger(score) || score < 0 || score > maxScore)) throw new ConvexError(`Nilai harus bilangan bulat 0 sampai ${maxScore}.`);
     if (score === undefined && !feedback) throw new ConvexError({ code: "VALIDATION", message: "Isi nilai, umpan balik, atau keduanya." });
     const now = Date.now();
-    await ctx.db.patch(submission._id, { score, breakdown, feedback: feedback || undefined, reviewedAt: now, reviewedBy: user._id });
-    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score, breakdown, feedback, createdAt: now });
+    await ctx.db.patch(submission._id, { score, breakdown, feedback: feedback || undefined, feedbackDoc, reviewedAt: now, reviewedBy: user._id });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: assignment._id, reviewerId: user._id, score, breakdown, feedback, feedbackDoc, createdAt: now });
   },
 });
 
 /** Asks one member to revise their submission, with a note. Their form reopens, even after the assignment is closed, until they resubmit. */
 export const requestRevision = mutation({
-  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), note: v.string() },
+  // `noteDoc` is the note's rich-text JSON (#288), as `feedbackDoc` on review.
+  args: { submissionId: v.id("assignmentSubmissions"), submissionRevision: v.number(), note: v.string(), noteDoc: v.optional(v.string()) },
   handler: async (ctx, args) => {
     const submission = await submissionFor(ctx, args.submissionId);
     const { user } = await requireReviewer(ctx, submission.assignmentId);
     if (submission.revision !== args.submissionRevision) throw new ConvexError({ code: "CONFLICT", message: "Member memperbarui kirimannya setelah halaman ini dimuat. Muat ulang untuk melihat versi terbaru." });
-    const note = args.note.trim();
+    const { feedback: note, feedbackDoc } = feedbackOf(args.note, args.noteDoc);
     if (!note) throw new ConvexError({ code: "VALIDATION", message: "Tulis apa yang perlu direvisi di kolom umpan balik." });
-    if (note.length > assignmentLimits.feedback) throw new ConvexError(`Umpan balik maksimal ${assignmentLimits.feedback} karakter.`);
     const now = Date.now();
     // The score, if any, stays until the revision is reviewed.
-    await ctx.db.patch(submission._id, { feedback: note, reviewedAt: now, reviewedBy: user._id, revisionRequestedAt: now });
-    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: submission.assignmentId, reviewerId: user._id, score: submission.score, breakdown: submission.breakdown, feedback: note, revisionRequested: true, createdAt: now });
+    await ctx.db.patch(submission._id, { feedback: note, feedbackDoc, reviewedAt: now, reviewedBy: user._id, revisionRequestedAt: now });
+    await ctx.db.insert("submissionReviews", { submissionId: submission._id, assignmentId: submission.assignmentId, reviewerId: user._id, score: submission.score, breakdown: submission.breakdown, feedback: note, feedbackDoc, revisionRequested: true, createdAt: now });
   },
 });
 

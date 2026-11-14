@@ -32,20 +32,39 @@ describe("/privasi: Bot Discord Gogo", () => {
 
   it("keeps the Discord user ID on Gogo's server only, never sends it, and never keeps usernames, roles or profiles", () => {
     const text = gogoSection().textContent!;
-    expect(text).toMatch(/ID pengguna Discord hanya disimpan di server Gogo sendiri, paling lama 24 jam, supaya Gogo tahu siapa mengatakan apa, dan tidak pernah dikirim ke Google/);
+    expect(text).toMatch(/ID pengguna Discord hanya disimpan di server Gogo sendiri, paling lama 24 jam, supaya Gogo tahu siapa mengatakan apa, dan tidak pernah dikirim ke OpenRouter, Baidu, atau Google/);
     expect(text).not.toMatch(/tidak pernah menyimpan[^.]*ID pengguna/);
     expect(text).toMatch(/Nama tampilan diambil dari Discord setiap kali Gogo menjawab dan tidak disimpan/);
     expect(text).toMatch(/tidak pernah menyimpan atau mengirim username, peran, atau profil Discord/);
     expect(text).toMatch(/Email, nomor telepon, kode undangan Tech League, dan teks yang mirip flag disamarkan, termasuk di nama tampilan/);
   });
 
-  it("names Gemini's free tier, what reaches Google and when, and that Google may use and review it", () => {
+  it("names OpenRouter, what reaches it and when, and the models it goes to in order (gdgoc-bot ADR 0008)", () => {
     const text = gogoSection().textContent!;
-    expect(text).toMatch(/Gemini API dari Google, pada paket gratis/);
-    expect(text).toMatch(/atau menimbang perlu menjawab atau tidak, obrolan yang diingatnya di situ dikirim ke Google beserta nama tampilan penulisnya/);
+    expect(text).toMatch(/Jawaban Gogo dibuat lewat OpenRouter, layanan di Amerika Serikat/);
+    expect(text).toMatch(/Setiap kali Gogo menjawab, atau menimbang apakah pesan yang tidak me-mention-nya perlu dijawab, Gogo mengirim ke OpenRouter instruksinya, info publik dari website, dan obrolan terbaru/);
+    expect(text).toMatch(/beserta nama tampilan penulisnya: nickname di server, nama tampilan Discord, atau label seperti Orang 1/);
+    expect(text).toMatch(/hingga 12 tanya jawab terakhir dengan Gogo, dan di channel yang dibacanya juga hingga 30 pesan terakhir, semuanya dari 24 jam terakhir/);
     expect(text).toMatch(/Pesan dari orang yang belum pernah mengobrol dengan Gogo ikut terkirim/);
-    expect(text).toMatch(/meningkatkan, dan mengembangkan produknya/);
-    expect(text).toMatch(/peninjau manusia dapat membacanya/);
+    expect(text).toMatch(/lebih dulu meneruskannya ke ERNIE 5\.5 Flash milik Baidu di Tiongkok, lalu ke Gemma 4 milik Google jika ERNIE tidak menjawab/);
+  });
+
+  it("says what OpenRouter, Baidu and Google keep, and that neither provider trains on it", () => {
+    const text = gogoSection().textContent!;
+    expect(text).toMatch(/OpenRouter tidak menyimpan isi pesan yang diteruskannya, melainkan data permintaan seperti waktu, model, dan jumlah token/);
+    expect(text).toMatch(/materi pelecehan seksual anak dan dapat menyimpan isi yang ditandai, serta dapat menyimpan isi permintaan hanya untuk mencegah penyalahgunaan/);
+    expect(text).toMatch(/Baidu menyimpan pesan yang diterimanya tanpa menyebut berapa lama, dan Google menyimpan yang diterimanya paling lama 55 hari/);
+    expect(text).toMatch(/Menurut keterangan OpenRouter tentang kedua penyedia itu, keduanya tidak memakai pesan tersebut untuk melatih model/);
+    expect(text).toMatch(/jangan tulis data pribadi atau hal rahasia di channel Gogo maupun di DM dengannya/);
+    expect(text).toMatch(/\/event dan \/tugas dijawab langsung dari info publik itu, tanpa lewat OpenRouter/);
+  });
+
+  it("no longer describes the Gemini free tier (#300)", () => {
+    const text = gogoSection().textContent!;
+    expect(text).not.toMatch(/Gemini/);
+    expect(text).not.toMatch(/Google dapat memakai/);
+    expect(text).not.toMatch(/paket gratis/);
+    expect(text).not.toMatch(/peninjau manusia/);
   });
 
   it("points questions and deletion requests to the page's Instagram contact, without offering an opt-out", () => {
